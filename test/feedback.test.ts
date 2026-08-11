@@ -9,7 +9,7 @@
  * out rather than doubling up.
  */
 
-import { pickCue } from '@/lib/feedback';
+import { buzzFor, pickCue, type Cue } from '@/lib/feedback';
 
 let failures = 0;
 
@@ -58,6 +58,29 @@ const everyCue = new Set([
   pickCue({ isDisclosure: true, expanded: true }),
 ]);
 check('four distinct sounds across the four cases', everyCue.size === 4, [...everyCue].join(', '));
+
+/* --------------------------------------------------------------- haptics */
+
+const ALL: Cue[] = ['tap', 'nav', 'expand', 'collapse', 'save', 'attach', 'delete', 'error'];
+const ms = (c: Cue) => {
+  const b = buzzFor(c);
+  return Array.isArray(b) ? b.filter((_, i) => i % 2 === 0).reduce((a, n) => a + n, 0) : b;
+};
+
+for (const cue of ALL) {
+  check(`${cue} buzzes`, ms(cue) > 0, `${ms(cue)}ms`);
+}
+
+// A per-tap buzz has to stay in tick territory. Past roughly 10ms it stops
+// reading as texture and starts reading as a notification.
+for (const cue of ['tap', 'nav', 'expand', 'collapse'] as Cue[]) {
+  check(`${cue} is a tick, not a jolt`, ms(cue) <= 10, `${ms(cue)}ms`);
+}
+
+check('a tap is the lightest of all', ms('tap') === Math.min(...ALL.map(ms)), `${ms('tap')}ms`);
+check('navigation is firmer than a tap', ms('nav') > ms('tap'));
+check('deleting is firmer than navigating', ms('delete') > ms('nav'));
+check('an error is the most insistent', ms('error') === Math.max(...ALL.map(ms)), `${ms('error')}ms`);
 
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

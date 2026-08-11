@@ -11,6 +11,10 @@
  *  - `navigator.vibrate` is Android-only. iOS Safari has no vibration API at
  *    all, so haptics silently do nothing there. The toggle stays visible
  *    because the same install may sync to a phone that does support it.
+ *
+ * Sound and haptics are independent: each cue has both a voice and a buzz, and
+ * the two preferences gate them separately. Turning sound off leaves the ticks;
+ * turning haptics off leaves the tones.
  */
 
 export type Cue =
@@ -49,19 +53,30 @@ const VOICES: Record<Cue, Voice> = {
   error: { notes: [233.08, 233.08], step: 0.11, type: 'square', gain: 0.04 },
 };
 
-/** Vibration patterns, in the alternating on/off milliseconds navigator wants. */
+/**
+ * Vibration patterns, in the alternating on/off milliseconds navigator wants.
+ *
+ * Every cue buzzes, including ordinary taps — the tick is what makes a button
+ * feel like a button. The scale matters more than the presence: a tap is 6ms,
+ * barely a tick, while a delete is a double pulse you'd notice with the phone
+ * face-down. Anything longer than about 10ms on a per-tap action stops reading
+ * as texture and starts reading as a notification.
+ */
 const BUZZ: Record<Cue, number | number[]> = {
-  // Ordinary taps and navigation are silent to the hand. A phone that buzzes
-  // on every button press is a phone people turn haptics off on entirely.
-  tap: 0,
-  nav: 0,
-  expand: 0,
-  collapse: 0,
+  tap: 6,
+  nav: 9,
+  expand: 7,
+  collapse: 7,
   save: [12, 40, 18],
   attach: 14,
   delete: [22, 45, 22],
   error: [30, 60, 30],
 };
+
+/** Exposed so the tick scale can be asserted rather than eyeballed. */
+export function buzzFor(cue: Cue): number | number[] {
+  return BUZZ[cue];
+}
 
 let ctx: AudioContext | null = null;
 let enabledSounds = false;
@@ -117,9 +132,8 @@ function tone(voice: Voice): void {
 export function feedback(cue: Cue): void {
   try {
     if (enabledSounds) tone(VOICES[cue]);
-    const buzz = BUZZ[cue];
-    if (enabledHaptics && buzz !== 0 && typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(buzz);
+    if (enabledHaptics && typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(BUZZ[cue]);
     }
   } catch {
     // Feedback is decoration. It must never take an action down with it.

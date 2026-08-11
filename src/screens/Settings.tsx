@@ -393,7 +393,7 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
           <h4>Haptics</h4>
           <p>
             {canBuzz
-              ? 'A small buzz on the same actions.'
+              ? 'A gentle tick as you tap, and a firmer one when something saves or is deleted.'
               : 'This browser has no vibration support, so this does nothing here. It will on a phone that does.'}
           </p>
         </div>
