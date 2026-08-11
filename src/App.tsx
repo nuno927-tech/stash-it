@@ -4,16 +4,25 @@ import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
 import { requestPersistence } from '@/lib/storage';
 import { BottomNav, type Tab } from '@/components/BottomNav';
-import { AddItem } from '@/screens/AddItem';
 import { Home } from '@/screens/Home';
+import { ItemDetail } from '@/screens/ItemDetail';
+import { ItemForm } from '@/screens/ItemForm';
+import { Items } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
 
 type BootState = { status: 'booting' } | { status: 'ready' } | { status: 'error'; error: Error };
 
-/** Screens reachable right now. 'add' isn't a tab — the FAB pushes to it. */
-type Screen = Tab | 'add';
+/**
+ * Screen state, not routes. There's no router yet — when Item detail needs to
+ * be linkable, this is the thing that gets replaced.
+ */
+type Screen =
+  | { kind: Tab }
+  | { kind: 'add' }
+  | { kind: 'detail'; id: string }
+  | { kind: 'edit'; id: string };
 
 export default function App() {
   const [boot, setBoot] = useState<BootState>({ status: 'booting' });
@@ -37,9 +46,7 @@ export default function App() {
     };
   }, []);
 
-  if (boot.status === 'booting') {
-    return <Frame>{null}</Frame>;
-  }
+  if (boot.status === 'booting') return <Frame>{null}</Frame>;
 
   if (boot.status === 'error') {
     return (
@@ -56,45 +63,85 @@ export default function App() {
 }
 
 function Shell() {
-  const [screen, setScreen] = useState<Screen>('home');
+  const [screen, setScreen] = useState<Screen>({ kind: 'home' });
 
   const property = useLiveQuery(() => db.properties.filter((p) => !p.deletedAt).first(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const count =
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 
+  const focusId = screen.kind === 'detail' || screen.kind === 'edit' ? screen.id : undefined;
+  const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
+
   if (!property || !settings) return <Frame>{null}</Frame>;
 
   const mayAdd = canAddItem(count, settings.entitlements);
-  const tab: Tab = screen === 'add' ? 'home' : screen;
+  const tab: Tab =
+    screen.kind === 'add' || screen.kind === 'edit'
+      ? 'items'
+      : screen.kind === 'detail'
+        ? 'items'
+        : screen.kind;
+
+  // A deleted or missing record must not leave the user on a blank screen.
+  if ((screen.kind === 'detail' || screen.kind === 'edit') && focused === undefined) {
+    return <Frame>{null}</Frame>;
+  }
 
   return (
     <Frame
       nav={
         <BottomNav
           active={tab}
-          onChange={setScreen}
-          onAdd={() => setScreen('add')}
+          onChange={(t) => setScreen({ kind: t })}
+          onAdd={() => setScreen({ kind: 'add' })}
           addDisabled={!mayAdd}
         />
       }
     >
-      {screen === 'home' && (
+      {screen.kind === 'home' && (
         <Home
           propertyId={property.id}
-          onAdd={() => setScreen('add')}
-          onOpenItem={() => setScreen('items')}
-          onSeeEndingSoon={() => setScreen('items')}
+          onAdd={() => setScreen({ kind: 'add' })}
+          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
+          onSeeEndingSoon={() => setScreen({ kind: 'items' })}
         />
       )}
 
-      {screen === 'add' &&
+      {screen.kind === 'items' && (
+        <Items
+          propertyId={property.id}
+          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
+          onAdd={() => setScreen({ kind: 'add' })}
+        />
+      )}
+
+      {screen.kind === 'detail' && focused && (
+        <ItemDetail
+          item={focused}
+          onBack={() => setScreen({ kind: 'items' })}
+          onEdit={() => setScreen({ kind: 'edit', id: focused.id })}
+          onDeleted={() => setScreen({ kind: 'items' })}
+        />
+      )}
+
+      {screen.kind === 'edit' && focused && (
+        <ItemForm
+          propertyId={property.id}
+          currency={settings.currency}
+          item={focused}
+          onSaved={(id) => setScreen({ kind: 'detail', id })}
+          onCancel={() => setScreen({ kind: 'detail', id: focused.id })}
+        />
+      )}
+
+      {screen.kind === 'add' &&
         (mayAdd ? (
-          <AddItem
+          <ItemForm
             propertyId={property.id}
             currency={settings.currency}
-            onSaved={() => setScreen('home')}
-            onCancel={() => setScreen('home')}
+            onSaved={(id) => setScreen({ kind: 'detail', id })}
+            onCancel={() => setScreen({ kind: 'home' })}
           />
         ) : (
           <Placeholder
@@ -103,15 +150,11 @@ function Shell() {
           />
         ))}
 
-      {screen === 'items' && (
-        <Placeholder title="Items" note="The full list, with filters by room and category." />
-      )}
-
-      {screen === 'search' && (
+      {screen.kind === 'search' && (
         <Placeholder title="Search" note="Across names, brands, models and serial numbers." />
       )}
 
-      {screen === 'settings' && <Settings propertyId={property.id} />}
+      {screen.kind === 'settings' && <Settings propertyId={property.id} />}
     </Frame>
   );
 }

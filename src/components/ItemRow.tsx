@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/db/db';
 import type { Item } from '@/db/types';
 import { warrantyLabel, warrantyProgress, warrantyState, type WarrantyState } from '@/lib/warranty';
-import { CategoryIcon } from './CategoryIcon';
+import { ItemIcon } from './ItemIcon';
 import { WarrantyRing } from './WarrantyRing';
 
 const CHIP_CLASS: Record<WarrantyState, string> = {
@@ -50,7 +50,7 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) =>
       <div className="thumbwrap">
         <WarrantyRing size={50} stroke={3} progress={warrantyProgress(item)} state={state} />
         <div className="thumb">
-          {thumb ? <img src={thumb} alt="" /> : <CategoryIcon category={item.category} />}
+          {thumb ? <img src={thumb} alt="" /> : <ItemIcon item={item} />}
         </div>
       </div>
 

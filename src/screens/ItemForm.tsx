@@ -1,10 +1,13 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/db/db';
 import { activeRooms } from '@/db/repo';
-import { ITEM_CATEGORIES, type ItemCategory } from '@/db/types';
+import { ITEM_CATEGORIES, type Item, type ItemCategory } from '@/db/types';
 import {
   emptyForm,
+  formFromItem,
   ItemLimitError,
+  saveEditedItem,
   saveNewItem,
   ValidationError,
   WARRANTY_PRESETS,
@@ -14,6 +17,7 @@ import {
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { ItemIcon } from '@/components/ItemIcon';
 
 const CATEGORY_LABEL: Record<ItemCategory, string> = {
   appliance: 'Appliance',
@@ -26,26 +30,50 @@ const CATEGORY_LABEL: Record<ItemCategory, string> = {
   other: 'Other',
 };
 
-export function AddItem({
+/**
+ * One form, two modes. Passing an `item` switches it to editing that record;
+ * without one it creates. Keeping them together means the field list, the
+ * validation and the expiry preview can never drift apart.
+ */
+export function ItemForm({
   propertyId,
   currency,
+  item,
   onSaved,
   onCancel,
 }: {
   propertyId: string;
   currency: string;
+  item?: Item;
   onSaved: (id: string) => void;
   onCancel: () => void;
 }) {
+  const editing = !!item;
   const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? [];
 
-  const [form, setForm] = useState<AddItemForm>(() => emptyForm(currency));
+  const [form, setForm] = useState<AddItemForm>(() =>
+    item ? formFromItem(item, currency) : emptyForm(currency),
+  );
   const [photo, setPhoto] = useState<PhotoRefs | null>(null);
   const [preview, setPreview] = useState<string>();
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
+
+  // Show the photo an edited item already has, until a new one replaces it.
+  const existingThumb = useLiveQuery(
+    async () => (item?.thumbBlobId ? db.blobs.get(item.thumbBlobId) : undefined),
+    [item?.thumbBlobId],
+  );
+  useEffect(() => {
+    if (!existingThumb || preview) return;
+    const url = URL.createObjectURL(existingThumb.data);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingThumb]);
 
   const set = <K extends keyof AddItemForm>(key: K, value: AddItemForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -72,7 +100,9 @@ export function AddItem({
     setBusy(true);
     setError(undefined);
     try {
-      const id = await saveNewItem(form, propertyId, photo ?? undefined);
+      const id = item
+        ? await saveEditedItem(item.id, form, propertyId, photo ?? undefined)
+        : await saveNewItem(form, propertyId, photo ?? undefined);
       if (preview) URL.revokeObjectURL(preview);
       onSaved(id);
     } catch (e) {
@@ -101,7 +131,7 @@ export function AddItem({
           </svg>
         </button>
         <div className="apptitle" style={{ fontSize: 19 }}>
-          New item
+          {editing ? 'Edit item' : 'New item'}
         </div>
         <button type="button" className="minibtn" disabled={busy} onClick={onSave}>
           Save
@@ -110,38 +140,72 @@ export function AddItem({
 
       {error && <div className="notice bad">{error}</div>}
 
-      <button
-        type="button"
-        className="photodrop"
-        onClick={() => fileInput.current?.click()}
-        disabled={busy}
-      >
+      <div className="photodrop">
         {preview ? (
           <img src={preview} alt="" />
         ) : (
-          <span>
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
-              <circle cx="12" cy="13" r="3.6" />
-            </svg>
-            Add a photo
+          <span className="photohint">
+            <ItemIcon item={{ name: form.name, category: form.category || undefined }} size={30} />
+            {form.name.trim()
+              ? 'No photo yet — this icon stands in'
+              : 'No photo yet'}
           </span>
         )}
-      </button>
+      </div>
+
+      {/*
+        Two inputs, not one. `capture` sends you straight to the camera with no
+        way back to the library, so a single button can only ever offer one of
+        the two. Splitting them is the only way to give both.
+      */}
+      <div className="photoactions">
+        <button
+          type="button"
+          className="minibtn"
+          onClick={() => cameraInput.current?.click()}
+          disabled={busy}
+        >
+          Take photo
+        </button>
+        <button
+          type="button"
+          className="minibtn ghost"
+          onClick={() => libraryInput.current?.click()}
+          disabled={busy}
+        >
+          Choose photo
+        </button>
+        {preview && (
+          <button
+            type="button"
+            className="minibtn ghost"
+            disabled={busy}
+            onClick={() => {
+              URL.revokeObjectURL(preview);
+              setPreview(undefined);
+              setPhoto(null);
+            }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
       <input
-        ref={fileInput}
+        ref={cameraInput}
         type="file"
         accept="image/*"
         capture="environment"
+        hidden
+        onChange={(e) => {
+          void onPhoto(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={libraryInput}
+        type="file"
+        accept="image/*"
         hidden
         onChange={(e) => {
           void onPhoto(e.target.files?.[0]);
@@ -333,7 +397,7 @@ export function AddItem({
       )}
 
       <button type="button" className="btn wide" disabled={busy} onClick={onSave}>
-        {busy ? 'Saving…' : 'Save item'}
+        {busy ? 'Saving…' : editing ? 'Save changes' : 'Save item'}
       </button>
     </>
   );

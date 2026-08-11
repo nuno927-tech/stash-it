@@ -202,6 +202,194 @@
   color: var(--muted);
 }
 
+/* ------------------------------------------------------------- detail */
+
+.prodhero {
+  height: 168px;
+  border-radius: var(--r-lg);
+  margin-bottom: 16px;
+  background: radial-gradient(120% 100% at 30% 0%, var(--slate-600), var(--slate-700));
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--slate-600);
+  position: relative;
+  overflow: hidden;
+}
+
+.prodhero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.prodhero .badge {
+  position: absolute;
+  top: 11px;
+  left: 11px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(13, 15, 18, 0.72);
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+}
+
+.detail-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  margin-bottom: 5px;
+}
+
+.detail-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.warranty {
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.bigring {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  position: relative;
+}
+
+.bigring .lbl {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.warranty-txt h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.warranty-txt p {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.facts .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--slate-700);
+  font-size: 13px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.notes-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 13px;
+  margin: 16px 0 4px;
+}
+
+.doc {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--slate-700);
+  margin-bottom: 8px;
+}
+
+.docicon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--slate-600);
+  color: var(--muted);
+}
+
+.doc-txt h5 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.doc-txt p {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doc-txt p b {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.sortpick {
+  display: flex;
+  gap: 5px;
+}
+
+.sortpick .pick {
+  padding: 6px 10px;
+  font-size: 11.5px;
+}
+
+.choice.danger b {
+  color: var(--ember);
+}
+
+.btn.ghost.wide {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  margin-top: 22px;
+}
+
+.photoactions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.photohint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
 /* --------------------------------------------------------- empty state */
 
 .empty {
@@ -346,6 +534,10 @@ select {
   font-size: 12.5px;
   font-weight: 500;
   padding: 8px 13px;
+}
+
+a.pick {
+  text-decoration: none;
 }
 
 .pick.on {

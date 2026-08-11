@@ -14,8 +14,10 @@ import { FREE_ITEM_LIMIT } from '@/db/types';
 import {
   draftFromForm,
   emptyForm,
+  formFromItem,
   ItemLimitError,
   parseMoneyToCents,
+  saveEditedItem,
   saveNewItem,
   ValidationError,
   type AddItemForm,
@@ -153,6 +155,71 @@ async function main() {
     'count is past the free limit',
     (await activeItemCount(property.id)) > FREE_ITEM_LIMIT,
     `${await activeItemCount(property.id)} items`,
+  );
+
+  /* -------------------------------------------------------------- edit */
+
+  const editId = await saveNewItem(
+    form({
+      name: 'Editable Kettle',
+      price: '49.99',
+      warrantyMonths: '12',
+      purchaseDate: '2026-02-01',
+    }),
+    property.id,
+    { blobId: 'blob-full', thumbBlobId: 'blob-thumb' },
+  );
+  const original = (await db.items.get(editId))!;
+  check('photo thumb is stored on create', original.thumbBlobId === 'blob-thumb');
+
+  // Editing without touching the photo must keep it.
+  await saveEditedItem(
+    editId,
+    formFromItem({ ...original, name: 'Renamed Kettle' }, 'USD'),
+    property.id,
+  );
+  const edited = (await db.items.get(editId))!;
+  check('edit renames', edited.name === 'Renamed Kettle', edited.name);
+  check('edit keeps the existing photo', edited.thumbBlobId === 'blob-thumb', edited.thumbBlobId);
+  check('edit preserves createdAt', edited.createdAt === original.createdAt);
+  check('edit moves updatedAt forward', edited.updatedAt >= original.updatedAt);
+  check('edit round-trips the price', edited.purchasePriceCents === 4999);
+  check('edit round-trips the warranty', edited.warranty?.months === 12);
+
+  // A new photo replaces the old reference.
+  await saveEditedItem(editId, formFromItem(edited, 'USD'), property.id, {
+    blobId: 'blob-full-2',
+    thumbBlobId: 'blob-thumb-2',
+  });
+  check(
+    'a new photo replaces the old one',
+    (await db.items.get(editId))!.thumbBlobId === 'blob-thumb-2',
+  );
+
+  // Clearing the warranty must actually remove it, not leave a stale object.
+  const cleared = formFromItem((await db.items.get(editId))!, 'USD');
+  cleared.warrantyMonths = '';
+  await saveEditedItem(editId, cleared, property.id);
+  check(
+    'clearing months removes the warranty',
+    (await db.items.get(editId))!.warranty === undefined,
+    JSON.stringify((await db.items.get(editId))!.warranty),
+  );
+
+  // Editing is never blocked by the cap — the item already exists.
+  await db.settings.update('singleton', {
+    entitlements: { proUnlock: false, reportUnlock: false },
+  });
+  const overCap = await activeItemCount(property.id);
+  await saveEditedItem(
+    editId,
+    { ...formFromItem((await db.items.get(editId))!, 'USD'), name: 'Edited past the cap' },
+    property.id,
+  );
+  check(
+    'edits work past the free cap',
+    (await db.items.get(editId))!.name === 'Edited past the cap',
+    `${overCap} items`,
   );
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);

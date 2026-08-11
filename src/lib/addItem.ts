@@ -5,7 +5,7 @@
  * screen only collects strings.
  */
 
-import { activeItemCount, canAddItem, createItem } from '@/db/repo';
+import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
 import { db } from '@/db/db';
 import { FREE_ITEM_LIMIT, type Item, type ItemCategory, type Warranty } from '@/db/types';
 
@@ -56,6 +56,28 @@ export function emptyForm(currency: string): AddItemForm {
     warrantyPhone: '',
     warrantyUrl: '',
     notes: '',
+  };
+}
+
+/** Fills the form from an existing item, for the edit path. */
+export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm {
+  return {
+    name: item.name,
+    category: item.category ?? '',
+    roomId: item.roomId ?? '',
+    purchaseDate: item.purchaseDate ?? '',
+    price: item.purchasePriceCents == null ? '' : (item.purchasePriceCents / 100).toFixed(2),
+    currency: item.currency ?? fallbackCurrency,
+    warrantyMonths: item.warranty?.months ? String(item.warranty.months) : '',
+    brand: item.brand ?? '',
+    model: item.model ?? '',
+    serial: item.serial ?? '',
+    retailer: item.retailer ?? '',
+    warrantyProvider: item.warranty?.provider ?? '',
+    policyNumber: item.warranty?.policyNumber ?? '',
+    warrantyPhone: item.warranty?.phone ?? '',
+    warrantyUrl: item.warranty?.url ?? '',
+    notes: item.notes ?? '',
   };
 }
 
@@ -163,4 +185,24 @@ export async function saveNewItem(
   if (settings && !canAddItem(count, settings.entitlements)) throw new ItemLimitError();
 
   return createItem(draft);
+}
+
+/**
+ * Editing never touches the cap — the item already exists, and blocking edits
+ * on a full free tier would be punishing people for data they already have.
+ *
+ * `thumbBlobId` is only overwritten when a new photo came in, so saving an edit
+ * without touching the photo keeps it.
+ */
+export async function saveEditedItem(
+  id: string,
+  form: AddItemForm,
+  propertyId: string,
+  photo?: PhotoRefs,
+): Promise<string> {
+  const draft = draftFromForm(form, propertyId, photo);
+  const patch: Partial<Item> = { ...draft };
+  if (!photo) delete patch.thumbBlobId;
+  await updateItem(id, patch);
+  return id;
 }
