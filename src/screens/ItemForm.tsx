@@ -269,6 +269,7 @@ export function ItemForm({
           <button
             type="button"
             className="minibtn ghost"
+            aria-expanded={newRoom !== null}
             onClick={() => setNewRoom(newRoom === null ? '' : null)}
           >
             {newRoom === null ? 'New room' : 'Cancel'}
@@ -410,7 +411,12 @@ export function ItemForm({
         }
       />
 
-      <button type="button" className="expander" onClick={() => setMore((m) => !m)}>
+      <button
+        type="button"
+        className="expander"
+        aria-expanded={more}
+        onClick={() => setMore((m) => !m)}
+      >
         {more ? 'Fewer details' : 'More details'}
         <svg
           width="16"

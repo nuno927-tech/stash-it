@@ -369,7 +369,7 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
       <div className="setrow">
         <div>
           <h4>Sounds</h4>
-          <p>Short tones when something saves, attaches or fails.</p>
+          <p>Clicks as you tap, and short tones when something saves, attaches or fails.</p>
         </div>
         <button
           type="button"
@@ -377,6 +377,7 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
           role="switch"
           aria-checked={prefs.sounds}
           aria-label="Sounds"
+          data-cue="none"
           onClick={() => {
             const next = !prefs.sounds;
             setPref('sounds', next);
@@ -402,6 +403,7 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
           role="switch"
           aria-checked={prefs.haptics}
           aria-label="Haptics"
+          data-cue="none"
           onClick={() => {
             const next = !prefs.haptics;
             setPref('haptics', next);

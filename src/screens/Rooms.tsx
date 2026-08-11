@@ -163,6 +163,7 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
               type="button"
               className="iconbtn small"
               aria-label={`Delete ${room.name}`}
+              aria-expanded={deleting?.id === room.id}
               onClick={() => setDeleting(room)}
             >
               <svg

@@ -180,7 +180,12 @@ export function ItemDetail({
           </button>
         </div>
       ) : (
-        <button type="button" className="btn ghost wide" onClick={() => setConfirming(true)}>
+        <button
+          type="button"
+          className="btn ghost wide"
+          aria-expanded={false}
+          onClick={() => setConfirming(true)}
+        >
           Delete item
         </button>
       )}

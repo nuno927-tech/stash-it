@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
-import { configureFeedback } from '@/lib/feedback';
+import { configureFeedback, installClickSounds } from '@/lib/feedback';
 import { prefsFrom } from '@/lib/prefs';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
@@ -109,6 +109,10 @@ function Shell() {
   useEffect(() => {
     configureFeedback({ sounds: prefs.sounds, haptics: prefs.haptics });
   }, [prefs.sounds, prefs.haptics]);
+
+  // One delegated listener for the whole app; the cue is chosen from what was
+  // clicked. Silent unless the sounds preference is on.
+  useEffect(() => installClickSounds(), []);
   const count =
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 

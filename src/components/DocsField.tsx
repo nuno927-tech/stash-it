@@ -85,7 +85,12 @@ export function DocsField({
           </button>
         ))}
         {!showRest && (
-          <button type="button" className="pick" onClick={() => setShowRest(true)}>
+          <button
+            type="button"
+            className="pick"
+            aria-expanded={false}
+            onClick={() => setShowRest(true)}
+          >
             More
           </button>
         )}

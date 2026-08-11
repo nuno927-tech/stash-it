@@ -139,6 +139,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
             type="button"
             className="iconbtn small"
             aria-label={`Change what kind of document this is — currently ${docHeadline(doc).toLowerCase()}`}
+            aria-expanded={retyping}
             onClick={() => setRetyping((v) => !v)}
           >
             <svg
@@ -159,6 +160,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
             type="button"
             className="iconbtn small"
             aria-label={`Remove the ${docHeadline(doc).toLowerCase()}`}
+            aria-expanded={confirming}
             onClick={() => setConfirming(true)}
           >
             <svg

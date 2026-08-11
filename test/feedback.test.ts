@@ -1,0 +1,63 @@
+/**
+ * Which sound a click makes.
+ *
+ *   npm run test:feedback
+ *
+ * The cue rules are pure so they can be checked without a DOM or an audio
+ * context. What matters is that navigation, ordinary buttons and disclosures
+ * stay distinguishable, and that a control which plays its own sound can opt
+ * out rather than doubling up.
+ */
+
+import { pickCue } from '@/lib/feedback';
+
+let failures = 0;
+
+function check(label: string, ok: boolean, detail = '') {
+  if (!ok) failures++;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `  — ${detail}` : ''}`);
+}
+
+/* ------------------------------------------------------------- defaults */
+
+check('an ordinary button taps', pickCue({}) === 'tap');
+check('a nav button is different', pickCue({ isNav: true }) === 'nav');
+check(
+  'nav and tap are not the same cue',
+  pickCue({ isNav: true }) !== pickCue({}),
+  `${pickCue({ isNav: true })} vs ${pickCue({})}`,
+);
+
+/* ---------------------------------------------------------- disclosures */
+
+check('a closed disclosure opens', pickCue({ isDisclosure: true, expanded: false }) === 'expand');
+check('an open one closes', pickCue({ isDisclosure: true, expanded: true }) === 'collapse');
+check(
+  'expand and collapse differ',
+  pickCue({ isDisclosure: true, expanded: false }) !== pickCue({ isDisclosure: true, expanded: true }),
+);
+check(
+  'a disclosure inside the nav is still navigation',
+  pickCue({ isNav: true, isDisclosure: true }) === 'nav',
+);
+
+/* ------------------------------------------------------------ overrides */
+
+check('an explicit cue wins', pickCue({ override: 'save', isNav: true }) === 'save');
+check('none means silence', pickCue({ override: 'none' }) === null);
+check('an unknown override falls back to tap', pickCue({ override: 'nonsense' }) === 'tap');
+check('an empty override is ignored', pickCue({ override: '' }) === 'tap');
+check('a null override is ignored', pickCue({ override: null, isNav: true }) === 'nav');
+
+/* ------------------------------------------------------------ coverage */
+
+const everyCue = new Set([
+  pickCue({}),
+  pickCue({ isNav: true }),
+  pickCue({ isDisclosure: true, expanded: false }),
+  pickCue({ isDisclosure: true, expanded: true }),
+]);
+check('four distinct sounds across the four cases', everyCue.size === 4, [...everyCue].join(', '));
+
+console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
+process.exit(failures === 0 ? 0 : 1);

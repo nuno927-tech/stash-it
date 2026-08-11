@@ -13,7 +13,15 @@
  *    because the same install may sync to a phone that does support it.
  */
 
-export type Cue = 'tap' | 'save' | 'delete' | 'error' | 'attach';
+export type Cue =
+  | 'tap'
+  | 'nav'
+  | 'expand'
+  | 'collapse'
+  | 'save'
+  | 'delete'
+  | 'error'
+  | 'attach';
 
 interface Voice {
   /** Frequencies in Hz, played in sequence. */
@@ -25,7 +33,16 @@ interface Voice {
 }
 
 const VOICES: Record<Cue, Voice> = {
-  tap: { notes: [660], step: 0.045, type: 'sine', gain: 0.05 },
+  // Ordinary buttons: one short, quiet blip. This fires on nearly every tap,
+  // so it has to be the least interesting sound in the set — anything with
+  // character becomes irritating by the twentieth press.
+  tap: { notes: [880], step: 0.032, type: 'sine', gain: 0.035 },
+  // Moving between tabs is a bigger gesture, so it gets a lower, rounder note.
+  // Pitch carries the distinction better than volume does.
+  nav: { notes: [392], step: 0.055, type: 'sine', gain: 0.05 },
+  // Rising to open, falling to close: the direction is the whole message.
+  expand: { notes: [523.25, 698.46], step: 0.045, type: 'sine', gain: 0.04 },
+  collapse: { notes: [698.46, 523.25], step: 0.045, type: 'sine', gain: 0.04 },
   save: { notes: [587.33, 880], step: 0.075, type: 'sine', gain: 0.07 },
   attach: { notes: [523.25, 784], step: 0.06, type: 'triangle', gain: 0.06 },
   delete: { notes: [392, 261.63], step: 0.075, type: 'sine', gain: 0.06 },
@@ -34,7 +51,12 @@ const VOICES: Record<Cue, Voice> = {
 
 /** Vibration patterns, in the alternating on/off milliseconds navigator wants. */
 const BUZZ: Record<Cue, number | number[]> = {
-  tap: 8,
+  // Ordinary taps and navigation are silent to the hand. A phone that buzzes
+  // on every button press is a phone people turn haptics off on entirely.
+  tap: 0,
+  nav: 0,
+  expand: 0,
+  collapse: 0,
   save: [12, 40, 18],
   attach: 14,
   delete: [22, 45, 22],
@@ -95,8 +117,9 @@ function tone(voice: Voice): void {
 export function feedback(cue: Cue): void {
   try {
     if (enabledSounds) tone(VOICES[cue]);
-    if (enabledHaptics && typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(BUZZ[cue]);
+    const buzz = BUZZ[cue];
+    if (enabledHaptics && buzz !== 0 && typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(buzz);
     }
   } catch {
     // Feedback is decoration. It must never take an action down with it.
@@ -114,4 +137,61 @@ export function previewCue(cue: Cue, prefs: { sounds: boolean; haptics: boolean 
 
 export function hapticsSupported(): boolean {
   return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
+/* ------------------------------------------------------------ click sounds */
+
+export interface ClickContext {
+  /** An explicit `data-cue` on the element or an ancestor. */
+  override?: string | null;
+  /** Bottom-nav tabs and the add button. */
+  isNav?: boolean;
+  /** A disclosure control, with its state *before* the click. */
+  isDisclosure?: boolean;
+  expanded?: boolean;
+}
+
+/**
+ * Which cue a click should make. Pure, so the rules can be tested without a
+ * DOM — the browser adapter below is deliberately thin.
+ */
+export function pickCue(ctx: ClickContext): Cue | null {
+  if (ctx.override) {
+    if (ctx.override === 'none') return null;
+    return (ctx.override as Cue) in VOICES ? (ctx.override as Cue) : 'tap';
+  }
+  if (ctx.isNav) return 'nav';
+  // A disclosure reports the state it was in, so clicking an open one closes it.
+  if (ctx.isDisclosure) return ctx.expanded ? 'collapse' : 'expand';
+  return 'tap';
+}
+
+const NAV_SELECTOR = '.navitem, .fab';
+const DISCLOSURE_SELECTOR = '.expander, [aria-expanded]';
+
+/**
+ * One listener for the whole app rather than a call in every handler.
+ *
+ * Wiring each button individually would mean every new button silently opting
+ * out until someone remembered. Delegation makes sound the default and
+ * `data-cue="none"` the exception.
+ */
+export function installClickSounds(root: Document | HTMLElement = document): () => void {
+  const onClick = (event: Event) => {
+    const target = event.target as HTMLElement | null;
+    const el = target?.closest?.('button, a[href], [role="switch"], [role="button"]');
+    if (!el || (el as HTMLButtonElement).disabled) return;
+
+    const cue = pickCue({
+      override: el.closest('[data-cue]')?.getAttribute('data-cue'),
+      isNav: !!el.closest(NAV_SELECTOR),
+      isDisclosure: el.matches(DISCLOSURE_SELECTOR),
+      expanded: el.getAttribute('aria-expanded') === 'true',
+    });
+
+    if (cue) feedback(cue);
+  };
+
+  root.addEventListener('click', onClick, true);
+  return () => root.removeEventListener('click', onClick, true);
 }
