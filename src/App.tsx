@@ -9,6 +9,7 @@ import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
 import { Items } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
+import { Search } from '@/screens/Search';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
 
@@ -151,7 +152,10 @@ function Shell() {
         ))}
 
       {screen.kind === 'search' && (
-        <Placeholder title="Search" note="Across names, brands, models and serial numbers." />
+        <Search
+          propertyId={property.id}
+          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
+        />
       )}
 
       {screen.kind === 'settings' && <Settings propertyId={property.id} />}
