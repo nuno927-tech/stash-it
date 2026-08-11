@@ -1,0 +1,37 @@
+/**
+ * Dismissing the launch splash.
+ *
+ * The splash itself is static markup in index.html — see the comment there for
+ * why. This is only the other half: fade it out once the app is actually ready,
+ * then take it out of the document so nothing is left overlaying the UI.
+ */
+
+/** Long enough to register as a welcome rather than a flicker. */
+export const MIN_VISIBLE_MS = 900;
+/** Must match the transition in index.html. */
+const FADE_MS = 420;
+
+const startedAt = Date.now();
+
+export function dismissSplash(): void {
+  const el = document.getElementById('splash');
+  if (!el) return;
+
+  // The splash may already have been up for a while — a slow first paint, or a
+  // database that took its time — so wait only for whatever is left of the
+  // minimum, not the full duration again.
+  const remaining = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
+
+  window.setTimeout(() => {
+    el.classList.add('leaving');
+    // Removed rather than hidden: an invisible full-screen element that still
+    // exists is a bug waiting to happen the first time something forgets
+    // pointer-events.
+    window.setTimeout(() => el.remove(), FADE_MS);
+  }, remaining);
+}
+
+/** How long the splash still has to run, for anything that needs to wait. */
+export function splashRemainingMs(now = Date.now()): number {
+  return Math.max(0, MIN_VISIBLE_MS - (now - startedAt));
+}

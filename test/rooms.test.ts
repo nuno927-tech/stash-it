@@ -17,6 +17,7 @@ import {
   itemCountsByRoom,
   moveRoom,
   renameRoom,
+  reorderRooms,
   RoomNameTakenError,
 } from '@/db/repo';
 import { SEED_ROOMS } from '@/db/types';
@@ -120,6 +121,33 @@ async function main() {
   const last = (await activeRooms(pid)).at(-1)!;
   await moveRoom(last.id, 1);
   check('moving the bottom row down does nothing', (await names(pid)).at(-1) === last.name);
+
+  /* --------------------------------------------------- drag reordering */
+
+  const wasOrder = await names(pid);
+  const ids = (await activeRooms(pid)).map((r) => r.id);
+
+  // Move the last room to the front, the way a drag would.
+  await reorderRooms(pid, [ids.at(-1)!, ...ids.slice(0, -1)]);
+  const nowOrder = await names(pid);
+  check('a dragged room lands where it was dropped', nowOrder[0] === wasOrder.at(-1), nowOrder[0]);
+  check('nothing else is lost', nowOrder.length === wasOrder.length);
+  check(
+    'the rest keep their relative order',
+    nowOrder.slice(1).join('|') === wasOrder.slice(0, -1).join('|'),
+  );
+
+  // Re-sending the same order writes nothing: a drag that ends where it began
+  // must not bump updatedAt on every room and make backup merges noisy.
+  const current = (await activeRooms(pid)).map((r) => r.id);
+  check('an unchanged order writes nothing', (await reorderRooms(pid, current)) === 0);
+
+  // A stale list must never make a room disappear.
+  check('a partial list is tolerated', (await reorderRooms(pid, current.slice(0, 3))) >= 0);
+  check('and keeps every room', (await activeRooms(pid)).length === wasOrder.length);
+
+  check('unknown ids are ignored', (await reorderRooms(pid, ['nope', ...current])) >= 0);
+  check('still every room', (await activeRooms(pid)).length === wasOrder.length);
 
   /* ------------------------------------------------------------ counts */
 

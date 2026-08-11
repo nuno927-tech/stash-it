@@ -4,10 +4,10 @@ import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
 import { configureFeedback, installClickSounds } from '@/lib/feedback';
 import { prefsFrom } from '@/lib/prefs';
+import { dismissSplash } from '@/lib/splash';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
-import { Splash } from '@/components/Splash';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
@@ -72,6 +72,11 @@ export default function App() {
     };
   }, []);
 
+  // Fade the launch splash once there's something worth revealing. It's static
+  // markup in index.html, so the shell has already mounted underneath it by the
+  // time this runs — the dashboard is painted and settled before it clears.
+  if (boot.status !== 'booting') dismissSplash();
+
   if (boot.status === 'error') {
     return (
       <Frame>
@@ -83,14 +88,7 @@ export default function App() {
     );
   }
 
-  // The shell mounts underneath the splash, so the dashboard is already
-  // painted and settled by the time the fade reveals it.
-  return (
-    <>
-      {boot.status === 'ready' ? <Shell /> : <Frame>{null}</Frame>}
-      <Splash ready={boot.status === 'ready'} />
-    </>
-  );
+  return boot.status === 'ready' ? <Shell /> : <Frame>{null}</Frame>;
 }
 
 function Shell() {

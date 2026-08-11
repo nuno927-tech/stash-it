@@ -12,11 +12,14 @@ import { db } from '@/db/db';
 import type { Settings } from '@/db/types';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
+export type RoomsView = 'collapsed' | 'expanded';
 
 export interface Prefs {
   theme: ThemeChoice;
   sounds: boolean;
   haptics: boolean;
+  /** How the Items list opens: rooms shut, or everything on show. */
+  roomsView: RoomsView;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -25,6 +28,9 @@ export const DEFAULT_PREFS: Prefs = {
   // being asked, is an app people silence at the OS level and never re-enable.
   sounds: false,
   haptics: true,
+  // Collapsed: with a dozen rooms the expanded list is a long scroll, and the
+  // question people arrive with is usually "what's in the garage".
+  roomsView: 'collapsed',
 };
 
 export function prefsFrom(settings: Settings | undefined): Prefs {
@@ -32,6 +38,7 @@ export function prefsFrom(settings: Settings | undefined): Prefs {
     theme: settings?.theme ?? DEFAULT_PREFS.theme,
     sounds: settings?.sounds ?? DEFAULT_PREFS.sounds,
     haptics: settings?.haptics ?? DEFAULT_PREFS.haptics,
+    roomsView: settings?.roomsView ?? DEFAULT_PREFS.roomsView,
   };
 }
 

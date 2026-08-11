@@ -29,6 +29,7 @@ import {
   prefsFrom,
   REMINDER_CHOICES,
   setPref,
+  type RoomsView,
   type ThemeChoice,
 } from '@/lib/prefs';
 
@@ -150,6 +151,22 @@ export function Settings({
               {c}
             </option>
           ))}
+        </select>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Items open</h4>
+          <p>Whether rooms start shut or already showing what's inside.</p>
+        </div>
+        <select
+          className="compact"
+          value={prefsFrom(settings).roomsView}
+          aria-label="How the Items list opens"
+          onChange={(e) => setPref('roomsView', e.target.value as RoomsView)}
+        >
+          <option value="collapsed">Collapsed</option>
+          <option value="expanded">Expanded</option>
         </select>
       </div>
 

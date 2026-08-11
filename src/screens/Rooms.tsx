@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   activeRooms,
@@ -7,6 +7,7 @@ import {
   itemCountsByRoom,
   moveRoom,
   renameRoom,
+  reorderRooms,
   RoomNameTakenError,
   type RoomDeleteStrategy,
 } from '@/db/repo';
@@ -31,6 +32,7 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
   const [deleting, setDeleting] = useState<Room | null>(null);
   const [error, setError] = useState<string>();
 
+  const drag = useDragOrder(rooms, (ids) => reorderRooms(propertyId, ids));
   const byRoom = counts?.byRoom ?? new Map<string, number>();
 
   const add = async () => {
@@ -98,89 +100,109 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
         <span>{counts ? `${counts.unassigned} unassigned` : ''}</span>
       </div>
 
-      {rooms.map((room, i) => {
-        const count = byRoom.get(room.id) ?? 0;
-        const editing = editingId === room.id;
+      <ul
+        className="roomlist"
+        onPointerMove={drag.onPointerMove}
+        onPointerUp={drag.onPointerUp}
+        onPointerCancel={drag.onPointerCancel}
+      >
+        {drag.order.map((room, i) => {
+          const count = byRoom.get(room.id) ?? 0;
+          const editing = editingId === room.id;
+          const held = drag.heldId === room.id;
 
-        return (
-          <div key={room.id} className="roomrow">
-            <div className="roommove">
-              <button
-                type="button"
-                className="iconbtn small"
-                disabled={i === 0}
-                aria-label={`Move ${room.name} up`}
-                onClick={() => moveRoom(room.id, -1)}
-              >
-                <Chevron up />
-              </button>
-              <button
-                type="button"
-                className="iconbtn small"
-                disabled={i === rooms.length - 1}
-                aria-label={`Move ${room.name} down`}
-                onClick={() => moveRoom(room.id, 1)}
-              >
-                <Chevron />
-              </button>
-            </div>
-
-            {editing ? (
-              <input
-                type="text"
-                value={draft}
-                autoFocus
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={() => commitRename(room)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitRename(room);
-                  if (e.key === 'Escape') setEditingId(null);
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                className="roomname"
-                onClick={() => {
-                  setEditingId(room.id);
-                  setDraft(room.name);
-                }}
-              >
-                <span className="roomtitle">
-                  <i className="roomglyph">
-                    <RoomIcon name={room.name} size={19} />
-                  </i>
-                  {room.name}
-                </span>
-                <small>
-                  {count} {count === 1 ? 'item' : 'items'}
-                  {room.isSeed ? '' : ' · yours'}
-                </small>
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="iconbtn small"
-              aria-label={`Delete ${room.name}`}
-              aria-expanded={deleting?.id === room.id}
-              onClick={() => setDeleting(room)}
+          return (
+            <li
+              key={room.id}
+              ref={drag.rowRef(i)}
+              className={`roomrow${held ? ' held' : ''}`}
+              style={held ? { transform: `translateY(${drag.offset}px)` } : undefined}
             >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
+              {/*
+                A grip rather than the whole row: the row is also the rename
+                target, and a list where touching a name might drag it instead
+                is a list nobody trusts.
+              */}
+              <button
+                type="button"
+                className="grip"
+                aria-label={`Reorder ${room.name}. Currently ${i + 1} of ${drag.order.length}. Use the arrow keys to move it.`}
+                data-cue="none"
+                onPointerDown={(e) => drag.start(e, i)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                  e.preventDefault();
+                  feedback('tap');
+                  void moveRoom(room.id, e.key === 'ArrowUp' ? -1 : 1);
+                }}
               >
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
-        );
-      })}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="9" cy="6" r="1.5" />
+                  <circle cx="15" cy="6" r="1.5" />
+                  <circle cx="9" cy="12" r="1.5" />
+                  <circle cx="15" cy="12" r="1.5" />
+                  <circle cx="9" cy="18" r="1.5" />
+                  <circle cx="15" cy="18" r="1.5" />
+                </svg>
+              </button>
+
+              {editing ? (
+                <input
+                  type="text"
+                  value={draft}
+                  autoFocus
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={() => commitRename(room)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename(room);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="roomname"
+                  onClick={() => {
+                    setEditingId(room.id);
+                    setDraft(room.name);
+                  }}
+                >
+                  <span className="roomtitle">
+                    <i className="roomglyph">
+                      <RoomIcon name={room.name} size={19} />
+                    </i>
+                    {room.name}
+                  </span>
+                  <small>
+                    {count} {count === 1 ? 'item' : 'items'}
+                    {room.isSeed ? '' : ' · yours'}
+                  </small>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="iconbtn small"
+                aria-label={`Delete ${room.name}`}
+                aria-expanded={deleting?.id === room.id}
+                onClick={() => setDeleting(room)}
+              >
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="addroom">
         <input
@@ -206,11 +228,106 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
       )}
 
       <p className="hint" style={{ marginTop: 22 }}>
-        Tap a room to rename it. Deleting one never deletes what's inside — you'll be asked where
-        those items should go.
+        Drag the handle to reorder, tap a room to rename it. Deleting one never deletes what's
+        inside — you'll be asked where those items should go.
       </p>
     </>
   );
+}
+
+/**
+ * Pointer-based drag reordering.
+ *
+ * Pointer events rather than HTML5 drag and drop, which simply doesn't fire on
+ * touch — the API predates phones and was never retrofitted. Pointer events
+ * cover mouse, touch and pen with one code path.
+ *
+ * The list reorders live as you drag, so the gap under your finger is always
+ * where the row will land. Nothing is written until you let go.
+ */
+function useDragOrder(rooms: Room[], commit: (ids: string[]) => Promise<unknown>) {
+  const [order, setOrder] = useState<Room[]>(rooms);
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+
+  const rows = useRef<(HTMLLIElement | null)[]>([]);
+  const from = useRef(0);
+  const startY = useRef(0);
+  const live = useRef<Room[]>(rooms);
+
+  // Follow the database unless a drag is in flight, in which case the local
+  // order is the truth until it's committed.
+  useEffect(() => {
+    if (heldId) return;
+    setOrder(rooms);
+    live.current = rooms;
+  }, [rooms, heldId]);
+
+  const rowRef = (i: number) => (el: HTMLLIElement | null) => {
+    rows.current[i] = el;
+  };
+
+  const start = (e: ReactPointerEvent, index: number) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    from.current = index;
+    startY.current = e.clientY;
+    live.current = order;
+    setHeldId(order[index]?.id ?? null);
+    setOffset(0);
+    feedback('tap');
+  };
+
+  const move = (e: ReactPointerEvent) => {
+    if (!heldId) return;
+    const dy = e.clientY - startY.current;
+    setOffset(dy);
+
+    // Which row is the pointer over now? Measured rather than assumed, because
+    // rows aren't all the same height once one is being renamed.
+    const at = rows.current.findIndex((el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+
+    if (at === -1 || at === from.current) return;
+
+    const next = [...live.current];
+    const [held] = next.splice(from.current, 1);
+    if (!held) return;
+    next.splice(at, 0, held);
+
+    live.current = next;
+    from.current = at;
+    startY.current = e.clientY;
+    setOffset(0);
+    setOrder(next);
+    feedback('tap');
+  };
+
+  const end = () => {
+    if (!heldId) return;
+    setHeldId(null);
+    setOffset(0);
+    const ids = live.current.map((r) => r.id);
+    void commit(ids).then((written) => {
+      if (written) feedback('save');
+    });
+  };
+
+  return {
+    order,
+    heldId,
+    offset,
+    rowRef,
+    start,
+    // Attached to the row rather than the grip: a finger that outruns the
+    // handle mid-drag shouldn't drop the row.
+    onPointerMove: move,
+    onPointerUp: end,
+    onPointerCancel: end,
+  };
 }
 
 function DeleteRoom({
@@ -283,23 +400,5 @@ function DeleteRoom({
         Cancel
       </button>
     </div>
-  );
-}
-
-function Chevron({ up }: { up?: boolean }) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={up ? { transform: 'rotate(180deg)' } : undefined}
-    >
-      <path d="M6 9l6 6 6-6" />
-    </svg>
   );
 }

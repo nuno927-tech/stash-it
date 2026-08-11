@@ -4,8 +4,10 @@ import App from './App';
 import { applyTheme, prefersDark } from './lib/theme';
 import './styles/base.css';
 
-// Paint the right theme before React mounts, so a light-mode user never sees
-// a dark flash. The stored choice replaces this a tick later if it differs.
+// Match the device theme before React mounts so the app appears behind the
+// splash in the right palette. The stored choice replaces this a tick later if
+// it differs. The splash itself is in index.html and has its own light-mode
+// rule, so it is already correct before this runs.
 applyTheme(prefersDark() ? 'dark' : 'light');
 
 const root = document.getElementById('root');

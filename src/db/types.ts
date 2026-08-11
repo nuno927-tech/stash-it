@@ -164,6 +164,7 @@ export interface Settings {
   theme?: 'system' | 'light' | 'dark';
   sounds?: boolean;
   haptics?: boolean;
+  roomsView?: 'collapsed' | 'expanded';
 }
 
 export const SEED_ROOMS = [

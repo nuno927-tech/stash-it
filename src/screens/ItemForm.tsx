@@ -16,6 +16,7 @@ import {
   type PhotoEdit,
 } from '@/lib/addItem';
 import { attachStaged, type StagedDoc } from '@/lib/docs';
+import { completeMoneyInput, currencySymbol, formatMoneyInput, formatPhoneInput } from '@/lib/format';
 import { feedback } from '@/lib/feedback';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
@@ -308,13 +309,19 @@ export function ItemForm({
           />
         </Field>
         <Field label={`Price (${form.currency})`}>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={form.price}
-            onChange={(e) => set('price', e.target.value)}
-            placeholder="849.00"
-          />
+          {/* The symbol sits in the field rather than the label, so the value
+              reads as money while it's being typed. */}
+          <div className="moneyfield">
+            <span aria-hidden="true">{currencySymbol(form.currency)}</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={form.price}
+              onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
+              onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
+              placeholder="849.00"
+            />
+          </div>
         </Field>
       </div>
 
@@ -489,7 +496,8 @@ export function ItemForm({
               <input
                 type="tel"
                 value={form.warrantyPhone}
-                onChange={(e) => set('warrantyPhone', e.target.value)}
+                onChange={(e) => set('warrantyPhone', formatPhoneInput(e.target.value))}
+                placeholder="(860) 555-1234"
               />
             </Field>
           </div>

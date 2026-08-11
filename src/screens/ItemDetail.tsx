@@ -5,6 +5,7 @@ import { activeRooms, softDeleteItem } from '@/db/repo';
 import type { DocKind, Item } from '@/db/types';
 import { feedback } from '@/lib/feedback';
 import { docsWithFiles } from '@/lib/docs';
+import { phoneHref } from '@/lib/format';
 import {
   effectiveExpiry,
   formatMoney,
@@ -100,7 +101,7 @@ export function ItemDetail({
       {item.warranty?.phone || item.warranty?.url ? (
         <div className="chiprow">
           {item.warranty.phone && (
-            <a className="pick" href={`tel:${item.warranty.phone}`}>
+            <a className="pick" href={`tel:${phoneHref(item.warranty.phone)}`}>
               Call {item.warranty.provider ?? 'provider'}
             </a>
           )}

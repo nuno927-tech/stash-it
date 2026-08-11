@@ -8,6 +8,7 @@
 import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
 import { db } from '@/db/db';
 import { FREE_ITEM_LIMIT, type Item, type Warranty, type WarrantyUnit } from '@/db/types';
+import { formatMoneyInput } from './format';
 import { termOf, termToMonths } from './warranty';
 
 export class ValidationError extends Error {}
@@ -66,7 +67,15 @@ export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm 
     name: item.name,
     roomId: item.roomId ?? '',
     purchaseDate: item.purchaseDate ?? '',
-    price: item.purchasePriceCents == null ? '' : (item.purchasePriceCents / 100).toFixed(2),
+    // Grouped on the way in as well as while typing, so an edit doesn't show
+    // a differently formatted number than the one just entered.
+    price:
+      item.purchasePriceCents == null
+        ? ''
+        : formatMoneyInput(
+            (item.purchasePriceCents / 100).toFixed(2),
+            item.currency ?? fallbackCurrency,
+          ),
     currency: item.currency ?? fallbackCurrency,
     warrantyUnit: termOf(item.warranty)?.unit ?? 'months',
     warrantyAmount: termOf(item.warranty) ? String(termOf(item.warranty)!.amount) : '',

@@ -551,28 +551,50 @@
 
 /* ------------------------------------------------------------------ rooms */
 
+.roomlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Stops the browser claiming vertical drags for scrolling mid-reorder. */
+  touch-action: pan-x;
+}
+
 .roomrow {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 6px 4px 2px;
   border-bottom: 1px solid var(--slate-700);
+  background: var(--slate-800);
+  transition: transform 0.12s ease;
 }
 
-.roommove {
-  display: flex;
-  flex-direction: column;
+.roomrow.held {
+  position: relative;
+  z-index: 2;
+  border-radius: var(--r-sm);
+  border-bottom-color: transparent;
+  background: var(--slate-700);
+  box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55);
+  transition: none;
+}
+
+.grip {
   flex: none;
+  width: 34px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
   color: var(--muted);
+  cursor: grab;
+  touch-action: none;
 }
 
-.roommove .iconbtn {
-  height: 21px;
-  width: 26px;
-}
-
-.roommove .iconbtn:disabled {
-  opacity: 0.25;
+.grip:active {
+  cursor: grabbing;
+  color: var(--gold);
 }
 
 .roomname {
@@ -1389,97 +1411,6 @@ a.pick {
   }
 }
 
-/* ----------------------------------------------------------------- splash */
-
-.splash {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  background: var(--slate-900);
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  opacity: 1;
-  transition: opacity 0.42s ease;
-}
-
-.splash.leaving {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.splash-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  animation: splashIn 0.5s ease both;
-}
-
-.splash-word {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 40px;
-  letter-spacing: -0.03em;
-  margin: 26px 0 10px;
-}
-
-.splash-word span {
-  color: var(--gold);
-}
-
-.splash-inner p {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.6;
-  max-width: 26ch;
-}
-
-@keyframes splashIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* ------------------------------------------------------------ room icons */
-
-.roomtitle {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.roomglyph {
-  color: var(--muted);
-  display: grid;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-}
-
-.seclabel.roomhead span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-}
-
-.newroom {
-  display: flex;
-  gap: 8px;
-  margin: -6px 0 14px;
-}
-
-.newroom input {
-  flex: 1;
-}
-
 .roomfield {
   display: flex;
   gap: 8px;
@@ -1493,4 +1424,107 @@ a.pick {
 
 .roomfield .minibtn {
   flex: none;
+}
+
+/* ------------------------------------------------------- collapsible rooms */
+
+.roomgroup {
+  margin-bottom: 9px;
+}
+
+.roomtile {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  text-align: left;
+  background: var(--slate-700);
+  border: none;
+  border-radius: var(--r-md);
+  padding: 12px 13px;
+  color: inherit;
+}
+
+.roomtile:active {
+  background: var(--slate-600);
+}
+
+.roomtile.open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.roomtile-icon {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--slate-600);
+  color: var(--gold);
+}
+
+.roomtile.open .roomtile-icon {
+  background: var(--wash-gold);
+}
+
+.roomtile-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.roomtile-txt strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.roomtile-txt small {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.roomtile-go {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.roomtile.open .roomtile-go {
+  transform: rotate(180deg);
+}
+
+.roomitems {
+  padding: 9px 0 2px 12px;
+  border-left: 2px solid var(--slate-700);
+  margin-left: 22px;
+}
+
+.moneyfield {
+  display: flex;
+  align-items: center;
+  background: var(--slate-700);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding-left: 13px;
+  gap: 2px;
+}
+
+.moneyfield:focus-within {
+  border-color: var(--gold);
+}
+
+.moneyfield span {
+  color: var(--muted);
+  font-size: 15px;
+  flex: none;
+}
+
+.moneyfield input {
+  background: none !important;
+  border: none !important;
+  padding-left: 4px !important;
 }

@@ -225,6 +225,39 @@ export async function moveRoom(id: string, direction: -1 | 1): Promise<void> {
   });
 }
 
+/**
+ * Writes a whole new order at once, for drag and drop.
+ *
+ * Renumbers from scratch rather than trying to compute gaps: a drag can move a
+ * row anywhere, and evenly spaced values keep later single-step moves cheap.
+ * Rows whose position didn't change aren't written, so a small drag doesn't
+ * bump `updatedAt` on fourteen records and turn every backup merge noisy.
+ */
+export async function reorderRooms(propertyId: string, orderedIds: string[]): Promise<number> {
+  const current = await activeRooms(propertyId);
+  const known = new Set(current.map((r) => r.id));
+
+  // Ignore anything unknown, then append any room the caller forgot, so a
+  // stale list can never make a room vanish from the ordering.
+  const ids = orderedIds.filter((id) => known.has(id));
+  for (const room of current) if (!ids.includes(room.id)) ids.push(room.id);
+
+  const ts = nowISO();
+  let written = 0;
+
+  await db.transaction('rw', db.rooms, async () => {
+    for (const [i, id] of ids.entries()) {
+      const sortOrder = (i + 1) * 100;
+      const room = current.find((r) => r.id === id);
+      if (!room || room.sortOrder === sortOrder) continue;
+      await db.rooms.update(id, { sortOrder, updatedAt: ts });
+      written++;
+    }
+  });
+
+  return written;
+}
+
 /** Item counts for every room in one pass, plus the unassigned tally. */
 export async function itemCountsByRoom(
   propertyId: string,
