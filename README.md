@@ -41,10 +41,10 @@ the app requests at boot, and the backup file the user exports themselves.
 | `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
 | `src/lib/docs.ts` | Document attachment, blob lifecycle, open and download. |
 | `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
-| `test/` | `npm test` — 143 assertions against fake-indexeddb. |
+| `test/` | `npm test` — 172 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
 | `src/App.tsx` | Screen state and the app shell. No router yet. |
-| `src/screens/` | Home, Items, Item detail, Item form, Search, Settings. |
+| `src/screens/` | Home, Items, Item detail, Item form, Search, Rooms, Settings. |
 | `src/lib/search.ts` | Field-weighted matching. Partial serials, folded accents. |
 | `stash-it.html` | Signed-off UI concept — palette, motion lab, three screen mockups. |
 
@@ -69,6 +69,6 @@ Settings → Developer → Pro unlock. Toggles the entitlement so you can hit th
 
 ## Not built yet
 
-Rooms screen. Link health checks. Passphrase encryption for
-backups. The maintenance log. Inventory report. IAP, Capacitor wrapping,
-the thin auth/analytics backend.
+Link health checks. Passphrase encryption for backups. The maintenance
+log. Inventory report. Multiple properties. IAP, Capacitor wrapping, the
+thin auth/analytics backend.

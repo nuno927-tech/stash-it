@@ -25,7 +25,13 @@ import {
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
-export function Settings({ propertyId }: { propertyId: string }) {
+export function Settings({
+  propertyId,
+  onOpenRooms,
+}: {
+  propertyId: string;
+  onOpenRooms: () => void;
+}) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
 
@@ -93,6 +99,28 @@ export function Settings({ propertyId }: { propertyId: string }) {
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 
       <div className="seclabel">
+        <span>Your home</span>
+      </div>
+
+      <button type="button" className="navrow" onClick={onOpenRooms}>
+        <span>
+          <h4>Rooms</h4>
+          <p>Add, rename and reorder the rooms items can live in.</p>
+        </span>
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--muted)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        >
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Backup</span>
         <span>{settings.lastBackupAt ? `Last ${settings.lastBackupAt.slice(0, 10)}` : 'Never'}</span>
       </div>
@@ -194,6 +222,37 @@ export function Settings({ propertyId }: { propertyId: string }) {
           </button>
         </div>
       </div>
+
+      <About schemaVersion={settings.schemaVersion} />
+    </>
+  );
+}
+
+/**
+ * Version, schema and storage estimate in one place. The schema version is
+ * here on purpose: when a backup won't restore, it's the first thing worth
+ * knowing, and asking someone to find it in DevTools is not a support plan.
+ */
+function About({ schemaVersion }: { schemaVersion: number }) {
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>About</span>
+      </div>
+      <dl className="facts">
+        <div className="row">
+          <dt>Version</dt>
+          <dd style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{__APP_VERSION__}</dd>
+        </div>
+        <div className="row">
+          <dt>Data schema</dt>
+          <dd style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>v{schemaVersion}</dd>
+        </div>
+      </dl>
+      <p className="hint" style={{ marginTop: 14 }}>
+        Stash it keeps everything on this device. Nothing is uploaded, so your backup file is the
+        only copy that survives losing the phone.
+      </p>
     </>
   );
 }

@@ -9,6 +9,7 @@ import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
 import { Items } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
+import { Rooms } from '@/screens/Rooms';
 import { Search } from '@/screens/Search';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
@@ -22,8 +23,21 @@ type BootState = { status: 'booting' } | { status: 'ready' } | { status: 'error'
 type Screen =
   | { kind: Tab }
   | { kind: 'add' }
+  | { kind: 'rooms' }
   | { kind: 'detail'; id: string }
   | { kind: 'edit'; id: string };
+
+/** Which nav tab stays lit while a pushed screen is open. */
+const TAB_FOR: Record<Screen['kind'], Tab> = {
+  home: 'home',
+  items: 'items',
+  search: 'search',
+  settings: 'settings',
+  add: 'items',
+  detail: 'items',
+  edit: 'items',
+  rooms: 'settings',
+};
 
 export default function App() {
   const [boot, setBoot] = useState<BootState>({ status: 'booting' });
@@ -77,12 +91,7 @@ function Shell() {
   if (!property || !settings) return <Frame>{null}</Frame>;
 
   const mayAdd = canAddItem(count, settings.entitlements);
-  const tab: Tab =
-    screen.kind === 'add' || screen.kind === 'edit'
-      ? 'items'
-      : screen.kind === 'detail'
-        ? 'items'
-        : screen.kind;
+  const tab: Tab = TAB_FOR[screen.kind];
 
   // A deleted or missing record must not leave the user on a blank screen.
   if ((screen.kind === 'detail' || screen.kind === 'edit') && focused === undefined) {
@@ -158,7 +167,13 @@ function Shell() {
         />
       )}
 
-      {screen.kind === 'settings' && <Settings propertyId={property.id} />}
+      {screen.kind === 'settings' && (
+        <Settings propertyId={property.id} onOpenRooms={() => setScreen({ kind: 'rooms' })} />
+      )}
+
+      {screen.kind === 'rooms' && (
+        <Rooms propertyId={property.id} onBack={() => setScreen({ kind: 'settings' })} />
+      )}
     </Frame>
   );
 }

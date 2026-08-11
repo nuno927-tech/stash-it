@@ -204,6 +204,46 @@ export async function deleteRoom(id: string, strategy: RoomDeleteStrategy): Prom
   });
 }
 
+/**
+ * Swaps a room with its neighbour. Swapping sortOrder rather than renumbering
+ * the whole list keeps the write to two rows, which matters because every
+ * touched row's updatedAt feeds backup merge conflicts.
+ */
+export async function moveRoom(id: string, direction: -1 | 1): Promise<void> {
+  const room = await db.rooms.get(id);
+  if (!room) return;
+
+  const ordered = await activeRooms(room.propertyId);
+  const at = ordered.findIndex((r) => r.id === id);
+  const neighbour = ordered[at + direction];
+  if (at === -1 || !neighbour) return; // already at the end
+
+  const ts = nowISO();
+  await db.transaction('rw', db.rooms, async () => {
+    await db.rooms.update(room.id, { sortOrder: neighbour.sortOrder, updatedAt: ts });
+    await db.rooms.update(neighbour.id, { sortOrder: room.sortOrder, updatedAt: ts });
+  });
+}
+
+/** Item counts for every room in one pass, plus the unassigned tally. */
+export async function itemCountsByRoom(
+  propertyId: string,
+): Promise<{ byRoom: Map<string, number>; unassigned: number }> {
+  const items = await activeItems(propertyId);
+  const byRoom = new Map<string, number>();
+  let unassigned = 0;
+
+  for (const item of items) {
+    if (!item.roomId) {
+      unassigned++;
+      continue;
+    }
+    byRoom.set(item.roomId, (byRoom.get(item.roomId) ?? 0) + 1);
+  }
+
+  return { byRoom, unassigned };
+}
+
 export async function itemCountForRoom(roomId: string): Promise<number> {
   const rows = await db.items.where('roomId').equals(roomId).toArray();
   return rows.filter((i) => !i.deletedAt).length;

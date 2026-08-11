@@ -350,6 +350,96 @@
   margin: 0;
 }
 
+/* ------------------------------------------------------------------ rooms */
+
+.roomrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 2px;
+  border-bottom: 1px solid var(--slate-700);
+}
+
+.roommove {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  color: var(--muted);
+}
+
+.roommove .iconbtn {
+  height: 21px;
+  width: 26px;
+}
+
+.roommove .iconbtn:disabled {
+  opacity: 0.25;
+}
+
+.roomname {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 10px 4px;
+  font-size: 14.5px;
+}
+
+.roomname small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.roomrow input {
+  flex: 1;
+  padding: 9px 11px !important;
+  font-size: 14.5px !important;
+}
+
+.addroom {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.addroom input {
+  flex: 1;
+}
+
+.navrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  background: var(--slate-700);
+  border: none;
+  border-radius: var(--r-md);
+  padding: 14px;
+  color: inherit;
+  text-align: left;
+}
+
+.navrow h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.navrow p {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .searchbar {
   display: flex;
   align-items: center;
