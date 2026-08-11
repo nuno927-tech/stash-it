@@ -10,10 +10,9 @@ import { BottomNav, type Tab } from '@/components/BottomNav';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
-import { Items } from '@/screens/Items';
+import { Items, type ItemsFilter } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
 import { Rooms } from '@/screens/Rooms';
-import { Search } from '@/screens/Search';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
 
@@ -24,7 +23,9 @@ type BootState = { status: 'booting' } | { status: 'ready' } | { status: 'error'
  * be linkable, this is the thing that gets replaced.
  */
 type Screen =
-  | { kind: Tab }
+  | { kind: 'home' }
+  | { kind: 'items'; filter?: ItemsFilter }
+  | { kind: 'settings' }
   | { kind: 'add' }
   | { kind: 'rooms' }
   | { kind: 'detail'; id: string }
@@ -34,7 +35,6 @@ type Screen =
 const TAB_FOR: Record<Screen['kind'], Tab> = {
   home: 'home',
   items: 'items',
-  search: 'search',
   settings: 'settings',
   add: 'items',
   detail: 'items',
@@ -128,13 +128,15 @@ function Shell() {
           propertyId={property.id}
           onAdd={() => setScreen({ kind: 'add' })}
           onOpenItem={(id) => setScreen({ kind: 'detail', id })}
-          onSeeEndingSoon={() => setScreen({ kind: 'items' })}
+          onBrowse={(filter) => setScreen({ kind: 'items', filter })}
         />
       )}
 
       {screen.kind === 'items' && (
         <Items
+          key={screen.filter ?? 'all'}
           propertyId={property.id}
+          filter={screen.filter}
           onOpenItem={(id) => setScreen({ kind: 'detail', id })}
           onAdd={() => setScreen({ kind: 'add' })}
         />
@@ -173,13 +175,6 @@ function Shell() {
             note={`You're at ${count} items. Everything you've saved stays editable and exportable — only new items are blocked.`}
           />
         ))}
-
-      {screen.kind === 'search' && (
-        <Search
-          propertyId={property.id}
-          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
-        />
-      )}
 
       {screen.kind === 'settings' && (
         <Settings propertyId={property.id} onOpenRooms={() => setScreen({ kind: 'rooms' })} />

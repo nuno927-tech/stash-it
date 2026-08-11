@@ -41,18 +41,20 @@ the app requests at boot, and the backup file the user exports themselves.
 | `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
 | `src/lib/docs.ts` | Document attachment, blob lifecycle, open and download. |
 | `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
-| `test/` | `npm test` — 172 assertions against fake-indexeddb. |
+| `test/` | `npm test` — 238 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
 | `src/App.tsx` | Screen state and the app shell. No router yet. |
-| `src/screens/` | Home, Items, Item detail, Item form, Search, Rooms, Settings. |
+| `src/screens/` | Home dashboard, Items, Item detail, Item form, Rooms, Settings. |
 | `src/lib/search.ts` | Field-weighted matching. Partial serials, folded accents. |
+| `src/lib/dashboard.ts` | The figures Home reports. Pure over items and docs. |
 | `stash-it.html` | Signed-off UI concept — palette, motion lab, three screen mockups. |
 
 ## Decisions baked in
 
 - **UUIDv7 IDs.** Time-sortable, safe if sync is ever added. Never auto-increment.
-- **Warranty expiry is computed** from `purchaseDate` + `months`, using calendar
-  month arithmetic. A 24-month warranty bought 31 Jan ends 31 Jan.
+- **Warranty expiry is computed** from the term the user entered. Days are exact;
+  months and years use calendar arithmetic, so 24 months from 31 Jan ends 31 Jan.
+  A term entered in days counts down in days for its whole life.
 - **Soft delete**, purged after 30 days. Deleting frees a free-tier slot immediately.
 - **Thumbnails generated on add** — 200px WebP, so the list renders instantly.
 - **Currency per item**, seeded from the device default at save time.

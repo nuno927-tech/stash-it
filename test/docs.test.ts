@@ -42,7 +42,7 @@ async function main() {
   await ensureFirstRun();
   const property = (await db.properties.toArray())[0]!;
   const itemId = await saveNewItem(
-    { ...emptyForm('USD'), name: 'Bosch Dishwasher', warrantyMonths: '24', purchaseDate: '2026-01-10' },
+    { ...emptyForm('USD'), name: 'Bosch Dishwasher', warrantyAmount: '24', purchaseDate: '2026-01-10' },
     property.id,
   );
 

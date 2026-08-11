@@ -1,48 +1,35 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
-import type { Item } from '@/db/types';
-import { effectiveExpiry, warrantyState } from '@/lib/warranty';
-import { ItemRow } from '@/components/ItemRow';
+import { coverShare, metricsFor } from '@/lib/dashboard';
+import { formatMoney, warrantyLabel } from '@/lib/warranty';
+import { ItemIcon } from '@/components/ItemIcon';
 import { Nutsy } from '@/components/Nutsy';
 
 /**
- * Urgency order: things about to lapse, then things still covered by how soon
- * they end, then items with no warranty on record, then expired. The point of
- * the screen is "what needs you", not "what you own" — that's the Items tab.
+ * The dashboard. Home used to be a second copy of the item list; now it answers
+ * the questions you'd ask about the collection as a whole, and hands you off to
+ * Items when you want the list itself.
  */
-const RANK = { 'ending-soon': 0, covered: 1, unknown: 2, expired: 3 } as const;
-
-function byUrgency(a: Item, b: Item): number {
-  const ra = RANK[warrantyState(a)];
-  const rb = RANK[warrantyState(b)];
-  if (ra !== rb) return ra - rb;
-
-  const ea = effectiveExpiry(a)?.getTime() ?? Infinity;
-  const eb = effectiveExpiry(b)?.getTime() ?? Infinity;
-  if (ea !== eb) return ea - eb;
-
-  return a.name.localeCompare(b.name);
-}
-
 export function Home({
   propertyId,
   onAdd,
   onOpenItem,
-  onSeeEndingSoon,
+  onBrowse,
 }: {
   propertyId: string;
   onAdd: () => void;
   onOpenItem: (id: string) => void;
-  onSeeEndingSoon: () => void;
+  onBrowse: (filter?: 'ending' | 'expired' | 'nopaperwork') => void;
 }) {
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
+  const docs = useLiveQuery(() => db.docs.toArray(), []);
 
-  if (!items) return null; // first paint only; Dexie resolves in the same tick
-
+  if (!items || !docs) return null;
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
 
-  const sorted = [...items].sort(byUrgency);
-  const endingSoon = sorted.filter((i) => warrantyState(i) === 'ending-soon');
+  const m = metricsFor(items, docs);
+  const share = coverShare(m);
 
   return (
     <>
@@ -55,29 +42,147 @@ export function Home({
         </div>
       </header>
 
-      {endingSoon.length > 0 && (
-        <button type="button" className="alert" onClick={onSeeEndingSoon}>
+      {m.endingSoon > 0 && (
+        <button type="button" className="alert" onClick={() => onBrowse('ending')}>
           <Nutsy pose="alert" height={54} motion={['alert']} />
           <span className="alert-txt">
             <h4>
-              {endingSoon.length} warrant{endingSoon.length === 1 ? 'y ends' : 'ies end'} soon
+              {m.endingSoon} warrant{m.endingSoon === 1 ? 'y ends' : 'ies end'} soon
             </h4>
-            <p>Check {endingSoon.length === 1 ? 'it' : 'them'} before the window closes.</p>
+            <p>Check {m.endingSoon === 1 ? 'it' : 'them'} before the window closes.</p>
           </span>
         </button>
       )}
 
-      <div className="seclabel">
-        <span>Your stash</span>
+      <div className="metrics">
+        <Metric value={String(m.total)} label={m.total === 1 ? 'item' : 'items'} />
+        <Metric value={String(m.covered)} label="still covered" tone="moss" />
+        <Metric value={String(m.expired)} label="lapsed" tone={m.expired ? 'ember' : undefined} />
+      </div>
+
+      {/* One bar rather than a pie: the only comparison that matters is
+          covered against not, and a bar reads at a glance on a phone. */}
+      <div className="coverbar" role="img" aria-label={`${Math.round(share * 100)} percent still covered`}>
+        <span style={{ width: `${(m.covered / Math.max(1, m.total)) * 100}%` }} className="seg-moss" />
+        <span
+          style={{ width: `${(m.endingSoon / Math.max(1, m.total)) * 100}%` }}
+          className="seg-honey"
+        />
+        <span style={{ width: `${(m.expired / Math.max(1, m.total)) * 100}%` }} className="seg-ember" />
+        <span
+          style={{ width: `${(m.untracked / Math.max(1, m.total)) * 100}%` }}
+          className="seg-none"
+        />
+      </div>
+      <div className="coverkey">
         <span>
-          {items.length} item{items.length === 1 ? '' : 's'}
+          <i className="dot moss" />
+          Covered
+        </span>
+        <span>
+          <i className="dot honey" />
+          Ending soon
+        </span>
+        <span>
+          <i className="dot ember" />
+          Lapsed
+        </span>
+        <span>
+          <i className="dot none" />
+          No warranty
         </span>
       </div>
 
-      {sorted.map((item) => (
-        <ItemRow key={item.id} item={item} onOpen={onOpenItem} />
-      ))}
+      {m.nextToExpire && (
+        <button
+          type="button"
+          className="nextup"
+          onClick={() => onOpenItem(m.nextToExpire!.item.id)}
+        >
+          <span className="fieldlabel">Next to expire</span>
+          <strong>{m.nextToExpire.item.name}</strong>
+          <small>{warrantyLabel(m.nextToExpire.item)} of cover left</small>
+        </button>
+      )}
+
+      <div className="seclabel">
+        <span>What you own</span>
+      </div>
+      <dl className="facts">
+        {m.valueByCurrency.map((v) => (
+          <div className="row" key={v.currency}>
+            <dt>Recorded value{m.valueByCurrency.length > 1 ? ` (${v.currency})` : ''}</dt>
+            <dd>{formatMoney(v.cents, v.currency)}</dd>
+          </div>
+        ))}
+        <div className="row">
+          <dt>Documents kept</dt>
+          <dd>{m.documents}</dd>
+        </div>
+      </dl>
+
+      {m.missingPaperwork > 0 && (
+        <button type="button" className="navrow" onClick={() => onBrowse('nopaperwork')}>
+          <span>
+            <h4>
+              {m.missingPaperwork} {m.missingPaperwork === 1 ? 'item has' : 'items have'} no proof
+              of purchase
+            </h4>
+            <p>A claim asks for the receipt or the policy. These have neither.</p>
+          </span>
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted)"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          >
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
+      <div className="seclabel" style={{ marginTop: 26 }}>
+        <span>Recently added</span>
+        <button type="button" className="linkish" onClick={() => onBrowse()}>
+          See all
+        </button>
+      </div>
+
+      <div className="recentrow">
+        {m.recent.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="recentcard"
+            onClick={() => onOpenItem(item.id)}
+          >
+            <ItemIcon item={item} size={24} />
+            <strong>{item.name}</strong>
+            <small>{warrantyLabel(item)}</small>
+          </button>
+        ))}
+      </div>
     </>
+  );
+}
+
+function Metric({
+  value,
+  label,
+  tone,
+}: {
+  value: string;
+  label: string;
+  tone?: 'moss' | 'ember';
+}) {
+  return (
+    <div className="metric">
+      <strong style={tone ? { color: `var(--${tone})` } : undefined}>{value}</strong>
+      <span>{label}</span>
+    </div>
   );
 }
 
@@ -89,9 +194,6 @@ function EmptyHome({ onAdd }: { onAdd: () => void }) {
       <p>Add your first item and Nutsy will keep track of the warranty for you.</p>
       <button type="button" className="btn" onClick={onAdd}>
         Add an item
-      </button>
-      <button type="button" className="btn ghost" disabled>
-        Restore from a backup
       </button>
     </div>
   );

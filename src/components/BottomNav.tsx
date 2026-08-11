@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type Tab = 'home' | 'items' | 'search' | 'settings';
+export type Tab = 'home' | 'items' | 'settings';
 
 const ICONS: Record<Tab, ReactNode> = {
   home: <path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" />,
@@ -8,12 +8,6 @@ const ICONS: Record<Tab, ReactNode> = {
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M3 9h18M9 20V9" />
-    </>
-  ),
-  search: (
-    <>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-4-4" />
     </>
   ),
   settings: (
@@ -27,11 +21,10 @@ const ICONS: Record<Tab, ReactNode> = {
 const LABELS: Record<Tab, string> = {
   home: 'Home',
   items: 'Items',
-  search: 'Search',
   settings: 'Settings',
 };
 
-const TABS: Tab[] = ['home', 'items', 'search', 'settings'];
+const TABS: Tab[] = ['home', 'items', 'settings'];
 
 export function BottomNav({
   active,

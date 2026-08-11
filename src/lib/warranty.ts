@@ -1,4 +1,4 @@
-import type { Item, Warranty } from '@/db/types';
+import type { Item, Warranty, WarrantyUnit } from '@/db/types';
 
 export type WarrantyState = 'covered' | 'ending-soon' | 'expired' | 'unknown';
 
@@ -28,11 +28,47 @@ export function addMonths(date: Date, months: number): Date {
   return out;
 }
 
+export function addDays(date: Date, days: number): Date {
+  const out = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  out.setDate(out.getDate() + days);
+  return out;
+}
+
+export interface WarrantyTerm {
+  unit: WarrantyUnit;
+  amount: number;
+}
+
+/**
+ * The term as the user expressed it. Records written before units existed only
+ * have `months`, and read back as months — which is what they meant.
+ */
+export function termOf(w: Warranty | undefined): WarrantyTerm | null {
+  if (!w) return null;
+  if (w.unit && w.amount && w.amount > 0) return { unit: w.unit, amount: w.amount };
+  if (w.months > 0) return { unit: 'months', amount: w.months };
+  return null;
+}
+
+/** Months equivalent, for the legacy field and for anything sorting by length. */
+export function termToMonths(term: WarrantyTerm): number {
+  if (term.unit === 'years') return term.amount * 12;
+  if (term.unit === 'months') return term.amount;
+  return Math.max(1, Math.round(term.amount / 30.44));
+}
+
 export function expiresOn(w: Warranty | undefined, purchaseDate?: string): Date | null {
-  if (!w?.months) return null;
-  const start = w.startsOn ?? purchaseDate;
+  const term = termOf(w);
+  if (!term) return null;
+  const start = w?.startsOn ?? purchaseDate;
   if (!start) return null;
-  return addMonths(parseDate(start), w.months);
+
+  const from = parseDate(start);
+  // Days are exact. Months and years use calendar arithmetic, so a term bought
+  // on the 31st ends on the 31st rather than drifting by the length of
+  // whichever months it passed through.
+  if (term.unit === 'days') return addDays(from, term.amount);
+  return addMonths(from, termToMonths(term));
 }
 
 export function daysUntil(target: Date, from = new Date()): number {
@@ -68,19 +104,45 @@ export function warrantyProgress(item: Item, now = new Date()): number {
   return Math.max(0, Math.min(1, daysUntil(end, now) / total));
 }
 
-/** "2y 4m", "21 days", "Ended". Short enough for the list chip. */
+/**
+ * "2y 4m", "21 days", "Ended". Short enough for the list chip.
+ *
+ * A term entered in days counts down in days for its whole life, however long
+ * that is. Someone who typed 90 days is watching a 90-day clock, and showing
+ * them "2m" on day one is answering a question they didn't ask.
+ */
 export function warrantyLabel(item: Item, now = new Date()): string {
   const end = effectiveExpiry(item);
   if (!end) return 'No warranty';
+
   const days = daysUntil(end, now);
   if (days < 0) return 'Ended';
   if (days === 0) return 'Ends today';
-  if (days < 45) return `${days} day${days === 1 ? '' : 's'}`;
+
+  if (countsInDays(item)) return `${days} ${days === 1 ? 'day' : 'days'}`;
+  if (days < 45) return `${days} ${days === 1 ? 'day' : 'days'}`;
+
   const months = Math.floor(days / 30.44);
   if (months < 12) return `${months}m`;
   const years = Math.floor(months / 12);
   const rem = months % 12;
   return rem ? `${years}y ${rem}m` : `${years}y`;
+}
+
+/** True when the policy running the clock was entered in days. */
+export function countsInDays(item: Item): boolean {
+  const base = expiresOn(item.warranty, item.purchaseDate);
+  const ext = expiresOn(item.extendedWarranty, item.purchaseDate);
+  const winner = ext && base ? (ext > base ? item.extendedWarranty : item.warranty) : (item.warranty ?? item.extendedWarranty);
+  return termOf(winner)?.unit === 'days';
+}
+
+/** "90 days", "2 years", "18 months" — the term itself, not what's left. */
+export function termLabel(w: Warranty | undefined): string | null {
+  const term = termOf(w);
+  if (!term) return null;
+  const unit = term.amount === 1 ? term.unit.replace(/s$/, '') : term.unit;
+  return `${term.amount} ${unit}`;
 }
 
 export function formatMoney(cents: number | undefined, currency = 'USD'): string {

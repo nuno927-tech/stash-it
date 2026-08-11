@@ -46,11 +46,50 @@ export function formatBytes(n: number): string {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 }
 
-/** Strips the extension — a title of "receipt.pdf" reads worse than "receipt". */
+/**
+ * True for the names cameras and scanners produce: IMG_20260810_143022,
+ * PXL_..., DSC0042, a bare UUID, a run of digits. These tell the user nothing,
+ * so they must never become a document's title.
+ */
+export function isMachineFilename(name: string): boolean {
+  const base = name.replace(/\.[^./\\]+$/, '').trim();
+  if (!base) return true;
+  return (
+    /^(img|image|photo|pxl|dsc|dscn|dji|gopr|scan|scanned|screenshot|doc|document|file)[-_ ]?\d*$/i.test(base) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(base) ||
+    /^[\d._-]+$/.test(base) ||
+    /^[a-z]{2,4}[-_]?\d{4,}/i.test(base)
+  );
+}
+
+/**
+ * A human title from a filename, or empty when the filename is machine noise.
+ * "bosch_extended_cover.pdf" is worth keeping; "IMG_20260810_143022.jpg" is
+ * not, and the caller falls back to the document's kind.
+ */
 export function titleFromFilename(filename: string): string {
+  if (isMachineFilename(filename)) return '';
   const base = filename.replace(/\.[^./\\]+$/, '').replace(/[_-]+/g, ' ').trim();
   if (!base) return '';
   return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/**
+ * What the row actually shows. The kind leads — "Receipt" answers the question
+ * the user is asking — and a real title becomes the second line.
+ */
+export function docHeadline(doc: Doc): string {
+  return DOC_KIND_LABEL[doc.kind];
+}
+
+export function docSubtitle(doc: Doc): string | null {
+  const title = doc.title?.trim();
+  if (!title) return null;
+  // Suppress a title that just repeats the kind, and any machine filename
+  // that got saved as a title before this rule existed.
+  if (title.toLowerCase() === DOC_KIND_LABEL[doc.kind].toLowerCase()) return null;
+  if (isMachineFilename(title)) return null;
+  return title;
 }
 
 export async function attachFile(
@@ -68,6 +107,7 @@ export async function attachFile(
   return createDoc({
     itemId,
     kind,
+    // Falls back to the kind, never to IMG_20260810_143022.
     title: title?.trim() || titleFromFilename(file.name) || DOC_KIND_LABEL[kind],
     storageMode: 'local',
     blobId,

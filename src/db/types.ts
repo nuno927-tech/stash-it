@@ -25,8 +25,22 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
   'hvac', 'outdoor', 'vehicle', 'other',
 ];
 
+export type WarrantyUnit = 'days' | 'months' | 'years';
+
 export interface Warranty {
+  /**
+   * Kept for records written before units existed, and as a rough equivalent
+   * for anything reading this file without understanding `unit`. When `unit`
+   * and `amount` are present they are the source of truth — read the term
+   * through `termOf()` in src/lib/warranty.ts rather than touching either.
+   */
   months: number;
+
+  /** How the user expressed the term. A 90-day warranty counts down in days. */
+  unit?: WarrantyUnit;
+  /** The number the user typed, in `unit`. */
+  amount?: number;
+
   /** Defaults to Item.purchaseDate when absent. */
   startsOn?: string;
   provider?: string;

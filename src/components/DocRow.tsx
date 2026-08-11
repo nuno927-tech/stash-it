@@ -3,7 +3,8 @@ import { feedback } from '@/lib/feedback';
 import type { DocKind } from '@/db/types';
 import {
   deleteDoc,
-  DOC_KIND_LABEL,
+  docHeadline,
+  docSubtitle,
   downloadDoc,
   formatBytes,
   openDoc,
@@ -48,24 +49,30 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
   const [error, setError] = useState<string>();
 
   const linked = doc.storageMode === 'linked';
+  const subtitle = docSubtitle(doc);
   const meta = linked
     ? hostOf(doc.url)
-    : [doc.mime === 'application/pdf' ? 'PDF' : 'On device', doc.bytes && formatBytes(doc.bytes)]
+    : [doc.mime === 'application/pdf' ? 'PDF document' : 'Photo', doc.bytes && formatBytes(doc.bytes)]
         .filter(Boolean)
         .join(' · ');
 
   return (
     <>
-      <div className="doc">
+      {/*
+        The whole row is the button. What the user wants to know is "which of
+        these is my receipt", so the kind is the headline at full size and the
+        file details are demoted underneath.
+      */}
+      <div className="docwrap">
         <button
           type="button"
-          className="docmain"
+          className="doccard"
           onClick={() => openDoc(doc).catch((e) => setError((e as Error).message))}
         >
-          <span className="docicon">
+          <span className="docicon big">
             <svg
-              width="17"
-              height="17"
+              width="22"
+              height="22"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -76,10 +83,31 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
               {KIND_ICON[doc.kind]}
             </svg>
           </span>
+
           <span className="doc-txt">
-            <h5>{doc.title ?? DOC_KIND_LABEL[doc.kind]}</h5>
-            <p>{linked ? <b>Linked</b> : null} {meta}</p>
+            <strong>{docHeadline(doc)}</strong>
+            {subtitle && <em>{subtitle}</em>}
+            <small>{linked ? `Linked · ${meta}` : meta}</small>
           </span>
+
+          <svg
+            className="docgo"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {linked ? (
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />
+            ) : (
+              <path d="M9 5l7 7-7 7" />
+            )}
+          </svg>
         </button>
 
         <div className="docactions">
@@ -87,7 +115,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
             <button
               type="button"
               className="iconbtn small"
-              aria-label="Save a copy"
+              aria-label={`Save a copy of the ${docHeadline(doc).toLowerCase()}`}
               onClick={() => downloadDoc(doc).catch((e) => setError((e as Error).message))}
             >
               <svg
@@ -107,7 +135,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
           <button
             type="button"
             className="iconbtn small"
-            aria-label="Remove"
+            aria-label={`Remove the ${docHeadline(doc).toLowerCase()}`}
             onClick={() => setConfirming(true)}
           >
             <svg
@@ -130,7 +158,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
       {confirming && (
         <div className="sheet">
           <h4>
-            Remove “{doc.title ?? DOC_KIND_LABEL[doc.kind]}”?
+            Remove this {docHeadline(doc).toLowerCase()}?
             {!linked && ' The file is deleted from this device.'}
           </h4>
           <div className="photoactions">

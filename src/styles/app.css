@@ -94,6 +94,186 @@
   line-height: 1.45;
 }
 
+/* ------------------------------------------------------------ dashboard */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.metric strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin-bottom: 3px;
+}
+
+.metric span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.coverbar {
+  display: flex;
+  height: 9px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--slate-700);
+  margin-bottom: 10px;
+}
+
+.coverbar span {
+  display: block;
+  transition: width 0.3s ease;
+}
+
+.seg-moss {
+  background: var(--moss);
+}
+.seg-honey {
+  background: var(--honey);
+}
+.seg-ember {
+  background: var(--ember);
+}
+.seg-none {
+  background: var(--slate-600);
+}
+
+.coverkey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-bottom: 22px;
+}
+
+.coverkey span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot.moss {
+  background: var(--moss);
+}
+.dot.honey {
+  background: var(--honey);
+}
+.dot.ember {
+  background: var(--ember);
+}
+.dot.none {
+  background: var(--slate-600);
+}
+
+.nextup {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--slate-700);
+  border: none;
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  color: inherit;
+  margin-bottom: 22px;
+}
+
+.nextup strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.nextup small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.recentrow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.recentcard {
+  background: var(--slate-700);
+  border: none;
+  border-radius: var(--r-md);
+  padding: 13px 10px;
+  color: var(--muted);
+  text-align: left;
+  min-width: 0;
+}
+
+.recentcard strong {
+  display: block;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin: 8px 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentcard small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.linkish {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  padding: 0;
+}
+
+.countpill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--slate-700);
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+}
+
+.activefilter {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--wash-gold);
+  border: 1px solid var(--wash-gold-line);
+  color: var(--gold);
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+}
+
 /* ----------------------------------------------------------- item rows */
 
 .item {
@@ -312,6 +492,40 @@
   margin: 16px 0 4px;
 }
 
+.docwrap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-radius: var(--r-md);
+  background: var(--slate-700);
+  margin-bottom: 9px;
+  padding-right: 6px;
+}
+
+.doccard {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: none;
+  border: none;
+  padding: 14px 4px 14px 14px;
+  text-align: left;
+  color: inherit;
+  border-radius: var(--r-md);
+}
+
+.doccard:active {
+  background: var(--slate-600);
+}
+
+.docgo {
+  flex: none;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
 .doc {
   display: flex;
   align-items: center;
@@ -320,19 +534,6 @@
   border-radius: var(--r-md);
   background: var(--slate-700);
   margin-bottom: 8px;
-}
-
-.docmain {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  background: none;
-  border: none;
-  padding: 6px 0;
-  text-align: left;
-  color: inherit;
 }
 
 .docactions {
@@ -520,6 +721,40 @@ select.compact {
   display: grid;
   place-items: center;
   background: var(--slate-600);
+  color: var(--muted);
+}
+
+.docicon.big {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: var(--gold);
+  background: var(--wash-gold);
+}
+
+.doc-txt strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.doc-txt em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.75;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-txt small {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--muted);
 }
 

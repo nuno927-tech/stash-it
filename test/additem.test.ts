@@ -79,7 +79,7 @@ async function main() {
       category: 'appliance',
       purchaseDate: '2026-03-12',
       price: '$849.00',
-      warrantyMonths: '24',
+      warrantyAmount: '24',
       warrantyProvider: 'Bosch Home',
       notes: '',
     }),
@@ -94,15 +94,15 @@ async function main() {
   check('warranty is built', draft.warranty?.months === 24, JSON.stringify(draft.warranty));
   check('warranty provider survives', draft.warranty?.provider === 'Bosch Home');
 
-  const noWarranty = draftFromForm(form({ warrantyMonths: '' }), property.id);
+  const noWarranty = draftFromForm(form({ warrantyAmount: '' }), property.id);
   check('no months means no warranty object', noWarranty.warranty === undefined);
-  const zero = draftFromForm(form({ warrantyMonths: '0' }), property.id);
+  const zero = draftFromForm(form({ warrantyAmount: '0' }), property.id);
   check('zero months means no warranty object', zero.warranty === undefined);
 
   /* ------------------------------------------------- expiry integration */
 
   const id = await saveNewItem(
-    form({ name: 'Kettle', purchaseDate: '2026-01-31', warrantyMonths: '24' }),
+    form({ name: 'Kettle', purchaseDate: '2026-01-31', warrantyAmount: '24' }),
     property.id,
   );
   const saved = (await db.items.get(id))!;
@@ -163,7 +163,7 @@ async function main() {
     form({
       name: 'Editable Kettle',
       price: '49.99',
-      warrantyMonths: '12',
+      warrantyAmount: '12',
       purchaseDate: '2026-02-01',
     }),
     property.id,
@@ -198,7 +198,7 @@ async function main() {
 
   // Clearing the warranty must actually remove it, not leave a stale object.
   const cleared = formFromItem((await db.items.get(editId))!, 'USD');
-  cleared.warrantyMonths = '';
+  cleared.warrantyAmount = '';
   await saveEditedItem(editId, cleared, property.id);
   check(
     'clearing months removes the warranty',

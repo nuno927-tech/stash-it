@@ -7,7 +7,14 @@
 
 import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
 import { db } from '@/db/db';
-import { FREE_ITEM_LIMIT, type Item, type ItemCategory, type Warranty } from '@/db/types';
+import {
+  FREE_ITEM_LIMIT,
+  type Item,
+  type ItemCategory,
+  type Warranty,
+  type WarrantyUnit,
+} from '@/db/types';
+import { termOf, termToMonths } from './warranty';
 
 export class ValidationError extends Error {}
 export class ItemLimitError extends Error {
@@ -25,7 +32,8 @@ export interface AddItemForm {
   purchaseDate: string;
   price: string;
   currency: string;
-  warrantyMonths: string;
+  warrantyUnit: WarrantyUnit;
+  warrantyAmount: string;
   /** Behind "More details". */
   brand: string;
   model: string;
@@ -46,7 +54,8 @@ export function emptyForm(currency: string): AddItemForm {
     purchaseDate: '',
     price: '',
     currency,
-    warrantyMonths: '',
+    warrantyUnit: 'months',
+    warrantyAmount: '',
     brand: '',
     model: '',
     serial: '',
@@ -68,7 +77,8 @@ export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm 
     purchaseDate: item.purchaseDate ?? '',
     price: item.purchasePriceCents == null ? '' : (item.purchasePriceCents / 100).toFixed(2),
     currency: item.currency ?? fallbackCurrency,
-    warrantyMonths: item.warranty?.months ? String(item.warranty.months) : '',
+    warrantyUnit: termOf(item.warranty)?.unit ?? 'months',
+    warrantyAmount: termOf(item.warranty) ? String(termOf(item.warranty)!.amount) : '',
     brand: item.brand ?? '',
     model: item.model ?? '',
     serial: item.serial ?? '',
@@ -81,12 +91,21 @@ export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm 
   };
 }
 
-export const WARRANTY_PRESETS: { months: number; label: string }[] = [
-  { months: 12, label: '1 year' },
-  { months: 24, label: '2 years' },
-  { months: 36, label: '3 years' },
-  { months: 60, label: '5 years' },
-];
+/**
+ * Presets per unit. Days lead with 30/60/90 because those are the numbers
+ * retailers actually print on returns and short cover.
+ */
+export const WARRANTY_PRESETS: Record<WarrantyUnit, number[]> = {
+  days: [14, 30, 60, 90, 180],
+  months: [3, 6, 12, 18, 24],
+  years: [1, 2, 3, 5, 10],
+};
+
+export const UNIT_LABEL: Record<WarrantyUnit, string> = {
+  days: 'Days',
+  months: 'Months',
+  years: 'Years',
+};
 
 /**
  * Money is stored as integer minor units, never a float. Accepts what people
@@ -139,11 +158,16 @@ export function draftFromForm(
   const name = form.name.trim();
   if (!name) throw new ValidationError('Give the item a name.');
 
-  const months = Number(form.warrantyMonths);
+  const amount = Number(form.warrantyAmount);
   let warranty: Warranty | undefined;
-  if (form.warrantyMonths.trim() && Number.isFinite(months) && months > 0) {
+  if (form.warrantyAmount.trim() && Number.isFinite(amount) && amount > 0) {
+    const term = { unit: form.warrantyUnit, amount: Math.round(amount) };
     warranty = {
-      months: Math.round(months),
+      // `months` stays populated as the rough equivalent, so a backup restored
+      // into an older build still shows something sensible.
+      months: termToMonths(term),
+      unit: term.unit,
+      amount: term.amount,
       provider: clean(form.warrantyProvider),
       policyNumber: clean(form.policyNumber),
       phone: clean(form.warrantyPhone),

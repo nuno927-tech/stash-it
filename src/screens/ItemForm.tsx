@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeRooms } from '@/db/repo';
-import { ITEM_CATEGORIES, type Item, type ItemCategory } from '@/db/types';
+import { ITEM_CATEGORIES, type Item, type ItemCategory, type WarrantyUnit } from '@/db/types';
 import {
   emptyForm,
   formFromItem,
@@ -10,13 +10,14 @@ import {
   saveEditedItem,
   saveNewItem,
   ValidationError,
+  UNIT_LABEL,
   WARRANTY_PRESETS,
   type AddItemForm,
   type PhotoEdit,
 } from '@/lib/addItem';
 import { feedback } from '@/lib/feedback';
 import { PhotoError, storePhoto } from '@/lib/photo';
-import { addMonths, parseDate, toISODate } from '@/lib/warranty';
+import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ItemIcon } from '@/components/ItemIcon';
 
@@ -59,6 +60,7 @@ export function ItemForm({
   const [photo, setPhoto] = useState<PhotoEdit>(undefined);
   const [preview, setPreview] = useState<string>();
   const [removed, setRemoved] = useState(false);
+  const [custom, setCustom] = useState(false);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -118,7 +120,15 @@ export function ItemForm({
     }
   };
 
-  const endsOn = coverEnds(form.purchaseDate, form.warrantyMonths);
+  const endsOn = coverEnds(form.purchaseDate, form.warrantyUnit, form.warrantyAmount);
+  const amount = Number(form.warrantyAmount);
+  const hasTerm = form.warrantyAmount.trim() !== '' && Number.isFinite(amount) && amount > 0;
+
+  const termSummary = !hasTerm
+    ? null
+    : endsOn
+      ? `${amount} ${amount === 1 ? form.warrantyUnit.replace(/s$/, '') : form.warrantyUnit} of cover, ending ${endsOn}.`
+      : 'Add a purchase date and Nutsy can track when this expires.';
 
   return (
     <>
@@ -275,35 +285,88 @@ export function ItemForm({
         </Field>
       </div>
 
-      <div className="fieldlabel">Warranty</div>
-      <div className="chiprow">
-        {WARRANTY_PRESETS.map((p) => (
+      <div className="fieldlabel">Warranty length</div>
+
+      <div className="seg">
+        {(Object.keys(UNIT_LABEL) as WarrantyUnit[]).map((u) => (
           <button
-            key={p.months}
+            key={u}
             type="button"
-            className={`pick${form.warrantyMonths === String(p.months) ? ' on' : ''}`}
-            onClick={() =>
-              set('warrantyMonths', form.warrantyMonths === String(p.months) ? '' : String(p.months))
-            }
+            className={form.warrantyUnit === u ? 'on' : ''}
+            onClick={() => {
+              // Switching units keeps any custom number the user typed — 90
+              // days becoming 90 months is nonsense, but so is silently
+              // wiping what they entered, so only presets are cleared.
+              const wasPreset = WARRANTY_PRESETS[form.warrantyUnit].includes(
+                Number(form.warrantyAmount),
+              );
+              setForm((f) => ({
+                ...f,
+                warrantyUnit: u,
+                warrantyAmount: wasPreset ? '' : f.warrantyAmount,
+              }));
+              setCustom(false);
+            }}
           >
-            {p.label}
+            {UNIT_LABEL[u]}
           </button>
         ))}
-        <input
-          type="number"
-          className="months"
-          min="0"
-          value={form.warrantyMonths}
-          onChange={(e) => set('warrantyMonths', e.target.value)}
-          placeholder="months"
-          aria-label="Warranty length in months"
-        />
       </div>
 
-      {endsOn && <p className="hint">Cover ends {endsOn}.</p>}
-      {form.warrantyMonths && !form.purchaseDate && (
-        <p className="hint">Add a purchase date and Nutsy can track when this expires.</p>
+      <div className="chiprow">
+        {WARRANTY_PRESETS[form.warrantyUnit].map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`pick${!custom && form.warrantyAmount === String(n) ? ' on' : ''}`}
+            onClick={() => {
+              setCustom(false);
+              set('warrantyAmount', form.warrantyAmount === String(n) ? '' : String(n));
+            }}
+          >
+            {n}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`pick${custom ? ' on' : ''}`}
+          onClick={() => {
+            const next = !custom;
+            setCustom(next);
+            if (next && WARRANTY_PRESETS[form.warrantyUnit].includes(Number(form.warrantyAmount))) {
+              set('warrantyAmount', '');
+            }
+          }}
+        >
+          Custom
+        </button>
+        <button
+          type="button"
+          className={`pick${form.warrantyAmount === '' && !custom ? ' on' : ''}`}
+          onClick={() => {
+            setCustom(false);
+            set('warrantyAmount', '');
+          }}
+        >
+          None
+        </button>
+      </div>
+
+      {custom && (
+        <Field label={`Number of ${form.warrantyUnit}`}>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="1"
+            value={form.warrantyAmount}
+            onChange={(e) => set('warrantyAmount', e.target.value)}
+            placeholder={form.warrantyUnit === 'days' ? '90' : '18'}
+            autoFocus
+          />
+        </Field>
       )}
+
+      {termSummary && <p className="hint">{termSummary}</p>}
 
       <button type="button" className="expander" onClick={() => setMore((m) => !m)}>
         {more ? 'Fewer details' : 'More details'}
@@ -420,11 +483,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** Live preview of the computed expiry, using the same maths as the list. */
-function coverEnds(purchaseDate: string, months: string): string | null {
-  const n = Number(months);
-  if (!purchaseDate || !months.trim() || !Number.isFinite(n) || n <= 0) return null;
+function coverEnds(purchaseDate: string, unit: WarrantyUnit, amount: string): string | null {
+  const n = Number(amount);
+  if (!purchaseDate || !amount.trim() || !Number.isFinite(n) || n <= 0) return null;
   try {
-    const end = addMonths(parseDate(purchaseDate), Math.round(n));
+    const from = parseDate(purchaseDate);
+    const end =
+      unit === 'days'
+        ? addDays(from, Math.round(n))
+        : addMonths(from, unit === 'years' ? Math.round(n) * 12 : Math.round(n));
     return new Date(toISODate(end)).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'long',
