@@ -4,6 +4,7 @@ import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
 import { requestPersistence } from '@/lib/storage';
 import { BottomNav, type Tab } from '@/components/BottomNav';
+import { AddItem } from '@/screens/AddItem';
 import { Home } from '@/screens/Home';
 import { Placeholder } from '@/screens/Placeholder';
 import { Settings } from '@/screens/Settings';
@@ -87,16 +88,20 @@ function Shell() {
         />
       )}
 
-      {screen === 'add' && (
-        <Placeholder
-          title={mayAdd ? 'Add an item' : 'Free tier is full'}
-          note={
-            mayAdd
-              ? 'This screen is next. Until then, Settings → Developer → Seed puts the demo items in.'
-              : `You're at ${count} items. Existing items stay editable and exportable — only new ones are blocked.`
-          }
-        />
-      )}
+      {screen === 'add' &&
+        (mayAdd ? (
+          <AddItem
+            propertyId={property.id}
+            currency={settings.currency}
+            onSaved={() => setScreen('home')}
+            onCancel={() => setScreen('home')}
+          />
+        ) : (
+          <Placeholder
+            title="Free tier is full"
+            note={`You're at ${count} items. Everything you've saved stays editable and exportable — only new items are blocked.`}
+          />
+        ))}
 
       {screen === 'items' && (
         <Placeholder title="Items" note="The full list, with filters by room and category." />

@@ -31,7 +31,7 @@ jobs:
 
       - run: npm run typecheck
 
-      - run: npm run test:backup
+      - run: npm test
 
       # A project site lives at https://<user>.github.io/<repo>/, so every
       # asset URL, the service worker scope and the manifest start_url all need
