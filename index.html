@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0D0F12" />
+    <meta name="theme-color" content="#F4F2ED" />
     <meta
       name="description"
       content="Warranties, receipts and manuals for everything you own. Everything stays on your device."
@@ -11,7 +11,12 @@
 
     <!-- iOS ignores the web app manifest; these are its equivalents. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      "default" rather than black-translucent: translucent draws white status
+      bar text over whatever is beneath it, which on a light launch screen is
+      white on cream. Unreadable for the second that matters most.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Stash it" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" href="icon-192.png" type="image/png" />
@@ -23,31 +28,36 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="preload" as="image" href="icon-512.png" />
+    <link rel="preload" as="image" href="splash-nutsy.png" />
 
     <!--
       The splash lives here, not in React.
 
       Anything React renders can only appear after the bundle has downloaded,
-      parsed and mounted — and until then the page is an empty body, which on a
-      dark theme is a black screen. Putting the mark in the document itself
-      makes it the very first paint, with no gap in front of it.
+      parsed and mounted — and until then the page is an empty body. Putting
+      the mark in the document itself makes it the very first paint, with no
+      gap in front of it.
 
-      The styles are inline for the same reason: a stylesheet is another
-      request to wait on. The palette is duplicated from tokens.css on purpose;
-      it's four values and they buy the whole gap.
+      It is light in both themes, on purpose. The launch screen is the one
+      surface the OS also draws (from the manifest's background_color), and the
+      two have to match or you get a flash of one colour into another. Matching
+      a fixed light background is achievable; matching a per-device theme
+      preference is not, because the manifest can only name one colour.
+
+      Styles are inline for the same reason the markup is: a stylesheet is
+      another request to wait on.
     -->
     <style>
       #splash {
         position: fixed;
         inset: 0;
         z-index: 100;
-        background: #0d0f12;
+        background: #f4f2ed;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 24px;
+        gap: 22px;
         padding: 24px;
         text-align: center;
         opacity: 1;
@@ -58,8 +68,9 @@
         pointer-events: none;
       }
       #splash img {
-        width: 176px;
-        height: 176px;
+        width: 190px;
+        height: 190px;
+        object-fit: contain;
         animation: splashFloat 4.4s ease-in-out infinite;
       }
       #splash h1 {
@@ -68,18 +79,18 @@
         font-weight: 800;
         font-size: 40px;
         letter-spacing: -0.03em;
-        color: #eaedf0;
+        color: #22252a;
       }
       #splash h1 span {
-        color: #f2b33d;
+        color: #9a6b0f;
       }
       #splash p {
-        margin: -14px 0 0;
+        margin: -12px 0 0;
         max-width: 26ch;
         font-family: Inter, system-ui, sans-serif;
         font-size: 13px;
         line-height: 1.6;
-        color: #8b949e;
+        color: #6b7079;
       }
       @keyframes splashFloat {
         0%,
@@ -88,20 +99,6 @@
         }
         50% {
           transform: translateY(-9px);
-        }
-      }
-      @media (prefers-color-scheme: light) {
-        #splash {
-          background: #f4f2ed;
-        }
-        #splash h1 {
-          color: #22252a;
-        }
-        #splash h1 span {
-          color: #9a6b0f;
-        }
-        #splash p {
-          color: #6b7079;
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -115,7 +112,7 @@
     <div id="root"></div>
 
     <div id="splash">
-      <img src="icon-512.png" alt="" />
+      <img src="splash-nutsy.png" alt="" />
       <h1>Stash<span>&nbsp;it</span></h1>
       <p>Warranties, receipts and manuals for everything you own.</p>
     </div>

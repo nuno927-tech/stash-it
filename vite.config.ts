@@ -63,8 +63,10 @@ export default defineConfig(({ mode }) => {
                 scope: base,
                 display: 'standalone',
                 orientation: 'portrait',
-                background_color: '#0D0F12',
-                theme_color: '#0D0F12',
+                // Matches the HTML splash exactly. The OS draws this one and
+                // we draw the other; any difference reads as a flash.
+                background_color: '#F4F2ED',
+                theme_color: '#F4F2ED',
                 categories: ['productivity', 'utilities'],
                 icons: [
                   { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

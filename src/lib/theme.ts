@@ -15,6 +15,10 @@ export function prefersDark(): boolean {
   return window.matchMedia(DARK_QUERY).matches;
 }
 
+/**
+ * The launch screen is light in both themes (see index.html), so the document
+ * starts light and this corrects it once the app is running.
+ */
 const CHROME_COLOR = { dark: '#0D0F12', light: '#F4F2ED' };
 
 export function applyTheme(choice: ThemeChoice): 'light' | 'dark' {
