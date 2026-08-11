@@ -60,7 +60,6 @@
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 12px;
   display: flex;
@@ -70,8 +69,8 @@
 /* ---------------------------------------------------------------- alert */
 
 .alert {
-  background: linear-gradient(180deg, rgba(242, 179, 61, 0.13), rgba(242, 179, 61, 0.04));
-  border: 1px solid rgba(242, 179, 61, 0.28);
+  background: var(--wash-gold-soft);
+  border: 1px solid var(--wash-gold-line);
   border-radius: var(--r-md);
   padding: 10px 12px;
   display: flex;
@@ -183,17 +182,17 @@
 }
 
 .chip.ok {
-  background: rgba(95, 191, 126, 0.15);
+  background: var(--wash-moss);
   color: var(--moss);
 }
 
 .chip.warn {
-  background: rgba(242, 206, 61, 0.15);
+  background: var(--wash-honey);
   color: var(--honey);
 }
 
 .chip.dead {
-  background: rgba(224, 90, 68, 0.15);
+  background: var(--wash-ember);
   color: var(--ember);
 }
 
@@ -230,8 +229,7 @@
   font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: rgba(13, 15, 18, 0.72);
+  background: var(--scrim);
   padding: 5px 9px;
   border-radius: var(--r-pill);
   color: var(--muted);
@@ -483,6 +481,13 @@
   margin: -5px 0 11px 12px;
 }
 
+select.compact {
+  width: auto;
+  flex: none;
+  font-size: 13px;
+  padding: 9px 32px 9px 12px;
+}
+
 .seg {
   display: flex;
   background: var(--slate-800);
@@ -528,7 +533,6 @@
   font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -603,7 +607,7 @@
 
 .btn {
   background: var(--gold);
-  color: var(--slate-900);
+  color: var(--on-gold);
   font-weight: 700;
   font-size: 14.5px;
   padding: 15px 30px;
@@ -643,7 +647,6 @@
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 7px;
 }
@@ -724,8 +727,8 @@ a.pick {
 }
 
 .pick.on {
-  background: rgba(242, 179, 61, 0.16);
-  border-color: rgba(242, 179, 61, 0.45);
+  background: var(--wash-gold);
+  border-color: var(--wash-gold-line);
   color: var(--gold);
 }
 
@@ -825,7 +828,7 @@ a.pick {
 
 .minibtn {
   background: var(--gold);
-  color: var(--slate-900);
+  color: var(--on-gold);
   font-size: 12px;
   font-weight: 700;
   padding: 8px 14px;
@@ -869,7 +872,7 @@ a.pick {
 }
 
 .toggle.on span {
-  background: var(--slate-900);
+  background: var(--on-gold);
 }
 
 .notice {
@@ -881,12 +884,12 @@ a.pick {
 }
 
 .notice.ok {
-  background: rgba(95, 191, 126, 0.13);
+  background: var(--wash-moss);
   color: var(--moss);
 }
 
 .notice.bad {
-  background: rgba(224, 90, 68, 0.13);
+  background: var(--wash-ember);
   color: var(--ember);
 }
 
@@ -976,7 +979,7 @@ a.pick {
 }
 
 .navitem.active .navpill {
-  background: rgba(242, 179, 61, 0.16);
+  background: var(--wash-gold);
 }
 
 .fab {
@@ -987,11 +990,11 @@ a.pick {
   height: 58px;
   border-radius: 19px;
   background: var(--gold);
-  color: var(--slate-900);
+  color: var(--on-gold);
   display: grid;
   place-items: center;
   border: none;
-  box-shadow: 0 10px 26px -8px rgba(242, 179, 61, 0.6);
+  box-shadow: var(--fab-shadow);
 }
 
 .fab:disabled {

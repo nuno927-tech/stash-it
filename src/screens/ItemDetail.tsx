@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeRooms, softDeleteItem } from '@/db/repo';
 import type { DocKind, Item } from '@/db/types';
+import { feedback } from '@/lib/feedback';
 import { docsWithFiles } from '@/lib/docs';
 import {
   effectiveExpiry,
@@ -48,6 +49,7 @@ export function ItemDetail({
 
   const onDelete = async () => {
     await softDeleteItem(item.id);
+    feedback('delete');
     onDeleted();
   };
 

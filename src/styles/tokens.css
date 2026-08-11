@@ -1,11 +1,24 @@
 /**
- * Stash it — design tokens. Lifted verbatim from the signed-off concept
+ * Stash it — design tokens.
+ *
+ * The dark palette is lifted verbatim from the signed-off concept
  * (stash-it.html). Every colour in the app comes from here; no component
  * should ever hard-code a hex value.
+ *
+ * The `--slate-*` names are roles, not literal colours: 900 is always the
+ * furthest surface from the reader and 600 the nearest, in both themes. Read
+ * them as an elevation ramp and the light values stop looking like a
+ * contradiction.
+ *
+ * Theme is applied as `data-theme` on <html> by src/lib/theme.ts, which
+ * resolves the user's choice — including "match my device" — before painting.
  */
 
-:root {
-  /* Surfaces, darkest to lightest */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Surfaces, furthest to nearest */
   --slate-900: #0d0f12;
   --slate-800: #15181d;
   --slate-700: #1f242b;
@@ -13,15 +26,67 @@
   --line: #39414b;
 
   /* Brand + warranty states */
-  --gold: #f2b33d;   /* brand, active nav, links, FAB */
-  --moss: #5fbf7e;   /* covered */
-  --honey: #f2ce3d;  /* ending soon */
-  --ember: #e05a44;  /* expired */
+  --gold: #f2b33d;
+  --moss: #5fbf7e;
+  --honey: #f2ce3d;
+  --ember: #e05a44;
+
+  /* State washes, used behind chips and notices */
+  --wash-moss: rgba(95, 191, 126, 0.15);
+  --wash-honey: rgba(242, 206, 61, 0.15);
+  --wash-ember: rgba(224, 90, 68, 0.15);
+  --wash-gold: rgba(242, 179, 61, 0.16);
+  --wash-gold-line: rgba(242, 179, 61, 0.45);
+  --wash-gold-soft: rgba(242, 179, 61, 0.08);
 
   /* Text */
   --text: #eaedf0;
   --muted: #8b949e;
 
+  /* Ink used on gold — the app bar wordmark, the FAB glyph, button labels */
+  --on-gold: #15181d;
+
+  --scrim: rgba(13, 15, 18, 0.72);
+  --fab-shadow: 0 10px 26px -8px rgba(242, 179, 61, 0.6);
+}
+
+/**
+ * Light theme. Not an inversion — the gold is darkened to hold contrast on
+ * white, and the state colours are pulled down to stay legible as text on
+ * their own washes. Inverting the dark palette directly produced a gold that
+ * failed contrast on every button it appeared on.
+ */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --slate-900: #f4f2ed;
+  --slate-800: #ffffff;
+  --slate-700: #f1efe9;
+  --slate-600: #e4e1d8;
+  --line: #d5d1c6;
+
+  --gold: #9a6b0f;
+  --moss: #2f7d4f;
+  --honey: #8a6a08;
+  --ember: #b83c28;
+
+  --wash-moss: rgba(47, 125, 79, 0.13);
+  --wash-honey: rgba(138, 106, 8, 0.13);
+  --wash-ember: rgba(184, 60, 40, 0.12);
+  --wash-gold: rgba(154, 107, 15, 0.13);
+  --wash-gold-line: rgba(154, 107, 15, 0.38);
+  --wash-gold-soft: rgba(154, 107, 15, 0.07);
+
+  --text: #22252a;
+  --muted: #6b7079;
+
+  --on-gold: #ffffff;
+
+  --scrim: rgba(255, 255, 255, 0.82);
+  --fab-shadow: 0 8px 20px -8px rgba(154, 107, 15, 0.55);
+}
+
+:root {
   /* Radii */
   --r-lg: 22px;
   --r-md: 16px;

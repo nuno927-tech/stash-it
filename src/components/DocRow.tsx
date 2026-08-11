@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { feedback } from '@/lib/feedback';
 import type { DocKind } from '@/db/types';
 import {
   deleteDoc,
@@ -136,7 +137,12 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
             <button
               type="button"
               className="minibtn"
-              onClick={() => deleteDoc(doc.id).then(() => setConfirming(false))}
+              onClick={() =>
+                deleteDoc(doc.id).then(() => {
+                  feedback('delete');
+                  setConfirming(false);
+                })
+              }
             >
               Remove
             </button>

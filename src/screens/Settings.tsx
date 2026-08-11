@@ -22,6 +22,15 @@ import {
   type PersistState,
   type StorageUsage,
 } from '@/lib/storage';
+import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
+import {
+  BACKUP_REMINDER_CHOICES,
+  CURRENCIES,
+  prefsFrom,
+  REMINDER_CHOICES,
+  setPref,
+  type ThemeChoice,
+} from '@/lib/prefs';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
@@ -48,6 +57,7 @@ export function Settings({
     try {
       await fn();
     } catch (e) {
+      feedback('error');
       setNotice({
         tone: 'bad',
         text: e instanceof BundleError ? e.message : `Something went wrong: ${(e as Error).message}`,
@@ -61,6 +71,7 @@ export function Settings({
     run(async () => {
       const { blob, filename } = await exportBundle();
       const how = await saveBundle(blob, filename);
+      feedback('save');
       setNotice({
         tone: 'ok',
         text: how === 'shared' ? `Shared ${filename}.` : `Saved ${filename} to your downloads.`,
@@ -80,6 +91,7 @@ export function Settings({
     if (!bundle) return;
     run(async () => {
       const r = await restoreBundle(bundle, mode);
+      feedback('save');
       setPending(null);
       setNotice({ tone: 'ok', text: describe(r) });
     });
@@ -98,7 +110,9 @@ export function Settings({
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 
-      <div className="seclabel">
+      <Appearance settings={settings} />
+
+      <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Your home</span>
       </div>
 
@@ -119,6 +133,46 @@ export function Settings({
           <path d="M9 5l7 7-7 7" />
         </svg>
       </button>
+
+      <div className="setrow">
+        <div>
+          <h4>Currency</h4>
+          <p>Used for new items. Each item keeps the currency it was saved with.</p>
+        </div>
+        <select
+          className="compact"
+          value={settings.currency}
+          aria-label="Default currency"
+          onChange={(e) => db.settings.update('singleton', { currency: e.target.value })}
+        >
+          {[...new Set([settings.currency, ...CURRENCIES])].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Warn me before a warranty ends</h4>
+          <p>How much notice you want on the home screen.</p>
+        </div>
+        <select
+          className="compact"
+          value={settings.reminderOffsetsDays[0] ?? 30}
+          aria-label="Warranty warning lead time"
+          onChange={(e) =>
+            db.settings.update('singleton', { reminderOffsetsDays: [Number(e.target.value)] })
+          }
+        >
+          {REMINDER_CHOICES.map((r) => (
+            <option key={r.days} value={r.days}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Backup</span>
@@ -161,6 +215,27 @@ export function Settings({
             e.target.value = '';
           }}
         />
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Remind me to back up</h4>
+          <p>Nothing leaves this device on its own, so the reminder is the safety net.</p>
+        </div>
+        <select
+          className="compact"
+          value={settings.backupReminderDays}
+          aria-label="Backup reminder frequency"
+          onChange={(e) =>
+            db.settings.update('singleton', { backupReminderDays: Number(e.target.value) })
+          }
+        >
+          {BACKUP_REMINDER_CHOICES.map((b) => (
+            <option key={b.days} value={b.days}>
+              {b.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {pending && (
@@ -253,6 +328,89 @@ function About({ schemaVersion }: { schemaVersion: number }) {
         Stash it keeps everything on this device. Nothing is uploaded, so your backup file is the
         only copy that survives losing the phone.
       </p>
+    </>
+  );
+}
+
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'Match device' },
+];
+
+/**
+ * Appearance and feedback. Both toggles fire their own cue when switched on,
+ * so you hear or feel exactly what you've just agreed to rather than finding
+ * out the next time you save something.
+ */
+function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
+  const prefs = prefsFrom(settings);
+  const canBuzz = hapticsSupported();
+
+  return (
+    <>
+      <div className="seclabel">
+        <span>Appearance</span>
+      </div>
+
+      <div className="seg">
+        {THEMES.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            className={prefs.theme === t.value ? 'on' : ''}
+            onClick={() => setPref('theme', t.value)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Sounds</h4>
+          <p>Short tones when something saves, attaches or fails.</p>
+        </div>
+        <button
+          type="button"
+          className={`toggle${prefs.sounds ? ' on' : ''}`}
+          role="switch"
+          aria-checked={prefs.sounds}
+          aria-label="Sounds"
+          onClick={() => {
+            const next = !prefs.sounds;
+            setPref('sounds', next);
+            if (next) previewCue('save', { sounds: true, haptics: false });
+          }}
+        >
+          <span />
+        </button>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Haptics</h4>
+          <p>
+            {canBuzz
+              ? 'A small buzz on the same actions.'
+              : 'This browser has no vibration support, so this does nothing here. It will on a phone that does.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`toggle${prefs.haptics ? ' on' : ''}`}
+          role="switch"
+          aria-checked={prefs.haptics}
+          aria-label="Haptics"
+          onClick={() => {
+            const next = !prefs.haptics;
+            setPref('haptics', next);
+            if (next) previewCue('save', { sounds: false, haptics: true });
+          }}
+        >
+          <span />
+        </button>
+      </div>
     </>
   );
 }

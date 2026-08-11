@@ -2,7 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
+import { configureFeedback } from '@/lib/feedback';
+import { prefsFrom } from '@/lib/prefs';
 import { requestPersistence } from '@/lib/storage';
+import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
@@ -82,6 +85,17 @@ function Shell() {
 
   const property = useLiveQuery(() => db.properties.filter((p) => !p.deletedAt).first(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
+
+  // Preferences live in the database, so they arrive a tick after first paint
+  // and follow a restore without a reload.
+  const prefs = prefsFrom(settings);
+  useEffect(() => {
+    applyTheme(prefs.theme);
+    return watchSystemTheme(() => applyTheme(prefs.theme));
+  }, [prefs.theme]);
+  useEffect(() => {
+    configureFeedback({ sounds: prefs.sounds, haptics: prefs.haptics });
+  }, [prefs.sounds, prefs.haptics]);
   const count =
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 

@@ -12,8 +12,9 @@ import {
   ValidationError,
   WARRANTY_PRESETS,
   type AddItemForm,
-  type PhotoRefs,
+  type PhotoEdit,
 } from '@/lib/addItem';
+import { feedback } from '@/lib/feedback';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -54,8 +55,10 @@ export function ItemForm({
   const [form, setForm] = useState<AddItemForm>(() =>
     item ? formFromItem(item, currency) : emptyForm(currency),
   );
-  const [photo, setPhoto] = useState<PhotoRefs | null>(null);
+  // undefined = untouched, PhotoRefs = replaced, null = removed.
+  const [photo, setPhoto] = useState<PhotoEdit>(undefined);
   const [preview, setPreview] = useState<string>();
+  const [removed, setRemoved] = useState(false);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -68,7 +71,7 @@ export function ItemForm({
     [item?.thumbBlobId],
   );
   useEffect(() => {
-    if (!existingThumb || preview) return;
+    if (!existingThumb || preview || removed) return;
     const url = URL.createObjectURL(existingThumb.data);
     setPreview(url);
     return () => URL.revokeObjectURL(url);
@@ -84,6 +87,7 @@ export function ItemForm({
     setError(undefined);
     try {
       const refs = await storePhoto(file);
+      feedback('attach');
       setPhoto(refs);
       setPreview((old) => {
         if (old) URL.revokeObjectURL(old);
@@ -101,11 +105,13 @@ export function ItemForm({
     setError(undefined);
     try {
       const id = item
-        ? await saveEditedItem(item.id, form, propertyId, photo ?? undefined)
+        ? await saveEditedItem(item.id, form, propertyId, photo)
         : await saveNewItem(form, propertyId, photo ?? undefined);
       if (preview) URL.revokeObjectURL(preview);
+      feedback('save');
       onSaved(id);
     } catch (e) {
+      feedback('error');
       if (e instanceof ValidationError || e instanceof ItemLimitError) setError(e.message);
       else setError(`Could not save: ${(e as Error).message}`);
       setBusy(false);
@@ -184,6 +190,7 @@ export function ItemForm({
               URL.revokeObjectURL(preview);
               setPreview(undefined);
               setPhoto(null);
+              setRemoved(true);
             }}
           >
             Remove

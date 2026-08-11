@@ -152,6 +152,15 @@ export interface Settings {
   backupReminderDays: number;
   entitlements: Entitlements;
   devModeEnabled: boolean;
+
+  /**
+   * Preferences. Optional because records written before they existed are
+   * still valid — read them through `prefsFrom` in src/lib/prefs.ts, which
+   * supplies the defaults, rather than touching them directly.
+   */
+  theme?: 'system' | 'light' | 'dark';
+  sounds?: boolean;
+  haptics?: boolean;
 }
 
 export const SEED_ROOMS = [

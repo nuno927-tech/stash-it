@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { feedback } from '@/lib/feedback';
 import type { DocKind } from '@/db/types';
 import {
   attachFile,
@@ -56,8 +57,10 @@ export function AttachDoc({
       if (source === 'link') await attachLink(itemId, kind, url, title);
       else if (file) await attachFile(itemId, kind, file, title);
       else throw new DocError('Choose a file first.');
+      feedback('attach');
       onDone();
     } catch (e) {
+      feedback('error');
       setError(e instanceof DocError ? e.message : `Could not attach: ${(e as Error).message}`);
       setBusy(false);
     }

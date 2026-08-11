@@ -10,6 +10,7 @@ import {
   RoomNameTakenError,
   type RoomDeleteStrategy,
 } from '@/db/repo';
+import { feedback } from '@/lib/feedback';
 import type { Room } from '@/db/types';
 
 /**
@@ -37,8 +38,10 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
     setError(undefined);
     try {
       await createRoom(propertyId, name);
+      feedback('save');
       setAdding('');
     } catch (e) {
+      feedback('error');
       setError(e instanceof RoomNameTakenError ? e.message : (e as Error).message);
     }
   };
@@ -61,6 +64,7 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
   const remove = async (strategy: RoomDeleteStrategy) => {
     if (!deleting) return;
     await deleteRoom(deleting.id, strategy);
+    feedback('delete');
     setDeleting(null);
   };
 

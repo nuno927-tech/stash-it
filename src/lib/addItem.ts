@@ -188,21 +188,43 @@ export async function saveNewItem(
 }
 
 /**
+ * Three photo outcomes, and they must stay distinguishable:
+ *
+ *   undefined  the user didn't touch the photo — keep whatever is there
+ *   PhotoRefs  a new photo — replace
+ *   null       the user removed it — clear the reference and bin the file
+ *
+ * Collapsing "removed" into "untouched" was a real bug: Remove looked like it
+ * worked, then the photo came back on the next render.
+ */
+export type PhotoEdit = PhotoRefs | null | undefined;
+
+/**
  * Editing never touches the cap — the item already exists, and blocking edits
  * on a full free tier would be punishing people for data they already have.
- *
- * `thumbBlobId` is only overwritten when a new photo came in, so saving an edit
- * without touching the photo keeps it.
  */
 export async function saveEditedItem(
   id: string,
   form: AddItemForm,
   propertyId: string,
-  photo?: PhotoRefs,
+  photo?: PhotoEdit,
 ): Promise<string> {
-  const draft = draftFromForm(form, propertyId, photo);
+  const previous = await db.items.get(id);
+  const draft = draftFromForm(form, propertyId, photo ?? undefined);
   const patch: Partial<Item> = { ...draft };
-  if (!photo) delete patch.thumbBlobId;
+
+  if (photo === undefined) delete patch.thumbBlobId;
+  else if (photo === null) patch.thumbBlobId = undefined;
+
   await updateItem(id, patch);
+
+  // Clean up the file we just stopped pointing at, unless something else
+  // still references it — blobs dedupe by hash, so they can be shared.
+  const orphan = previous?.thumbBlobId;
+  if (orphan && photo !== undefined && orphan !== patch.thumbBlobId) {
+    const { isBlobReferenced } = await import('./docs');
+    if (!(await isBlobReferenced(orphan))) await db.blobs.delete(orphan);
+  }
+
   return id;
 }
