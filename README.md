@@ -43,8 +43,8 @@ the app requests at boot, and the backup file the user exports themselves.
 | `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
 | `test/` | `npm test` — 112 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
-| `src/App.tsx` | Scaffold smoke screen. Replaced by Home. |
-| `src/screens/` | Home, Items, Item detail, Add, Rooms, Search, Settings. Empty for now. |
+| `src/App.tsx` | Screen state and the app shell. No router yet. |
+| `src/screens/` | Home, Items, Item detail, Item form, Settings. Search is a stub. |
 | `stash-it.html` | Signed-off UI concept — palette, motion lab, three screen mockups. |
 
 ## Decisions baked in
@@ -69,6 +69,5 @@ Settings → Developer → Pro unlock. Toggles the entitlement so you can hit th
 ## Not built yet
 
 Search and Rooms screens. Link health checks. Passphrase encryption for
-backups. Maintenance log. Inventory report. IAP, Capacitor wrapping
-beyond the add-screen photo, link health checks, inventory report, IAP, Capacitor
-wrapping, the thin auth/analytics backend.
+backups. The maintenance log. Inventory report. IAP, Capacitor wrapping,
+the thin auth/analytics backend.
