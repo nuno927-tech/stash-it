@@ -1630,3 +1630,9 @@ a.pick {
     transform: none;
   }
 }
+
+.sharebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}

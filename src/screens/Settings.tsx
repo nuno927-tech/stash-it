@@ -31,6 +31,7 @@ import {
   isStandalone,
   promptInstall,
 } from '@/lib/install';
+import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import {
   BACKUP_REMINDER_CHOICES,
   CURRENCIES,
@@ -274,6 +275,8 @@ export function Settings({
 
       <InstallRow />
 
+      <ShareRow onResult={(text) => setNotice(text ? { tone: 'ok', text } : null)} />
+
       <StorageSection />
 
       <div className="seclabel" style={{ marginTop: 28 }}>
@@ -438,6 +441,56 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
           }}
         >
           <span />
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Passing the app on. Sits next to Install because both are about the app
+ * itself rather than the user's data — everything above this point is theirs,
+ * everything here is about Stash it.
+ */
+function ShareRow({ onResult }: { onResult: (message: string | null) => void }) {
+  const url = appUrl();
+
+  const share = async () => {
+    const outcome = await shareApp(url);
+    feedback(outcome === 'cancelled' ? 'tap' : 'save');
+    onResult(shareMessage(outcome, url));
+  };
+
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Spread it around</span>
+      </div>
+      <div className="setrow">
+        <div>
+          <h4>Share Stash it</h4>
+          <p>Send someone the link. There's no account to sign up for, so it's just an address.</p>
+        </div>
+        <button type="button" className="minibtn" onClick={share} data-cue="none">
+          <span className="sharebtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="18" cy="5" r="2.6" />
+              <circle cx="6" cy="12" r="2.6" />
+              <circle cx="18" cy="19" r="2.6" />
+              <path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" />
+            </svg>
+            Share
+          </span>
         </button>
       </div>
     </>
