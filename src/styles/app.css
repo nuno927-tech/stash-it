@@ -893,60 +893,17 @@ select.compact {
   margin-bottom: 20px;
 }
 
-.stagerow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--slate-700);
-  border-radius: var(--r-sm);
-  padding: 9px 8px 9px 13px;
-  margin-bottom: 7px;
-}
 
-.stagerow.pending {
-  border: 1px dashed var(--line);
-  background: none;
-}
 
-.stagekind {
-  font-size: 13.5px;
-  font-weight: 600;
-  flex: none;
-}
 
-.kindpick {
-  width: auto;
-  flex: none;
-  font-size: 13px !important;
-  font-weight: 600;
-  padding: 6px 28px 6px 9px !important;
-  background-color: var(--slate-600);
-  background-position:
-    calc(100% - 14px) 50%,
-    calc(100% - 9px) 50%;
-  border-radius: var(--r-sm) !important;
-}
 
-.stagemeta {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-body);
-  font-size: 11.5px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.photohint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--muted);
-}
+
+
+
+
+
+
 
 /* --------------------------------------------------------- empty state */
 
@@ -1118,34 +1075,11 @@ a.pick {
   margin: -6px 0 16px;
 }
 
-.photodrop {
-  width: 100%;
-  height: 148px;
-  border-radius: var(--r-lg);
-  border: 1px dashed var(--line);
-  background: var(--slate-700);
-  color: var(--muted);
-  display: grid;
-  place-items: center;
-  margin-bottom: 18px;
-  overflow: hidden;
-  padding: 0;
-}
 
-.photodrop span {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-}
 
-.photodrop img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+
+
+
 
 .expander {
   width: 100%;
@@ -1481,20 +1415,11 @@ a.pick {
   }
 }
 
-.roomfield {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
 
-.roomfield select {
-  flex: 1;
-  min-width: 0;
-}
 
-.roomfield .minibtn {
-  flex: none;
-}
+
+
+
 
 /* ------------------------------------------------------- collapsible rooms */
 
@@ -1705,4 +1630,204 @@ a.pick {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+
+/* ------------------------------------------------------------- item form */
+
+/* Room for the sticky save bar, so the last field is never under it. */
+.formwrap {
+  padding-bottom: 76px;
+}
+
+.card {
+  background: var(--slate-700);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+
+.cardhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cardhead h3 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.card .field:last-child,
+.card .fieldpair:last-child {
+  margin-bottom: 0;
+}
+
+/* Inputs sit on the card, so they need the next surface down to read as
+   fields rather than as flat panels. */
+.card input[type='text'],
+.card input[type='date'],
+.card input[type='tel'],
+.card input[type='url'],
+.card input[type='number'],
+.card select,
+.card textarea,
+.card .moneyfield {
+  background: var(--slate-800);
+}
+
+.identity {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.photoslot {
+  flex: none;
+  width: 86px;
+  height: 86px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--line);
+  background: var(--slate-800);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.photoslot small {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.photoslot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identity-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.bigname {
+  font-size: 17px !important;
+  font-weight: 600;
+}
+
+.morelink {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+/* --------------------------------------------------------- doc attaching */
+
+.doctiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.doctiles.two {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 8px;
+}
+
+.doctile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--slate-800);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.doctile svg {
+  color: var(--gold);
+}
+
+.doctile:active {
+  background: var(--slate-600);
+}
+
+.doclist {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.docchip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--slate-800);
+  border-radius: var(--r-sm);
+  padding: 7px 6px 7px 11px;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.docchip.pending {
+  border: 1px dashed var(--line);
+  background: none;
+}
+
+.docchip > svg {
+  flex: none;
+  color: var(--gold);
+}
+
+.chipkind {
+  width: auto !important;
+  flex: none;
+  background: none !important;
+  border: none !important;
+  color: var(--text) !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  padding: 2px 20px 2px 0 !important;
+  background-position:
+    calc(100% - 8px) 50%,
+    calc(100% - 4px) 50% !important;
+}
+
+.chipmeta {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- save bar */
+
+.savebar {
+  position: sticky;
+  bottom: 0;
+  margin: 14px -16px -24px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--slate-800) 72%, transparent);
+}
+
+.savebar .btn {
+  margin: 0;
 }

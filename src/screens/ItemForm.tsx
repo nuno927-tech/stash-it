@@ -9,24 +9,35 @@ import {
   ItemLimitError,
   saveEditedItem,
   saveNewItem,
-  ValidationError,
   UNIT_LABEL,
+  ValidationError,
   WARRANTY_PRESETS,
   type AddItemForm,
   type PhotoEdit,
 } from '@/lib/addItem';
 import { attachStaged, type StagedDoc } from '@/lib/docs';
-import { completeMoneyInput, currencySymbol, formatMoneyInput, formatPhoneInput } from '@/lib/format';
 import { feedback } from '@/lib/feedback';
+import {
+  completeMoneyInput,
+  currencySymbol,
+  formatMoneyInput,
+  formatPhoneInput,
+} from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { DocsField } from '@/components/DocsField';
 import { ItemIcon } from '@/components/ItemIcon';
 
 /**
- * One form, two modes. Passing an `item` switches it to editing that record;
- * without one it creates. Keeping them together means the field list, the
- * validation and the expiry preview can never drift apart.
+ * One form, two modes: pass an `item` to edit it, omit one to create.
+ *
+ * Organised as cards in the order someone actually knows the answers — what it
+ * is, where it lives, what it cost, how long it's covered, then the paperwork.
+ * The previous single column of fields asked for all of it at one visual
+ * weight, which is what made it feel like a form rather than a few questions.
+ *
+ * Save is a sticky bar rather than a button at each end. On a screen this long
+ * a top-right Save is out of thumb reach, and two of them is one too many.
  */
 export function ItemForm({
   propertyId,
@@ -57,10 +68,9 @@ export function ItemForm({
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const cameraInput = useRef<HTMLInputElement>(null);
-  const libraryInput = useRef<HTMLInputElement>(null);
 
-  // Show the photo an edited item already has, until a new one replaces it.
+  const photoInput = useRef<HTMLInputElement>(null);
+
   const existingThumb = useLiveQuery(
     async () => (item?.thumbBlobId ? db.blobs.get(item.thumbBlobId) : undefined),
     [item?.thumbBlobId],
@@ -76,11 +86,6 @@ export function ItemForm({
   const set = <K extends keyof AddItemForm>(key: K, value: AddItemForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  /**
-   * Rooms can be created here rather than only in Settings. Realising the room
-   * you need doesn't exist happens while you're adding the thing that lives in
-   * it, and sending someone to another screen mid-form loses their work.
-   */
   const addRoom = async () => {
     const name = (newRoom ?? '').trim();
     if (!name) return setNewRoom(null);
@@ -103,12 +108,13 @@ export function ItemForm({
       const refs = await storePhoto(file);
       feedback('attach');
       setPhoto(refs);
+      setRemoved(false);
       setPreview((old) => {
         if (old) URL.revokeObjectURL(old);
         return URL.createObjectURL(file);
       });
     } catch (e) {
-      setError(e instanceof PhotoError ? e.message : `Could not read that photo.`);
+      setError(e instanceof PhotoError ? e.message : 'Could not read that photo.');
     } finally {
       setBusy(false);
     }
@@ -122,8 +128,6 @@ export function ItemForm({
         ? await saveEditedItem(item.id, form, propertyId, photo)
         : await saveNewItem(form, propertyId, photo ?? undefined);
 
-      // Staged files are written only once the item exists, so a save that
-      // fails validation leaves no half-attached paperwork behind.
       if (staged.length) await attachStaged(id, staged);
 
       if (preview) URL.revokeObjectURL(preview);
@@ -140,15 +144,10 @@ export function ItemForm({
   const endsOn = coverEnds(form.purchaseDate, form.warrantyUnit, form.warrantyAmount);
   const amount = Number(form.warrantyAmount);
   const hasTerm = form.warrantyAmount.trim() !== '' && Number.isFinite(amount) && amount > 0;
-
-  const termSummary = !hasTerm
-    ? null
-    : endsOn
-      ? `${amount} ${amount === 1 ? form.warrantyUnit.replace(/s$/, '') : form.warrantyUnit} of cover, ending ${endsOn}.`
-      : 'Add a purchase date and Nutsy can track when this expires.';
+  const unitWord = amount === 1 ? form.warrantyUnit.replace(/s$/, '') : form.warrantyUnit;
 
   return (
-    <>
+    <div className="formwrap">
       <header className="apphead">
         <button type="button" className="iconbtn" onClick={onCancel} aria-label="Cancel">
           <svg
@@ -166,53 +165,56 @@ export function ItemForm({
         <div className="apptitle" style={{ fontSize: 19 }}>
           {editing ? 'Edit item' : 'New item'}
         </div>
-        <button type="button" className="minibtn" disabled={busy} onClick={onSave}>
-          Save
-        </button>
+        <span style={{ width: 34 }} />
       </header>
 
       {error && <div className="notice bad">{error}</div>}
 
-      <div className="photodrop">
-        {preview ? (
-          <img src={preview} alt="" />
-        ) : (
-          <span className="photohint">
-            <ItemIcon item={{ name: form.name, brand: form.brand }} size={30} />
-            {form.name.trim()
-              ? 'No photo yet — this icon stands in'
-              : 'No photo yet'}
-          </span>
-        )}
-      </div>
+      {/* What it is. The photo sits beside the name rather than above it: a
+          full-width dropzone pushed the first real question below the fold. */}
+      <section className="card">
+        <div className="identity">
+          <button
+            type="button"
+            className="photoslot"
+            onClick={() => photoInput.current?.click()}
+            disabled={busy}
+            aria-label={preview ? 'Replace the photo' : 'Add a photo'}
+          >
+            {preview ? (
+              <img src={preview} alt="" />
+            ) : (
+              <>
+                <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
+                <small>Photo</small>
+              </>
+            )}
+          </button>
 
-      {/*
-        Two inputs, not one. `capture` sends you straight to the camera with no
-        way back to the library, so a single button can only ever offer one of
-        the two. Splitting them is the only way to give both.
-      */}
-      <div className="photoactions">
-        <button
-          type="button"
-          className="minibtn"
-          onClick={() => cameraInput.current?.click()}
-          disabled={busy}
-        >
-          Take photo
-        </button>
-        <button
-          type="button"
-          className="minibtn ghost"
-          onClick={() => libraryInput.current?.click()}
-          disabled={busy}
-        >
-          Choose photo
-        </button>
+          <div className="identity-fields">
+            <input
+              type="text"
+              className="bigname"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              placeholder="What is it?"
+              aria-label="Name"
+              autoFocus={!editing}
+            />
+            <input
+              type="text"
+              value={form.brand}
+              onChange={(e) => set('brand', e.target.value)}
+              placeholder="Brand (optional)"
+              aria-label="Brand"
+            />
+          </div>
+        </div>
+
         {preview && (
           <button
             type="button"
-            className="minibtn ghost"
-            disabled={busy}
+            className="linkish morelink"
             onClick={() => {
               URL.revokeObjectURL(preview);
               setPreview(undefined);
@@ -220,193 +222,194 @@ export function ItemForm({
               setRemoved(true);
             }}
           >
-            Remove
+            Remove photo
           </button>
         )}
-      </div>
 
-      <input
-        ref={cameraInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          void onPhoto(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={libraryInput}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => {
-          void onPhoto(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-
-      <Field label="Name">
         <input
-          type="text"
-          value={form.name}
-          onChange={(e) => set('name', e.target.value)}
-          placeholder="Bosch dishwasher"
-          autoFocus
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            void onPhoto(e.target.files?.[0]);
+            e.target.value = '';
+          }}
         />
-      </Field>
+      </section>
 
-      <Field label="Room">
-        <div className="roomfield">
-          <select value={form.roomId} onChange={(e) => set('roomId', e.target.value)}>
-            <option value="">Not assigned</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+      {/* Where it lives. */}
+      <section className="card">
+        <div className="cardhead">
+          <h3>Room</h3>
           <button
             type="button"
-            className="minibtn ghost"
+            className="linkish"
             aria-expanded={newRoom !== null}
             onClick={() => setNewRoom(newRoom === null ? '' : null)}
           >
             {newRoom === null ? 'New room' : 'Cancel'}
           </button>
         </div>
-      </Field>
 
-      {newRoom !== null && (
-        <div className="newroom">
-          <input
-            type="text"
-            value={newRoom}
-            autoFocus
-            placeholder="Nursery"
-            onChange={(e) => setNewRoom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void addRoom();
-              }
-              if (e.key === 'Escape') setNewRoom(null);
-            }}
-          />
-          <button type="button" className="minibtn" disabled={!newRoom.trim()} onClick={addRoom}>
-            Add
-          </button>
-        </div>
-      )}
+        <select
+          value={form.roomId}
+          aria-label="Room"
+          onChange={(e) => set('roomId', e.target.value)}
+        >
+          <option value="">Not assigned</option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
 
-      <div className="fieldpair">
-        <Field label="Purchase date">
-          <input
-            type="date"
-            value={form.purchaseDate}
-            onChange={(e) => set('purchaseDate', e.target.value)}
-          />
-        </Field>
-        <Field label={`Price (${form.currency})`}>
-          {/* The symbol sits in the field rather than the label, so the value
-              reads as money while it's being typed. */}
-          <div className="moneyfield">
-            <span aria-hidden="true">{currencySymbol(form.currency)}</span>
+        {newRoom !== null && (
+          <div className="newroom">
             <input
               type="text"
-              inputMode="decimal"
-              value={form.price}
-              onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
-              onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
-              placeholder="849.00"
+              value={newRoom}
+              autoFocus
+              placeholder="Nursery"
+              aria-label="New room name"
+              onChange={(e) => setNewRoom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void addRoom();
+                }
+                if (e.key === 'Escape') setNewRoom(null);
+              }}
             />
+            <button type="button" className="minibtn" disabled={!newRoom.trim()} onClick={addRoom}>
+              Add
+            </button>
           </div>
-        </Field>
-      </div>
+        )}
+      </section>
 
-      <div className="fieldlabel">Warranty length</div>
+      {/* What it cost. */}
+      <section className="card">
+        <div className="cardhead">
+          <h3>Purchase</h3>
+        </div>
+        <div className="fieldpair">
+          <label className="field">
+            <span className="fieldlabel">Date</span>
+            <input
+              type="date"
+              value={form.purchaseDate}
+              onChange={(e) => set('purchaseDate', e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span className="fieldlabel">Price</span>
+            <div className="moneyfield">
+              <span aria-hidden="true">{currencySymbol(form.currency)}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={form.price}
+                onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
+                onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
+                placeholder="849.00"
+              />
+            </div>
+          </label>
+        </div>
+      </section>
 
-      <div className="seg">
-        {(Object.keys(UNIT_LABEL) as WarrantyUnit[]).map((u) => (
+      {/* How long it's covered. */}
+      <section className="card">
+        <div className="cardhead">
+          <h3>Warranty</h3>
+          {hasTerm && (
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => {
+                setCustom(false);
+                set('warrantyAmount', '');
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="seg">
+          {(Object.keys(UNIT_LABEL) as WarrantyUnit[]).map((u) => (
+            <button
+              key={u}
+              type="button"
+              className={form.warrantyUnit === u ? 'on' : ''}
+              onClick={() => {
+                const wasPreset = WARRANTY_PRESETS[form.warrantyUnit].includes(
+                  Number(form.warrantyAmount),
+                );
+                setForm((f) => ({
+                  ...f,
+                  warrantyUnit: u,
+                  warrantyAmount: wasPreset ? '' : f.warrantyAmount,
+                }));
+                setCustom(false);
+              }}
+            >
+              {UNIT_LABEL[u]}
+            </button>
+          ))}
+        </div>
+
+        <div className="chiprow">
+          {WARRANTY_PRESETS[form.warrantyUnit].map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={`pick${!custom && form.warrantyAmount === String(n) ? ' on' : ''}`}
+              onClick={() => {
+                setCustom(false);
+                set('warrantyAmount', form.warrantyAmount === String(n) ? '' : String(n));
+              }}
+            >
+              {n}
+            </button>
+          ))}
           <button
-            key={u}
             type="button"
-            className={form.warrantyUnit === u ? 'on' : ''}
+            className={`pick${custom ? ' on' : ''}`}
             onClick={() => {
-              // Switching units keeps any custom number the user typed — 90
-              // days becoming 90 months is nonsense, but so is silently
-              // wiping what they entered, so only presets are cleared.
-              const wasPreset = WARRANTY_PRESETS[form.warrantyUnit].includes(
-                Number(form.warrantyAmount),
-              );
-              setForm((f) => ({
-                ...f,
-                warrantyUnit: u,
-                warrantyAmount: wasPreset ? '' : f.warrantyAmount,
-              }));
-              setCustom(false);
+              const next = !custom;
+              setCustom(next);
+              if (next && WARRANTY_PRESETS[form.warrantyUnit].includes(Number(form.warrantyAmount)))
+                set('warrantyAmount', '');
             }}
           >
-            {UNIT_LABEL[u]}
+            Custom
           </button>
-        ))}
-      </div>
+        </div>
 
-      <div className="chiprow">
-        {WARRANTY_PRESETS[form.warrantyUnit].map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={`pick${!custom && form.warrantyAmount === String(n) ? ' on' : ''}`}
-            onClick={() => {
-              setCustom(false);
-              set('warrantyAmount', form.warrantyAmount === String(n) ? '' : String(n));
-            }}
-          >
-            {n}
-          </button>
-        ))}
-        <button
-          type="button"
-          className={`pick${custom ? ' on' : ''}`}
-          onClick={() => {
-            const next = !custom;
-            setCustom(next);
-            if (next && WARRANTY_PRESETS[form.warrantyUnit].includes(Number(form.warrantyAmount))) {
-              set('warrantyAmount', '');
-            }
-          }}
-        >
-          Custom
-        </button>
-        <button
-          type="button"
-          className={`pick${form.warrantyAmount === '' && !custom ? ' on' : ''}`}
-          onClick={() => {
-            setCustom(false);
-            set('warrantyAmount', '');
-          }}
-        >
-          None
-        </button>
-      </div>
-
-      {custom && (
-        <Field label={`Number of ${form.warrantyUnit}`}>
+        {custom && (
           <input
             type="number"
             inputMode="numeric"
             min="1"
             value={form.warrantyAmount}
             onChange={(e) => set('warrantyAmount', e.target.value)}
-            placeholder={form.warrantyUnit === 'days' ? '90' : '18'}
+            placeholder={form.warrantyUnit === 'days' ? '90 days' : '18 months'}
+            aria-label={`Number of ${form.warrantyUnit}`}
             autoFocus
           />
-        </Field>
-      )}
+        )}
 
-      {termSummary && <p className="hint">{termSummary}</p>}
+        {hasTerm && (
+          <p className="hint">
+            {endsOn
+              ? `${amount} ${unitWord} of cover, ending ${endsOn}.`
+              : 'Add a purchase date and Nutsy can track when this expires.'}
+          </p>
+        )}
+      </section>
 
       <DocsField
         itemId={item?.id}
@@ -433,32 +436,18 @@ export function ItemForm({
           stroke="currentColor"
           strokeWidth="2.2"
           strokeLinecap="round"
-          style={{ transform: more ? 'rotate(180deg)' : undefined }}
+          style={more ? { transform: 'rotate(180deg)' } : undefined}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
 
       {more && (
-        <>
+        <section className="card">
           <div className="fieldpair">
-            <Field label="Brand">
-              <input
-                type="text"
-                value={form.brand}
-                onChange={(e) => set('brand', e.target.value)}
-              />
-            </Field>
             <Field label="Model">
-              <input
-                type="text"
-                value={form.model}
-                onChange={(e) => set('model', e.target.value)}
-              />
+              <input type="text" value={form.model} onChange={(e) => set('model', e.target.value)} />
             </Field>
-          </div>
-
-          <div className="fieldpair">
             <Field label="Serial number">
               <input
                 type="text"
@@ -466,14 +455,15 @@ export function ItemForm({
                 onChange={(e) => set('serial', e.target.value)}
               />
             </Field>
-            <Field label="Retailer">
-              <input
-                type="text"
-                value={form.retailer}
-                onChange={(e) => set('retailer', e.target.value)}
-              />
-            </Field>
           </div>
+
+          <Field label="Retailer">
+            <input
+              type="text"
+              value={form.retailer}
+              onChange={(e) => set('retailer', e.target.value)}
+            />
+          </Field>
 
           <Field label="Warranty provider">
             <input
@@ -519,13 +509,15 @@ export function ItemForm({
               placeholder="Installed by Kelly Plumbing, filter behind the kickplate"
             />
           </Field>
-        </>
+        </section>
       )}
 
-      <button type="button" className="btn wide" disabled={busy} onClick={onSave}>
-        {busy ? 'Saving…' : editing ? 'Save changes' : 'Save item'}
-      </button>
-    </>
+      <div className="savebar">
+        <button type="button" className="btn wide" disabled={busy} onClick={onSave}>
+          {busy ? 'Saving…' : editing ? 'Save changes' : 'Save item'}
+        </button>
+      </div>
+    </div>
   );
 }
 
