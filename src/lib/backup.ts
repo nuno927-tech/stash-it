@@ -243,15 +243,34 @@ export async function parseBundle(file: Blob): Promise<ParsedBundle> {
 }
 
 /**
- * Brings an older bundle up to the current schema. There is only v1 today, so
- * this is a pass-through — but the hook exists so a v2 restore has one obvious
- * place to live, and never grows into a parallel implementation of the Dexie
- * migration chain.
+ * Brings an older bundle up to the current schema, one version at a time, by
+ * the same rules the Dexie upgrade applies to a local database.
+ *
+ * Keyed by the version being migrated *from*, so adding v3 later means adding
+ * one entry and nothing else.
  */
+const BUNDLE_MIGRATIONS: Record<number, (data: BundleData) => BundleData> = {
+  // v1 → v2: category was dropped from Item.
+  1: (data) => ({
+    ...data,
+    items: data.items.map((item) => {
+      const { category: _dropped, ...rest } = item as Item & { category?: string };
+      return { ...rest, schemaVersion: 2 };
+    }),
+    docs: data.docs.map((d) => ({ ...d, schemaVersion: 2 })),
+    maintenance: data.maintenance.map((m) => ({ ...m, schemaVersion: 2 })),
+    settings: data.settings ? { ...data.settings, schemaVersion: 2 } : null,
+  }),
+};
+
 function migrateBundle(data: BundleData, fromVersion: number): BundleData {
-  if (fromVersion === SCHEMA_VERSION) return data;
-  // for (let v = fromVersion; v < SCHEMA_VERSION; v++) data = STEPS[v](data);
-  return data;
+  let out = data;
+  for (let v = fromVersion; v < SCHEMA_VERSION; v++) {
+    const step = BUNDLE_MIGRATIONS[v];
+    if (!step) throw new BundleError(`This backup can't be upgraded from schema v${v}.`);
+    out = step(out);
+  }
+  return out;
 }
 
 /* ----------------------------------------------------------------- restore */

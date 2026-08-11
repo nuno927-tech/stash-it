@@ -8,22 +8,12 @@
  *  - Derived values (warranty expiry) are NOT stored.
  */
 
-export const SCHEMA_VERSION = 1;
-
-export type ItemCategory =
-  | 'appliance'
-  | 'electronics'
-  | 'tools'
-  | 'furniture'
-  | 'hvac'
-  | 'outdoor'
-  | 'vehicle'
-  | 'other';
-
-export const ITEM_CATEGORIES: ItemCategory[] = [
-  'appliance', 'electronics', 'tools', 'furniture',
-  'hvac', 'outdoor', 'vehicle', 'other',
-];
+/**
+ * v2 dropped `Item.category`. Room answers "where is it" and the icon comes
+ * from the item's own words, which left category with no job worth a decision
+ * during add. See db.ts for the migration.
+ */
+export const SCHEMA_VERSION = 2;
 
 export type WarrantyUnit = 'days' | 'months' | 'years';
 
@@ -58,7 +48,6 @@ export interface Item {
   brand?: string;
   model?: string;
   serial?: string;
-  category?: ItemCategory;
   propertyId: string;
   roomId?: string;
 

@@ -24,7 +24,6 @@ export type MatchField =
   | 'serial'
   | 'retailer'
   | 'room'
-  | 'category'
   | 'notes'
   | 'warranty'
   | 'document';
@@ -38,7 +37,6 @@ const WEIGHT: Record<MatchField, number> = {
   document: 22,
   retailer: 20,
   room: 18,
-  category: 16,
   warranty: 15,
   notes: 10,
 };
@@ -50,7 +48,6 @@ const FIELD_LABEL: Record<MatchField, string> = {
   serial: 'serial number',
   retailer: 'retailer',
   room: 'room',
-  category: 'category',
   notes: 'notes',
   warranty: 'warranty details',
   document: 'a document',
@@ -98,7 +95,6 @@ function haystacks(
   if (item.serial) out.push({ field: 'serial', text: item.serial, loose: true });
   if (item.retailer) out.push({ field: 'retailer', text: item.retailer });
   if (roomName) out.push({ field: 'room', text: roomName });
-  if (item.category) out.push({ field: 'category', text: item.category });
   if (item.notes) out.push({ field: 'notes', text: item.notes });
 
   const w = [item.warranty, item.extendedWarranty]

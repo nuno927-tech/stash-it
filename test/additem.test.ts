@@ -76,7 +76,6 @@ async function main() {
       name: '  Bosch Dishwasher  ',
       brand: 'Bosch',
       model: '  ',
-      category: 'appliance',
       purchaseDate: '2026-03-12',
       price: '$849.00',
       warrantyAmount: '24',
@@ -114,7 +113,7 @@ async function main() {
   );
   check('saved item is covered today', warrantyState(saved) === 'covered', warrantyLabel(saved));
   check('id is a uuidv7', /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/.test(id), id);
-  check('schema version is stamped', saved.schemaVersion === 1);
+  check('schema version is stamped', saved.schemaVersion === 2, String(saved.schemaVersion));
   check('createdAt and updatedAt are set', !!saved.createdAt && !!saved.updatedAt);
 
   /* -------------------------------------------------------------- cap */

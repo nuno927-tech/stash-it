@@ -8,7 +8,7 @@ import {
   docsWithFiles,
   DocError,
   formatBytes,
-  stageDoc,
+  stageDocs,
   type StagedDoc,
 } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
@@ -49,10 +49,13 @@ export function DocsField({
   const picker = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
 
-  const take = (file: File | undefined) => {
-    if (!file) return;
+  const take = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     try {
-      onStage(stageDoc(kind, file));
+      // Count what's already staged for this kind so a second batch keeps
+      // numbering from where the first left off.
+      const sameKind = staged.filter((s) => s.kind === kind).length;
+      for (const doc of stageDocs(kind, [...files], sameKind)) onStage(doc);
       feedback('attach');
       setError(undefined);
     } catch (e) {
@@ -94,13 +97,16 @@ export function DocsField({
         </button>
       </div>
 
+      {/* `multiple` on both: a warranty is often several pages, and the photo
+          library lets you select them all in one go. */}
       <input
         ref={picker}
         type="file"
         accept={DOC_ACCEPT}
+        multiple
         hidden
         onChange={(e) => {
-          take(e.target.files?.[0]);
+          take(e.target.files);
           e.target.value = '';
         }}
       />
@@ -109,9 +115,10 @@ export function DocsField({
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
         hidden
         onChange={(e) => {
-          take(e.target.files?.[0]);
+          take(e.target.files);
           e.target.value = '';
         }}
       />
@@ -138,7 +145,10 @@ export function DocsField({
       {staged.map((s) => (
         <div key={s.key} className="stagerow pending">
           <span className="stagekind">{DOC_KIND_LABEL[s.kind]}</span>
-          <span className="stagemeta">{formatBytes(s.file.size)} · saves with the item</span>
+          <span className="stagemeta">
+            {s.title ? `${s.title} · ` : ''}
+            {formatBytes(s.file.size)} · saves with the item
+          </span>
           <button
             type="button"
             className="iconbtn small"
@@ -153,7 +163,7 @@ export function DocsField({
       {existing.length === 0 && staged.length === 0 && (
         <p className="hint">
           The receipt and the warranty are the two a claim will ask for. Attach them now and you
-          won't have to find them later.
+          won't have to find them later. Multi-page documents can be picked all at once.
         </p>
       )}
     </>

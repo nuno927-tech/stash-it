@@ -53,10 +53,10 @@ expect({ name: 'Scartissue' }, 'box');
 expect({ name: 'SAMSUNG TV' }, 'tv');
 expect({ name: 'e-bike, blue' }, 'bike');
 
-// Falls through name → other fields → category → generic.
+// Falls through name → other fields → generic. Category is gone: room says
+// where a thing is, and the words say what it is.
 expect({ name: 'SHXM4AY55N', notes: 'the dishwasher in the kitchen' }, 'dishwasher');
-expect({ name: 'Unknown thing', category: 'vehicle' }, 'car');
-expect({ name: 'Unknown thing', category: 'furniture' }, 'sofa');
+expect({ name: 'SHXM4AY55N', brand: 'Bosch', model: 'dishwasher 500' }, 'dishwasher');
 expect({ name: 'Unknown thing' }, 'box');
 expect({}, 'box');
 

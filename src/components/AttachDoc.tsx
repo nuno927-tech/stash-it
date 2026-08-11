@@ -31,7 +31,7 @@ export function AttachDoc({
 }) {
   const [kind, setKind] = useState<DocKind>(defaultKind);
   const [source, setSource] = useState<Source>('file');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
@@ -42,11 +42,14 @@ export function AttachDoc({
 
   const hint = DOC_KINDS.find((k) => k.kind === kind)?.hint;
 
-  const take = (f: File | undefined) => {
-    if (!f) return;
-    setFile(f);
+  const take = (picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    const list = [...picked];
+    setFiles(list);
     setSource('file');
-    if (!title) setTitle(titleFromFilename(f.name));
+    // A single file can borrow its name; a batch is pages of one document, so
+    // the title stays the kind and each page is numbered on save.
+    if (!title && list.length === 1) setTitle(titleFromFilename(list[0]!.name));
     setError(undefined);
   };
 
@@ -54,9 +57,17 @@ export function AttachDoc({
     setBusy(true);
     setError(undefined);
     try {
-      if (source === 'link') await attachLink(itemId, kind, url, title);
-      else if (file) await attachFile(itemId, kind, file, title);
-      else throw new DocError('Choose a file first.');
+      if (source === 'link') {
+        await attachLink(itemId, kind, url, title);
+      } else if (files.length === 1) {
+        await attachFile(itemId, kind, files[0]!, title);
+      } else if (files.length > 1) {
+        for (const [i, f] of files.entries()) {
+          await attachFile(itemId, kind, f, `${title.trim() || 'Page'} ${i + 1}`.trim());
+        }
+      } else {
+        throw new DocError('Choose a file first.');
+      }
       feedback('attach');
       onDone();
     } catch (e) {
@@ -122,9 +133,15 @@ export function AttachDoc({
             </button>
           </div>
 
-          {file && (
+          {files.length === 1 && (
             <p className="hint">
-              {file.name} · {formatBytes(file.size)}
+              {files[0]!.name} · {formatBytes(files[0]!.size)}
+            </p>
+          )}
+          {files.length > 1 && (
+            <p className="hint">
+              {files.length} pages · {formatBytes(files.reduce((n, f) => n + f.size, 0))} · saved in
+              the order you picked them
             </p>
           )}
 
@@ -132,9 +149,10 @@ export function AttachDoc({
             ref={picker}
             type="file"
             accept={DOC_ACCEPT}
+            multiple
             hidden
             onChange={(e) => {
-              take(e.target.files?.[0]);
+              take(e.target.files);
               e.target.value = '';
             }}
           />
@@ -143,9 +161,10 @@ export function AttachDoc({
             type="file"
             accept="image/*"
             capture="environment"
+            multiple
             hidden
             onChange={(e) => {
-              take(e.target.files?.[0]);
+              take(e.target.files);
               e.target.value = '';
             }}
           />

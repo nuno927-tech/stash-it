@@ -127,21 +127,36 @@ export interface StagedDoc {
   key: string;
   kind: DocKind;
   file: File;
+  /** Set when one selection produced several files. */
+  title?: string;
 }
 
-export function stageDoc(kind: DocKind, file: File): StagedDoc {
+export function stageDoc(kind: DocKind, file: File, title?: string): StagedDoc {
   if (file.size === 0) throw new DocError('That file is empty.');
   if (file.size > MAX_DOC_BYTES) {
     throw new DocError(`That file is ${formatBytes(file.size)}. The limit is 50 MB.`);
   }
-  return { key: newId(), kind, file };
+  return { key: newId(), kind, file, title };
+}
+
+/**
+ * Stages a whole selection. Receipts and warranties are routinely several
+ * pages, and photographing them one at a time — closing the sheet, reopening
+ * it, choosing the kind again — is the kind of friction that stops people
+ * bothering. Multi-page picks are numbered so the order survives.
+ */
+export function stageDocs(kind: DocKind, files: File[], alreadyStaged = 0): StagedDoc[] {
+  const multi = files.length + alreadyStaged > 1;
+  return files.map((file, i) =>
+    stageDoc(kind, file, multi ? `Page ${alreadyStaged + i + 1}` : undefined),
+  );
 }
 
 /** Writes staged documents against a now-existing item. */
 export async function attachStaged(itemId: string, staged: StagedDoc[]): Promise<number> {
   let written = 0;
   for (const s of staged) {
-    await attachFile(itemId, s.kind, s.file);
+    await attachFile(itemId, s.kind, s.file, s.title);
     written++;
   }
   return written;

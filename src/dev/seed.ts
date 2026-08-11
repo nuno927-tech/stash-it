@@ -26,7 +26,6 @@ function fixtures(): Fixture[] {
       name: 'LG Refrigerator',
       brand: 'LG',
       model: 'LRFDS3016S',
-      category: 'appliance',
       purchaseDate: purchaseDateFor(60, 853), // 2y 4m left, as per the mockup
       purchasePriceCents: 219_900,
       currency: 'USD',
@@ -37,7 +36,6 @@ function fixtures(): Fixture[] {
       name: 'Bosch Dishwasher',
       brand: 'Bosch',
       model: 'SHXM4AY55N',
-      category: 'appliance',
       purchaseDate: purchaseDateFor(24, 21), // ending soon
       purchasePriceCents: 84_900,
       currency: 'USD',
@@ -48,7 +46,6 @@ function fixtures(): Fixture[] {
       name: 'DeWalt Table Saw',
       brand: 'DeWalt',
       model: 'DWE7491RS',
-      category: 'tools',
       purchaseDate: purchaseDateFor(36, 609), // 1y 8m left, as per the mockup
       purchasePriceCents: 64_900,
       currency: 'USD',
@@ -59,7 +56,6 @@ function fixtures(): Fixture[] {
       name: 'Sony Bravia',
       brand: 'Sony',
       model: 'XR55A80K',
-      category: 'electronics',
       purchaseDate: purchaseDateFor(12, -430), // long expired
       purchasePriceCents: 139_900,
       currency: 'USD',

@@ -3,13 +3,11 @@
  *
  * Matching runs over what the user actually typed — name first, then brand,
  * model and notes — because "Bosch SHXM4AY55N" tells you less than
- * "dishwasher" does. Category is the fallback, and a generic box is the floor.
+ * "dishwasher" does. A generic box is the floor.
  *
  * Word-boundary matching, longest keyword first: "washing machine" must beat
  * "machine", and "microwave" must not match inside "wave".
  */
-
-import type { ItemCategory } from '@/db/types';
 
 export type IconKey =
   | 'fridge'
@@ -89,18 +87,6 @@ const KEYWORDS: Record<IconKey, string[]> = {
   box: [],
 };
 
-/** Category is a weaker signal than words, but better than nothing. */
-const CATEGORY_DEFAULT: Record<ItemCategory, IconKey> = {
-  appliance: 'fridge',
-  electronics: 'tv',
-  tools: 'wrench',
-  furniture: 'sofa',
-  hvac: 'boiler',
-  outdoor: 'mower',
-  vehicle: 'car',
-  other: 'box',
-};
-
 /** Longest first, so multi-word phrases beat the single words inside them. */
 const INDEX: { key: IconKey; word: string; len: number }[] = Object.entries(KEYWORDS)
   .flatMap(([key, words]) => words.map((word) => ({ key: key as IconKey, word, len: word.length })))
@@ -125,7 +111,6 @@ export interface IconSubject {
   brand?: string;
   model?: string;
   notes?: string;
-  category?: ItemCategory;
 }
 
 export function iconKeyFor(item: IconSubject): IconKey {
@@ -137,5 +122,5 @@ export function iconKeyFor(item: IconSubject): IconKey {
   const fromRest = rest ? findIn(rest) : null;
   if (fromRest) return fromRest;
 
-  return item.category ? CATEGORY_DEFAULT[item.category] : 'box';
+  return 'box';
 }

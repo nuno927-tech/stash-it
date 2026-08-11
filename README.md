@@ -34,14 +34,14 @@ the app requests at boot, and the backup file the user exports themselves.
 
 | Path | What it is |
 |---|---|
-| `src/db/types.ts` | Entity types. Mirrors the data model spec, schema v1. |
+| `src/db/types.ts` | Entity types. Schema v2 — v1 dropped `Item.category`. |
 | `src/db/db.ts` | Dexie schema, migrations, first-run seeding. |
 | `src/db/repo.ts` | All data access. Validation, soft delete, thumbnails, room rules. |
 | `src/lib/warranty.ts` | Calendar-month maths. Expiry is computed, never stored. |
 | `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
 | `src/lib/docs.ts` | Document attachment, blob lifecycle, open and download. |
 | `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
-| `test/` | `npm test` — 258 assertions against fake-indexeddb. |
+| `test/` | `npm test` — 274 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
 | `src/App.tsx` | Screen state and the app shell. No router yet. |
 | `src/screens/` | Home dashboard, Items, Item detail, Item form, Rooms, Settings. |
@@ -60,6 +60,9 @@ the app requests at boot, and the backup file the user exports themselves.
 - **Currency per item**, seeded from the device default at save time.
 - **Rooms are entities**, seeded per property, fully editable. Deleting a room never
   cascades: items are reassigned or unassigned first.
+- **Room is the only way items are organised.** Category was removed in v2: the
+  icon comes from the item's own words, so category was a question with no
+  consequence.
 - **Entitlement flags, not SKU checks** (`proUnlock`, `reportUnlock`).
 - **The item cap blocks new additions only.** Existing items stay editable and
   exportable at every tier.

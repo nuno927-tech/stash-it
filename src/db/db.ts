@@ -29,6 +29,39 @@ export class StashDB extends Dexie {
       maintenance: 'id, itemId, date, deletedAt',
       settings: 'id',
     });
+
+    // v2: category removed. Room says where a thing is and the icon comes from
+    // the item's own words, so category was a question with no consequence.
+    // Dropping the index requires a version bump; the upgrade clears the
+    // stored values so nothing is left behind referencing a field that no
+    // longer exists in the type.
+    this.version(2)
+      .stores({
+        items: 'id, propertyId, roomId, deletedAt, updatedAt, [propertyId+deletedAt]',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('items')
+          .toCollection()
+          .modify((item: Record<string, unknown>) => {
+            delete item.category;
+            item.schemaVersion = SCHEMA_VERSION;
+          });
+        for (const name of ['docs', 'maintenance']) {
+          await tx
+            .table(name)
+            .toCollection()
+            .modify((row: Record<string, unknown>) => {
+              row.schemaVersion = SCHEMA_VERSION;
+            });
+        }
+        await tx
+          .table('settings')
+          .toCollection()
+          .modify((row: Record<string, unknown>) => {
+            row.schemaVersion = SCHEMA_VERSION;
+          });
+      });
   }
 }
 

@@ -12,6 +12,7 @@ import 'fake-indexeddb/auto';
 import { db, ensureFirstRun, newId, nowISO } from '@/db/db';
 import { SCHEMA_VERSION, type Item } from '@/db/types';
 import { seedDemoItems } from '@/dev/seed';
+import { unzipSync, zipSync } from 'fflate';
 import { BundleError, exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
 
 let failures = 0;
@@ -146,17 +147,21 @@ async function main() {
 
   /* ------------------------------------------------------- rejections */
 
-  const raw = new Uint8Array(await blob.arrayBuffer());
-  const corrupt = new Uint8Array(raw);
-  // Flip a byte inside the compressed payload, past the local file header.
-  corrupt[Math.floor(corrupt.length / 2)] ^= 0xff;
+  // Tamper with the JSON itself rather than flipping a byte at random: the
+  // manifest checksum covers the JSON payloads, per the format spec, so a
+  // random flip can land in a blob and legitimately pass. Blob corruption
+  // going undetected is a known limit of the documented format.
+  const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+  entries['items.json'] = new TextEncoder().encode('[{"id":"tampered"}]');
+  const corrupt = new Blob([zipSync(entries) as BlobPart]);
+
   let threw = '';
   try {
-    await parseBundle(new Blob([corrupt]));
+    await parseBundle(corrupt);
   } catch (e) {
     threw = e instanceof BundleError ? 'BundleError' : (e as Error).constructor.name;
   }
-  check('a damaged bundle is refused', threw !== '', threw || 'no error thrown');
+  check('an edited bundle fails its checksum', threw === 'BundleError', threw || 'no error thrown');
 
   threw = '';
   try {

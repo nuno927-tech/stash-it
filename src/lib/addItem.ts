@@ -7,13 +7,7 @@
 
 import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
 import { db } from '@/db/db';
-import {
-  FREE_ITEM_LIMIT,
-  type Item,
-  type ItemCategory,
-  type Warranty,
-  type WarrantyUnit,
-} from '@/db/types';
+import { FREE_ITEM_LIMIT, type Item, type Warranty, type WarrantyUnit } from '@/db/types';
 import { termOf, termToMonths } from './warranty';
 
 export class ValidationError extends Error {}
@@ -27,7 +21,6 @@ export class ItemLimitError extends Error {
 
 export interface AddItemForm {
   name: string;
-  category: ItemCategory | '';
   roomId: string;
   purchaseDate: string;
   price: string;
@@ -49,7 +42,6 @@ export interface AddItemForm {
 export function emptyForm(currency: string): AddItemForm {
   return {
     name: '',
-    category: '',
     roomId: '',
     purchaseDate: '',
     price: '',
@@ -72,7 +64,6 @@ export function emptyForm(currency: string): AddItemForm {
 export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm {
   return {
     name: item.name,
-    category: item.category ?? '',
     roomId: item.roomId ?? '',
     purchaseDate: item.purchaseDate ?? '',
     price: item.purchasePriceCents == null ? '' : (item.purchasePriceCents / 100).toFixed(2),
@@ -180,7 +171,6 @@ export function draftFromForm(
     brand: clean(form.brand),
     model: clean(form.model),
     serial: clean(form.serial),
-    category: form.category || undefined,
     propertyId,
     roomId: clean(form.roomId),
     purchaseDate: clean(form.purchaseDate),

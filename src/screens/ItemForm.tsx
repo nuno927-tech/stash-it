@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeRooms } from '@/db/repo';
-import { ITEM_CATEGORIES, type Item, type ItemCategory, type WarrantyUnit } from '@/db/types';
+import type { Item, WarrantyUnit } from '@/db/types';
 import {
   emptyForm,
   formFromItem,
@@ -19,20 +19,8 @@ import { attachStaged, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
-import { CategoryIcon } from '@/components/CategoryIcon';
 import { DocsField } from '@/components/DocsField';
 import { ItemIcon } from '@/components/ItemIcon';
-
-const CATEGORY_LABEL: Record<ItemCategory, string> = {
-  appliance: 'Appliance',
-  electronics: 'Electronics',
-  tools: 'Tools',
-  furniture: 'Furniture',
-  hvac: 'Heating & air',
-  outdoor: 'Outdoor',
-  vehicle: 'Vehicle',
-  other: 'Other',
-};
 
 /**
  * One form, two modes. Passing an `item` switches it to editing that record;
@@ -169,7 +157,7 @@ export function ItemForm({
           <img src={preview} alt="" />
         ) : (
           <span className="photohint">
-            <ItemIcon item={{ name: form.name, category: form.category || undefined }} size={30} />
+            <ItemIcon item={{ name: form.name, brand: form.brand }} size={30} />
             {form.name.trim()
               ? 'No photo yet — this icon stands in'
               : 'No photo yet'}
@@ -247,21 +235,6 @@ export function ItemForm({
           autoFocus
         />
       </Field>
-
-      <div className="fieldlabel">Category</div>
-      <div className="chiprow">
-        {ITEM_CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            className={`pick${form.category === c ? ' on' : ''}`}
-            onClick={() => set('category', form.category === c ? '' : c)}
-          >
-            <CategoryIcon category={c} size={16} />
-            {CATEGORY_LABEL[c]}
-          </button>
-        ))}
-      </div>
 
       <Field label="Room">
         <select value={form.roomId} onChange={(e) => set('roomId', e.target.value)}>
