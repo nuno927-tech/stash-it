@@ -3,11 +3,21 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
 import { configureFeedback, installClickSounds } from '@/lib/feedback';
+import {
+  hasNativePrompt,
+  installOffer,
+  isIOSSafari,
+  isStandalone,
+  wasDismissed,
+  watchInstallability,
+  type InstallOffer,
+} from '@/lib/install';
 import { prefsFrom } from '@/lib/prefs';
-import { dismissSplash } from '@/lib/splash';
+import { dismissSplash, splashRemainingMs } from '@/lib/splash';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
+import { InstallPrompt } from '@/components/InstallPrompt';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
@@ -111,6 +121,8 @@ function Shell() {
   // One delegated listener for the whole app; the cue is chosen from what was
   // clicked. Silent unless the sounds preference is on.
   useEffect(() => installClickSounds(), []);
+
+  const offer = useInstallOffer();
   const count =
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 
@@ -203,8 +215,41 @@ function Shell() {
       {screen.kind === 'rooms' && (
         <Rooms propertyId={property.id} onBack={() => setScreen({ kind: 'settings' })} />
       )}
+
+      {offer.show !== 'none' && (
+        <InstallPrompt offer={offer.show} onClose={offer.dismiss} />
+      )}
     </Frame>
   );
+}
+
+/**
+ * Whether to invite the user to install, recomputed when the browser decides
+ * we're installable — which can happen a second or two after load.
+ *
+ * Held back until the splash has cleared: a dialog appearing over a launch
+ * screen reads as an error, not an invitation.
+ */
+function useInstallOffer() {
+  const [show, setShow] = useState<InstallOffer>('none');
+
+  useEffect(() => {
+    const evaluate = () => {
+      const next = installOffer({
+        standalone: isStandalone(),
+        dismissed: wasDismissed(),
+        nativePrompt: hasNativePrompt(),
+        iosSafari: isIOSSafari(),
+      });
+      // A beat after the splash, so the app is visible behind it first.
+      window.setTimeout(() => setShow(next), splashRemainingMs() + 700);
+    };
+
+    evaluate();
+    return watchInstallability(evaluate);
+  }, []);
+
+  return { show, dismiss: () => setShow('none') };
 }
 
 function Frame({ children, nav }: { children: ReactNode; nav?: ReactNode }) {

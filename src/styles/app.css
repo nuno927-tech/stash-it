@@ -1528,3 +1528,105 @@ a.pick {
   border: none !important;
   padding-left: 4px !important;
 }
+
+/* ------------------------------------------------------------- install */
+
+.installscrim {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  animation: scrimIn 0.25s ease both;
+}
+
+.installsheet {
+  width: 100%;
+  max-width: 420px;
+  background: var(--slate-800);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px 20px 18px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: sheetUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.installsheet h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  margin: 18px 0 9px;
+}
+
+.installsheet p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.installsteps {
+  list-style: none;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 0;
+  text-align: left;
+}
+
+.installsteps li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 12px 13px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+}
+
+.installsteps li span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stepnum {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--wash-gold);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

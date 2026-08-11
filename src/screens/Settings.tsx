@@ -24,6 +24,14 @@ import {
 } from '@/lib/storage';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import {
+  forgetDismissal,
+  hasNativePrompt,
+  installOfferIgnoringDismissal,
+  isIOSSafari,
+  isStandalone,
+  promptInstall,
+} from '@/lib/install';
+import {
   BACKUP_REMINDER_CHOICES,
   CURRENCIES,
   prefsFrom,
@@ -264,6 +272,8 @@ export function Settings({
         />
       )}
 
+      <InstallRow />
+
       <StorageSection />
 
       <div className="seclabel" style={{ marginTop: 28 }}>
@@ -429,6 +439,65 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
         >
           <span />
         </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * The install option, still reachable after the first-run sheet was dismissed.
+ * Someone who tapped "Not now" and later changed their mind shouldn't have to
+ * clear site data to find it again.
+ */
+function InstallRow() {
+  const offer = installOfferIgnoringDismissal({
+    standalone: isStandalone(),
+    dismissed: false,
+    nativePrompt: hasNativePrompt(),
+    iosSafari: isIOSSafari(),
+  });
+
+  if (isStandalone()) {
+    return (
+      <>
+        <div className="seclabel" style={{ marginTop: 28 }}>
+          <span>Home screen</span>
+        </div>
+        <p className="hint">
+          Installed. That's also what earns your data the browser's strongest storage promise.
+        </p>
+      </>
+    );
+  }
+
+  if (offer === 'none') return null;
+
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Home screen</span>
+      </div>
+      <div className="setrow">
+        <div>
+          <h4>Install Stash it</h4>
+          <p>
+            {offer === 'native'
+              ? 'Opens full screen, and makes the browser far less willing to clear your data.'
+              : 'In Safari, tap Share then Add to Home Screen. That also protects your data from being cleared.'}
+          </p>
+        </div>
+        {offer === 'native' && (
+          <button
+            type="button"
+            className="minibtn"
+            onClick={() => {
+              forgetDismissal();
+              void promptInstall();
+            }}
+          >
+            Install
+          </button>
+        )}
       </div>
     </>
   );
