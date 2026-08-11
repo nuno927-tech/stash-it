@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
-import { db } from '@/db/db';
 import type { Item } from '@/db/types';
 import { warrantyLabel, warrantyProgress, warrantyState, type WarrantyState } from '@/lib/warranty';
 import { ItemIcon } from './ItemIcon';
 import { WarrantyRing } from './WarrantyRing';
+import { useThumbUrl } from './useThumbUrl';
 
 const CHIP_CLASS: Record<WarrantyState, string> = {
   covered: 'ok',
@@ -11,33 +10,6 @@ const CHIP_CLASS: Record<WarrantyState, string> = {
   expired: 'dead',
   unknown: 'none',
 };
-
-/** Object URLs are revoked on unmount — long lists would otherwise leak. */
-function useThumbUrl(blobId: string | undefined): string | undefined {
-  const [url, setUrl] = useState<string>();
-
-  useEffect(() => {
-    if (!blobId) {
-      setUrl(undefined);
-      return;
-    }
-    let revoked = false;
-    let made: string | undefined;
-
-    db.blobs.get(blobId).then((rec) => {
-      if (!rec || revoked) return;
-      made = URL.createObjectURL(rec.data);
-      setUrl(made);
-    });
-
-    return () => {
-      revoked = true;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [blobId]);
-
-  return url;
-}
 
 export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) => void }) {
   const state = warrantyState(item);

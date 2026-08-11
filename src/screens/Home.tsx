@@ -1,15 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
-import { coverShare, metricsFor } from '@/lib/dashboard';
-import { formatMoney, warrantyLabel } from '@/lib/warranty';
+import type { Item } from '@/db/types';
+import { metricsFor, type Metrics } from '@/lib/dashboard';
+import { formatMoney, warrantyLabel, warrantyState, type WarrantyState } from '@/lib/warranty';
 import { ItemIcon } from '@/components/ItemIcon';
 import { Nutsy } from '@/components/Nutsy';
+import { useThumbUrl } from '@/components/useThumbUrl';
 
 /**
- * The dashboard. Home used to be a second copy of the item list; now it answers
- * the questions you'd ask about the collection as a whole, and hands you off to
- * Items when you want the list itself.
+ * The dashboard. Home answers the questions you'd ask about the collection as
+ * a whole; Items answers "what do I own".
+ *
+ * The hierarchy is deliberate: one number matters most — how much of your
+ * stuff is still covered — so it gets a ring and the largest type on the
+ * screen. Everything else is support.
  */
 export function Home({
   propertyId,
@@ -29,7 +34,6 @@ export function Home({
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
 
   const m = metricsFor(items, docs);
-  const share = coverShare(m);
 
   return (
     <>
@@ -54,43 +58,20 @@ export function Home({
         </button>
       )}
 
-      <div className="metrics">
-        <Metric value={String(m.total)} label={m.total === 1 ? 'item' : 'items'} />
-        <Metric value={String(m.covered)} label="still covered" tone="moss" />
-        <Metric value={String(m.expired)} label="lapsed" tone={m.expired ? 'ember' : undefined} />
-      </div>
+      <CoverCard metrics={m} onBrowse={onBrowse} />
 
-      {/* One bar rather than a pie: the only comparison that matters is
-          covered against not, and a bar reads at a glance on a phone. */}
-      <div className="coverbar" role="img" aria-label={`${Math.round(share * 100)} percent still covered`}>
-        <span style={{ width: `${(m.covered / Math.max(1, m.total)) * 100}%` }} className="seg-moss" />
-        <span
-          style={{ width: `${(m.endingSoon / Math.max(1, m.total)) * 100}%` }}
-          className="seg-honey"
-        />
-        <span style={{ width: `${(m.expired / Math.max(1, m.total)) * 100}%` }} className="seg-ember" />
-        <span
-          style={{ width: `${(m.untracked / Math.max(1, m.total)) * 100}%` }}
-          className="seg-none"
-        />
-      </div>
-      <div className="coverkey">
-        <span>
-          <i className="dot moss" />
-          Covered
-        </span>
-        <span>
-          <i className="dot honey" />
-          Ending soon
-        </span>
-        <span>
-          <i className="dot ember" />
-          Lapsed
-        </span>
-        <span>
-          <i className="dot none" />
-          No warranty
-        </span>
+      <div className="bigmetrics">
+        <div className="bigmetric">
+          <strong>{m.total}</strong>
+          <span>{m.total === 1 ? 'item stashed' : 'items stashed'}</span>
+        </div>
+        <div className="bigmetric">
+          <strong>{m.valueByCurrency[0] ? shortMoney(m.valueByCurrency[0]) : '—'}</strong>
+          <span>
+            recorded value
+            {m.valueByCurrency.length > 1 ? ` · ${m.valueByCurrency[0]!.currency}` : ''}
+          </span>
+        </div>
       </div>
 
       {m.nextToExpire && (
@@ -99,27 +80,16 @@ export function Home({
           className="nextup"
           onClick={() => onOpenItem(m.nextToExpire!.item.id)}
         >
-          <span className="fieldlabel">Next to expire</span>
-          <strong>{m.nextToExpire.item.name}</strong>
-          <small>{warrantyLabel(m.nextToExpire.item)} of cover left</small>
+          <span className="nextup-txt">
+            <span className="fieldlabel">Next to expire</span>
+            <strong>{m.nextToExpire.item.name}</strong>
+            <small>{warrantyLabel(m.nextToExpire.item)} of cover left</small>
+          </span>
+          <span className={`chip ${CHIP[warrantyState(m.nextToExpire.item)]}`}>
+            {warrantyLabel(m.nextToExpire.item)}
+          </span>
         </button>
       )}
-
-      <div className="seclabel">
-        <span>What you own</span>
-      </div>
-      <dl className="facts">
-        {m.valueByCurrency.map((v) => (
-          <div className="row" key={v.currency}>
-            <dt>Recorded value{m.valueByCurrency.length > 1 ? ` (${v.currency})` : ''}</dt>
-            <dd>{formatMoney(v.cents, v.currency)}</dd>
-          </div>
-        ))}
-        <div className="row">
-          <dt>Documents kept</dt>
-          <dd>{m.documents}</dd>
-        </div>
-      </dl>
 
       {m.missingPaperwork > 0 && (
         <button type="button" className="navrow" onClick={() => onBrowse('nopaperwork')}>
@@ -130,60 +100,196 @@ export function Home({
             </h4>
             <p>A claim asks for the receipt or the policy. These have neither.</p>
           </span>
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted)"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          >
-            <path d="M9 5l7 7-7 7" />
-          </svg>
+          <Chevron />
         </button>
       )}
 
-      <div className="seclabel" style={{ marginTop: 26 }}>
+      <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Recently added</span>
         <button type="button" className="linkish" onClick={() => onBrowse()}>
           See all
         </button>
       </div>
 
-      <div className="recentrow">
+      {/* Horizontal, and photo-first. A grid of three text boxes was the least
+          interesting thing on the screen, and these are the items the user
+          most recently held in their hands. */}
+      <div className="recentstrip">
         {m.recent.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="recentcard"
-            onClick={() => onOpenItem(item.id)}
-          >
-            <ItemIcon item={item} size={24} />
-            <strong>{item.name}</strong>
-            <small>{warrantyLabel(item)}</small>
-          </button>
+          <RecentCard key={item.id} item={item} onOpen={onOpenItem} />
         ))}
       </div>
     </>
   );
 }
 
-function Metric({
-  value,
-  label,
-  tone,
+const CHIP: Record<WarrantyState, string> = {
+  covered: 'ok',
+  'ending-soon': 'warn',
+  expired: 'dead',
+  unknown: 'none',
+};
+
+/**
+ * The headline. A ring rather than a bar: it holds a number in the middle,
+ * which a 9px bar can't, and the number is the point.
+ */
+function CoverCard({
+  metrics: m,
+  onBrowse,
 }: {
-  value: string;
-  label: string;
-  tone?: 'moss' | 'ember';
+  metrics: Metrics;
+  onBrowse: (filter?: 'ending' | 'expired' | 'nopaperwork') => void;
 }) {
+  const tracked = m.covered + m.endingSoon + m.expired;
+  const pct = tracked === 0 ? 0 : Math.round(((m.covered + m.endingSoon) / tracked) * 100);
+
+  const size = 132;
+  const stroke = 13;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+
+  // Drawn as one ring of consecutive arcs, so the proportions read directly.
+  const slices = [
+    { n: m.covered, colour: 'var(--moss)' },
+    { n: m.endingSoon, colour: 'var(--honey)' },
+    { n: m.expired, colour: 'var(--ember)' },
+    { n: m.untracked, colour: 'var(--slate-600)' },
+  ].filter((s) => s.n > 0);
+
+  let offset = 0;
+
   return (
-    <div className="metric">
-      <strong style={tone ? { color: `var(--${tone})` } : undefined}>{value}</strong>
-      <span>{label}</span>
+    <div className="covercard">
+      <div className="coverring">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+          <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke="var(--slate-700)"
+              strokeWidth={stroke}
+            />
+            {slices.map((s, i) => {
+              const share = s.n / Math.max(1, m.total);
+              const dash = share * c;
+              const el = (
+                <circle
+                  key={i}
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={r}
+                  fill="none"
+                  stroke={s.colour}
+                  strokeWidth={stroke}
+                  strokeDasharray={`${Math.max(0, dash - 3)} ${c}`}
+                  strokeDashoffset={-offset}
+                  strokeLinecap="round"
+                />
+              );
+              offset += dash;
+              return el;
+            })}
+          </g>
+        </svg>
+        <div className="coverring-mid">
+          <strong>{pct}%</strong>
+          <span>covered</span>
+        </div>
+      </div>
+
+      <div className="coverstats">
+        <Stat n={m.covered} label="covered" tone="moss" />
+        <Stat n={m.endingSoon} label="ending soon" tone="honey" onClick={() => onBrowse('ending')} />
+        <Stat n={m.expired} label="lapsed" tone="ember" onClick={() => onBrowse('expired')} />
+        <Stat n={m.untracked} label="no warranty" tone="none" />
+      </div>
     </div>
   );
+}
+
+function Stat({
+  n,
+  label,
+  tone,
+  onClick,
+}: {
+  n: number;
+  label: string;
+  tone: 'moss' | 'honey' | 'ember' | 'none';
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
+      <i className={`dot ${tone}`} />
+      <b>{n}</b>
+      <span>{label}</span>
+    </>
+  );
+
+  // Only the actionable ones become buttons; a stat you can't do anything with
+  // shouldn't look tappable.
+  return onClick && n > 0 ? (
+    <button type="button" className="coverstat" onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className="coverstat">{body}</div>
+  );
+}
+
+function RecentCard({ item, onOpen }: { item: Item; onOpen: (id: string) => void }) {
+  const thumb = useThumbUrl(item.thumbBlobId);
+  const state = warrantyState(item);
+
+  return (
+    <button type="button" className="recenttile" onClick={() => onOpen(item.id)}>
+      <span className="recentart">
+        {thumb ? <img src={thumb} alt="" /> : <ItemIcon item={item} size={34} />}
+        <span className={`chip ${CHIP[state]}`}>{warrantyLabel(item)}</span>
+      </span>
+      <strong>{item.name}</strong>
+      <small>{[item.brand, item.purchaseDate?.slice(0, 4)].filter(Boolean).join(' · ') || ' '}</small>
+    </button>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--muted)"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+/**
+ * "$12.4K" once the number gets long. The exact figure belongs in a report;
+ * a tile this size needs to be read at a glance, and Intl already knows how
+ * every locale abbreviates.
+ */
+function shortMoney({ currency, cents }: { currency: string; cents: number }): string {
+  const units = cents / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      notation: units >= 10_000 ? 'compact' : 'standard',
+      maximumFractionDigits: units >= 10_000 ? 1 : 0,
+    }).format(units);
+  } catch {
+    return formatMoney(cents, currency);
+  }
 }
 
 function EmptyHome({ onAdd }: { onAdd: () => void }) {

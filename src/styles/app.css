@@ -57,9 +57,10 @@
 }
 
 .seclabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--muted);
   margin-bottom: 12px;
   display: flex;
@@ -96,79 +97,124 @@
 
 /* ------------------------------------------------------------ dashboard */
 
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-  margin-bottom: 16px;
-}
-
-.metric {
+.covercard {
+  display: flex;
+  align-items: center;
+  gap: 18px;
   background: var(--slate-700);
-  border-radius: var(--r-md);
-  padding: 14px 12px;
-  text-align: center;
+  border-radius: var(--r-lg);
+  padding: 18px 16px;
+  margin-bottom: 12px;
 }
 
-.metric strong {
-  display: block;
+.coverring {
+  position: relative;
+  flex: none;
+  width: 132px;
+  height: 132px;
+}
+
+.coverring-mid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.coverring-mid strong {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 26px;
-  letter-spacing: -0.02em;
-  margin-bottom: 3px;
+  font-size: 34px;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
-.metric span {
-  font-size: 11px;
+.coverring-mid span {
+  font-size: 11.5px;
   color: var(--muted);
 }
 
-.coverbar {
+.coverstats {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  height: 9px;
-  border-radius: var(--r-pill);
-  overflow: hidden;
-  background: var(--slate-700);
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.coverbar span {
-  display: block;
-  transition: width 0.3s ease;
+.coverstat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 5px 6px;
+  margin: 0 -6px;
+  border-radius: var(--r-sm);
+  color: inherit;
+  text-align: left;
+  width: calc(100% + 12px);
 }
 
-.seg-moss {
-  background: var(--moss);
-}
-.seg-honey {
-  background: var(--honey);
-}
-.seg-ember {
-  background: var(--ember);
-}
-.seg-none {
+button.coverstat:active {
   background: var(--slate-600);
 }
 
-.coverkey {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 10.5px;
-  color: var(--muted);
-  margin-bottom: 22px;
+.coverstat .dot {
+  flex: none;
+  align-self: center;
 }
 
-.coverkey span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.coverstat b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  min-width: 18px;
+}
+
+.coverstat span {
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bigmetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bigmetric {
+  background: var(--slate-700);
+  border-radius: var(--r-lg);
+  padding: 18px 16px;
+}
+
+.bigmetric strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 32px;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin-bottom: 4px;
+}
+
+.bigmetric span {
+  font-size: 12.5px;
+  color: var(--muted);
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -186,92 +232,117 @@
 }
 
 .nextup {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   text-align: left;
   background: var(--slate-700);
   border: none;
-  border-radius: var(--r-md);
-  padding: 13px 14px;
+  border-radius: var(--r-lg);
+  padding: 15px 16px;
   color: inherit;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
+}
+
+.nextup-txt {
+  flex: 1;
+  min-width: 0;
 }
 
 .nextup strong {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.nextup small {
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.recentrow {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-}
-
-.recentcard {
-  background: var(--slate-700);
-  border: none;
-  border-radius: var(--r-md);
-  padding: 13px 10px;
-  color: var(--muted);
-  text-align: left;
-  min-width: 0;
-}
-
-.recentcard strong {
-  display: block;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-  margin: 8px 0 3px;
+  margin: 3px 0 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.recentcard small {
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.linkish {
-  background: none;
-  border: none;
-  color: var(--gold);
-  font-size: 11px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.06em;
-  padding: 0;
-}
-
-.countpill {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--slate-700);
-  padding: 5px 11px;
-  border-radius: var(--r-pill);
-}
-
-.activefilter {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  background: var(--wash-gold);
-  border: 1px solid var(--wash-gold-line);
-  color: var(--gold);
-  border-radius: var(--r-pill);
+.nextup small {
   font-size: 12px;
+  color: var(--muted);
+}
+
+/* A strip rather than a grid: three text boxes side by side was the least
+   interesting block on the screen, and these items have photos. */
+.recentstrip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.recentstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.recenttile {
+  flex: 0 0 46%;
+  scroll-snap-align: start;
+  background: var(--slate-700);
+  border: none;
+  border-radius: var(--r-lg);
+  padding: 8px 8px 12px;
+  color: inherit;
+  text-align: left;
+  min-width: 0;
+}
+
+.recenttile:active {
+  background: var(--slate-600);
+}
+
+.recentart {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 104px;
+  border-radius: var(--r-md);
+  background: var(--slate-600);
+  color: var(--muted);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.recentart img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recentart .chip {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  backdrop-filter: blur(6px);
+}
+
+.recenttile strong {
+  display: block;
+  font-size: 13.5px;
   font-weight: 600;
-  padding: 8px 14px;
-  margin-bottom: 14px;
+  margin: 0 2px 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recenttile small {
+  display: block;
+  margin: 0 2px;
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ----------------------------------------------------------- item rows */
@@ -345,8 +416,8 @@
 }
 
 .item-txt p {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -406,9 +477,9 @@
   position: absolute;
   top: 11px;
   left: 11px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
   background: var(--scrim);
   padding: 5px 9px;
   border-radius: var(--r-pill);
@@ -424,8 +495,8 @@
 }
 
 .detail-meta {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
   color: var(--muted);
   margin-bottom: 18px;
 }
@@ -613,9 +684,8 @@
 }
 
 .roomname small {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-size: 11.5px;
   color: var(--muted);
 }
 
@@ -775,8 +845,8 @@ select.compact {
 
 .doc-txt small {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
   color: var(--muted);
 }
 
@@ -787,9 +857,8 @@ select.compact {
 }
 
 .doc-txt p {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -861,8 +930,8 @@ select.compact {
 .stagemeta {
   flex: 1;
   min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -946,9 +1015,10 @@ select.compact {
 
 .fieldlabel {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--muted);
   margin-bottom: 7px;
 }
@@ -1482,8 +1552,8 @@ a.pick {
 }
 
 .roomtile-txt small {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
   color: var(--muted);
 }
 
