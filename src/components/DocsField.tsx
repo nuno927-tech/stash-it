@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { DocKind } from '@/db/types';
 import {
+  changeDocKind,
   deleteDoc,
   DOC_ACCEPT,
   DOC_KIND_LABEL,
@@ -31,12 +32,14 @@ export function DocsField({
   staged,
   onStage,
   onUnstage,
+  onRetype,
 }: {
   /** Present only when editing. */
   itemId?: string;
   staged: StagedDoc[];
   onStage: (doc: StagedDoc) => void;
   onUnstage: (key: string) => void;
+  onRetype: (key: string, kind: DocKind) => void;
 }) {
   const existing = useLiveQuery(
     async () => (itemId ? docsWithFiles(itemId) : []),
@@ -127,7 +130,20 @@ export function DocsField({
 
       {existing.map((d) => (
         <div key={d.id} className="stagerow">
-          <span className="stagekind">{DOC_KIND_LABEL[d.kind]}</span>
+          {/* A select rather than chips: the row is narrow, and reclassifying
+              is rare enough that it doesn't need to be one tap. */}
+          <select
+            className="kindpick"
+            value={d.kind}
+            aria-label="Document type"
+            onChange={(e) => changeDocKind(d.id, e.target.value as DocKind).then(() => feedback('save'))}
+          >
+            {[...QUICK, ...REST].map((k) => (
+              <option key={k} value={k}>
+                {DOC_KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
           <span className="stagemeta">
             {d.storageMode === 'linked' ? 'Linked' : d.bytes ? formatBytes(d.bytes) : 'On device'}
           </span>
@@ -144,7 +160,18 @@ export function DocsField({
 
       {staged.map((s) => (
         <div key={s.key} className="stagerow pending">
-          <span className="stagekind">{DOC_KIND_LABEL[s.kind]}</span>
+          <select
+            className="kindpick"
+            value={s.kind}
+            aria-label="Document type"
+            onChange={(e) => onRetype(s.key, e.target.value as DocKind)}
+          >
+            {[...QUICK, ...REST].map((k) => (
+              <option key={k} value={k}>
+                {DOC_KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
           <span className="stagemeta">
             {s.title ? `${s.title} · ` : ''}
             {formatBytes(s.file.size)} · saves with the item

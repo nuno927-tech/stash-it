@@ -192,6 +192,29 @@ export async function attachLink(
 }
 
 /**
+ * Reclassifies a document — a receipt filed as a warranty, usually because the
+ * kind chip was still set from the last attachment.
+ *
+ * The title moves with it when it was only ever the old kind's name. A title
+ * the user actually wrote is left alone: renaming "Extended cover certificate"
+ * to "Receipt" because the type changed would be destroying their work to
+ * satisfy a rule about labels.
+ */
+export async function changeDocKind(docId: string, kind: DocKind): Promise<void> {
+  const doc = await db.docs.get(docId);
+  if (!doc || doc.kind === kind) return;
+
+  const wasAutoTitled =
+    !doc.title || doc.title.trim().toLowerCase() === DOC_KIND_LABEL[doc.kind].toLowerCase();
+
+  await db.docs.update(docId, {
+    kind,
+    title: wasAutoTitled ? DOC_KIND_LABEL[kind] : doc.title,
+    updatedAt: nowISO(),
+  });
+}
+
+/**
  * Soft delete, then drop the blob if nothing else points at it. Blobs are
  * deduped by hash, so the same receipt attached to two items shares one
  * record — deleting one attachment must not take the other's file with it.

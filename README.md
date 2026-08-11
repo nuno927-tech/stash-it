@@ -41,7 +41,7 @@ the app requests at boot, and the backup file the user exports themselves.
 | `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
 | `src/lib/docs.ts` | Document attachment, blob lifecycle, open and download. |
 | `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
-| `test/` | `npm test` — 274 assertions against fake-indexeddb. |
+| `test/` | `npm test` — 286 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
 | `src/App.tsx` | Screen state and the app shell. No router yet. |
 | `src/screens/` | Home dashboard, Items, Item detail, Item form, Rooms, Settings. |

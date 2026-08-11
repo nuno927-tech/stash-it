@@ -354,6 +354,9 @@ export function ItemForm({
         staged={staged}
         onStage={(d) => setStaged((list) => [...list, d])}
         onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
+        onRetype={(key, kind) =>
+          setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
+        }
       />
 
       <button type="button" className="expander" onClick={() => setMore((m) => !m)}>

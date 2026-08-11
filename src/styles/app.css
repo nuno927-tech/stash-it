@@ -823,6 +823,19 @@ select.compact {
   flex: none;
 }
 
+.kindpick {
+  width: auto;
+  flex: none;
+  font-size: 13px !important;
+  font-weight: 600;
+  padding: 6px 28px 6px 9px !important;
+  background-color: var(--slate-600);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  border-radius: var(--r-sm) !important;
+}
+
 .stagemeta {
   flex: 1;
   min-width: 0;

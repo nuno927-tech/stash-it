@@ -2,7 +2,9 @@ import { useState, type ReactNode } from 'react';
 import { feedback } from '@/lib/feedback';
 import type { DocKind } from '@/db/types';
 import {
+  changeDocKind,
   deleteDoc,
+  DOC_KINDS,
   docHeadline,
   docSubtitle,
   downloadDoc,
@@ -46,6 +48,7 @@ const KIND_ICON: Record<DocKind, ReactNode> = {
 
 export function DocRow({ doc }: { doc: DocWithFile }) {
   const [confirming, setConfirming] = useState(false);
+  const [retyping, setRetyping] = useState(false);
   const [error, setError] = useState<string>();
 
   const linked = doc.storageMode === 'linked';
@@ -135,6 +138,26 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
           <button
             type="button"
             className="iconbtn small"
+            aria-label={`Change what kind of document this is — currently ${docHeadline(doc).toLowerCase()}`}
+            onClick={() => setRetyping((v) => !v)}
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.5 13.3l-7.2 7.2a2 2 0 01-2.9 0l-7.1-7.1a2 2 0 01-.6-1.4V4.5a1 1 0 011-1h7.5a2 2 0 011.4.6l7.9 7.9a1.6 1.6 0 010 2.3z" />
+              <circle cx="7.8" cy="7.8" r="1.3" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="iconbtn small"
             aria-label={`Remove the ${docHeadline(doc).toLowerCase()}`}
             onClick={() => setConfirming(true)}
           >
@@ -154,6 +177,29 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
       </div>
 
       {error && <div className="notice bad">{error}</div>}
+
+      {retyping && (
+        <div className="sheet">
+          <h4>What is this document?</h4>
+          <div className="chiprow" style={{ marginBottom: 0 }}>
+            {DOC_KINDS.map((k) => (
+              <button
+                key={k.kind}
+                type="button"
+                className={`pick${doc.kind === k.kind ? ' on' : ''}`}
+                onClick={() =>
+                  changeDocKind(doc.id, k.kind).then(() => {
+                    feedback('save');
+                    setRetyping(false);
+                  })
+                }
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {confirming && (
         <div className="sheet">

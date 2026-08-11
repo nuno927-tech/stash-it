@@ -15,8 +15,11 @@ import { saveNewItem, emptyForm } from '@/lib/addItem';
 import {
   attachFile,
   attachLink,
+  changeDocKind,
   deleteDoc,
+  docHeadline,
   docsWithFiles,
+  docSubtitle,
   isBlobReferenced,
   titleFromFilename,
 } from '@/lib/docs';
@@ -114,6 +117,57 @@ async function main() {
   }
   check('an empty file is refused', threw === 'DocError', threw);
 
+  /* --------------------------------------------------- reclassifying */
+
+  // The reported case: a receipt photographed while the kind chip still said
+  // warranty, discovered later.
+  const misfiled = await attachFile(
+    itemId,
+    'warranty',
+    new File([new Uint8Array([9, 9])], 'IMG_2201.jpg', { type: 'image/jpeg' }),
+  );
+  check('it starts out as a warranty', (await db.docs.get(misfiled))!.kind === 'warranty');
+  check(
+    'auto-titled after its kind',
+    (await db.docs.get(misfiled))!.title === 'Warranty',
+    (await db.docs.get(misfiled))!.title,
+  );
+
+  await changeDocKind(misfiled, 'receipt');
+  const fixed = (await db.docs.get(misfiled))!;
+  check('the kind changes', fixed.kind === 'receipt');
+  check('the auto title follows it', fixed.title === 'Receipt', fixed.title);
+  check('the row now reads Receipt', docHeadline(fixed) === 'Receipt');
+  check('and adds no noisy subtitle', docSubtitle(fixed) === null);
+  check('the file is untouched', fixed.blobId === (await db.docs.get(misfiled))!.blobId);
+  check('updatedAt moves', fixed.updatedAt >= fixed.createdAt);
+
+  // A title the user wrote is theirs, and must survive a type change.
+  const named = await attachFile(
+    itemId,
+    'warranty',
+    new File([new Uint8Array([8, 8])], 'x.pdf', { type: 'application/pdf' }),
+    'Extended cover certificate',
+  );
+  await changeDocKind(named, 'receipt');
+  check(
+    'a hand-written title is preserved',
+    (await db.docs.get(named))!.title === 'Extended cover certificate',
+    (await db.docs.get(named))!.title,
+  );
+  check('while the kind still changes', (await db.docs.get(named))!.kind === 'receipt');
+
+  const before = (await db.docs.get(named))!.updatedAt;
+  await changeDocKind(named, 'receipt');
+  check('changing to the same kind is a no-op', (await db.docs.get(named))!.updatedAt === before);
+
+  await changeDocKind('does-not-exist', 'receipt');
+  check('reclassifying a missing document does not throw', true);
+
+  // Clean up so the counts below stay meaningful.
+  await deleteDoc(misfiled);
+  await deleteDoc(named);
+
   /* ---------------------------------------------- blobs are deduped */
 
   const blobCountBefore = await db.blobs.count();
@@ -147,7 +201,7 @@ async function main() {
   const parsed = await parseBundle(blob);
   check(
     'soft-deleted docs travel in the bundle',
-    parsed.data.docs.length === 4,
+    parsed.data.docs.length === 6,
     `${parsed.data.docs.length} docs`,
   );
 
