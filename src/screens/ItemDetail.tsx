@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeRooms, docsForItem, softDeleteItem } from '@/db/repo';
-import type { Doc, Item } from '@/db/types';
+import { activeRooms, softDeleteItem } from '@/db/repo';
+import type { DocKind, Item } from '@/db/types';
+import { docsWithFiles } from '@/lib/docs';
 import {
   effectiveExpiry,
   formatMoney,
@@ -11,6 +12,8 @@ import {
   warrantyState,
   type WarrantyState,
 } from '@/lib/warranty';
+import { AttachDoc } from '@/components/AttachDoc';
+import { DocRow } from '@/components/DocRow';
 import { ItemIcon } from '@/components/ItemIcon';
 import { WarrantyRing, STATE_STROKE } from '@/components/WarrantyRing';
 
@@ -32,11 +35,12 @@ export function ItemDetail({
   onEdit: () => void;
   onDeleted: () => void;
 }) {
-  const docs = useLiveQuery(() => docsForItem(item.id), [item.id]) ?? [];
+  const docs = useLiveQuery(() => docsWithFiles(item.id), [item.id]) ?? [];
   const rooms = useLiveQuery(() => activeRooms(item.propertyId), [item.propertyId]) ?? [];
   const room = rooms.find((r) => r.id === item.roomId);
 
   const [confirming, setConfirming] = useState(false);
+  const [attaching, setAttaching] = useState<DocKind | null>(null);
   const photo = usePhotoUrl(item.thumbBlobId);
 
   const state = warrantyState(item);
@@ -126,12 +130,37 @@ export function ItemDetail({
         <span>Documents</span>
         <span>{docs.length}</span>
       </div>
-      {docs.length === 0 ? (
+
+      {docs.length === 0 && !attaching && (
         <p className="hint">
-          No receipts or manuals yet. Attaching documents is the next thing being built.
+          Nothing attached yet. The receipt and the warranty policy are the two a claim will ask
+          for.
         </p>
+      )}
+
+      {docs.map((d) => (
+        <DocRow key={d.id} doc={d} />
+      ))}
+
+      {attaching ? (
+        <AttachDoc
+          itemId={item.id}
+          defaultKind={attaching}
+          onDone={() => setAttaching(null)}
+          onCancel={() => setAttaching(null)}
+        />
       ) : (
-        docs.map((d) => <DocRow key={d.id} doc={d} />)
+        <div className="photoactions">
+          <button type="button" className="minibtn" onClick={() => setAttaching('warranty')}>
+            Add warranty
+          </button>
+          <button type="button" className="minibtn ghost" onClick={() => setAttaching('receipt')}>
+            Add receipt
+          </button>
+          <button type="button" className="minibtn ghost" onClick={() => setAttaching('manual')}>
+            Add manual
+          </button>
+        </div>
       )}
 
       {confirming ? (
@@ -162,31 +191,6 @@ function Fact({ label, value, mono }: { label: string; value: string; mono?: boo
     <div className="row">
       <dt>{label}</dt>
       <dd style={mono ? { fontFamily: 'var(--font-mono)', fontSize: 12 } : undefined}>{value}</dd>
-    </div>
-  );
-}
-
-function DocRow({ doc }: { doc: Doc }) {
-  return (
-    <div className="doc">
-      <div className="docicon">
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M14 3v5h5M14 3H6.5A1.5 1.5 0 005 4.5v15A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5V8z" />
-        </svg>
-      </div>
-      <div className="doc-txt">
-        <h5>{doc.title ?? doc.kind}</h5>
-        <p>{doc.storageMode === 'linked' ? <b>Linked</b> : 'On device'}</p>
-      </div>
     </div>
   );
 }

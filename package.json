@@ -11,10 +11,11 @@
     "preview": "vite preview",
     "serve:single": "vite preview --outDir dist-single --port 4180",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backup && npm run test:add && npm run test:icon",
+    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs",
     "test:backup": "node scripts/run-test.mjs test/backup.roundtrip.ts",
     "test:add": "node scripts/run-test.mjs test/additem.test.ts",
-    "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts"
+    "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts",
+    "test:docs": "node scripts/run-test.mjs test/docs.test.ts"
   },
   "dependencies": {
     "dexie": "^4.4.4",

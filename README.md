@@ -39,7 +39,9 @@ the app requests at boot, and the backup file the user exports themselves.
 | `src/db/repo.ts` | All data access. Validation, soft delete, thumbnails, room rules. |
 | `src/lib/warranty.ts` | Calendar-month maths. Expiry is computed, never stored. |
 | `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
-| `test/backup.roundtrip.ts` | `npm run test:backup` — round trip against fake-indexeddb. |
+| `src/lib/docs.ts` | Document attachment, blob lifecycle, open and download. |
+| `src/lib/itemIcon.ts` | Picks a fallback icon from the item's own words. |
+| `test/` | `npm test` — 112 assertions against fake-indexeddb. |
 | `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
 | `src/App.tsx` | Scaffold smoke screen. Replaced by Home. |
 | `src/screens/` | Home, Items, Item detail, Add, Rooms, Search, Settings. Empty for now. |
@@ -66,7 +68,7 @@ Settings → Developer → Pro unlock. Toggles the entitlement so you can hit th
 
 ## Not built yet
 
-Add, Item detail, Items list, Rooms and Search screens. PWA icons and hosting.
-Passphrase encryption for backups. Document attachment
+Search and Rooms screens. Link health checks. Passphrase encryption for
+backups. Maintenance log. Inventory report. IAP, Capacitor wrapping
 beyond the add-screen photo, link health checks, inventory report, IAP, Capacitor
 wrapping, the thin auth/analytics backend.

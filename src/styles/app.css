@@ -317,11 +317,61 @@
 .doc {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 12px;
+  gap: 4px;
+  padding: 6px 8px 6px 12px;
   border-radius: var(--r-md);
   background: var(--slate-700);
   margin-bottom: 8px;
+}
+
+.docmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  text-align: left;
+  color: inherit;
+}
+
+.docactions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+.iconbtn.small {
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.seg {
+  display: flex;
+  background: var(--slate-800);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  margin: 4px 0 14px;
+}
+
+.seg button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 0;
+  border-radius: var(--r-pill);
+}
+
+.seg button.on {
+  background: var(--slate-600);
+  color: var(--text);
 }
 
 .docicon {

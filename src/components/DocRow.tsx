@@ -1,0 +1,160 @@
+import { useState, type ReactNode } from 'react';
+import type { DocKind } from '@/db/types';
+import {
+  deleteDoc,
+  DOC_KIND_LABEL,
+  downloadDoc,
+  formatBytes,
+  openDoc,
+  type DocWithFile,
+} from '@/lib/docs';
+
+const KIND_ICON: Record<DocKind, ReactNode> = {
+  receipt: (
+    <>
+      <path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z" />
+      <path d="M9 8h6M9 11.5h6" />
+    </>
+  ),
+  manual: (
+    <>
+      <path d="M4 4.5h6a2 2 0 012 2v13a2 2 0 00-2-2H4z" />
+      <path d="M20 4.5h-6a2 2 0 00-2 2v13a2 2 0 012-2h6z" />
+    </>
+  ),
+  warranty: (
+    <>
+      <path d="M12 3l7 3v5.5c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z" />
+      <path d="M9 12l2 2 4-4" />
+    </>
+  ),
+  photo: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.8" />
+      <path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" />
+    </>
+  ),
+  other: (
+    <>
+      <path d="M14 3v5h5M14 3H6.5A1.5 1.5 0 005 4.5v15A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5V8z" />
+    </>
+  ),
+};
+
+export function DocRow({ doc }: { doc: DocWithFile }) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const linked = doc.storageMode === 'linked';
+  const meta = linked
+    ? hostOf(doc.url)
+    : [doc.mime === 'application/pdf' ? 'PDF' : 'On device', doc.bytes && formatBytes(doc.bytes)]
+        .filter(Boolean)
+        .join(' · ');
+
+  return (
+    <>
+      <div className="doc">
+        <button
+          type="button"
+          className="docmain"
+          onClick={() => openDoc(doc).catch((e) => setError((e as Error).message))}
+        >
+          <span className="docicon">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {KIND_ICON[doc.kind]}
+            </svg>
+          </span>
+          <span className="doc-txt">
+            <h5>{doc.title ?? DOC_KIND_LABEL[doc.kind]}</h5>
+            <p>{linked ? <b>Linked</b> : null} {meta}</p>
+          </span>
+        </button>
+
+        <div className="docactions">
+          {!linked && (
+            <button
+              type="button"
+              className="iconbtn small"
+              aria-label="Save a copy"
+              onClick={() => downloadDoc(doc).catch((e) => setError((e as Error).message))}
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 4v11M7.5 11L12 15.5 16.5 11M5 19h14" />
+              </svg>
+            </button>
+          )}
+          <button
+            type="button"
+            className="iconbtn small"
+            aria-label="Remove"
+            onClick={() => setConfirming(true)}
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="notice bad">{error}</div>}
+
+      {confirming && (
+        <div className="sheet">
+          <h4>
+            Remove “{doc.title ?? DOC_KIND_LABEL[doc.kind]}”?
+            {!linked && ' The file is deleted from this device.'}
+          </h4>
+          <div className="photoactions">
+            <button
+              type="button"
+              className="minibtn"
+              onClick={() => deleteDoc(doc.id).then(() => setConfirming(false))}
+            >
+              Remove
+            </button>
+            <button type="button" className="minibtn ghost" onClick={() => setConfirming(false)}>
+              Keep
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function hostOf(url?: string): string {
+  if (!url) return 'Link';
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
