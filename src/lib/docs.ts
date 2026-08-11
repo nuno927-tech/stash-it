@@ -114,6 +114,39 @@ export async function attachFile(
   });
 }
 
+/**
+ * A document chosen before the item exists.
+ *
+ * The add form can't call `attachFile` — there's no item id to attach to yet —
+ * so files are held here and written once the item is saved. Nothing touches
+ * the database until then, which means abandoning the form leaves no orphaned
+ * blobs behind.
+ */
+export interface StagedDoc {
+  /** Local id for list keys and removal, not persisted. */
+  key: string;
+  kind: DocKind;
+  file: File;
+}
+
+export function stageDoc(kind: DocKind, file: File): StagedDoc {
+  if (file.size === 0) throw new DocError('That file is empty.');
+  if (file.size > MAX_DOC_BYTES) {
+    throw new DocError(`That file is ${formatBytes(file.size)}. The limit is 50 MB.`);
+  }
+  return { key: newId(), kind, file };
+}
+
+/** Writes staged documents against a now-existing item. */
+export async function attachStaged(itemId: string, staged: StagedDoc[]): Promise<number> {
+  let written = 0;
+  for (const s of staged) {
+    await attachFile(itemId, s.kind, s.file);
+    written++;
+  }
+  return written;
+}
+
 export async function attachLink(
   itemId: string,
   kind: DocKind,

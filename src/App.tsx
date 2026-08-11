@@ -7,6 +7,7 @@ import { prefsFrom } from '@/lib/prefs';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
+import { Splash } from '@/components/Splash';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
@@ -22,14 +23,21 @@ type BootState = { status: 'booting' } | { status: 'ready' } | { status: 'error'
  * Screen state, not routes. There's no router yet — when Item detail needs to
  * be linkable, this is the thing that gets replaced.
  */
+/**
+ * `from` is a one-level back stack. Without it, Back from an item always
+ * dumped you on Items even if you'd opened it from the dashboard — the same
+ * screen behaving differently depending on how you got there.
+ */
+type Origin = 'home' | 'items';
+
 type Screen =
   | { kind: 'home' }
   | { kind: 'items'; filter?: ItemsFilter }
   | { kind: 'settings' }
-  | { kind: 'add' }
+  | { kind: 'add'; from: Origin }
   | { kind: 'rooms' }
-  | { kind: 'detail'; id: string }
-  | { kind: 'edit'; id: string };
+  | { kind: 'detail'; id: string; from: Origin }
+  | { kind: 'edit'; id: string; from: Origin };
 
 /** Which nav tab stays lit while a pushed screen is open. */
 const TAB_FOR: Record<Screen['kind'], Tab> = {
@@ -64,8 +72,6 @@ export default function App() {
     };
   }, []);
 
-  if (boot.status === 'booting') return <Frame>{null}</Frame>;
-
   if (boot.status === 'error') {
     return (
       <Frame>
@@ -77,7 +83,14 @@ export default function App() {
     );
   }
 
-  return <Shell />;
+  // The shell mounts underneath the splash, so the dashboard is already
+  // painted and settled by the time the fade reveals it.
+  return (
+    <>
+      {boot.status === 'ready' ? <Shell /> : <Frame>{null}</Frame>}
+      <Splash ready={boot.status === 'ready'} />
+    </>
+  );
 }
 
 function Shell() {
@@ -100,6 +113,11 @@ function Shell() {
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 
   const focusId = screen.kind === 'detail' || screen.kind === 'edit' ? screen.id : undefined;
+  const origin: Origin =
+    screen.kind === 'detail' || screen.kind === 'edit' || screen.kind === 'add'
+      ? screen.from
+      : 'items';
+  const back = (): Screen => (origin === 'home' ? { kind: 'home' } : { kind: 'items' });
   const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
 
   if (!property || !settings) return <Frame>{null}</Frame>;
@@ -118,7 +136,7 @@ function Shell() {
         <BottomNav
           active={tab}
           onChange={(t) => setScreen({ kind: t })}
-          onAdd={() => setScreen({ kind: 'add' })}
+          onAdd={() => setScreen({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })}
           addDisabled={!mayAdd}
         />
       }
@@ -126,8 +144,8 @@ function Shell() {
       {screen.kind === 'home' && (
         <Home
           propertyId={property.id}
-          onAdd={() => setScreen({ kind: 'add' })}
-          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
+          onAdd={() => setScreen({ kind: 'add', from: 'home' })}
+          onOpenItem={(id) => setScreen({ kind: 'detail', id, from: 'home' })}
           onBrowse={(filter) => setScreen({ kind: 'items', filter })}
         />
       )}
@@ -137,17 +155,17 @@ function Shell() {
           key={screen.filter ?? 'all'}
           propertyId={property.id}
           filter={screen.filter}
-          onOpenItem={(id) => setScreen({ kind: 'detail', id })}
-          onAdd={() => setScreen({ kind: 'add' })}
+          onOpenItem={(id) => setScreen({ kind: 'detail', id, from: 'items' })}
+          onAdd={() => setScreen({ kind: 'add', from: 'items' })}
         />
       )}
 
       {screen.kind === 'detail' && focused && (
         <ItemDetail
           item={focused}
-          onBack={() => setScreen({ kind: 'items' })}
-          onEdit={() => setScreen({ kind: 'edit', id: focused.id })}
-          onDeleted={() => setScreen({ kind: 'items' })}
+          onBack={() => setScreen(back())}
+          onEdit={() => setScreen({ kind: 'edit', id: focused.id, from: origin })}
+          onDeleted={() => setScreen(back())}
         />
       )}
 
@@ -156,8 +174,8 @@ function Shell() {
           propertyId={property.id}
           currency={settings.currency}
           item={focused}
-          onSaved={(id) => setScreen({ kind: 'detail', id })}
-          onCancel={() => setScreen({ kind: 'detail', id: focused.id })}
+          onSaved={(id) => setScreen({ kind: 'detail', id, from: origin })}
+          onCancel={() => setScreen({ kind: 'detail', id: focused.id, from: origin })}
         />
       )}
 
@@ -166,8 +184,8 @@ function Shell() {
           <ItemForm
             propertyId={property.id}
             currency={settings.currency}
-            onSaved={(id) => setScreen({ kind: 'detail', id })}
-            onCancel={() => setScreen({ kind: 'home' })}
+            onSaved={(id) => setScreen({ kind: 'detail', id, from: origin })}
+            onCancel={() => setScreen(back())}
           />
         ) : (
           <Placeholder

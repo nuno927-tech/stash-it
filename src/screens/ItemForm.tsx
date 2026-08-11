@@ -15,10 +15,12 @@ import {
   type AddItemForm,
   type PhotoEdit,
 } from '@/lib/addItem';
+import { attachStaged, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { DocsField } from '@/components/DocsField';
 import { ItemIcon } from '@/components/ItemIcon';
 
 const CATEGORY_LABEL: Record<ItemCategory, string> = {
@@ -61,6 +63,7 @@ export function ItemForm({
   const [preview, setPreview] = useState<string>();
   const [removed, setRemoved] = useState(false);
   const [custom, setCustom] = useState(false);
+  const [staged, setStaged] = useState<StagedDoc[]>([]);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -109,6 +112,11 @@ export function ItemForm({
       const id = item
         ? await saveEditedItem(item.id, form, propertyId, photo)
         : await saveNewItem(form, propertyId, photo ?? undefined);
+
+      // Staged files are written only once the item exists, so a save that
+      // fails validation leaves no half-attached paperwork behind.
+      if (staged.length) await attachStaged(id, staged);
+
       if (preview) URL.revokeObjectURL(preview);
       feedback('save');
       onSaved(id);
@@ -367,6 +375,13 @@ export function ItemForm({
       )}
 
       {termSummary && <p className="hint">{termSummary}</p>}
+
+      <DocsField
+        itemId={item?.id}
+        staged={staged}
+        onStage={(d) => setStaged((list) => [...list, d])}
+        onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
+      />
 
       <button type="button" className="expander" onClick={() => setMore((m) => !m)}>
         {more ? 'Fewer details' : 'More details'}

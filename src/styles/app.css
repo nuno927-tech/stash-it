@@ -802,6 +802,38 @@ select.compact {
   margin-bottom: 20px;
 }
 
+.stagerow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--slate-700);
+  border-radius: var(--r-sm);
+  padding: 9px 8px 9px 13px;
+  margin-bottom: 7px;
+}
+
+.stagerow.pending {
+  border: 1px dashed var(--line);
+  background: none;
+}
+
+.stagekind {
+  font-size: 13.5px;
+  font-weight: 600;
+  flex: none;
+}
+
+.stagemeta {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .photohint {
   display: flex;
   flex-direction: column;
@@ -1341,5 +1373,62 @@ a.pick {
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* ----------------------------------------------------------------- splash */
+
+.splash {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: var(--slate-900);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 1;
+  transition: opacity 0.42s ease;
+}
+
+.splash.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: splashIn 0.5s ease both;
+}
+
+.splash-word {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  letter-spacing: -0.03em;
+  margin: 26px 0 10px;
+}
+
+.splash-word span {
+  color: var(--gold);
+}
+
+.splash-inner p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 26ch;
+}
+
+@keyframes splashIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
