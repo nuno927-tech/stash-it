@@ -1445,3 +1445,52 @@ a.pick {
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------ room icons */
+
+.roomtitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.roomglyph {
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+}
+
+.seclabel.roomhead span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.newroom {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 14px;
+}
+
+.newroom input {
+  flex: 1;
+}
+
+.roomfield {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.roomfield select {
+  flex: 1;
+  min-width: 0;
+}
+
+.roomfield .minibtn {
+  flex: none;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeRooms } from '@/db/repo';
+import { activeRooms, createRoom, RoomNameTakenError } from '@/db/repo';
 import type { Item, WarrantyUnit } from '@/db/types';
 import {
   emptyForm,
@@ -52,6 +52,7 @@ export function ItemForm({
   const [removed, setRemoved] = useState(false);
   const [custom, setCustom] = useState(false);
   const [staged, setStaged] = useState<StagedDoc[]>([]);
+  const [newRoom, setNewRoom] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -73,6 +74,25 @@ export function ItemForm({
 
   const set = <K extends keyof AddItemForm>(key: K, value: AddItemForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  /**
+   * Rooms can be created here rather than only in Settings. Realising the room
+   * you need doesn't exist happens while you're adding the thing that lives in
+   * it, and sending someone to another screen mid-form loses their work.
+   */
+  const addRoom = async () => {
+    const name = (newRoom ?? '').trim();
+    if (!name) return setNewRoom(null);
+    try {
+      const id = await createRoom(propertyId, name);
+      set('roomId', id);
+      setNewRoom(null);
+      feedback('save');
+    } catch (e) {
+      feedback('error');
+      setError(e instanceof RoomNameTakenError ? e.message : (e as Error).message);
+    }
+  };
 
   const onPhoto = async (file: File | undefined) => {
     if (!file) return;
@@ -237,15 +257,46 @@ export function ItemForm({
       </Field>
 
       <Field label="Room">
-        <select value={form.roomId} onChange={(e) => set('roomId', e.target.value)}>
-          <option value="">Not assigned</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+        <div className="roomfield">
+          <select value={form.roomId} onChange={(e) => set('roomId', e.target.value)}>
+            <option value="">Not assigned</option>
+            {rooms.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="minibtn ghost"
+            onClick={() => setNewRoom(newRoom === null ? '' : null)}
+          >
+            {newRoom === null ? 'New room' : 'Cancel'}
+          </button>
+        </div>
       </Field>
+
+      {newRoom !== null && (
+        <div className="newroom">
+          <input
+            type="text"
+            value={newRoom}
+            autoFocus
+            placeholder="Nursery"
+            onChange={(e) => setNewRoom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void addRoom();
+              }
+              if (e.key === 'Escape') setNewRoom(null);
+            }}
+          />
+          <button type="button" className="minibtn" disabled={!newRoom.trim()} onClick={addRoom}>
+            Add
+          </button>
+        </div>
+      )}
 
       <div className="fieldpair">
         <Field label="Purchase date">

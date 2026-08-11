@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import { v7 as uuidv7 } from 'uuid';
 import {
-  SCHEMA_VERSION, SEED_ROOMS,
+  LATER_SEED_ROOMS, SCHEMA_VERSION, SEED_ROOMS,
   type Item, type Doc, type BlobRecord, type Property,
   type Room, type MaintenanceEntry, type Settings,
 } from './types';
@@ -62,6 +62,49 @@ export class StashDB extends Dexie {
             row.schemaVersion = SCHEMA_VERSION;
           });
       });
+
+    /**
+     * v3 changes no record shape — only the seeded data — so SCHEMA_VERSION
+     * stays at 2. Dexie's version tracks the database; SCHEMA_VERSION tracks
+     * what a record looks like, which is what backups care about.
+     *
+     * Adds rooms introduced after release, skipping any a user already has
+     * under that name. Renamed and user-made rooms are never touched.
+     */
+    this.version(3).upgrade(async (tx) => {
+      const rooms = tx.table('rooms');
+      const all = (await rooms.toArray()) as Room[];
+      const ts = nowISO();
+
+      for (const property of (await tx.table('properties').toArray()) as Property[]) {
+        const mine = all.filter((r) => r.propertyId === property.id && !r.deletedAt);
+
+        for (const seed of LATER_SEED_ROOMS) {
+          const taken = mine.some((r) => r.name.toLowerCase() === seed.name.toLowerCase());
+          if (taken) continue;
+
+          // Slot it just after its neighbour, or at the end if that room has
+          // been renamed or removed.
+          const after = mine.find((r) => r.name.toLowerCase() === seed.after.toLowerCase());
+          const next = after
+            ? mine.filter((r) => r.sortOrder > after.sortOrder).sort((a, b) => a.sortOrder - b.sortOrder)[0]
+            : undefined;
+          const sortOrder = after
+            ? Math.floor((after.sortOrder + (next?.sortOrder ?? after.sortOrder + 200)) / 2)
+            : Math.max(0, ...mine.map((r) => r.sortOrder)) + 100;
+
+          await rooms.add({
+            id: newId(),
+            propertyId: property.id,
+            name: seed.name,
+            sortOrder,
+            isSeed: true,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+        }
+      }
+    });
   }
 }
 

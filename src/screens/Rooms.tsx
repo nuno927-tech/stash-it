@@ -11,6 +11,7 @@ import {
   type RoomDeleteStrategy,
 } from '@/db/repo';
 import { feedback } from '@/lib/feedback';
+import { RoomIcon } from '@/components/RoomIcon';
 import type { Room } from '@/db/types';
 
 /**
@@ -145,7 +146,12 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
                   setDraft(room.name);
                 }}
               >
-                <span>{room.name}</span>
+                <span className="roomtitle">
+                  <i className="roomglyph">
+                    <RoomIcon name={room.name} size={19} />
+                  </i>
+                  {room.name}
+                </span>
                 <small>
                   {count} {count === 1 ? 'item' : 'items'}
                   {room.isSeed ? '' : ' · yours'}

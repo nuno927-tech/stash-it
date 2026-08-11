@@ -1,7 +1,7 @@
 {
   "name": "stash-it",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "description": "Warranties, receipts and manuals for everything you own. Local-first PWA.",
   "scripts": {
@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "serve:single": "vite preview --outDir dist-single --port 4180",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration",
+    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2",
     "test:backup": "node scripts/run-test.mjs test/backup.roundtrip.ts",
     "test:add": "node scripts/run-test.mjs test/additem.test.ts",
     "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts",
@@ -21,7 +21,8 @@
     "test:prefs": "node scripts/run-test.mjs test/prefs.test.ts",
     "test:units": "node scripts/run-test.mjs test/units.test.ts",
     "test:staged": "node scripts/run-test.mjs test/staged.test.ts",
-    "test:migration": "node scripts/run-test.mjs test/migration.test.ts"
+    "test:migration": "node scripts/run-test.mjs test/migration.test.ts",
+    "test:rooms2": "node scripts/run-test.mjs test/rooms2.test.ts"
   },
   "dependencies": {
     "dexie": "^4.4.4",

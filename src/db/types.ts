@@ -167,9 +167,18 @@ export interface Settings {
 }
 
 export const SEED_ROOMS = [
-  'Kitchen', 'Living Room', 'Dining Room', 'Primary Bedroom', 'Bedroom',
-  'Bathroom', 'Laundry', 'Garage', 'Basement', 'Attic', 'Office',
+  'Kitchen', 'Living Room', 'Family Room', 'Dining Room', 'Primary Bedroom',
+  'Bedroom', 'Bathroom', 'Laundry', 'Garage', 'Basement', 'Attic', 'Office',
   'Workshop', 'Outdoor', 'Storage',
+];
+
+/**
+ * Seeds added after the first release, with the room they should follow.
+ * Applied to existing properties by the Dexie v3 upgrade, and skipped when the
+ * user already has a room by that name.
+ */
+export const LATER_SEED_ROOMS: { name: string; after: string }[] = [
+  { name: 'Family Room', after: 'Living Room' },
 ];
 
 export const FREE_ITEM_LIMIT = 15;
