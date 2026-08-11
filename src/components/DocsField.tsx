@@ -22,10 +22,10 @@ import { feedback } from '@/lib/feedback';
  * the kind *is* the button: tapping Receipt opens the picker already knowing
  * what it's collecting.
  *
- * One input rather than separate camera and library buttons. Both mobile
- * platforms already offer Take Photo inside the file picker when the accept
- * list includes images, so splitting them duplicated a choice the OS makes
- * better than we can.
+ * Each tile is a split control: the label picks a file, the camera corner
+ * shoots one. An earlier version relied on the file picker offering Take Photo
+ * itself — it does on some devices and goes straight to the photo library on
+ * others, which loses the camera entirely. `capture` is the only guarantee.
  */
 const PRIMARY: DocKind[] = ['receipt', 'warranty', 'manual'];
 const SECONDARY: DocKind[] = ['photo', 'other'];
@@ -49,12 +49,13 @@ export function DocsField({
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string>();
   const picker = useRef<HTMLInputElement>(null);
-  // Which button was pressed, read back when the picker returns.
+  const camera = useRef<HTMLInputElement>(null);
+  // Which tile was pressed, read back when the picker returns.
   const pending = useRef<DocKind>('receipt');
 
-  const open = (kind: DocKind) => {
+  const open = (kind: DocKind, source: 'files' | 'camera' = 'files') => {
     pending.current = kind;
-    picker.current?.click();
+    (source === 'camera' ? camera : picker).current?.click();
   };
 
   const take = (files: FileList | null) => {
@@ -82,20 +83,14 @@ export function DocsField({
 
       <div className="doctiles">
         {PRIMARY.map((k) => (
-          <button key={k} type="button" className="doctile" onClick={() => open(k)}>
-            <DocGlyph kind={k} />
-            {DOC_KIND_LABEL[k]}
-          </button>
+          <Tile key={k} kind={k} onOpen={open} />
         ))}
       </div>
 
       {showMore ? (
         <div className="doctiles two">
           {SECONDARY.map((k) => (
-            <button key={k} type="button" className="doctile" onClick={() => open(k)}>
-              <DocGlyph kind={k} />
-              {DOC_KIND_LABEL[k]}
-            </button>
+            <Tile key={k} kind={k} onOpen={open} />
           ))}
         </div>
       ) : (
@@ -109,13 +104,24 @@ export function DocsField({
         </button>
       )}
 
-      {/* Multiple, because a warranty is routinely several pages, and no
-          capture attribute, because that would remove the library option the
-          picker otherwise offers alongside the camera. */}
+      {/* Two inputs: one for files, one that forces the camera. Both accept
+          multiple, because a warranty is routinely several pages. */}
       <input
         ref={picker}
         type="file"
         accept={DOC_ACCEPT}
+        multiple
+        hidden
+        onChange={(e) => {
+          take(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
         multiple
         hidden
         onChange={(e) => {
@@ -192,9 +198,54 @@ export function DocsField({
       )}
 
       {count === 0 && (
-        <p className="hint">The receipt and the warranty are the two a claim will ask for.</p>
+        <p className="hint">
+          The receipt and the warranty are the two a claim will ask for. Tap to choose a file, or
+          the camera to photograph it.
+        </p>
       )}
     </section>
+  );
+}
+
+/**
+ * A tile is two targets in one shape: the body opens the file picker, the
+ * corner opens the camera. Nested buttons are invalid, so the tile is a div
+ * with two children rather than a button containing a button.
+ */
+function Tile({
+  kind,
+  onOpen,
+}: {
+  kind: DocKind;
+  onOpen: (kind: DocKind, source?: 'files' | 'camera') => void;
+}) {
+  return (
+    <div className="doctile">
+      <button type="button" className="doctile-main" onClick={() => onOpen(kind)}>
+        <DocGlyph kind={kind} />
+        {DOC_KIND_LABEL[kind]}
+      </button>
+      <button
+        type="button"
+        className="doctile-cam"
+        aria-label={`Photograph the ${DOC_KIND_LABEL[kind].toLowerCase()}`}
+        onClick={() => onOpen(kind, 'camera')}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
+          <circle cx="12" cy="13" r="3.4" />
+        </svg>
+      </button>
+    </div>
   );
 }
 

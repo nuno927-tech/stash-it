@@ -69,7 +69,11 @@ export function ItemForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
-  const photoInput = useRef<HTMLInputElement>(null);
+  // Two inputs, not one. `capture` is the only way to guarantee the camera
+  // opens; without it the picker goes straight to the photo library on some
+  // devices, with no way through to the camera at all.
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
 
   const existingThumb = useLiveQuery(
     async () => (item?.thumbBlobId ? db.blobs.get(item.thumbBlobId) : undefined),
@@ -174,22 +178,49 @@ export function ItemForm({
           full-width dropzone pushed the first real question below the fold. */}
       <section className="card">
         <div className="identity">
-          <button
-            type="button"
-            className="photoslot"
-            onClick={() => photoInput.current?.click()}
-            disabled={busy}
-            aria-label={preview ? 'Replace the photo' : 'Add a photo'}
-          >
-            {preview ? (
-              <img src={preview} alt="" />
-            ) : (
-              <>
-                <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
-                <small>Photo</small>
-              </>
-            )}
-          </button>
+          <div className="photoslot-wrap">
+            <button
+              type="button"
+              className="photoslot"
+              onClick={() => libraryInput.current?.click()}
+              disabled={busy}
+              aria-label={preview ? 'Replace the photo' : 'Choose a photo'}
+            >
+              {preview ? (
+                <img src={preview} alt="" />
+              ) : (
+                <>
+                  <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
+                  <small>Photo</small>
+                </>
+              )}
+            </button>
+
+            {/* Sits on the slot rather than beside it: the camera is the more
+                likely of the two when the thing is in front of you, and it
+                shouldn't cost a row of layout to offer both. */}
+            <button
+              type="button"
+              className="camerabtn"
+              onClick={() => cameraInput.current?.click()}
+              disabled={busy}
+              aria-label="Take a photo"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
+                <circle cx="12" cy="13" r="3.4" />
+              </svg>
+            </button>
+          </div>
 
           <div className="identity-fields">
             <input
@@ -227,7 +258,18 @@ export function ItemForm({
         )}
 
         <input
-          ref={photoInput}
+          ref={cameraInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            void onPhoto(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+        <input
+          ref={libraryInput}
           type="file"
           accept="image/*"
           hidden

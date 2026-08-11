@@ -1685,6 +1685,31 @@ a.pick {
   align-items: stretch;
 }
 
+.photoslot-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* Overlaps the slot's corner so the two routes cost one row, not two. */
+.camerabtn {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--on-gold);
+  border: 2px solid var(--slate-700);
+  padding: 0;
+}
+
+.camerabtn:active {
+  transform: scale(0.94);
+}
+
 .photoslot {
   flex: none;
   width: 86px;
@@ -1746,26 +1771,55 @@ a.pick {
 }
 
 .doctile {
+  position: relative;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--slate-800);
+  overflow: hidden;
+}
+
+.doctile-main {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
   padding: 16px 8px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--slate-800);
+  background: none;
+  border: none;
   color: var(--text);
   font-size: 12.5px;
   font-weight: 600;
 }
 
-.doctile svg {
+.doctile-main svg {
   color: var(--gold);
 }
 
-.doctile:active {
+.doctile-main:active {
   background: var(--slate-600);
+}
+
+/* The camera corner. Small, but a 30px target in the corner of a tile is
+   still comfortably tappable, and it keeps both routes one tap deep. */
+.doctile-cam {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  border-radius: var(--r-sm);
+}
+
+.doctile-cam:active {
+  background: var(--slate-600);
+  color: var(--gold);
 }
 
 .doclist {
