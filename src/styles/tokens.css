@@ -1,0 +1,35 @@
+/**
+ * Stash it — design tokens. Lifted verbatim from the signed-off concept
+ * (stash-it.html). Every colour in the app comes from here; no component
+ * should ever hard-code a hex value.
+ */
+
+:root {
+  /* Surfaces, darkest to lightest */
+  --slate-900: #0d0f12;
+  --slate-800: #15181d;
+  --slate-700: #1f242b;
+  --slate-600: #2c333c;
+  --line: #39414b;
+
+  /* Brand + warranty states */
+  --gold: #f2b33d;   /* brand, active nav, links, FAB */
+  --moss: #5fbf7e;   /* covered */
+  --honey: #f2ce3d;  /* ending soon */
+  --ember: #e05a44;  /* expired */
+
+  /* Text */
+  --text: #eaedf0;
+  --muted: #8b949e;
+
+  /* Radii */
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --r-pill: 99px;
+
+  /* Type */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}

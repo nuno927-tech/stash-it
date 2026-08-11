@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-single/
+dist-ssr/
+dev-dist/
+*.local
+.DS_Store
+Thumbs.db
+.vite/
+*.tsbuildinfo

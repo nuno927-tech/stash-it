@@ -1,0 +1,301 @@
+import { useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/db/db';
+import { activeItemCount } from '@/db/repo';
+import { FREE_ITEM_LIMIT } from '@/db/types';
+import { clearDemoItems, seedDemoItems } from '@/dev/seed';
+import {
+  BundleError,
+  exportBundle,
+  parseBundle,
+  restoreBundle,
+  saveBundle,
+  type ParsedBundle,
+  type RestoreMode,
+  type RestoreResult,
+} from '@/lib/backup';
+import {
+  formatBytes,
+  persistenceState,
+  requestPersistence,
+  storageUsage,
+  type PersistState,
+  type StorageUsage,
+} from '@/lib/storage';
+
+type Notice = { tone: 'ok' | 'bad'; text: string } | null;
+
+export function Settings({ propertyId }: { propertyId: string }) {
+  const settings = useLiveQuery(() => db.settings.get('singleton'), []);
+  const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
+
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [pending, setPending] = useState<ParsedBundle | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  if (!settings) return null;
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await fn();
+    } catch (e) {
+      setNotice({
+        tone: 'bad',
+        text: e instanceof BundleError ? e.message : `Something went wrong: ${(e as Error).message}`,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onExport = () =>
+    run(async () => {
+      const { blob, filename } = await exportBundle();
+      const how = await saveBundle(blob, filename);
+      setNotice({
+        tone: 'ok',
+        text: how === 'shared' ? `Shared ${filename}.` : `Saved ${filename} to your downloads.`,
+      });
+    });
+
+  const onPickFile = (file: File | undefined) => {
+    if (!file) return;
+    run(async () => {
+      const bundle = await parseBundle(file);
+      setPending(bundle);
+    });
+  };
+
+  const onRestore = (mode: RestoreMode) => {
+    const bundle = pending;
+    if (!bundle) return;
+    run(async () => {
+      const r = await restoreBundle(bundle, mode);
+      setPending(null);
+      setNotice({ tone: 'ok', text: describe(r) });
+    });
+  };
+
+  const setPro = (proUnlock: boolean) =>
+    db.settings.update('singleton', {
+      entitlements: { ...settings.entitlements, proUnlock },
+    });
+
+  return (
+    <>
+      <header className="apphead">
+        <div className="apptitle">Settings</div>
+      </header>
+
+      {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
+
+      <div className="seclabel">
+        <span>Backup</span>
+        <span>{settings.lastBackupAt ? `Last ${settings.lastBackupAt.slice(0, 10)}` : 'Never'}</span>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Export everything</h4>
+          <p>
+            One file with every item, document and photo. Save it somewhere you'll still have it if
+            you lose this phone.
+          </p>
+        </div>
+        <button type="button" className="minibtn" disabled={busy} onClick={onExport}>
+          Export
+        </button>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Restore from a backup</h4>
+          <p>Reads a .stashit file. You'll choose how it merges before anything changes.</p>
+        </div>
+        <button
+          type="button"
+          className="minibtn ghost"
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+        >
+          Choose file
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".stashit,application/zip"
+          hidden
+          onChange={(e) => {
+            onPickFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {pending && (
+        <RestoreChoice
+          bundle={pending}
+          busy={busy}
+          onCancel={() => setPending(null)}
+          onChoose={onRestore}
+        />
+      )}
+
+      <StorageSection />
+
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Developer</span>
+        <span>
+          {count} / {settings.entitlements.proUnlock ? '∞' : FREE_ITEM_LIMIT}
+        </span>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Pro unlock</h4>
+          <p>Lifts the {FREE_ITEM_LIMIT}-item cap. Entitlement flag, no purchase.</p>
+        </div>
+        <button
+          type="button"
+          className={`toggle${settings.entitlements.proUnlock ? ' on' : ''}`}
+          role="switch"
+          aria-checked={settings.entitlements.proUnlock}
+          aria-label="Pro unlock"
+          onClick={() => setPro(!settings.entitlements.proUnlock)}
+        >
+          <span />
+        </button>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Demo items</h4>
+          <p>The four mockup items, dated to land on covered, ending soon and expired.</p>
+        </div>
+        <div className="setactions">
+          <button
+            type="button"
+            className="minibtn"
+            disabled={busy}
+            onClick={() => run(() => seedDemoItems(propertyId))}
+          >
+            Seed
+          </button>
+          <button
+            type="button"
+            className="minibtn ghost"
+            disabled={busy}
+            onClick={() => run(clearDemoItems)}
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const PERSIST_COPY: Record<PersistState, { label: string; note: string }> = {
+  persisted: {
+    label: 'Protected',
+    note: 'This device has promised to keep your data until you delete it.',
+  },
+  'best-effort': {
+    label: 'Best effort',
+    note: 'The browser may clear your data if it needs space. Installing the app to your home screen usually earns protection — export a backup either way.',
+  },
+  unsupported: {
+    label: 'Unknown',
+    note: "This browser won't say whether your data is protected. Export a backup.",
+  },
+};
+
+function StorageSection() {
+  const [state, setState] = useState<PersistState>('unsupported');
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
+
+  const refresh = () =>
+    Promise.all([persistenceState(), storageUsage()]).then(([s, u]) => {
+      setState(s);
+      setUsage(u);
+    });
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const copy = PERSIST_COPY[state];
+
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Storage</span>
+        <span>{usage ? `${formatBytes(usage.usedBytes)} used` : '—'}</span>
+      </div>
+
+      <div className="setrow">
+        <div>
+          <h4>Data durability — {copy.label}</h4>
+          <p>{copy.note}</p>
+        </div>
+        {state === 'best-effort' && (
+          <button
+            type="button"
+            className="minibtn ghost"
+            onClick={() => requestPersistence().then(refresh)}
+          >
+            Request
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** No default, by design — both options destroy something if picked carelessly. */
+function RestoreChoice({
+  bundle,
+  busy,
+  onCancel,
+  onChoose,
+}: {
+  bundle: ParsedBundle;
+  busy: boolean;
+  onCancel: () => void;
+  onChoose: (m: RestoreMode) => void;
+}) {
+  const { counts, exportedAt } = bundle.manifest;
+
+  return (
+    <div className="sheet">
+      <h4>
+        Backup from {exportedAt.slice(0, 10)} — {counts.items} items, {counts.docs} documents,{' '}
+        {counts.blobs} files
+      </h4>
+
+      <button type="button" className="choice" disabled={busy} onClick={() => onChoose('merge')}>
+        <b>Merge</b>
+        <span>Keep both. Where the same record exists in each, the newer edit wins.</span>
+      </button>
+
+      <button type="button" className="choice" disabled={busy} onClick={() => onChoose('replace')}>
+        <b>Replace</b>
+        <span>Wipe what's on this phone and restore the backup exactly. For a new device.</span>
+      </button>
+
+      <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function describe(r: RestoreResult): string {
+  if (r.mode === 'replace') {
+    return `Replaced. ${r.added} records and ${r.blobsAdded} files restored.`;
+  }
+  return `Merged. ${r.added} added, ${r.updated} updated, ${r.skipped} already current.`;
+}

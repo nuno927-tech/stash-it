@@ -1,0 +1,72 @@
+# Stash it
+
+Warranties, receipts and manuals for everything you own. Local-first PWA.
+
+## Run it
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # dist/        installable PWA + service worker
+npm run build:single # dist-single/ one self-contained index.html
+npm run typecheck
+npm run test:backup  # export/restore round trip
+```
+
+## Deploy
+
+Push to `main`. The workflow typechecks, runs the backup test, builds with
+`BASE_PATH=/<repo>/` and publishes `dist/` to GitHub Pages. Enable it once at
+Settings → Pages → Source → GitHub Actions.
+
+Installing to a home screen needs HTTPS, which Pages gives you. It will not
+install from `file://` or plain `http://` — and IndexedDB is blocked on
+`file://` entirely, so the single-file build still has to be served.
+
+## Where the data lives
+
+IndexedDB, on the device, and nowhere else. No mobile browser can write to a
+user-visible file as it goes — `showSaveFilePicker` doesn't exist on Android or
+iOS — so durability rests on two things: `navigator.storage.persist()`, which
+the app requests at boot, and the backup file the user exports themselves.
+
+## What's here
+
+| Path | What it is |
+|---|---|
+| `src/db/types.ts` | Entity types. Mirrors the data model spec, schema v1. |
+| `src/db/db.ts` | Dexie schema, migrations, first-run seeding. |
+| `src/db/repo.ts` | All data access. Validation, soft delete, thumbnails, room rules. |
+| `src/lib/warranty.ts` | Calendar-month maths. Expiry is computed, never stored. |
+| `src/lib/backup.ts` | Export and restore the `.stashit` bundle. Merge and replace. |
+| `test/backup.roundtrip.ts` | `npm run test:backup` — round trip against fake-indexeddb. |
+| `src/styles/tokens.css` | Graphite & brass palette. Every colour comes from here. |
+| `src/App.tsx` | Scaffold smoke screen. Replaced by Home. |
+| `src/screens/` | Home, Items, Item detail, Add, Rooms, Search, Settings. Empty for now. |
+| `stash-it.html` | Signed-off UI concept — palette, motion lab, three screen mockups. |
+
+## Decisions baked in
+
+- **UUIDv7 IDs.** Time-sortable, safe if sync is ever added. Never auto-increment.
+- **Warranty expiry is computed** from `purchaseDate` + `months`, using calendar
+  month arithmetic. A 24-month warranty bought 31 Jan ends 31 Jan.
+- **Soft delete**, purged after 30 days. Deleting frees a free-tier slot immediately.
+- **Thumbnails generated on add** — 200px WebP, so the list renders instantly.
+- **Currency per item**, seeded from the device default at save time.
+- **Rooms are entities**, seeded per property, fully editable. Deleting a room never
+  cascades: items are reassigned or unassigned first.
+- **Entitlement flags, not SKU checks** (`proUnlock`, `reportUnlock`).
+- **The item cap blocks new additions only.** Existing items stay editable and
+  exportable at every tier.
+
+## Try the free-tier gate
+
+Settings → Developer → Pro unlock. Toggles the entitlement so you can hit the
+15-item cap without wiring up purchases.
+
+## Not built yet
+
+Add, Item detail, Items list, Rooms and Search screens. PWA icons and hosting.
+Passphrase encryption for backups. Document attachment
+beyond the add-screen photo, link health checks, inventory report, IAP, Capacitor
+wrapping, the thin auth/analytics backend.
