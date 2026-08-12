@@ -43,6 +43,7 @@ import {
 } from '@/lib/prefs';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
+import { DriveCard } from '@/components/DriveCard';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
@@ -65,6 +66,7 @@ export function Settings({
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [notice, setNotice] = useState<Notice>(null);
   const [taps, setTaps] = useState<TapState>(NO_TAPS);
+  const [pending, setPending] = useState<ParsedBundle | null>(null);
 
   if (!settings) return null;
 
@@ -79,7 +81,13 @@ export function Settings({
       <Appearance settings={settings} />
       <LockCard settings={settings} onNotice={setNotice} />
       <YourHome settings={settings} onOpenRooms={onOpenRooms} />
-      <Backup settings={settings} onNotice={setNotice} />
+      <Backup
+        settings={settings}
+        onNotice={setNotice}
+        pending={pending}
+        setPending={setPending}
+      />
+      <DriveCard settings={settings} onNotice={setNotice} onRestore={setPending} />
       <AboutApp
         onNotice={setNotice}
         taps={taps}
@@ -446,12 +454,17 @@ function YourHome({
 function Backup({
   settings,
   onNotice,
+  pending,
+  setPending,
 }: {
   settings: SettingsRecord;
   onNotice: (n: Notice) => void;
+  /* Lifted, because a bundle can now arrive from the file picker or from
+     Drive, and both must land in the same merge-or-replace decision. */
+  pending: ParsedBundle | null;
+  setPending: (b: ParsedBundle | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<ParsedBundle | null>(null);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 

@@ -174,6 +174,15 @@ export interface Settings {
   biometricLock?: boolean;
   lockCredentialId?: string;
 
+  /**
+   * Google Drive backup. The client ID is public by design — it's locked to
+   * an origin, not a secret — so unlike the lock credential it travels in a
+   * backup, which is what makes a restore onto a new phone still know where
+   * its backups live.
+   */
+  driveClientId?: string;
+  lastDriveBackupAt?: string;
+
   /** What the greeting calls you. Empty means asked and declined. */
   displayName?: string;
   /** Set once the welcome has been answered, either way. */

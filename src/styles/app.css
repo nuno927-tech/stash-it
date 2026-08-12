@@ -1807,6 +1807,78 @@ a.pick {
   color: var(--gold);
 }
 
+/* ----------------------------------------------------------------- drive */
+
+.setupsteps {
+  margin: 10px 0 14px;
+}
+
+.setupsteps li {
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.setupsteps b {
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.clientid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 12px 8px 0;
+}
+
+.clientid input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.clientid-bad {
+  flex-basis: 100%;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ember);
+}
+
+.warnhint {
+  color: var(--honey);
+}
+
+.drivelist {
+  list-style: none;
+  margin: 4px 12px 6px 0;
+  padding: 0;
+}
+
+.drivelist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--slate-600);
+}
+
+.drivefile strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.drivefile small {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
 .setinput {
   flex: none;
   width: 130px;
