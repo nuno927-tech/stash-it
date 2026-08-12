@@ -75,18 +75,22 @@
       */
       #splash.waiting {
         justify-content: flex-start;
-        padding-top: 7vh;
-        gap: 14px;
+        padding-top: 4vh;
+        gap: 12px;
       }
+      /*
+        Only Scout shrinks. The wordmark and the line under it stay exactly as
+        they are in the centred state — the two launches should read as the
+        same screen in two positions, not as two different screens, and the
+        title changing size is what would give that away. Scout has the room
+        to give up; the type doesn't.
+      */
       #splash.waiting img {
-        width: 128px;
-        height: 128px;
-      }
-      #splash.waiting h1 {
-        font-size: 30px;
+        width: 96px;
+        height: 96px;
       }
       #splash.waiting p {
-        opacity: 0;
+        margin-top: -4px;
       }
       #splash img {
         width: 190px;
@@ -98,8 +102,8 @@
         margin: 0;
         font-family: 'Bricolage Grotesque', system-ui, sans-serif;
         font-weight: 800;
-        font-size: 40px;
-        letter-spacing: -0.03em;
+        font-size: 46px;
+        letter-spacing: -0.035em;
         color: #22252a;
       }
       #splash h1 span {
