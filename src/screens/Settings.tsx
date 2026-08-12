@@ -3,7 +3,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItemCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
-import { clearDemoItems, seedDemoItems } from '@/dev/seed';
 import {
   BundleError,
   exportBundle,
@@ -14,6 +13,7 @@ import {
   type RestoreMode,
   type RestoreResult,
 } from '@/lib/backup';
+import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import {
   forgetDismissal,
@@ -33,14 +33,7 @@ import {
   type ThemeChoice,
 } from '@/lib/prefs';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
-import {
-  formatBytes,
-  persistenceState,
-  requestPersistence,
-  storageUsage,
-  type PersistState,
-  type StorageUsage,
-} from '@/lib/storage';
+import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
@@ -50,8 +43,8 @@ type Notice = { tone: 'ok' | 'bad'; text: string } | null;
  * The old page was one flat run of rows at identical weight — appearance next
  * to backups next to developer toggles — so finding anything meant reading all
  * of it. Now: how it looks, how your home is set up, keeping your data safe,
- * the app itself. Developer is folded away, because it exists for exactly one
- * person and it isn't the one holding the phone.
+ * the app itself. Developer isn't on the page at all until you ask for it by
+ * tapping the version pill ten times.
  */
 export function Settings({
   propertyId,
@@ -62,6 +55,7 @@ export function Settings({
 }) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [notice, setNotice] = useState<Notice>(null);
+  const [taps, setTaps] = useState<TapState>(NO_TAPS);
 
   if (!settings) return null;
 
@@ -76,9 +70,18 @@ export function Settings({
       <Appearance settings={settings} />
       <YourHome settings={settings} onOpenRooms={onOpenRooms} />
       <Backup settings={settings} onNotice={setNotice} />
-      <StorageCard />
-      <AboutApp onNotice={setNotice} schemaVersion={settings.schemaVersion} />
-      <Developer settings={settings} propertyId={propertyId} />
+      <AboutApp
+        onNotice={setNotice}
+        taps={taps}
+        onTapVersion={() => setTaps((t) => tap(t, Date.now()))}
+      />
+      {unlocked(taps) && (
+        <Developer
+          settings={settings}
+          propertyId={propertyId}
+          onHide={() => setTaps(NO_TAPS)}
+        />
+      )}
     </>
   );
 }
@@ -340,7 +343,14 @@ function Backup({
 }) {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<ParsedBundle | null>(null);
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // How much there is to lose belongs next to the thing that saves it, not in
+  // a card of its own.
+  useEffect(() => {
+    void storageUsage().then(setUsage);
+  }, []);
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -419,6 +429,14 @@ function Backup({
         }
       />
 
+      {usage && (
+        <Row
+          label="On this device"
+          note="Items, documents and photos, as they sit in the browser's storage."
+          control={<span className="setval">{formatBytes(usage.usedBytes)}</span>}
+        />
+      )}
+
       <input
         ref={fileInput}
         type="file"
@@ -495,89 +513,38 @@ function describe(r: RestoreResult): string {
   return `Merged. ${r.added} added, ${r.updated} updated, ${r.skipped} already current.`;
 }
 
-/* --------------------------------------------------------------- storage */
-
-const PERSIST_COPY: Record<PersistState, { label: string; note: string }> = {
-  persisted: {
-    label: 'Protected',
-    note: 'This device has promised to keep your data until you delete it.',
-  },
-  'best-effort': {
-    label: 'Best effort',
-    note: 'The browser may clear your data if it needs space. Installing usually earns protection.',
-  },
-  unsupported: {
-    label: 'Unknown',
-    note: "This browser won't say whether your data is protected. Keep a backup.",
-  },
-};
-
-function StorageCard() {
-  const [state, setState] = useState<PersistState>('unsupported');
-  const [usage, setUsage] = useState<StorageUsage | null>(null);
-
-  const refresh = () =>
-    Promise.all([persistenceState(), storageUsage()]).then(([s, u]) => {
-      setState(s);
-      setUsage(u);
-    });
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  const copy = PERSIST_COPY[state];
-
-  return (
-    <Card
-      title="Storage"
-      aside={usage ? <span className="countpill">{formatBytes(usage.usedBytes)}</span> : undefined}
-    >
-      <Row
-        label={copy.label}
-        note={copy.note}
-        control={
-          state === 'best-effort' ? (
-            <button
-              type="button"
-              className="minibtn ghost"
-              onClick={() => requestPersistence().then(refresh)}
-            >
-              Request
-            </button>
-          ) : undefined
-        }
-      />
-    </Card>
-  );
-}
-
 /* ------------------------------------------------------------- the app */
 
 function AboutApp({
   onNotice,
-  schemaVersion,
+  taps,
+  onTapVersion,
 }: {
   onNotice: (n: Notice) => void;
-  schemaVersion: number;
+  taps: TapState;
+  onTapVersion: () => void;
 }) {
   const url = appUrl();
-  const installed = isStandalone();
   const offer = installOfferIgnoringDismissal({
-    standalone: installed,
+    standalone: isStandalone(),
     dismissed: false,
     nativePrompt: hasNativePrompt(),
     iosSafari: isIOSSafari(),
   });
+  const hint = tapHint(taps);
 
   return (
-    <Card title="Stash it" aside={<span className="countpill">v{__APP_VERSION__}</span>}>
-      {installed ? (
-        <Row
-          label="Installed"
-          note="Which is also what earns your data the browser's strongest storage promise."
-        />
-      ) : offer !== 'none' ? (
+    <Card
+      title="Stash it"
+      aside={
+        /* Ten taps here reveals the developer card. Nothing about the pill
+           advertises that, which is the point. */
+        <button type="button" className="countpill tappill" data-cue="none" onClick={onTapVersion}>
+          {hint ?? `v${__APP_VERSION__}`}
+        </button>
+      }
+    >
+      {offer !== 'none' && (
         <Row
           label="Add to home screen"
           note={
@@ -600,82 +567,71 @@ function AboutApp({
             ) : undefined
           }
         />
-      ) : null}
+      )}
 
-      <Row
-        label="Share Stash it"
-        note="There's no account to sign up for, so it's just an address."
-        control={
-          <button
-            type="button"
-            className="minibtn ghost"
-            data-cue="none"
-            onClick={async () => {
-              const outcome = await shareApp(url);
-              feedback(outcome === 'cancelled' ? 'tap' : 'save');
-              const text = shareMessage(outcome, url);
-              onNotice(text ? { tone: 'ok', text } : null);
-            }}
-          >
-            Share
-          </button>
-        }
-      />
-
-      <p className="hint">
-        Everything you add stays on this device. Data schema v{schemaVersion} — worth knowing if a
-        backup ever refuses to restore.
-      </p>
+      {/* Telling someone about the app is the one thing on this card they might
+          actually come here to do, so it's a button rather than a control
+          hiding at the end of a sentence. */}
+      <button
+        type="button"
+        className="btn wide"
+        data-cue="none"
+        onClick={async () => {
+          const outcome = await shareApp(url);
+          feedback(outcome === 'cancelled' ? 'tap' : 'save');
+          const text = shareMessage(outcome, url);
+          onNotice(text ? { tone: 'ok', text } : null);
+        }}
+      >
+        <ShareGlyph />
+        Share Stash it
+      </button>
     </Card>
+  );
+}
+
+function ShareGlyph() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 15V3.5M12 3.5L8 7.5M12 3.5l4 4" />
+      <path d="M5 13v6.5a1 1 0 001 1h12a1 1 0 001-1V13" />
+    </svg>
   );
 }
 
 /* ------------------------------------------------------------- developer */
 
 /**
- * Folded away by default. It exists for exactly one person, and it isn't the
- * one holding the phone — but it's the only way to exercise the paywall and
- * populate a screen without typing, so it stays reachable.
+ * Off the page entirely until the version pill is tapped ten times. A switch
+ * that lifts the item cap shouldn't be one stray thumb from someone's theme
+ * setting, but it's still the only way to exercise the paywall.
  */
-function Developer({ settings, propertyId }: { settings: SettingsRecord; propertyId: string }) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+function Developer({
+  settings,
+  propertyId,
+  onHide,
+}: {
+  settings: SettingsRecord;
+  propertyId: string;
+  onHide: () => void;
+}) {
   const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
-
-  const run = (fn: () => Promise<unknown>) => {
-    setBusy(true);
-    void fn().finally(() => setBusy(false));
-  };
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="expander"
-        aria-expanded={false}
-        onClick={() => setOpen(true)}
-      >
-        Developer
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-    );
-  }
 
   return (
     <Card
       title="Developer"
       aside={
-        <button type="button" className="linkish" aria-expanded onClick={() => setOpen(false)}>
+        <button type="button" className="linkish" onClick={onHide}>
           Hide
         </button>
       }
@@ -693,31 +649,6 @@ function Developer({ settings, propertyId }: { settings: SettingsRecord; propert
               })
             }
           />
-        }
-      />
-
-      <Row
-        label="Demo items"
-        note="Four fixtures dated to land on covered, ending soon and expired."
-        control={
-          <span className="setactions">
-            <button
-              type="button"
-              className="minibtn"
-              disabled={busy}
-              onClick={() => run(() => seedDemoItems(propertyId))}
-            >
-              Seed
-            </button>
-            <button
-              type="button"
-              className="minibtn ghost"
-              disabled={busy}
-              onClick={() => run(clearDemoItems)}
-            >
-              Clear
-            </button>
-          </span>
         }
       />
     </Card>
