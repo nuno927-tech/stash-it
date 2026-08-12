@@ -417,6 +417,7 @@ function Frame({
   swipe?: { tab: Tab; onChange: (t: Tab) => void };
 }) {
   const body = useRef<HTMLDivElement>(null);
+  const tab = swipe?.tab;
 
   useSwipeNav(body, !!swipe, (direction) => {
     if (!swipe) return;
@@ -428,13 +429,27 @@ function Frame({
     swipe.onChange(to);
   });
 
+  // The container survives a tab change, so its scroll position does too —
+  // arriving at Settings already scrolled halfway down.
+  useEffect(() => {
+    if (body.current) body.current.scrollTop = 0;
+  }, [tab]);
+
   return (
     <div className="app">
-      {/* Keyed by tab so the incoming screen slides from the side it came
-          from — without it, the content simply replaces itself and the
-          gesture has no visible consequence. */}
-      <div ref={body} className="app-body" key={swipe ? swipe.tab : 'pushed'}>
-        {children}
+      {/*
+        The listener node must not be keyed. Keying it made React build a new
+        DOM element on every tab change while the effect that attached the
+        pointer listeners — keyed on `enabled`, which never changed — kept
+        holding the old, detached one. One swipe worked; every swipe after it
+        went to an element no longer in the document.
+
+        So the container is stable and the animation moved inside it.
+      */}
+      <div ref={body} className="app-body">
+        <div className="screen" key={tab ?? 'pushed'}>
+          {children}
+        </div>
       </div>
       {nav}
     </div>

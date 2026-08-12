@@ -87,6 +87,22 @@ function main() {
   check('a tap is not a swipe', swipeVerdict(g({ dx: 0, dy: 0, elapsed: 90 })) === null);
   check('a twitch is not a swipe', swipeVerdict(g({ dx: -12, elapsed: 100 })) === null);
 
+  /* ------------------------------------------------- what a thumb does */
+
+  // A real swipe is an arc, not a straight line — the thumb pivots. These are
+  // the shapes that were being rejected while feeling, to the user, like
+  // perfectly ordinary swipes.
+  check('an arcing swipe counts', swipeVerdict(g({ dx: -110, dy: 62, elapsed: 260 })) === 'left');
+  check(
+    'a modest, unhurried swipe counts',
+    swipeVerdict(g({ dx: -66, dy: 18, elapsed: 700 })) === 'left',
+    'a fifth of the screen was too much to ask',
+  );
+  check(
+    'a swipe that drifts up counts too',
+    swipeVerdict(g({ dx: 95, dy: -50, elapsed: 300 })) === 'right',
+  );
+
   /* ------------------------------------------------------ narrow screens */
 
   // The threshold scales, so a small phone doesn't demand a heroic drag and a

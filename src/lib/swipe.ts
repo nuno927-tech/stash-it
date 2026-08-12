@@ -43,16 +43,17 @@ export interface Gesture {
  * it's short and fast on purpose, and demanding the same distance from it is
  * what makes a gesture feel heavy.
  */
-export const MIN_FRACTION = 0.2;
-export const MIN_PIXELS = 60;
-export const FLICK_MS = 280;
+export const MIN_FRACTION = 0.16;
+export const MIN_PIXELS = 48;
+export const FLICK_MS = 350;
 export const FLICK_PIXELS = 36;
 
 /**
- * Horizontal has to clearly beat vertical. At 1.5, a diagonal scroll while
- * skimming a list doesn't change tabs — the common accident this prevents.
+ * Horizontal has to beat vertical. At 1.3 a diagonal scroll while skimming a
+ * list still doesn't change tabs — the accident worth preventing — but a real
+ * swipe made with the thumb's natural arc does.
  */
-export const DOMINANCE = 1.5;
+export const DOMINANCE = 1.3;
 
 export function swipeVerdict(g: Gesture): Direction | null {
   const ax = Math.abs(g.dx);

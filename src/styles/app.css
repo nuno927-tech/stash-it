@@ -24,12 +24,16 @@
      Without this, Chrome can claim a diagonal drag as a scroll and the swipe
      never completes. */
   touch-action: pan-y;
+}
+
+/* Keyed by tab, so switching remounts it and this runs. The scroll container
+   around it deliberately isn't keyed — see the comment in Frame. A screen that
+   simply replaced itself gave the gesture no visible consequence: you couldn't
+   tell whether the swipe had worked or your tap had. */
+.screen {
   animation: bodyIn 0.22s ease both;
 }
 
-/* The body is keyed by tab, so switching remounts it and this runs. A screen
-   that simply replaced itself gave the gesture no visible consequence — you
-   couldn't tell whether the swipe had worked or the tap had. */
 @keyframes bodyIn {
   from {
     opacity: 0;
@@ -42,7 +46,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-body {
+  .screen {
     animation: none;
   }
 }
