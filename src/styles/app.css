@@ -97,21 +97,25 @@
 
 /* ------------------------------------------------------------ dashboard */
 
+/* The one card that gets to be big. The ring is centred with the legend
+   beneath rather than beside it: side by side, a ring large enough to read
+   left the four stats in a column too narrow for their labels. */
 .covercard {
-  display: flex;
-  align-items: center;
-  gap: 18px;
   background: var(--slate-700);
   border-radius: var(--r-lg);
-  padding: 18px 16px;
+  padding: 26px 18px 4px;
   margin-bottom: 12px;
 }
 
 .coverring {
   position: relative;
-  flex: none;
-  width: 132px;
-  height: 132px;
+  width: 208px;
+  height: 208px;
+  margin: 0 auto 20px;
+}
+
+.coverring svg {
+  display: block;
 }
 
 .coverring-mid {
@@ -121,63 +125,72 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 4px;
 }
 
 .coverring-mid strong {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 34px;
-  letter-spacing: -0.035em;
+  font-weight: 200;
+  font-size: 62px;
+  letter-spacing: -0.045em;
   line-height: 1;
 }
 
-.coverring-mid span {
-  font-size: 11.5px;
+/* The unit is not the number. Same weight, a third the size, so the figure
+   keeps the eye and the sign just qualifies it. */
+.coverring-mid strong i {
+  font-style: normal;
+  font-size: 22px;
+  letter-spacing: 0;
+  margin-left: 1px;
   color: var(--muted);
 }
 
+.coverring-mid span {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* Four across the foot of the card, divided from the ring by a hairline. */
 .coverstats {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--slate-600);
 }
 
 .coverstat {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: none;
-  padding: 5px 6px;
-  margin: 0 -6px;
+  padding: 14px 2px 16px;
   border-radius: var(--r-sm);
   color: inherit;
-  text-align: left;
-  width: calc(100% + 12px);
+  min-width: 0;
 }
 
 button.coverstat:active {
   background: var(--slate-600);
 }
 
-.coverstat .dot {
-  flex: none;
-  align-self: center;
-}
-
 .coverstat b {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 17px;
-  letter-spacing: -0.02em;
-  min-width: 18px;
+  font-weight: 200;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .coverstat span {
-  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 300;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -197,26 +210,30 @@ button.coverstat:active {
   padding: 18px 16px;
 }
 
+/* Light, to match the ring above it. Two 32px numbers a card apart in
+   different weights read as two different kinds of fact. */
 .bigmetric strong {
   display: block;
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 32px;
+  font-weight: 200;
+  font-size: 34px;
   letter-spacing: -0.035em;
   line-height: 1.05;
   margin-bottom: 4px;
 }
 
 .bigmetric span {
-  font-size: 12.5px;
+  font-size: 12px;
+  font-weight: 300;
   color: var(--muted);
 }
 
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   display: inline-block;
+  flex: none;
 }
 .dot.moss {
   background: var(--moss);

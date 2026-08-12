@@ -133,6 +133,12 @@ const CHIP: Record<WarrantyState, string> = {
 /**
  * The headline. A ring rather than a bar: it holds a number in the middle,
  * which a 9px bar can't, and the number is the point.
+ *
+ * The ring is wide and deliberately hairline. A thick donut spends its area on
+ * the band, which carries no information beyond the arc lengths — pushing the
+ * same arcs out to a larger radius makes the proportions easier to read while
+ * leaving a real hole for the number to sit in. The type is light for the same
+ * reason: at 60px, weight is just ink.
  */
 function CoverCard({
   metrics: m,
@@ -144,8 +150,8 @@ function CoverCard({
   const tracked = m.covered + m.endingSoon + m.expired;
   const pct = tracked === 0 ? 0 : Math.round(((m.covered + m.endingSoon) / tracked) * 100);
 
-  const size = 132;
-  const stroke = 13;
+  const size = 208;
+  const stroke = 6;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
@@ -154,7 +160,7 @@ function CoverCard({
     { n: m.covered, colour: 'var(--moss)' },
     { n: m.endingSoon, colour: 'var(--honey)' },
     { n: m.expired, colour: 'var(--ember)' },
-    { n: m.untracked, colour: 'var(--slate-600)' },
+    { n: m.untracked, colour: 'var(--line)' },
   ].filter((s) => s.n > 0);
 
   let offset = 0;
@@ -169,12 +175,15 @@ function CoverCard({
               cy={size / 2}
               r={r}
               fill="none"
-              stroke="var(--slate-700)"
+              stroke="var(--slate-600)"
               strokeWidth={stroke}
             />
             {slices.map((s, i) => {
               const share = s.n / Math.max(1, m.total);
               const dash = share * c;
+              // The gap between arcs is a hair under the stroke, so round caps
+              // meet without overlapping — at this weight a 3px gap read as a
+              // break in the ring rather than a division of it.
               const el = (
                 <circle
                   key={i}
@@ -184,7 +193,7 @@ function CoverCard({
                   fill="none"
                   stroke={s.colour}
                   strokeWidth={stroke}
-                  strokeDasharray={`${Math.max(0, dash - 3)} ${c}`}
+                  strokeDasharray={`${Math.max(0, dash - 5)} ${c}`}
                   strokeDashoffset={-offset}
                   strokeLinecap="round"
                 />
@@ -195,8 +204,11 @@ function CoverCard({
           </g>
         </svg>
         <div className="coverring-mid">
-          <strong>{pct}%</strong>
-          <span>covered</span>
+          <strong>
+            {pct}
+            <i>%</i>
+          </strong>
+          <span>still covered</span>
         </div>
       </div>
 
@@ -223,9 +235,11 @@ function Stat({
 }) {
   const body = (
     <>
-      <i className={`dot ${tone}`} />
       <b>{n}</b>
-      <span>{label}</span>
+      <span>
+        <i className={`dot ${tone}`} />
+        {label}
+      </span>
     </>
   );
 
