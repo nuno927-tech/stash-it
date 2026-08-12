@@ -12,6 +12,7 @@ import {
   watchInstallability,
   type InstallOffer,
 } from '@/lib/install';
+import { clearBack, pushBack } from '@/lib/backstack';
 import { biometricsAvailable, lockVerdict, type LockVerdict } from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
@@ -178,8 +179,55 @@ function usePendingShare(currency: string): ShareDraft | null {
   return draft;
 }
 
+/** The three tabs are a place you switch to; everything else is a push. */
+const PUSHED: Record<Screen['kind'], boolean> = {
+  home: false,
+  items: false,
+  settings: false,
+  add: true,
+  detail: true,
+  edit: true,
+  rooms: true,
+};
+
 function Shell() {
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
+  const current = useRef(screen);
+  current.current = screen;
+
+  /**
+   * Every screen change goes through here, so the system Back gesture has
+   * something to pop.
+   *
+   * Without it, back on an item detail exited the app — the browser saw one
+   * page the whole time, so "back" meant "leave". Now anything pushed takes a
+   * history entry and gives it up when it closes.
+   *
+   * Tab switches clear the stack instead of adding to it. Tapping Settings
+   * from three screens deep is a jump, not a step, and walking back through
+   * screens the user has visibly left is worse than leaving.
+   */
+  const go = (next: Screen) => {
+    const from = current.current;
+    if (PUSHED[next.kind]) {
+      const release = pushBack(() => setScreen(from));
+      releaseRef.current.push(release);
+    } else {
+      clearBack();
+      releaseRef.current = [];
+    }
+    setScreen(next);
+  };
+
+  // Held so a close-by-button can hand the history entry back rather than
+  // leaving a dead one that makes the next Back press appear to do nothing.
+  const releaseRef = useRef<(() => void)[]>([]);
+
+  /** Closing a pushed screen from inside it: drop its entry, then move. */
+  const pop = (to: Screen) => {
+    releaseRef.current.pop()?.();
+    setScreen(to);
+  };
 
   const property = useLiveQuery(() => db.properties.filter((p) => !p.deletedAt).first(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
@@ -209,7 +257,7 @@ function Shell() {
   useEffect(() => {
     if (share && !shareSeen.current) {
       shareSeen.current = true;
-      setScreen({ kind: 'add', from: 'home' });
+      go({ kind: 'add', from: 'home' });
     }
   }, [share]);
 
@@ -239,8 +287,8 @@ function Shell() {
       nav={
         <BottomNav
           active={tab}
-          onChange={(t) => setScreen({ kind: t })}
-          onAdd={() => setScreen({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })}
+          onChange={(t) => go({ kind: t })}
+          onAdd={() => go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })}
           addDisabled={!mayAdd}
         />
       }
@@ -248,9 +296,9 @@ function Shell() {
       {screen.kind === 'home' && (
         <Home
           propertyId={property.id}
-          onAdd={() => setScreen({ kind: 'add', from: 'home' })}
-          onOpenItem={(id) => setScreen({ kind: 'detail', id, from: 'home' })}
-          onBrowse={(filter) => setScreen({ kind: 'items', filter })}
+          onAdd={() => go({ kind: 'add', from: 'home' })}
+          onOpenItem={(id) => go({ kind: 'detail', id, from: 'home' })}
+          onBrowse={(filter) => go({ kind: 'items', filter })}
         />
       )}
 
@@ -259,17 +307,17 @@ function Shell() {
           key={screen.filter ?? 'all'}
           propertyId={property.id}
           filter={screen.filter}
-          onOpenItem={(id) => setScreen({ kind: 'detail', id, from: 'items' })}
-          onAdd={() => setScreen({ kind: 'add', from: 'items' })}
+          onOpenItem={(id) => go({ kind: 'detail', id, from: 'items' })}
+          onAdd={() => go({ kind: 'add', from: 'items' })}
         />
       )}
 
       {screen.kind === 'detail' && focused && (
         <ItemDetail
           item={focused}
-          onBack={() => setScreen(back())}
-          onEdit={() => setScreen({ kind: 'edit', id: focused.id, from: origin })}
-          onDeleted={() => setScreen(back())}
+          onBack={() => pop(back())}
+          onEdit={() => go({ kind: 'edit', id: focused.id, from: origin })}
+          onDeleted={() => pop(back())}
         />
       )}
 
@@ -278,8 +326,8 @@ function Shell() {
           propertyId={property.id}
           currency={settings.currency}
           item={focused}
-          onSaved={(id) => setScreen({ kind: 'detail', id, from: origin })}
-          onCancel={() => setScreen({ kind: 'detail', id: focused.id, from: origin })}
+          onSaved={(id) => pop({ kind: 'detail', id, from: origin })}
+          onCancel={() => pop({ kind: 'detail', id: focused.id, from: origin })}
         />
       )}
 
@@ -291,8 +339,8 @@ function Shell() {
             prefill={share?.prefill}
             prestaged={share?.staged}
             banner={share?.banner}
-            onSaved={(id) => setScreen({ kind: 'detail', id, from: origin })}
-            onCancel={() => setScreen(back())}
+            onSaved={(id) => pop({ kind: 'detail', id, from: origin })}
+            onCancel={() => pop(back())}
           />
         ) : (
           <Placeholder
@@ -302,11 +350,11 @@ function Shell() {
         ))}
 
       {screen.kind === 'settings' && (
-        <Settings propertyId={property.id} onOpenRooms={() => setScreen({ kind: 'rooms' })} />
+        <Settings propertyId={property.id} onOpenRooms={() => go({ kind: 'rooms' })} />
       )}
 
       {screen.kind === 'rooms' && (
-        <Rooms propertyId={property.id} onBack={() => setScreen({ kind: 'settings' })} />
+        <Rooms propertyId={property.id} onBack={() => pop({ kind: 'settings' })} />
       )}
 
       {/* One sheet at a time, and this one first. Being asked to install

@@ -61,7 +61,15 @@ export interface Item {
   extendedWarranty?: Warranty;
 
   notes?: string;
+  /** Small, for lists. */
   thumbBlobId?: string;
+  /**
+   * Full size, for the viewer. `storePhoto` has always written this blob —
+   * it just had nowhere to be recorded, so every photo ever taken left an
+   * unreferenced copy of itself in the database. Optional because records
+   * written before this field exist and only have the thumbnail.
+   */
+  photoBlobId?: string;
 
   createdAt: string;
   updatedAt: string;

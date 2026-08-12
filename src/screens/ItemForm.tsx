@@ -15,7 +15,7 @@ import {
   type AddItemForm,
   type PhotoEdit,
 } from '@/lib/addItem';
-import { attachStaged, type StagedDoc } from '@/lib/docs';
+import { attachStaged, stageDocs, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import {
   completeMoneyInput,
@@ -113,20 +113,36 @@ export function ItemForm({
     }
   };
 
-  const onPhoto = async (file: File | undefined) => {
-    if (!file) return;
+  /**
+   * The first picture becomes the item's face; the rest are staged as photo
+   * documents. An item has exactly one image that represents it in a list, but
+   * no reason to be limited to one image — the serial plate, the damage and
+   * the box it came in are all worth keeping, and making someone attach them
+   * one at a time through a different control is the reason they don't.
+   */
+  const onPhotos = async (files: FileList | null) => {
+    const picked = files ? [...files] : [];
+    if (picked.length === 0) return;
+
     setBusy(true);
     setError(undefined);
     try {
-      const refs = await storePhoto(file);
-      feedback('attach');
+      const [first, ...rest] = picked;
+      const refs = await storePhoto(first!);
       setPhoto(refs);
       setRemoved(false);
       setPreview((old) => {
         if (old) URL.revokeObjectURL(old);
-        return URL.createObjectURL(file);
+        return URL.createObjectURL(first!);
       });
+
+      if (rest.length) {
+        const already = staged.filter((s) => s.kind === 'photo').length;
+        for (const doc of stageDocs('photo', rest, already)) setStaged((s) => [...s, doc]);
+      }
+      feedback('attach');
     } catch (e) {
+      feedback('error');
       setError(e instanceof PhotoError ? e.message : 'Could not read that photo.');
     } finally {
       setBusy(false);
@@ -272,9 +288,10 @@ export function ItemForm({
           type="file"
           accept="image/*"
           capture="environment"
+          multiple
           hidden
           onChange={(e) => {
-            void onPhoto(e.target.files?.[0]);
+            void onPhotos(e.target.files);
             e.target.value = '';
           }}
         />
@@ -282,9 +299,10 @@ export function ItemForm({
           ref={libraryInput}
           type="file"
           accept="image/*"
+          multiple
           hidden
           onChange={(e) => {
-            void onPhoto(e.target.files?.[0]);
+            void onPhotos(e.target.files);
             e.target.value = '';
           }}
         />

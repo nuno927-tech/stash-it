@@ -65,6 +65,14 @@ async function main() {
     thumbBlobId: thumbBlob,
   });
   check('the item starts with a photo', (await db.items.get(id))!.thumbBlobId === thumbBlob);
+  // Both sizes are recorded. Before this, only the thumbnail was — so every
+  // photo ever taken left its full-size original in the database with nothing
+  // pointing at it, invisible and impossible to clean up.
+  check(
+    'and with the full-size original',
+    (await db.items.get(id))!.photoBlobId === photoBlob,
+    String((await db.items.get(id))!.photoBlobId),
+  );
 
   // Editing something else must not disturb the photo.
   await saveEditedItem(
@@ -86,8 +94,9 @@ async function main() {
     (await db.items.get(id))!.thumbBlobId === undefined,
     String((await db.items.get(id))!.thumbBlobId),
   );
-  check('and bins the orphaned file', (await db.blobs.get(thumbBlob)) === undefined);
-  check('the full-size original is untouched by this path', (await db.blobs.get(photoBlob)) !== undefined);
+  check('and clears the full-size reference too', (await db.items.get(id))!.photoBlobId === undefined);
+  check('and bins the orphaned thumbnail', (await db.blobs.get(thumbBlob)) === undefined);
+  check('and the orphaned original with it', (await db.blobs.get(photoBlob)) === undefined);
 
   /* ------------------- a shared file survives one of its owners leaving */
 

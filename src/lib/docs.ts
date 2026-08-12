@@ -231,17 +231,22 @@ export async function deleteDoc(docId: string): Promise<void> {
 }
 
 /**
- * Counts live references from both docs and item thumbnails.
+ * Counts live references from docs and from either size of an item's photo.
  *
- * Neither `blobId` nor `thumbBlobId` is indexed in schema v1, so this scans.
- * At the scale of one household's paperwork that costs nothing, and it's a far
- * smaller commitment than a schema migration to add two indexes.
+ * None of these fields is indexed, so this scans. At the scale of one
+ * household's paperwork that costs nothing, and it's a far smaller commitment
+ * than a schema migration to add three indexes.
+ *
+ * Missing a reference here deletes a file someone can still see on screen, so
+ * every field that can hold a blob id has to be listed.
  */
 export async function isBlobReferenced(blobId: string): Promise<boolean> {
   const docs = await db.docs.filter((d) => !d.deletedAt && d.blobId === blobId).count();
   if (docs > 0) return true;
 
-  const items = await db.items.filter((i) => !i.deletedAt && i.thumbBlobId === blobId).count();
+  const items = await db.items
+    .filter((i) => !i.deletedAt && (i.thumbBlobId === blobId || i.photoBlobId === blobId))
+    .count();
   return items > 0;
 }
 

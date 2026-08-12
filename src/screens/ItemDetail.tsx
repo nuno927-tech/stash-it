@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db/db';
 import { activeRooms, softDeleteItem } from '@/db/repo';
 import type { DocKind, Item } from '@/db/types';
 import { feedback } from '@/lib/feedback';
@@ -17,6 +16,8 @@ import {
 import { AttachDoc } from '@/components/AttachDoc';
 import { DocRow } from '@/components/DocRow';
 import { ItemIcon } from '@/components/ItemIcon';
+import { PhotoViewer } from '@/components/PhotoViewer';
+import { useItemPhotos } from '@/components/useItemPhotos';
 import { WarrantyRing, STATE_STROKE } from '@/components/WarrantyRing';
 
 const HEADLINE: Record<WarrantyState, (label: string) => string> = {
@@ -43,7 +44,8 @@ export function ItemDetail({
 
   const [confirming, setConfirming] = useState(false);
   const [attaching, setAttaching] = useState<DocKind | null>(null);
-  const photo = usePhotoUrl(item.thumbBlobId);
+  const [viewing, setViewing] = useState<number | null>(null);
+  const shots = useItemPhotos(item);
 
   const state = warrantyState(item);
   const expiry = effectiveExpiry(item);
@@ -75,10 +77,46 @@ export function ItemDetail({
         </button>
       </header>
 
-      <div className="prodhero">
-        {photo ? <img src={photo} alt="" /> : <ItemIcon item={item} size={54} />}
-        <span className="badge">{item.thumbBlobId ? 'Photo on device' : 'No photo'}</span>
-      </div>
+      {/* Tapping the photo opens it full screen. A receipt shot at arm's
+          length is unreadable at this size, so the hero has to be a door. */}
+      {shots.length > 0 ? (
+        <button
+          type="button"
+          className="prodhero tappable"
+          onClick={() => setViewing(0)}
+          aria-label={shots.length > 1 ? `View ${shots.length} photos` : 'View the photo'}
+        >
+          <img src={shots[0]!.url} alt="" />
+          <span className="badge">
+            {shots.length > 1 ? `${shots.length} photos` : 'Tap to enlarge'}
+          </span>
+        </button>
+      ) : (
+        <div className="prodhero">
+          <ItemIcon item={item} size={54} />
+          <span className="badge">No photo</span>
+        </div>
+      )}
+
+      {shots.length > 1 && (
+        <div className="thumbstrip">
+          {shots.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              className="thumbstrip-item"
+              onClick={() => setViewing(i)}
+              aria-label={`Photo ${i + 1}`}
+            >
+              <img src={s.url} alt="" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {viewing !== null && (
+        <PhotoViewer shots={shots} startAt={viewing} onClose={() => setViewing(null)} />
+      )}
 
       <h2 className="detail-title">{item.name}</h2>
       <p className="detail-meta">
@@ -201,29 +239,6 @@ function Fact({ label, value, mono }: { label: string; value: string; mono?: boo
       <dd style={mono ? { fontFamily: 'var(--font-mono)', fontSize: 12 } : undefined}>{value}</dd>
     </div>
   );
-}
-
-/** Object URL for the item's photo, revoked on unmount. */
-function usePhotoUrl(blobId?: string): string | undefined {
-  const [url, setUrl] = useState<string>();
-  useEffect(() => {
-    if (!blobId) {
-      setUrl(undefined);
-      return;
-    }
-    let dead = false;
-    let made: string | undefined;
-    db.blobs.get(blobId).then((rec) => {
-      if (!rec || dead) return;
-      made = URL.createObjectURL(rec.data);
-      setUrl(made);
-    });
-    return () => {
-      dead = true;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [blobId]);
-  return url;
 }
 
 /** The number inside the ring: days when it's close, years when it isn't. */

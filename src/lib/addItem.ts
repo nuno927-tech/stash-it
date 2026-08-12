@@ -189,6 +189,7 @@ export function draftFromForm(
     warranty,
     notes: clean(form.notes),
     thumbBlobId: photo?.thumbBlobId,
+    photoBlobId: photo?.blobId,
   };
 }
 
@@ -236,17 +237,32 @@ export async function saveEditedItem(
   const draft = draftFromForm(form, propertyId, photo ?? undefined);
   const patch: Partial<Item> = { ...draft };
 
-  if (photo === undefined) delete patch.thumbBlobId;
-  else if (photo === null) patch.thumbBlobId = undefined;
+  if (photo === undefined) {
+    delete patch.thumbBlobId;
+    delete patch.photoBlobId;
+  } else if (photo === null) {
+    patch.thumbBlobId = undefined;
+    patch.photoBlobId = undefined;
+  }
 
   await updateItem(id, patch);
 
-  // Clean up the file we just stopped pointing at, unless something else
-  // still references it — blobs dedupe by hash, so they can be shared.
-  const orphan = previous?.thumbBlobId;
-  if (orphan && photo !== undefined && orphan !== patch.thumbBlobId) {
-    const { isBlobReferenced } = await import('./docs');
-    if (!(await isBlobReferenced(orphan))) await db.blobs.delete(orphan);
+  // Clean up the files we just stopped pointing at, unless something else
+  // still references them — blobs dedupe by hash, so they can be shared. Both
+  // sizes, because a photo is two blobs and orphaning the larger one is how
+  // storage grows without anything to show for it.
+  if (photo !== undefined) {
+    const dropped = [
+      previous?.thumbBlobId !== patch.thumbBlobId ? previous?.thumbBlobId : undefined,
+      previous?.photoBlobId !== patch.photoBlobId ? previous?.photoBlobId : undefined,
+    ].filter(Boolean) as string[];
+
+    if (dropped.length) {
+      const { isBlobReferenced } = await import('./docs');
+      for (const blobId of dropped) {
+        if (!(await isBlobReferenced(blobId))) await db.blobs.delete(blobId);
+      }
+    }
   }
 
   return id;
