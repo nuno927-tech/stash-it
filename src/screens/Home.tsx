@@ -5,7 +5,7 @@ import type { Item } from '@/db/types';
 import { metricsFor, type Metrics } from '@/lib/dashboard';
 import { formatMoney, warrantyLabel, warrantyState, type WarrantyState } from '@/lib/warranty';
 import { ItemIcon } from '@/components/ItemIcon';
-import { Nutsy } from '@/components/Nutsy';
+import { Scout } from '@/components/Scout';
 import { useThumbUrl } from '@/components/useThumbUrl';
 
 /**
@@ -42,13 +42,13 @@ export function Home({
           Stash<span>&nbsp;it</span>
         </div>
         <div className="avatar">
-          <Nutsy pose="avatar" height={36} alt="Nutsy" />
+          <Scout pose="avatar" height={36} alt="Scout" />
         </div>
       </header>
 
       {m.endingSoon > 0 && (
         <button type="button" className="alert" onClick={() => onBrowse('ending')}>
-          <Nutsy pose="alert" height={54} motion={['alert']} />
+          <Scout pose="alert" height={54} motion={['alert']} />
           <span className="alert-txt">
             <h4>
               {m.endingSoon} warrant{m.endingSoon === 1 ? 'y ends' : 'ies end'} soon
@@ -309,9 +309,9 @@ function shortMoney({ currency, cents }: { currency: string; cents: number }): s
 function EmptyHome({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="empty">
-      <Nutsy pose="wave" height={210} motion={['float', 'pop']} shadow alt="Nutsy waving" />
+      <Scout pose="wave" height={210} motion={['float', 'pop']} shadow alt="Scout waving" />
       <h3>Nothing stashed yet</h3>
-      <p>Add your first item and Nutsy will keep track of the warranty for you.</p>
+      <p>Add your first item and Scout will keep track of the warranty for you.</p>
       <button type="button" className="btn" onClick={onAdd}>
         Add an item
       </button>

@@ -234,7 +234,7 @@ function ringLabel(item: Item, state: WarrantyState): string {
 }
 
 function warrantySentence(item: Item, expiry: Date | null): string {
-  if (!expiry) return 'Add a purchase date and warranty length and Nutsy will track it.';
+  if (!expiry) return 'Add a purchase date and warranty length and Scout will track it.';
   const months = item.warranty?.months;
   const term = months ? `${months}-month` : '';
   const provider = item.warranty?.provider ? ` from ${item.warranty.provider}` : '';

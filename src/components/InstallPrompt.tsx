@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { feedback } from '@/lib/feedback';
 import { promptInstall, rememberDismissal, type InstallOffer } from '@/lib/install';
-import { Nutsy } from './Nutsy';
+import { Scout } from './Scout';
 
 /**
  * The first-run invitation to install.
@@ -34,7 +34,7 @@ export function InstallPrompt({ offer, onClose }: { offer: InstallOffer; onClose
   return (
     <div className="installscrim" role="dialog" aria-modal="true" aria-labelledby="install-title">
       <div className="installsheet">
-        <Nutsy pose="acorn" height={124} motion={['float', 'breathe']} shadow />
+        <Scout pose="acorn" height={124} motion={['float', 'breathe']} shadow />
 
         <h2 id="install-title">Keep Stash it on your home screen</h2>
 

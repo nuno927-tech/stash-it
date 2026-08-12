@@ -448,7 +448,7 @@ export function ItemForm({
           <p className="hint">
             {endsOn
               ? `${amount} ${unitWord} of cover, ending ${endsOn}.`
-              : 'Add a purchase date and Nutsy can track when this expires.'}
+              : 'Add a purchase date and Scout can track when this expires.'}
           </p>
         )}
       </section>

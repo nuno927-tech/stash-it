@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { feedback } from '@/lib/feedback';
 import { clearLock, verifyBiometrics, type LockVerdict } from '@/lib/lock';
-import { Nutsy } from './Nutsy';
+import { Scout } from './Scout';
 
 /**
- * The unlock gate: a sheet across the lower two thirds, over a blurred app.
+ * The unlock gate: a sheet across the lower two thirds.
  *
- * Not a full-screen takeover. The scrim leaves the top of the dashboard
- * visible but unreadable, which says "your things are behind this" far better
- * than a blank panel — and the sheet's own weight then does the asking.
- *
- * It opens the OS prompt on mount rather than waiting for a tap. On a phone
- * that is one gesture removed, and the button is still there for the second
- * attempt.
+ * It waits for a tap rather than firing the check on mount. Auto-firing put
+ * the browser's own verification dialog on screen before this sheet had
+ * painted, so the first thing you saw when opening the app was unbranded
+ * system chrome — and that dialog is the browser's, not ours to restyle. Scout
+ * gets there first now, and the platform sheet arrives as the answer to a
+ * deliberate tap.
  */
 export function LockScreen({
   credentialId,
@@ -26,7 +25,6 @@ export function LockScreen({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string>();
   const [rescue, setRescue] = useState(false);
-  const tried = useRef(false);
 
   const unlock = async () => {
     setBusy(true);
@@ -47,14 +45,6 @@ export function LockScreen({
     if (outcome !== 'cancelled') setRescue(true);
   };
 
-  useEffect(() => {
-    if (verdict === 'locked' && !tried.current) {
-      tried.current = true;
-      void unlock();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verdict]);
-
   // Stranded: the device no longer has any authenticator, so no amount of
   // trying can ever succeed. This is the only state that offers a way past
   // without biometrics, and reaching it on a phone you don't own means getting
@@ -66,7 +56,15 @@ export function LockScreen({
       <div className="locksheet">
         <span className="lockgrip" aria-hidden="true" />
 
-        <Nutsy pose="acorn" height={92} motion={['breathe']} />
+        {/* Scout guarding the acorn is the whole idea of the screen, so he's
+            the picture rather than a padlock glyph. */}
+        <Scout
+          pose="acorn"
+          height={160}
+          motion={['float', 'breathe']}
+          shadow
+          alt="Scout holding an acorn"
+        />
 
         <h2 id="lock-title">
           {stranded ? 'Biometrics unavailable' : 'Stash it is locked'}
@@ -83,7 +81,7 @@ export function LockScreen({
         {!stranded && (
           <button type="button" className="btn wide lockbtn" disabled={busy} onClick={unlock}>
             <FingerprintGlyph />
-            {busy ? 'Waiting for the device…' : 'Unlock'}
+            {busy ? 'Waiting for you…' : 'Unlock'}
           </button>
         )}
 
