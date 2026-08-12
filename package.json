@@ -1,7 +1,7 @@
 {
   "name": "stash-it",
   "private": true,
-  "version": "0.12.2",
+  "version": "0.12.3",
   "type": "module",
   "description": "Warranties, receipts and manuals for everything you own. Local-first PWA.",
   "scripts": {

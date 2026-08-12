@@ -1881,6 +1881,31 @@ button.countpill.tappill:active {
   font-weight: 600;
 }
 
+/* Every error and confirmation in the app — six components' worth — and it
+   had no rules either, so a failed save rendered as an unstyled line of body
+   text that looked like part of the form. Tinted, with the state colour
+   carrying the meaning and a hairline so it reads as a distinct object. */
+.notice {
+  border-radius: var(--r-md);
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.notice.bad {
+  background: var(--wash-ember);
+  border: 1px solid var(--ember);
+  color: var(--ember);
+}
+
+.notice.ok {
+  background: var(--wash-moss);
+  border: 1px solid var(--moss);
+  color: var(--moss);
+}
+
 /* The quiet action: "See all", "New room", "Something else", "Clear".
  *
  * This class had no rules at all, so every one of them was rendering as a raw
