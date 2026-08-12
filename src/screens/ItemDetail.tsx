@@ -4,15 +4,20 @@ import { activeRooms, softDeleteItem } from '@/db/repo';
 import type { DocKind, Item } from '@/db/types';
 import { feedback } from '@/lib/feedback';
 import { attachFile, docsWithFiles, DocError } from '@/lib/docs';
-import { phoneHref } from '@/lib/format';
 import {
+  coverageLabel,
+  coveragesOf,
+  coverageTermLabel,
   effectiveExpiry,
   formatMoney,
+  hasLifetime,
+  nextToLapse,
   warrantyLabel,
   warrantyProgress,
   warrantyState,
   type WarrantyState,
 } from '@/lib/warranty';
+import { CoverList } from '@/components/CoverList';
 import { DocRow } from '@/components/DocRow';
 import { DocTiles } from '@/components/DocTiles';
 import { ItemIcon } from '@/components/ItemIcon';
@@ -138,20 +143,7 @@ export function ItemDetail({
         </div>
       </div>
 
-      {item.warranty?.phone || item.warranty?.url ? (
-        <div className="chiprow">
-          {item.warranty.phone && (
-            <a className="pick" href={`tel:${phoneHref(item.warranty.phone)}`}>
-              Call {item.warranty.provider ?? 'provider'}
-            </a>
-          )}
-          {item.warranty.url && (
-            <a className="pick" href={item.warranty.url} target="_blank" rel="noreferrer">
-              Warranty page
-            </a>
-          )}
-        </div>
-      ) : null}
+      <CoverList item={item} />
 
       <div className="seclabel">
         <span>Details</span>
@@ -164,7 +156,6 @@ export function ItemDetail({
         />
         <Fact label="Retailer" value={item.retailer ?? '—'} />
         <Fact label="Serial" value={item.serial ?? '—'} mono />
-        <Fact label="Policy" value={item.warranty?.policyNumber ?? '—'} mono />
       </dl>
 
       {item.notes && <p className="notes-body">{item.notes}</p>}
@@ -270,17 +261,33 @@ function ringLabel(item: Item, state: WarrantyState): string {
   return warrantyLabel(item).replace(/ days?$/, '').replace(/\s/g, '');
 }
 
+/**
+ * The line under the headline. It describes the policy the countdown belongs
+ * to — not "the warranty", which on an item with five of them is a sentence
+ * about nothing in particular.
+ */
 function warrantySentence(item: Item, expiry: Date | null): string {
-  if (!expiry) return 'Add a purchase date and warranty length and Scout will track it.';
-  const months = item.warranty?.months;
-  const term = months ? `${months}-month` : '';
-  const provider = item.warranty?.provider ? ` from ${item.warranty.provider}` : '';
-  const when = expiry.toLocaleDateString(undefined, {
+  const all = coveragesOf(item);
+  if (all.length === 0) return 'Add a warranty length and Scout will track it.';
+
+  const next = nextToLapse(item);
+  if (!next) {
+    if (hasLifetime(item)) return 'Covered for as long as you own it.';
+    if (!expiry) return 'Add a purchase date and Scout can work out when this ends.';
+    return 'Everything on this item has run out.';
+  }
+
+  const label = coverageLabel(next.coverage).toLowerCase();
+  const provider = next.coverage.provider ? ` from ${next.coverage.provider}` : '';
+  const when = next.end!.toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
-  return `${term} warranty${provider} ends ${when}.`.replace(/^ /, '');
+
+  const rest = all.length - 1;
+  const others = rest > 0 ? ` ${rest} other ${rest === 1 ? 'policy runs' : 'policies run'} longer.` : '';
+  return `${coverageTermLabel(next.coverage)} ${label}${provider} ends ${when}.${others}`;
 }
 
 function formatDate(iso?: string): string {

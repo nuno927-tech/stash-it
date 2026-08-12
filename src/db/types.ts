@@ -39,6 +39,50 @@ export interface Warranty {
   url?: string;
 }
 
+/**
+ * One policy on one item.
+ *
+ * A product rarely has "a warranty". A couch has a lifetime frame, ten years
+ * on the cushions, five on the springs and one on the fabric; a heat gun has
+ * three years limited, a year of free service and ninety days to change your
+ * mind. Two fixed slots — `warranty` and `extendedWarranty` — could hold two
+ * of those and quietly lost the rest.
+ *
+ * `label` is what the policy is for, in the user's words: "Fabric", "Frame",
+ * "Money back". `covers` is what it actually pays for, which is the part
+ * nobody remembers three years later and the part a claim turns on.
+ */
+export interface Coverage {
+  id: string;
+
+  /** What it's for. Falls back to "Warranty" when the user leaves it blank. */
+  label: string;
+
+  /**
+   * What it actually covers, in the user's own words — "parts and labour, not
+   * accidental damage". Free text on purpose: every manufacturer words this
+   * differently and a fixed list would force a wrong answer.
+   */
+  covers?: string;
+
+  /**
+   * `lifetime` never expires and never counts down. Stored as a unit rather
+   * than as a 99-year term so nothing has to pretend to know an end date.
+   */
+  unit: CoverageUnit;
+  /** Ignored when the unit is `lifetime`. */
+  amount: number;
+
+  /** Defaults to Item.purchaseDate when absent. */
+  startsOn?: string;
+  provider?: string;
+  policyNumber?: string;
+  phone?: string;
+  url?: string;
+}
+
+export type CoverageUnit = WarrantyUnit | 'lifetime';
+
 export interface Item {
   id: string;
   schemaVersion: number;
@@ -57,6 +101,18 @@ export interface Item {
   currency?: string;
   retailer?: string;
 
+  /**
+   * Every policy on this item, in the order the user entered them. Read it
+   * through `coveragesOf()` in src/lib/warranty.ts, which folds in the two
+   * legacy fields below for records written before this existed.
+   */
+  coverages?: Coverage[];
+
+  /**
+   * Superseded by `coverages`. Still written on save — as the first and second
+   * entries of the list — so that a backup taken here restores into an older
+   * build with its main warranty intact rather than with nothing at all.
+   */
   warranty?: Warranty;
   extendedWarranty?: Warranty;
 

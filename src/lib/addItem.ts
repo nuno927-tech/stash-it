@@ -6,10 +6,17 @@
  */
 
 import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
-import { db } from '@/db/db';
-import { FREE_ITEM_LIMIT, type Item, type Warranty, type WarrantyUnit } from '@/db/types';
+import { db, newId } from '@/db/db';
+import {
+  FREE_ITEM_LIMIT,
+  type Coverage,
+  type CoverageUnit,
+  type Item,
+  type Warranty,
+  type WarrantyUnit,
+} from '@/db/types';
 import { formatMoneyInput } from './format';
-import { termOf, termToMonths } from './warranty';
+import { coveragesOf, DEFAULT_COVERAGE_LABEL, termToMonths } from './warranty';
 
 export class ValidationError extends Error {}
 export class ItemLimitError extends Error {
@@ -20,23 +27,54 @@ export class ItemLimitError extends Error {
   }
 }
 
+/**
+ * One policy as the form holds it: strings, because that's what an input
+ * gives you, and a `key` that never reaches the database so React can tell
+ * two blank rows apart.
+ */
+export interface CoverageDraft {
+  key: string;
+  label: string;
+  covers: string;
+  unit: CoverageUnit;
+  amount: string;
+  provider: string;
+  policyNumber: string;
+  phone: string;
+  url: string;
+}
+
+export function blankCoverage(overrides: Partial<CoverageDraft> = {}): CoverageDraft {
+  return {
+    key: newId(),
+    label: '',
+    covers: '',
+    unit: 'months',
+    amount: '',
+    provider: '',
+    policyNumber: '',
+    phone: '',
+    url: '',
+    ...overrides,
+  };
+}
+
 export interface AddItemForm {
   name: string;
   roomId: string;
   purchaseDate: string;
   price: string;
   currency: string;
-  warrantyUnit: WarrantyUnit;
-  warrantyAmount: string;
+  /**
+   * Every policy on the item. Starts as one blank row, so the common case —
+   * a single warranty — looks exactly like the single field it replaced.
+   */
+  coverages: CoverageDraft[];
   /** Behind "More details". */
   brand: string;
   model: string;
   serial: string;
   retailer: string;
-  warrantyProvider: string;
-  policyNumber: string;
-  warrantyPhone: string;
-  warrantyUrl: string;
   notes: string;
 }
 
@@ -47,16 +85,11 @@ export function emptyForm(currency: string): AddItemForm {
     purchaseDate: '',
     price: '',
     currency,
-    warrantyUnit: 'months',
-    warrantyAmount: '',
+    coverages: [blankCoverage()],
     brand: '',
     model: '',
     serial: '',
     retailer: '',
-    warrantyProvider: '',
-    policyNumber: '',
-    warrantyPhone: '',
-    warrantyUrl: '',
     notes: '',
   };
 }
@@ -77,18 +110,31 @@ export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm 
             item.currency ?? fallbackCurrency,
           ),
     currency: item.currency ?? fallbackCurrency,
-    warrantyUnit: termOf(item.warranty)?.unit ?? 'months',
-    warrantyAmount: termOf(item.warranty) ? String(termOf(item.warranty)!.amount) : '',
+    // Reads through coveragesOf, so an item saved before this existed edits as
+    // the one or two policies it always had rather than as an empty list.
+    coverages: coveragesFor(item),
     brand: item.brand ?? '',
     model: item.model ?? '',
     serial: item.serial ?? '',
     retailer: item.retailer ?? '',
-    warrantyProvider: item.warranty?.provider ?? '',
-    policyNumber: item.warranty?.policyNumber ?? '',
-    warrantyPhone: item.warranty?.phone ?? '',
-    warrantyUrl: item.warranty?.url ?? '',
     notes: item.notes ?? '',
   };
+}
+
+function coveragesFor(item: Item): CoverageDraft[] {
+  const existing = coveragesOf(item).map((c) =>
+    blankCoverage({
+      label: c.label,
+      covers: c.covers ?? '',
+      unit: c.unit,
+      amount: c.unit === 'lifetime' ? '' : String(c.amount),
+      provider: c.provider ?? '',
+      policyNumber: c.policyNumber ?? '',
+      phone: c.phone ?? '',
+      url: c.url ?? '',
+    }),
+  );
+  return existing.length ? existing : [blankCoverage()];
 }
 
 /**
@@ -101,11 +147,31 @@ export const WARRANTY_PRESETS: Record<WarrantyUnit, number[]> = {
   years: [1, 2, 3, 5, 10],
 };
 
-export const UNIT_LABEL: Record<WarrantyUnit, string> = {
+export const UNIT_LABEL: Record<CoverageUnit, string> = {
   days: 'Days',
   months: 'Months',
   years: 'Years',
+  lifetime: 'Lifetime',
 };
+
+/**
+ * Names people actually find on paperwork, offered as one tap each.
+ *
+ * Not a fixed list — the field stays free text, because the couch that says
+ * "sinuous spring system" is not going to be talked out of it. These are the
+ * ones common enough to be worth saving the typing.
+ */
+export const COVERAGE_LABELS = [
+  'Extended warranty',
+  'Money back',
+  'Free service',
+  'Parts',
+  'Labour',
+  'Frame',
+];
+
+/** Examples of what a policy covers, shown as the field's placeholder. */
+export const COVERS_PLACEHOLDER = 'Parts and labour, not accidental damage';
 
 /**
  * Money is stored as integer minor units, never a float. Accepts what people
@@ -158,22 +224,7 @@ export function draftFromForm(
   const name = form.name.trim();
   if (!name) throw new ValidationError('Give the item a name.');
 
-  const amount = Number(form.warrantyAmount);
-  let warranty: Warranty | undefined;
-  if (form.warrantyAmount.trim() && Number.isFinite(amount) && amount > 0) {
-    const term = { unit: form.warrantyUnit, amount: Math.round(amount) };
-    warranty = {
-      // `months` stays populated as the rough equivalent, so a backup restored
-      // into an older build still shows something sensible.
-      months: termToMonths(term),
-      unit: term.unit,
-      amount: term.amount,
-      provider: clean(form.warrantyProvider),
-      policyNumber: clean(form.policyNumber),
-      phone: clean(form.warrantyPhone),
-      url: clean(form.warrantyUrl),
-    };
-  }
+  const coverages = form.coverages.map(toCoverage).filter((c): c is Coverage => c !== null);
 
   return {
     name,
@@ -186,10 +237,74 @@ export function draftFromForm(
     purchasePriceCents: parseMoneyToCents(form.price),
     currency: form.currency,
     retailer: clean(form.retailer),
-    warranty,
+    coverages: coverages.length ? coverages : undefined,
+    // The two old fields are still written from the first two dated policies.
+    // They're what an older build — or a backup opened on a phone that hasn't
+    // updated — knows how to read, and one warranty is a much better failure
+    // than none. Nothing in this build reads them when `coverages` is present.
+    ...legacyPair(coverages),
     notes: clean(form.notes),
     thumbBlobId: photo?.thumbBlobId,
     photoBlobId: photo?.blobId,
+  };
+}
+
+/** A form row becomes a policy, or nothing at all when it's still blank. */
+function toCoverage(draft: CoverageDraft): Coverage | null {
+  const label = draft.label.trim();
+
+  if (draft.unit === 'lifetime') {
+    return {
+      id: draft.key,
+      label: label || DEFAULT_COVERAGE_LABEL,
+      covers: clean(draft.covers),
+      unit: 'lifetime',
+      amount: 0,
+      provider: clean(draft.provider),
+      policyNumber: clean(draft.policyNumber),
+      phone: clean(draft.phone),
+      url: clean(draft.url),
+    };
+  }
+
+  const amount = Number(draft.amount);
+  // A row with a name but no term is someone who started typing and stopped;
+  // saving it would put a policy on the item that can never count down.
+  if (!draft.amount.trim() || !Number.isFinite(amount) || amount <= 0) return null;
+
+  return {
+    id: draft.key,
+    label: label || DEFAULT_COVERAGE_LABEL,
+    covers: clean(draft.covers),
+    unit: draft.unit,
+    amount: Math.round(amount),
+    provider: clean(draft.provider),
+    policyNumber: clean(draft.policyNumber),
+    phone: clean(draft.phone),
+    url: clean(draft.url),
+  };
+}
+
+function legacyPair(coverages: Coverage[]): Pick<Item, 'warranty' | 'extendedWarranty'> {
+  const dated = coverages.filter((c) => c.unit !== 'lifetime');
+  return {
+    warranty: asWarranty(dated[0]),
+    extendedWarranty: asWarranty(dated[1]),
+  };
+}
+
+function asWarranty(c: Coverage | undefined): Warranty | undefined {
+  if (!c) return undefined;
+  const unit = c.unit as WarrantyUnit;
+  return {
+    months: termToMonths({ unit, amount: c.amount }),
+    unit,
+    amount: c.amount,
+    startsOn: c.startsOn,
+    provider: c.provider,
+    policyNumber: c.policyNumber,
+    phone: c.phone,
+    url: c.url,
   };
 }
 

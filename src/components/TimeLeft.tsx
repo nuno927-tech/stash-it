@@ -30,6 +30,9 @@ export function TimeLeft({ item }: { item: Item }) {
     <div className={`timeleft ${TONE[warrantyState(item)]}${wordy}`}>
       <strong>{left.value}</strong>
       <small>{left.unit}</small>
+      {/* Which policy the number belongs to, on items that have several. A
+          countdown that doesn't say what it's counting is worse than none. */}
+      {left.which && <small className="whichcov">{left.which}</small>}
     </div>
   );
 }

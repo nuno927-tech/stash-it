@@ -8,7 +8,7 @@
  */
 
 import type { Doc, Item } from '@/db/types';
-import { daysUntil, effectiveExpiry, warrantyState } from './warranty';
+import { coveragesOf, daysUntil, effectiveExpiry, warrantyState } from './warranty';
 
 export interface Metrics {
   total: number;
@@ -157,11 +157,10 @@ export function gapsFor(items: Item[], docs: Doc[]): Gap[] {
 }
 
 function hasTerm(item: Item): boolean {
-  return !!(
-    (item.warranty && (item.warranty.months > 0 || (item.warranty.amount ?? 0) > 0)) ||
-    (item.extendedWarranty &&
-      (item.extendedWarranty.months > 0 || (item.extendedWarranty.amount ?? 0) > 0))
-  );
+  // Any policy at all counts, including a lifetime one — "no warranty length"
+  // is the wrong thing to nag someone about on a couch whose frame is covered
+  // forever.
+  return coveragesOf(item).length > 0;
 }
 
 /** 0..1 share of items that are covered or ending soon, for the bar. */

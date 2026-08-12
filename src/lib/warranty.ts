@@ -1,6 +1,8 @@
-import type { Item, Warranty, WarrantyUnit } from '@/db/types';
+import type { Coverage, Item, Warranty, WarrantyUnit } from '@/db/types';
 
 export type WarrantyState = 'covered' | 'ending-soon' | 'expired' | 'unknown';
+
+export const DEFAULT_COVERAGE_LABEL = 'Warranty';
 
 export const ENDING_SOON_DAYS = 30;
 
@@ -77,31 +79,165 @@ export function daysUntil(target: Date, from = new Date()): number {
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
-/** Uses the longer-running of the two policies — extended cover supersedes base. */
-export function effectiveExpiry(item: Item): Date | null {
-  const base = expiresOn(item.warranty, item.purchaseDate);
-  const ext = expiresOn(item.extendedWarranty, item.purchaseDate);
-  if (base && ext) return ext > base ? ext : base;
-  return base ?? ext;
+/* ------------------------------------------------------------- coverages */
+
+/**
+ * Every policy on an item, oldest field first.
+ *
+ * Records written before `coverages` existed only have `warranty` and
+ * `extendedWarranty`, so they're read as a two-entry list here rather than
+ * migrated in place. A read-time fold can't half-finish, can't run twice, and
+ * can't corrupt a record that a future version understands better — which a
+ * database upgrade over every item in the collection can do all three of.
+ */
+export function coveragesOf(item: Item): Coverage[] {
+  if (item.coverages?.length) return item.coverages;
+
+  const out: Coverage[] = [];
+  const legacy = (w: Warranty | undefined, id: string, label: string) => {
+    const term = termOf(w);
+    if (!term || !w) return;
+    out.push({
+      id,
+      label,
+      unit: term.unit,
+      amount: term.amount,
+      startsOn: w.startsOn,
+      provider: w.provider,
+      policyNumber: w.policyNumber,
+      phone: w.phone,
+      url: w.url,
+    });
+  };
+
+  legacy(item.warranty, 'legacy-base', DEFAULT_COVERAGE_LABEL);
+  legacy(item.extendedWarranty, 'legacy-extended', 'Extended warranty');
+  return out;
+}
+
+export function isLifetime(c: Coverage): boolean {
+  return c.unit === 'lifetime';
+}
+
+/** When a policy runs out. Null for lifetime, and for a term with no start. */
+export function coverageEnd(c: Coverage, purchaseDate?: string): Date | null {
+  if (isLifetime(c)) return null;
+  const start = c.startsOn ?? purchaseDate;
+  if (!start || c.amount <= 0) return null;
+
+  const from = parseDate(start);
+  if (c.unit === 'days') return addDays(from, c.amount);
+  return addMonths(from, c.unit === 'years' ? c.amount * 12 : c.amount);
+}
+
+export interface DatedCoverage {
+  coverage: Coverage;
+  /** Null only for lifetime. */
+  end: Date | null;
+  /** Null for lifetime; negative once it has lapsed. */
+  daysLeft: number | null;
+}
+
+/**
+ * Every policy with its end date worked out, soonest first, lifetime last.
+ *
+ * This ordering is the whole feature. A couch with a lifetime frame and twelve
+ * months on the fabric is not "covered for life" in any sense the owner cares
+ * about — the thing that will actually go wrong and stop being covered is the
+ * fabric, and it's three months away. Sorting by what ends first puts the
+ * useful answer at the top of every screen that shows this list.
+ */
+export function coverageSchedule(item: Item, now = new Date()): DatedCoverage[] {
+  const dated = coveragesOf(item).map((coverage) => {
+    const end = coverageEnd(coverage, item.purchaseDate);
+    return { coverage, end, daysLeft: end ? daysUntil(end, now) : null };
+  });
+
+  return dated.sort((a, b) => {
+    // Lifetime has no date to sort by and belongs at the bottom either way.
+    if (!a.end && !b.end) return 0;
+    if (!a.end) return 1;
+    if (!b.end) return -1;
+    return a.end.getTime() - b.end.getTime();
+  });
+}
+
+/**
+ * The policy the countdown belongs to: the next one still running that will
+ * lapse. Everything on screen — the number, the colour, the ring, the
+ * "expiring" filter — follows this one.
+ */
+export function nextToLapse(item: Item, now = new Date()): DatedCoverage | null {
+  return coverageSchedule(item, now).find((d) => d.daysLeft !== null && d.daysLeft >= 0) ?? null;
+}
+
+/** True when at least one policy never runs out. */
+export function hasLifetime(item: Item): boolean {
+  return coveragesOf(item).some(isLifetime);
+}
+
+/** The last dated policy to have lapsed, for "ended 4 months ago". */
+function lastLapsed(item: Item, now = new Date()): DatedCoverage | null {
+  const lapsed = coverageSchedule(item, now).filter((d) => d.daysLeft !== null && d.daysLeft < 0);
+  return lapsed[lapsed.length - 1] ?? null;
+}
+
+/** What a policy is called, never blank. */
+export function coverageLabel(c: Coverage): string {
+  return c.label.trim() || DEFAULT_COVERAGE_LABEL;
+}
+
+/** "Lifetime", "90 days", "3 years" — the term itself, not what's left. */
+export function coverageTermLabel(c: Coverage): string {
+  if (isLifetime(c)) return 'Lifetime';
+  const unit = c.amount === 1 ? c.unit.replace(/s$/, '') : c.unit;
+  return `${c.amount} ${unit}`;
+}
+
+/* ------------------------------------------------------ the item's status */
+
+/**
+ * When the item's cover next changes — the soonest policy still running.
+ *
+ * This used to be the *longest* of the two warranties, on the reasoning that
+ * extended cover supersedes the base policy. With a real list that reasoning
+ * inverts: reporting the furthest date away is how you tell someone their
+ * couch is fine for life on the morning the fabric cover ends.
+ */
+export function effectiveExpiry(item: Item, now = new Date()): Date | null {
+  const next = nextToLapse(item, now);
+  if (next) return next.end;
+  // Nothing running. The last thing to lapse is the honest answer; an item
+  // with only a lifetime policy has no date at all, which is also honest.
+  return lastLapsed(item, now)?.end ?? null;
 }
 
 export function warrantyState(item: Item, now = new Date()): WarrantyState {
-  const end = effectiveExpiry(item);
-  if (!end) return 'unknown';
-  const days = daysUntil(end, now);
-  if (days < 0) return 'expired';
-  if (days <= ENDING_SOON_DAYS) return 'ending-soon';
-  return 'covered';
+  const all = coveragesOf(item);
+  if (all.length === 0) return 'unknown';
+
+  const next = nextToLapse(item, now);
+  if (next) {
+    return next.daysLeft! <= ENDING_SOON_DAYS ? 'ending-soon' : 'covered';
+  }
+  // Every dated policy has run out. A lifetime policy means the item is still
+  // covered for something, so it must not be painted as expired.
+  if (hasLifetime(item)) return 'covered';
+  // A term with no purchase date to run from isn't expired, it's unanswered.
+  return lastLapsed(item, now) ? 'expired' : 'unknown';
 }
 
-/** 0..1 for the ring. Full term remaining = 1, expired = 0. */
+/** 0..1 for the ring, measured against the policy that's counting down. */
 export function warrantyProgress(item: Item, now = new Date()): number {
-  const end = effectiveExpiry(item);
-  const start = item.warranty?.startsOn ?? item.purchaseDate;
-  if (!end || !start) return 0;
-  const total = daysUntil(end, parseDate(start));
+  const next = nextToLapse(item, now);
+  if (!next) return hasLifetime(item) ? 1 : 0;
+
+  const start = next.coverage.startsOn ?? item.purchaseDate;
+  if (!start || !next.end) return hasLifetime(item) ? 1 : 0;
+
+  const total = daysUntil(next.end, parseDate(start));
   if (total <= 0) return 0;
-  return Math.max(0, Math.min(1, daysUntil(end, now) / total));
+  return Math.max(0, Math.min(1, next.daysLeft! / total));
 }
 
 /**
@@ -126,14 +262,16 @@ export function inFinalStretch(end: Date, now = new Date()): boolean {
  * them "2m" on day one is answering a question they didn't ask.
  */
 export function warrantyLabel(item: Item, now = new Date()): string {
-  const end = effectiveExpiry(item);
-  if (!end) return 'No warranty';
+  const next = nextToLapse(item, now);
+  if (!next) {
+    if (hasLifetime(item)) return 'Lifetime';
+    return lastLapsed(item, now) ? 'Ended' : 'No warranty';
+  }
 
-  const days = daysUntil(end, now);
-  if (days < 0) return 'Ended';
+  const days = next.daysLeft!;
   if (days === 0) return 'Ends today';
 
-  if (countsInDays(item) || inFinalStretch(end, now)) {
+  if (next.coverage.unit === 'days' || inFinalStretch(next.end!, now)) {
     return `${days} ${days === 1 ? 'day' : 'days'}`;
   }
 
@@ -152,17 +290,50 @@ export function warrantyLabel(item: Item, now = new Date()): string {
 export interface WarrantyParts {
   value: string;
   unit: string;
+  /**
+   * Which policy the number belongs to, once there's more than one and the
+   * answer isn't obvious. "96 days left" on a couch with five policies is a
+   * fact about the fabric, and a countdown that doesn't say what it's counting
+   * is worse than no countdown.
+   */
+  which?: string;
 }
 
 export function warrantyParts(item: Item, now = new Date()): WarrantyParts {
-  const end = effectiveExpiry(item);
-  if (!end) return { value: '—', unit: 'no warranty' };
+  const all = coveragesOf(item);
+  const next = nextToLapse(item, now);
 
-  const days = daysUntil(end, now);
+  if (!next) {
+    if (hasLifetime(item)) return { value: 'Lifetime', unit: 'no end date' };
+    const last = lastLapsed(item, now);
+    if (!last) return { value: '—', unit: all.length ? 'no start date' : 'no warranty' };
+    return {
+      value: 'Ended',
+      unit: sinceLabel(-last.daysLeft!),
+      which: all.length > 1 ? coverageLabel(last.coverage) : undefined,
+    };
+  }
+
+  // Named only when the item has more than one policy. On the overwhelming
+  // majority of items — one warranty, nothing else — the name would just be
+  // the word "Warranty" under every number in the list.
+  const which = all.length > 1 ? coverageLabel(next.coverage) : undefined;
+  return { ...coverageParts(next, now), which };
+}
+
+/**
+ * The same countdown for one named policy, for the list on the item page.
+ * Every row there is a policy in its own right, so each gets its own number
+ * rather than a share of the item's.
+ */
+export function coverageParts(d: DatedCoverage, now = new Date()): WarrantyParts {
+  if (!d.end) return { value: 'Lifetime', unit: 'no end date' };
+
+  const days = d.daysLeft!;
   if (days < 0) return { value: 'Ended', unit: sinceLabel(-days) };
   if (days === 0) return { value: 'Today', unit: 'last day' };
 
-  if (countsInDays(item) || inFinalStretch(end, now)) {
+  if (d.coverage.unit === 'days' || inFinalStretch(d.end, now)) {
     return { value: String(days), unit: days === 1 ? 'day left' : 'days left' };
   }
 
@@ -174,6 +345,13 @@ export function warrantyParts(item: Item, now = new Date()): WarrantyParts {
   return { value: rem ? `${years}y ${rem}m` : `${years}y`, unit: 'left' };
 }
 
+/** The colour a single policy earns, on the same scale as the item's. */
+export function coverageState(d: DatedCoverage): WarrantyState {
+  if (!d.end) return 'covered';
+  if (d.daysLeft! < 0) return 'expired';
+  return d.daysLeft! <= ENDING_SOON_DAYS ? 'ending-soon' : 'covered';
+}
+
 function sinceLabel(daysAgo: number): string {
   if (daysAgo < 31) return `${daysAgo} ${daysAgo === 1 ? 'day' : 'days'} ago`;
   const months = Math.floor(daysAgo / 30.44);
@@ -183,11 +361,8 @@ function sinceLabel(daysAgo: number): string {
 }
 
 /** True when the policy running the clock was entered in days. */
-export function countsInDays(item: Item): boolean {
-  const base = expiresOn(item.warranty, item.purchaseDate);
-  const ext = expiresOn(item.extendedWarranty, item.purchaseDate);
-  const winner = ext && base ? (ext > base ? item.extendedWarranty : item.warranty) : (item.warranty ?? item.extendedWarranty);
-  return termOf(winner)?.unit === 'days';
+export function countsInDays(item: Item, now = new Date()): boolean {
+  return nextToLapse(item, now)?.coverage.unit === 'days';
 }
 
 /** "90 days", "2 years", "18 months" — the term itself, not what's left. */

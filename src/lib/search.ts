@@ -16,6 +16,7 @@
  */
 
 import type { Doc, Item, Room } from '@/db/types';
+import { coveragesOf } from './warranty';
 
 export type MatchField =
   | 'name'
@@ -97,8 +98,11 @@ function haystacks(
   if (roomName) out.push({ field: 'room', text: roomName });
   if (item.notes) out.push({ field: 'notes', text: item.notes });
 
-  const w = [item.warranty, item.extendedWarranty]
-    .flatMap((x) => [x?.provider, x?.policyNumber])
+  // Every policy, not just the first two fields: "sinuous spring" is a
+  // perfectly reasonable thing to search a couch for, and it only exists on
+  // the coverage that says so.
+  const w = coveragesOf(item)
+    .flatMap((c) => [c.label, c.covers, c.provider, c.policyNumber])
     .filter(Boolean)
     .join(' ');
   if (w) out.push({ field: 'warranty', text: w, loose: true });

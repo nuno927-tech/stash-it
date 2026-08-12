@@ -2,30 +2,23 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeRooms, createRoom, RoomNameTakenError } from '@/db/repo';
-import type { Item, WarrantyUnit } from '@/db/types';
+import type { Item } from '@/db/types';
 import {
   emptyForm,
   formFromItem,
   ItemLimitError,
   saveEditedItem,
   saveNewItem,
-  UNIT_LABEL,
   ValidationError,
-  WARRANTY_PRESETS,
   type AddItemForm,
   type PhotoEdit,
 } from '@/lib/addItem';
 import { attachStaged, stageDocs, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
-import {
-  completeMoneyInput,
-  currencySymbol,
-  formatMoneyInput,
-  formatPhoneInput,
-} from '@/lib/format';
+import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
-import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
+import { CoverageField } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
 
 /**
@@ -71,7 +64,6 @@ export function ItemForm({
   const [photo, setPhoto] = useState<PhotoEdit>(undefined);
   const [preview, setPreview] = useState<string>();
   const [removed, setRemoved] = useState(false);
-  const [custom, setCustom] = useState(false);
   const [staged, setStaged] = useState<StagedDoc[]>(() => prestaged ?? []);
   const [newRoom, setNewRoom] = useState<string | null>(null);
   const [more, setMore] = useState(false);
@@ -170,11 +162,6 @@ export function ItemForm({
       setBusy(false);
     }
   };
-
-  const endsOn = coverEnds(form.purchaseDate, form.warrantyUnit, form.warrantyAmount);
-  const amount = Number(form.warrantyAmount);
-  const hasTerm = form.warrantyAmount.trim() !== '' && Number.isFinite(amount) && amount > 0;
-  const unitWord = amount === 1 ? form.warrantyUnit.replace(/s$/, '') : form.warrantyUnit;
 
   return (
     <div className="formwrap">
@@ -398,96 +385,12 @@ export function ItemForm({
         </div>
       </section>
 
-      {/* How long it's covered. */}
-      <section className="card">
-        <div className="cardhead">
-          <h3>Warranty</h3>
-          {hasTerm && (
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => {
-                setCustom(false);
-                set('warrantyAmount', '');
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        <div className="seg">
-          {(Object.keys(UNIT_LABEL) as WarrantyUnit[]).map((u) => (
-            <button
-              key={u}
-              type="button"
-              className={form.warrantyUnit === u ? 'on' : ''}
-              onClick={() => {
-                const wasPreset = WARRANTY_PRESETS[form.warrantyUnit].includes(
-                  Number(form.warrantyAmount),
-                );
-                setForm((f) => ({
-                  ...f,
-                  warrantyUnit: u,
-                  warrantyAmount: wasPreset ? '' : f.warrantyAmount,
-                }));
-                setCustom(false);
-              }}
-            >
-              {UNIT_LABEL[u]}
-            </button>
-          ))}
-        </div>
-
-        <div className="chiprow">
-          {WARRANTY_PRESETS[form.warrantyUnit].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`pick${!custom && form.warrantyAmount === String(n) ? ' on' : ''}`}
-              onClick={() => {
-                setCustom(false);
-                set('warrantyAmount', form.warrantyAmount === String(n) ? '' : String(n));
-              }}
-            >
-              {n}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`pick${custom ? ' on' : ''}`}
-            onClick={() => {
-              const next = !custom;
-              setCustom(next);
-              if (next && WARRANTY_PRESETS[form.warrantyUnit].includes(Number(form.warrantyAmount)))
-                set('warrantyAmount', '');
-            }}
-          >
-            Custom
-          </button>
-        </div>
-
-        {custom && (
-          <input
-            type="number"
-            inputMode="numeric"
-            min="1"
-            value={form.warrantyAmount}
-            onChange={(e) => set('warrantyAmount', e.target.value)}
-            placeholder={form.warrantyUnit === 'days' ? '90 days' : '18 months'}
-            aria-label={`Number of ${form.warrantyUnit}`}
-            autoFocus
-          />
-        )}
-
-        {hasTerm && (
-          <p className="hint">
-            {endsOn
-              ? `${amount} ${unitWord} of cover, ending ${endsOn}.`
-              : 'Add a purchase date and Scout can track when this expires.'}
-          </p>
-        )}
-      </section>
+      {/* How long it's covered — one row per policy. */}
+      <CoverageField
+        purchaseDate={form.purchaseDate}
+        coverages={form.coverages}
+        onChange={(next) => set('coverages', next)}
+      />
 
       <DocsField
         itemId={item?.id}
@@ -543,42 +446,6 @@ export function ItemForm({
             />
           </Field>
 
-          <Field label="Warranty provider">
-            <input
-              type="text"
-              value={form.warrantyProvider}
-              onChange={(e) => set('warrantyProvider', e.target.value)}
-              placeholder="Bosch Home"
-            />
-          </Field>
-
-          <div className="fieldpair">
-            <Field label="Policy number">
-              <input
-                type="text"
-                value={form.policyNumber}
-                onChange={(e) => set('policyNumber', e.target.value)}
-              />
-            </Field>
-            <Field label="Claims phone">
-              <input
-                type="tel"
-                value={form.warrantyPhone}
-                onChange={(e) => set('warrantyPhone', formatPhoneInput(e.target.value))}
-                placeholder="(860) 555-1234"
-              />
-            </Field>
-          </div>
-
-          <Field label="Warranty page">
-            <input
-              type="url"
-              value={form.warrantyUrl}
-              onChange={(e) => set('warrantyUrl', e.target.value)}
-              placeholder="https://"
-            />
-          </Field>
-
           <Field label="Notes">
             <textarea
               rows={3}
@@ -606,26 +473,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </label>
   );
-}
-
-/** Live preview of the computed expiry, using the same maths as the list. */
-function coverEnds(purchaseDate: string, unit: WarrantyUnit, amount: string): string | null {
-  const n = Number(amount);
-  if (!purchaseDate || !amount.trim() || !Number.isFinite(n) || n <= 0) return null;
-  try {
-    const from = parseDate(purchaseDate);
-    const end =
-      unit === 'days'
-        ? addDays(from, Math.round(n))
-        : addMonths(from, unit === 'years' ? Math.round(n) * 12 : Math.round(n));
-    return new Date(toISODate(end)).toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
 }
 
 function CameraGlyph() {

@@ -10,7 +10,7 @@
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
 import type { Item } from '@/db/types';
-import { emptyForm, draftFromForm, formFromItem, saveNewItem } from '@/lib/addItem';
+import { blankCoverage, emptyForm, draftFromForm, formFromItem, saveNewItem } from '@/lib/addItem';
 import { attachFile, docHeadline, docSubtitle, isMachineFilename, titleFromFilename } from '@/lib/docs';
 import {
   countsInDays,
@@ -174,27 +174,36 @@ async function main() {
   /* ------------------------------------------------------ through the form */
 
   const draft = draftFromForm(
-    { ...emptyForm('USD'), name: 'Kettle', warrantyUnit: 'days', warrantyAmount: '90' },
+    {
+      ...emptyForm('USD'),
+      name: 'Kettle',
+      coverages: [blankCoverage({ unit: 'days', amount: '90' })],
+    },
     property.id,
   );
-  check('the form stores the unit', draft.warranty?.unit === 'days');
-  check('the form stores the amount', draft.warranty?.amount === 90);
+  check('the form stores the unit', draft.coverages?.[0]?.unit === 'days');
+  check('the form stores the amount', draft.coverages?.[0]?.amount === 90);
   check('and a months equivalent for older builds', draft.warranty?.months === 3);
 
   const id = await saveNewItem(
-    { ...emptyForm('USD'), name: 'Day Kettle', warrantyUnit: 'days', warrantyAmount: '90', purchaseDate: toISODate(new Date()) },
+    {
+      ...emptyForm('USD'),
+      name: 'Day Kettle',
+      coverages: [blankCoverage({ unit: 'days', amount: '90' })],
+      purchaseDate: toISODate(new Date()),
+    },
     property.id,
   );
   const saved = (await db.items.get(id))!;
   check('a saved day term counts down in days', warrantyLabel(saved) === '90 days', warrantyLabel(saved));
 
   const back = formFromItem(saved, 'USD');
-  check('editing restores the unit', back.warrantyUnit === 'days', back.warrantyUnit);
-  check('editing restores the amount', back.warrantyAmount === '90', back.warrantyAmount);
+  check('editing restores the unit', back.coverages[0]?.unit === 'days', back.coverages[0]?.unit);
+  check('editing restores the amount', back.coverages[0]?.amount === '90', back.coverages[0]?.amount);
 
   const legacyForm = formFromItem(legacy, 'USD');
-  check('a legacy record edits as months', legacyForm.warrantyUnit === 'months');
-  check('with its month count intact', legacyForm.warrantyAmount === '24');
+  check('a legacy record edits as months', legacyForm.coverages[0]?.unit === 'months');
+  check('with its month count intact', legacyForm.coverages[0]?.amount === '24');
 
   /* -------------------------------------------------- document naming */
 

@@ -51,6 +51,35 @@ function fixtures(): Fixture[] {
       currency: 'USD',
       retailer: 'Home Depot',
       warranty: { months: 36, provider: 'DeWalt' },
+      // Three overlapping promises on one product, which is the ordinary case
+      // for power tools and the reason the list exists. The money-back window
+      // is the shortest and therefore the one that drives the countdown.
+      coverages: [
+        {
+          id: 'seed-dewalt-limited',
+          label: 'Limited warranty',
+          covers: 'Defects in material and workmanship. Not wear parts or abuse.',
+          unit: 'years',
+          amount: 3,
+          provider: 'DeWalt',
+        },
+        {
+          id: 'seed-dewalt-service',
+          label: 'Free service',
+          covers: 'One free tune-up: brushes, bearings and blade alignment.',
+          unit: 'years',
+          amount: 1,
+          provider: 'DeWalt service centre',
+        },
+        {
+          id: 'seed-dewalt-refund',
+          label: 'Money back',
+          covers: 'Full refund, no reason needed. Original receipt required.',
+          unit: 'days',
+          amount: 90,
+          provider: 'Home Depot',
+        },
+      ],
     },
     {
       name: 'Sony Bravia',

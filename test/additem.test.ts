@@ -12,6 +12,7 @@ import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT } from '@/db/types';
 import {
+  blankCoverage,
   draftFromForm,
   emptyForm,
   formFromItem,
@@ -33,6 +34,11 @@ function check(label: string, ok: boolean, detail = '') {
 
 function form(over: Partial<AddItemForm> = {}): AddItemForm {
   return { ...emptyForm('USD'), name: 'Test item', ...over };
+}
+
+/** One plain warranty, the way the form holds it. */
+function cover(over: Partial<Parameters<typeof blankCoverage>[0]> = {}) {
+  return [blankCoverage({ amount: '24', ...over })];
 }
 
 async function main() {
@@ -78,8 +84,7 @@ async function main() {
       model: '  ',
       purchaseDate: '2026-03-12',
       price: '$849.00',
-      warrantyAmount: '24',
-      warrantyProvider: 'Bosch Home',
+      coverages: cover({ provider: 'Bosch Home' }),
       notes: '',
     }),
     property.id,
@@ -90,18 +95,24 @@ async function main() {
   check('empty notes are dropped', draft.notes === undefined);
   check('price becomes integer cents', draft.purchasePriceCents === 84900);
   check('currency is stamped on the item', draft.currency === 'USD');
-  check('warranty is built', draft.warranty?.months === 24, JSON.stringify(draft.warranty));
-  check('warranty provider survives', draft.warranty?.provider === 'Bosch Home');
+  check('a coverage is built', draft.coverages?.length === 1, JSON.stringify(draft.coverages));
+  check('it takes the default name', draft.coverages?.[0]?.label === 'Warranty');
+  check('provider survives', draft.coverages?.[0]?.provider === 'Bosch Home');
+  // The two old fields are still written, so a backup opened on a phone that
+  // hasn't updated shows one warranty rather than none.
+  check('the legacy field is mirrored', draft.warranty?.months === 24, JSON.stringify(draft.warranty));
+  check('with its provider', draft.warranty?.provider === 'Bosch Home');
 
-  const noWarranty = draftFromForm(form({ warrantyAmount: '' }), property.id);
-  check('no months means no warranty object', noWarranty.warranty === undefined);
-  const zero = draftFromForm(form({ warrantyAmount: '0' }), property.id);
-  check('zero months means no warranty object', zero.warranty === undefined);
+  const noWarranty = draftFromForm(form({ coverages: cover({ amount: '' }) }), property.id);
+  check('a blank term saves no coverage', noWarranty.coverages === undefined);
+  check('and no legacy warranty either', noWarranty.warranty === undefined);
+  const zero = draftFromForm(form({ coverages: cover({ amount: '0' }) }), property.id);
+  check('zero is not a term', zero.coverages === undefined);
 
   /* ------------------------------------------------- expiry integration */
 
   const id = await saveNewItem(
-    form({ name: 'Kettle', purchaseDate: '2026-01-31', warrantyAmount: '24' }),
+    form({ name: 'Kettle', purchaseDate: '2026-01-31', coverages: cover() }),
     property.id,
   );
   const saved = (await db.items.get(id))!;
@@ -162,7 +173,7 @@ async function main() {
     form({
       name: 'Editable Kettle',
       price: '49.99',
-      warrantyAmount: '12',
+      coverages: cover({ amount: '12' }),
       purchaseDate: '2026-02-01',
     }),
     property.id,
@@ -183,7 +194,8 @@ async function main() {
   check('edit preserves createdAt', edited.createdAt === original.createdAt);
   check('edit moves updatedAt forward', edited.updatedAt >= original.updatedAt);
   check('edit round-trips the price', edited.purchasePriceCents === 4999);
-  check('edit round-trips the warranty', edited.warranty?.months === 12);
+  check('edit round-trips the term', edited.coverages?.[0]?.amount === 12);
+  check('and its unit', edited.coverages?.[0]?.unit === 'months');
 
   // A new photo replaces the old reference.
   await saveEditedItem(editId, formFromItem(edited, 'USD'), property.id, {
@@ -197,11 +209,11 @@ async function main() {
 
   // Clearing the warranty must actually remove it, not leave a stale object.
   const cleared = formFromItem((await db.items.get(editId))!, 'USD');
-  cleared.warrantyAmount = '';
+  cleared.coverages = cleared.coverages.map((c) => ({ ...c, amount: '' }));
   await saveEditedItem(editId, cleared, property.id);
   check(
-    'clearing months removes the warranty',
-    (await db.items.get(editId))!.warranty === undefined,
+    'clearing the term removes the cover',
+    (await db.items.get(editId))!.coverages === undefined,
     JSON.stringify((await db.items.get(editId))!.warranty),
   );
 
