@@ -55,6 +55,22 @@ const SRC: Record<ScoutPose, string> = {
   lounge,
 };
 
+/**
+ * Every pose and what it's for, in one place. The gallery reads this rather
+ * than keeping a second list — a roster that has to be updated twice is a
+ * roster that quietly falls out of date.
+ */
+export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
+  { pose: 'acorn', name: 'On guard', where: 'The launch screen, and the invitation to install' },
+  { pose: 'waving', name: 'Hello', where: 'First run, and only first run' },
+  { pose: 'report', name: 'The field report', where: 'Beside the ring on the dashboard' },
+  { pose: 'receipt', name: 'Paperwork', where: 'The items list' },
+  { pose: 'settings', name: 'At the desk', where: 'This screen' },
+  { pose: 'alert', name: 'Ears up', where: 'When something needs a minute' },
+  { pose: 'resting', name: 'Off duty', where: 'When nothing does' },
+  { pose: 'lounge', name: 'Feet up', where: 'The tip jar' },
+];
+
 const MOTION_CLASS: Record<ScoutMotion, string> = {
   float: 'm-float',
   breathe: 'm-breathe',

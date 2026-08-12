@@ -2878,7 +2878,9 @@ button.countpill.tappill:active {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px 12px 12px;
+  /* Words first, mascot second: the sentence is the thing being read, and
+     on a left-to-right screen the picture shouldn't get there first. */
+  padding: 12px 12px 12px 16px;
 }
 
 .scoutcard .rig {
@@ -3071,4 +3073,137 @@ button.countpill.tappill:active {
 
 .supportcard .hint {
   margin-top: 2px;
+}
+
+/* The heading is a button, and must not look like one. */
+.titletap {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------------------------------------------------------- the album */
+
+.galleryscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--slate-900);
+  padding: calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  animation: scrimIn 0.25s ease both;
+}
+
+.galleryhead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.galleryhead h2 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 27px;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+
+.galleryhead p {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.gallerygrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.galleryitem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 14px 10px 16px;
+  border-radius: var(--r-lg);
+  background: var(--slate-700);
+}
+
+.galleryitem .rig {
+  display: grid;
+  place-items: center;
+  height: 150px;
+}
+
+.galleryitem figcaption strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+
+.galleryitem figcaption span {
+  display: block;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.galleryfoot {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+/*
+  Confetti, and then never again — it runs once and the elements are left
+  where they land, off-screen. A looping celebration stops being one.
+*/
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.confetti i {
+  position: absolute;
+  top: -14px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: fall 2.6s cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift, 0), 105vh, 0) rotate(520deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
 }

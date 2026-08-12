@@ -46,9 +46,17 @@ import {
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
 import { DriveCard } from '@/components/DriveCard';
+import { ScoutGallery } from '@/components/ScoutGallery';
 import { Scout } from '@/components/Scout';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
+
+/**
+ * Enough taps that nobody arrives by accident, few enough that someone who
+ * suspects there's something there will keep going. The gap rule in `tap`
+ * means they have to be deliberate and continuous.
+ */
+const EGG_TAPS = 25;
 
 /**
  * Settings, grouped by whose question it answers.
@@ -72,21 +80,44 @@ export function Settings({
   const [notice, setNotice] = useState<Notice>(null);
   const [taps, setTaps] = useState<TapState>(NO_TAPS);
   const [pending, setPending] = useState<ParsedBundle | null>(null);
+  const [eggTaps, setEggTaps] = useState<TapState>(NO_TAPS);
+  const [album, setAlbum] = useState(false);
 
   if (!settings) return null;
 
   return (
     <>
       <header className="apphead">
-        <div className="apptitle">Settings</div>
+        {/*
+          Twenty-five taps opens Scout's album. It looks and reads as the
+          heading it is — an easter egg that announces itself is a feature
+          with a silly name.
+        */}
+        <button
+          type="button"
+          className="apptitle titletap"
+          data-cue="none"
+          onClick={() => {
+            const next = tap(eggTaps, Date.now());
+            setEggTaps(next);
+            if (next.count >= EGG_TAPS) {
+              setEggTaps(NO_TAPS);
+              setAlbum(true);
+            }
+          }}
+        >
+          Settings
+        </button>
       </header>
+
+      {album && <ScoutGallery onClose={() => setAlbum(false)} />}
 
       {/* His own card rather than a decoration in the header. It's the one
           screen that's entirely about adjusting things, and he's at a control
           desk doing exactly that. */}
       <div className="card scoutcard">
-        <Scout pose="settings" height={110} motion={['breathe']} alt="" />
         <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
+        <Scout pose="settings" height={110} motion={['breathe']} alt="" />
       </div>
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}

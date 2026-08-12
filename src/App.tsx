@@ -367,7 +367,14 @@ function Shell() {
         <BottomNav
           active={tab}
           onChange={(t) => go({ kind: t })}
-          onAdd={() => go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })}
+          /* No add button on Settings. Nothing there is about adding an
+             item, and a floating action that doesn't belong to the screen
+             it's floating over is just a thing in the way. */
+          onAdd={
+            tab === 'settings'
+              ? undefined
+              : () => go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })
+          }
           addDisabled={!mayAdd}
         />
       }
