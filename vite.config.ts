@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => {
               registerType: 'prompt',
               includeAssets: ['apple-touch-icon.png'],
               workbox: {
+                // Pulled in at the top of the generated worker, so its fetch
+                // listener is registered before Workbox's routing. That's what
+                // lets it answer the share POST — first respondWith wins.
+                importScripts: ['share-handler.js'],
                 globPatterns: ['**/*.{js,css,html,woff2,svg,webp}'],
                 // Install icons are fetched by the OS at install time and never
                 // again — precaching half a megabyte of them buys nothing.
@@ -53,6 +57,9 @@ export default defineConfig(({ mode }) => {
                 // Any unknown path inside the app resolves to the shell. Needed
                 // once routing exists, harmless now.
                 navigateFallback: `${base}index.html`,
+                // …but never the share endpoint. Falling that back to the
+                // shell would hand the POST to Workbox and lose the payload.
+                navigateFallbackDenylist: [/\/share$/],
               },
               manifest: {
                 id: base,
@@ -68,6 +75,30 @@ export default defineConfig(({ mode }) => {
                 background_color: '#F4F2ED',
                 theme_color: '#F4F2ED',
                 categories: ['productivity', 'utilities'],
+                /**
+                 * Puts Stash it in the Android share sheet, so a receipt goes
+                 * from the mail app to an item without a round trip through
+                 * Files. POST because GET share targets can't carry files.
+                 *
+                 * Android only — iOS has never implemented share targets, and
+                 * there the route stays Gmail → save to Files → the picker.
+                 */
+                share_target: {
+                  action: `${base}share`,
+                  method: 'POST',
+                  enctype: 'multipart/form-data',
+                  params: {
+                    title: 'title',
+                    text: 'text',
+                    url: 'url',
+                    files: [
+                      {
+                        name: 'files',
+                        accept: ['image/*', 'application/pdf', '.pdf'],
+                      },
+                    ],
+                  },
+                },
                 icons: [
                   { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
                   { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

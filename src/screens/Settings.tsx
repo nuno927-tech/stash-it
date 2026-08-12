@@ -19,6 +19,7 @@ import {
   forgetDismissal,
   hasNativePrompt,
   installOfferIgnoringDismissal,
+  isAndroid,
   isIOSSafari,
   isStandalone,
   promptInstall,
@@ -653,9 +654,18 @@ function AboutApp({
         />
       )}
 
-      {/* Telling someone about the app is the one thing on this card they might
-          actually come here to do, so it's a button rather than a control
-          hiding at the end of a sentence. */}
+      {/* A share target is invisible: nothing in the app hints that Stash it
+          is now in the Android share sheet, and nobody goes looking. One line
+          here is the only place it can be said. */}
+      <Row
+        label="Import from email"
+        note={
+          isAndroid()
+            ? 'Open a receipt in your mail app, tap Share, choose Stash it. The attachment and what it says get filled into a new item.'
+            : 'On Android, receipts can be shared straight from the mail app. On this device, save the attachment and add it to an item.'
+        }
+      />
+
       <button
         type="button"
         className="btn wide"

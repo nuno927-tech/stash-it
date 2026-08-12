@@ -75,6 +75,15 @@ export function isIOSSafari(): boolean {
   return !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
 }
 
+/**
+ * Only Android implements share targets, so it's the only place worth telling
+ * someone the app is in their share sheet.
+ */
+export function isAndroid(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 export function hasNativePrompt(): boolean {
   return deferred !== null;
 }

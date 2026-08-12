@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
@@ -14,6 +14,8 @@ import {
 } from '@/lib/install';
 import { biometricsAvailable, lockVerdict, type LockVerdict } from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
+import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
+import { forgetShareMarker, looksLikeShare, takeShare } from '@/lib/shareInbox';
 import { dismissSplash, splashRemainingMs } from '@/lib/splash';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
@@ -148,6 +150,33 @@ function Gate() {
   );
 }
 
+/**
+ * A receipt shared in from the mail app.
+ *
+ * Read once, on the first render after the worker's redirect. It can't be a
+ * render-time read because the payload lives in Cache Storage and everything
+ * about getting it is async.
+ */
+function usePendingShare(currency: string): ShareDraft | null {
+  const [draft, setDraft] = useState<ShareDraft | null>(null);
+  const done = useRef(false);
+
+  useEffect(() => {
+    if (done.current || !looksLikeShare(location.search)) return;
+    done.current = true;
+    void takeShare().then((payload) => {
+      forgetShareMarker();
+      if (!payload) return;
+      setDraft(shareToDraft(payload, currency));
+    });
+    // Currency is read once, at the moment the share arrives. Re-running this
+    // on a currency change would try to consume a share that's already gone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return draft;
+}
+
 function Shell() {
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
 
@@ -170,6 +199,19 @@ function Shell() {
   useEffect(() => installClickSounds(), []);
 
   const offer = useInstallOffer();
+  const share = usePendingShare(settings?.currency ?? 'USD');
+
+  // A share is an instruction: the user picked this app out of the sheet to
+  // put a receipt somewhere. Opening anything other than the form would be
+  // asking them to say it twice.
+  const shareSeen = useRef(false);
+  useEffect(() => {
+    if (share && !shareSeen.current) {
+      shareSeen.current = true;
+      setScreen({ kind: 'add', from: 'home' });
+    }
+  }, [share]);
+
   const count =
     useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
 
@@ -245,6 +287,9 @@ function Shell() {
           <ItemForm
             propertyId={property.id}
             currency={settings.currency}
+            prefill={share?.prefill}
+            prestaged={share?.staged}
+            banner={share?.banner}
             onSaved={(id) => setScreen({ kind: 'detail', id, from: origin })}
             onCancel={() => setScreen(back())}
           />

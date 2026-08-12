@@ -43,12 +43,21 @@ export function ItemForm({
   propertyId,
   currency,
   item,
+  prefill,
+  prestaged,
+  banner,
   onSaved,
   onCancel,
 }: {
   propertyId: string;
   currency: string;
   item?: Item;
+  /** Fields filled in from somewhere else — a shared receipt, say. */
+  prefill?: Partial<AddItemForm>;
+  /** Documents that arrived with it, already staged. */
+  prestaged?: StagedDoc[];
+  /** A line explaining where all of that came from. */
+  banner?: string;
   onSaved: (id: string) => void;
   onCancel: () => void;
 }) {
@@ -56,14 +65,14 @@ export function ItemForm({
   const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? [];
 
   const [form, setForm] = useState<AddItemForm>(() =>
-    item ? formFromItem(item, currency) : emptyForm(currency),
+    item ? formFromItem(item, currency) : { ...emptyForm(currency), ...prefill },
   );
   // undefined = untouched, PhotoRefs = replaced, null = removed.
   const [photo, setPhoto] = useState<PhotoEdit>(undefined);
   const [preview, setPreview] = useState<string>();
   const [removed, setRemoved] = useState(false);
   const [custom, setCustom] = useState(false);
-  const [staged, setStaged] = useState<StagedDoc[]>([]);
+  const [staged, setStaged] = useState<StagedDoc[]>(() => prestaged ?? []);
   const [newRoom, setNewRoom] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -173,6 +182,7 @@ export function ItemForm({
       </header>
 
       {error && <div className="notice bad">{error}</div>}
+      {banner && !error && <div className="notice ok">{banner}</div>}
 
       {/* What it is. The photo sits beside the name rather than above it: a
           full-width dropzone pushed the first real question below the fold. */}
