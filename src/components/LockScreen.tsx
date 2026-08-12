@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { feedback } from '@/lib/feedback';
 import { clearLock, verifyBiometrics, type LockVerdict } from '@/lib/lock';
 import { Scout } from './Scout';
 
 /**
- * The unlock gate: a sheet across the lower two thirds.
+ * The unlock gate.
  *
- * It waits for a tap rather than firing the check on mount. Auto-firing put
- * the browser's own verification dialog on screen before this sheet had
- * painted, so the first thing you saw when opening the app was unbranded
- * system chrome — and that dialog is the browser's, not ours to restyle. Scout
- * gets there first now, and the platform sheet arrives as the answer to a
- * deliberate tap.
+ * Scout stands in the top third, on the scrim; the card sits in the bottom two
+ * thirds. That split isn't decoration — the browser's own verification dialog
+ * is a bottom sheet on Android, so it covers the card and leaves Scout in
+ * view. The app stays recognisably itself while the platform does the part we
+ * aren't allowed to draw.
+ *
+ * The check fires on mount. An earlier version waited for a tap so our sheet
+ * would paint before the system one, but that made opening a locked app two
+ * deliberate actions — a button whose only job is to summon the real button.
+ * With Scout above the fold, there's nothing left for that first tap to buy.
+ *
+ * So there is exactly one button in the normal path, it appears only after an
+ * attempt has already failed, and pressing it does the same thing the launch
+ * did: ask for a fingerprint.
  */
 export function LockScreen({
   credentialId,
@@ -22,66 +30,82 @@ export function LockScreen({
   verdict: LockVerdict;
   onUnlocked: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [note, setNote] = useState<string>();
   const [rescue, setRescue] = useState(false);
+  const asked = useRef(false);
+
+  const stranded = verdict === 'stranded';
 
   const unlock = async () => {
     setBusy(true);
     setNote(undefined);
     const outcome = await verifyBiometrics(credentialId);
+
     if (outcome === 'unlocked') {
       feedback('save');
       onUnlocked();
       return;
     }
+
     feedback('error');
     setBusy(false);
     setNote(
       outcome === 'cancelled'
-        ? 'Not recognised. Try again.'
-        : "This device wouldn't answer. Try again, or use the recovery option below.",
+        ? 'Not recognised.'
+        : "This device wouldn't answer.",
     );
+    // A cancel is a decision, not a fault. Only a real failure suggests the
+    // credential is broken, and only then is a way past worth offering.
     if (outcome !== 'cancelled') setRescue(true);
   };
 
-  // Stranded: the device no longer has any authenticator, so no amount of
-  // trying can ever succeed. This is the only state that offers a way past
-  // without biometrics, and reaching it on a phone you don't own means getting
-  // past the passcode first.
-  const stranded = verdict === 'stranded';
+  useEffect(() => {
+    // Once. React runs effects twice in development, and a second WebAuthn
+    // call while the first is open aborts it.
+    if (stranded || asked.current) {
+      if (stranded) setBusy(false);
+      return;
+    }
+    asked.current = true;
+    void unlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stranded]);
 
   return (
     <div className="lockscrim" role="dialog" aria-modal="true" aria-labelledby="lock-title">
-      <div className="locksheet">
-        <span className="lockgrip" aria-hidden="true" />
-
-        {/* Scout guarding the acorn is the whole idea of the screen, so he's
-            the picture rather than a padlock glyph. */}
+      {/* Above the sheet, and above the system dialog that will cover it. */}
+      <div className="lockstage">
         <Scout
           pose="acorn"
-          height={160}
-          motion={['float', 'breathe']}
+          height={148}
+          motion={busy ? ['float', 'breathe'] : ['breathe']}
           shadow
           alt="Scout holding an acorn"
         />
+      </div>
 
-        <h2 id="lock-title">
-          {stranded ? 'Biometrics unavailable' : 'Stash it is locked'}
-        </h2>
+      <div className="locksheet">
+        <span className="lockgrip" aria-hidden="true" />
+
+        <h2 id="lock-title">{stranded ? 'Biometrics unavailable' : 'Stash it is locked'}</h2>
 
         <p>
           {stranded
             ? "This device no longer offers a fingerprint or face check, so the lock can't be satisfied. You can turn it off and get back in."
-            : 'Use your fingerprint or face to open your things.'}
+            : busy
+              ? 'Waiting for your fingerprint or face.'
+              : 'Use your fingerprint or face to open your things.'}
         </p>
 
         {note && !stranded && <p className="locknote">{note}</p>}
 
-        {!stranded && (
-          <button type="button" className="btn wide lockbtn" disabled={busy} onClick={unlock}>
+        {/* Nothing to press while the platform prompt is already up — a
+            disabled button under a dialog is furniture. */}
+        {!stranded && !busy && (
+          <button type="button" className="btn wide lockbtn" onClick={unlock}>
             <FingerprintGlyph />
-            {busy ? 'Waiting for you…' : 'Unlock'}
+            Unlock
           </button>
         )}
 
