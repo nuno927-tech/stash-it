@@ -57,9 +57,11 @@ export default defineConfig(({ mode }) => {
                 // Any unknown path inside the app resolves to the shell. Needed
                 // once routing exists, harmless now.
                 navigateFallback: `${base}index.html`,
-                // …but never the share endpoint. Falling that back to the
-                // shell would hand the POST to Workbox and lose the payload.
-                navigateFallbackDenylist: [/\/share$/],
+                // …but never the share endpoint, and never the marketing
+                // page. Falling /share back to the shell would hand the POST
+                // to Workbox and lose the payload; falling /welcome back
+                // would serve the app to someone who asked for the website.
+                navigateFallbackDenylist: [/\/share$/, /\/welcome\//],
               },
               manifest: {
                 id: base,

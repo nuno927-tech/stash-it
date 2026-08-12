@@ -41,6 +41,14 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
+      # The marketing page ships alongside the app rather than replacing it at
+      # the root: /stash-it/ is the installed PWA's start_url and scope, and
+      # moving the app would break every existing installation.
+      - name: Add the marketing site
+        run: |
+          mkdir -p dist/welcome
+          cp -r site/* dist/welcome/
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

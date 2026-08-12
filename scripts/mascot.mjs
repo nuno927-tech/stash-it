@@ -34,6 +34,7 @@ import { mkdirSync } from 'node:fs';
 
 const FROM = 'design/mascot-originals';
 const TO = 'src/assets/mascot';
+const SITE = 'site/img';
 
 /**
  * Longest edge in the exported file: twice the largest size each pose is
@@ -52,6 +53,7 @@ const POSES = [
 ];
 
 mkdirSync(TO, { recursive: true });
+mkdirSync(SITE, { recursive: true });
 
 const python = `
 import sys
@@ -109,3 +111,34 @@ flat.save('public/splash-scout.webp', 'WEBP', quality=84, method=6)
 print(f'splash    {flat.width}x{flat.height}')
 `;
 console.log(execFileSync('python3', ['-c', splash]).toString().trim());
+
+/**
+ * The marketing site wants the same poses much larger — a hero mascot is
+ * 400px+ on a laptop and the in-app exports top out at 400 for the whole
+ * body. Separate sizes rather than one shared set, because the app pays for
+ * its images on every install and the site pays only when someone visits.
+ */
+const site = `
+import sys
+from PIL import Image
+import numpy as np
+
+# Sized to how large each one is actually drawn, at 2x, and no further. The
+# hero is the only image above the fold, so it is the only one allowed to be
+# expensive — and even that is a third of what a 900px export cost.
+for name, size in [('acorn', 660), ('waving', 560), ('report', 420),
+                   ('receipt', 460), ('settings', 460), ('alert', 520),
+                   ('resting', 460)]:
+    w = np.asarray(Image.open(f'${FROM}/scout-{name}-white.png').convert('RGB'), float) / 255
+    b = np.asarray(Image.open(f'${FROM}/scout-{name}-black.png').convert('RGB'), float) / 255
+    alpha = np.clip(1 - (w - b).mean(axis=2), 0, 1)
+    colour = np.clip(b / np.maximum(alpha, 1e-4)[..., None], 0, 1)
+    img = Image.fromarray(
+        (np.concatenate([colour, alpha[..., None]], axis=2) * 255).round().astype('uint8'), 'RGBA'
+    )
+    img = img.crop(Image.fromarray((alpha > 0.02).astype('uint8') * 255).getbbox())
+    img.thumbnail((size, size), Image.LANCZOS)
+    img.save(f'${SITE}/scout-{name}.webp', 'WEBP', quality=80, method=6)
+    print(f'site {name:9s} {img.width}x{img.height}')
+`;
+console.log(execFileSync('python3', ['-c', site]).toString().trim());

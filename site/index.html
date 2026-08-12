@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0D10" />
+    <title>Stash it — every warranty you own, on your phone and nowhere else</title>
+    <meta
+      name="description"
+      content="Stash it keeps the receipts, warranties and manuals for everything you own — and keeps them on your device. No account, no cloud, no tracking."
+    />
+
+    <meta property="og:title" content="Stash it — warranties that don't expire unnoticed" />
+    <meta
+      property="og:description"
+      content="Every receipt, warranty and manual for everything you own. Entirely on your device."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="img/scout-acorn.webp" />
+    <link rel="icon" href="../icon-192.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:wght@300..700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" as="image" href="img/scout-acorn.webp" />
+
+    <style>
+      /*
+        One file, no build step, no dependencies. A marketing page that needs a
+        toolchain to change a sentence is a marketing page nobody updates.
+
+        The palette is the app's own dark theme, deepened a stop for the web —
+        arriving at the product should feel like the same place.
+      */
+      :root {
+        --ink: #05070a;
+        --slate-900: #0b0d10;
+        --slate-800: #12161c;
+        --slate-700: #1b2129;
+        --slate-600: #29313c;
+        --line: rgba(255, 255, 255, 0.09);
+        --line-strong: rgba(255, 255, 255, 0.16);
+
+        --gold: #f2b33d;
+        --gold-soft: rgba(242, 179, 61, 0.14);
+        --moss: #5fbf7e;
+        --ember: #e05a44;
+        --sky: #6aa9ff;
+
+        --text: #f2f4f7;
+        --muted: #97a1ae;
+        --dim: #6b7684;
+
+        --display: 'Bricolage Grotesque', system-ui, sans-serif;
+        --body: 'Inter', system-ui, sans-serif;
+
+        --page: min(1180px, 100% - 40px);
+        --r: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        background: var(--ink);
+        color: var(--text);
+        font-family: var(--body);
+        font-size: 17px;
+        line-height: 1.65;
+        font-weight: 300;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      img {
+        max-width: 100%;
+        display: block;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      section {
+        position: relative;
+        padding: clamp(80px, 12vw, 160px) 0;
+      }
+
+      .page {
+        width: var(--page);
+        margin: 0 auto;
+      }
+
+      /* ------------------------------------------------------- typography */
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 200;
+        letter-spacing: -0.035em;
+        line-height: 1.04;
+      }
+
+      h1 {
+        font-size: clamp(44px, 8.2vw, 92px);
+      }
+
+      h2 {
+        font-size: clamp(34px, 5.4vw, 60px);
+      }
+
+      h3 {
+        font-size: clamp(21px, 2.4vw, 27px);
+        letter-spacing: -0.025em;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        font-family: var(--body);
+        font-size: 12.5px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--gold);
+        background: var(--gold-soft);
+        border: 1px solid rgba(242, 179, 61, 0.28);
+        border-radius: 99px;
+        padding: 7px 15px;
+        margin-bottom: 26px;
+      }
+
+      .lede {
+        font-size: clamp(17px, 2vw, 21px);
+        color: var(--muted);
+        max-width: 54ch;
+      }
+
+      strong {
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      /* ---------------------------------------------------------- buttons */
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-family: var(--body);
+        font-size: 16px;
+        font-weight: 500;
+        text-decoration: none;
+        padding: 16px 30px;
+        border-radius: 99px;
+        border: 1px solid transparent;
+        transition:
+          transform 0.18s ease,
+          background 0.18s ease,
+          border-color 0.18s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .btn.primary {
+        background: var(--gold);
+        color: #17181a;
+        box-shadow: 0 14px 40px -14px rgba(242, 179, 61, 0.7);
+      }
+
+      .btn.primary:hover {
+        background: #ffc456;
+      }
+
+      .btn.ghost {
+        border-color: var(--line-strong);
+        color: var(--text);
+      }
+
+      .btn.ghost:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 34px;
+      }
+
+      /* ------------------------------------------------------ atmosphere */
+
+      /*
+        Soft light rather than hard gradients. A blurred radial behind the
+        content does most of the work of "premium" and costs one element.
+      */
+      .glow {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .page > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .rule {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+      }
+
+      /* ------------------------------------------------------------- nav */
+
+      header.top {
+        position: fixed;
+        inset: 0 0 auto;
+        z-index: 50;
+        padding: 16px 0;
+        transition: background 0.3s ease, border-color 0.3s ease;
+        border-bottom: 1px solid transparent;
+      }
+
+      header.top.stuck {
+        background: rgba(5, 7, 10, 0.82);
+        backdrop-filter: blur(16px);
+        border-bottom-color: var(--line);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 21px;
+        letter-spacing: -0.025em;
+        text-decoration: none;
+      }
+
+      .mark span {
+        color: var(--gold);
+      }
+
+      .mark img {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+      }
+
+      .topbar nav {
+        display: none;
+        gap: 30px;
+        font-size: 14.5px;
+        color: var(--muted);
+      }
+
+      .topbar nav a {
+        text-decoration: none;
+        transition: color 0.18s ease;
+      }
+
+      .topbar nav a:hover {
+        color: var(--text);
+      }
+
+      .topbar .btn {
+        padding: 11px 22px;
+        font-size: 14.5px;
+      }
+
+      @media (min-width: 900px) {
+        .topbar nav {
+          display: flex;
+        }
+      }
+
+      /* ----------------------------------------------------------- hero */
+
+      .hero {
+        padding-top: clamp(120px, 20vw, 190px);
+        padding-bottom: clamp(60px, 8vw, 110px);
+        overflow: hidden;
+      }
+
+      .hero-grid {
+        display: grid;
+        gap: clamp(30px, 5vw, 60px);
+        align-items: center;
+      }
+
+      @media (min-width: 940px) {
+        .hero-grid {
+          grid-template-columns: 1.05fr 1fr;
+        }
+      }
+
+      .hero h1 {
+        margin-bottom: 24px;
+      }
+
+      .hero h1 em {
+        font-style: normal;
+        color: var(--gold);
+      }
+
+      .heroart {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+
+      .heroart img {
+        width: min(100%, 520px);
+        filter: drop-shadow(0 50px 70px rgba(0, 0, 0, 0.65));
+        animation: bob 6s ease-in-out infinite;
+      }
+
+      .heroart::after {
+        content: '';
+        position: absolute;
+        bottom: 4%;
+        width: 58%;
+        height: 26px;
+        border-radius: 50%;
+        background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 70%);
+        filter: blur(10px);
+      }
+
+      @keyframes bob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-16px);
+        }
+      }
+
+      .trustline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 22px;
+        margin-top: 34px;
+        font-size: 13.5px;
+        color: var(--dim);
+      }
+
+      .trustline span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .tick {
+        width: 15px;
+        height: 15px;
+        flex: none;
+        color: var(--moss);
+      }
+
+      /* -------------------------------------------------------- reveals */
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(26px);
+        transition:
+          opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+
+      /* --------------------------------------------------------- split */
+
+      .split {
+        display: grid;
+        gap: clamp(34px, 6vw, 76px);
+        align-items: center;
+      }
+
+      @media (min-width: 900px) {
+        .split {
+          grid-template-columns: 1fr 1fr;
+        }
+        .split.flip .splitart {
+          order: -1;
+        }
+      }
+
+      .splitart {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+
+      .splitart img {
+        width: min(100%, 460px);
+        filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.6));
+      }
+
+      .halo {
+        position: absolute;
+        inset: 8% 6%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(242, 179, 61, 0.16), transparent 65%);
+        filter: blur(30px);
+      }
+
+      .split h2 {
+        margin-bottom: 20px;
+      }
+
+      .split p + p {
+        margin-top: 18px;
+      }
+
+      .split p {
+        color: var(--muted);
+        max-width: 46ch;
+      }
+
+      /* A section head with the mascot beside it. He shrinks out of the way
+         on a phone rather than disappearing — the poses are the through-line
+         of the page, and a page that drops them on mobile has two identities. */
+      .headrow {
+        display: flex;
+        align-items: center;
+        gap: clamp(16px, 4vw, 50px);
+        margin-bottom: clamp(40px, 6vw, 72px);
+      }
+
+      .headrow img {
+        width: clamp(96px, 22vw, 230px);
+        flex: none;
+        margin-left: auto;
+        filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6));
+      }
+
+      /* --------------------------------------------------------- cards */
+
+      .sechead {
+        max-width: 44ch;
+        margin-bottom: clamp(40px, 6vw, 72px);
+      }
+
+      .sechead h2 {
+        margin-bottom: 18px;
+      }
+
+      .cards {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .card {
+        position: relative;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        padding: 30px 28px 32px;
+        overflow: hidden;
+        transition: border-color 0.25s ease, transform 0.25s ease;
+      }
+
+      .card:hover {
+        border-color: var(--line-strong);
+        transform: translateY(-3px);
+      }
+
+      .card h3 {
+        margin: 18px 0 10px;
+      }
+
+      .card p {
+        color: var(--muted);
+        font-size: 15.5px;
+      }
+
+      .card.wide {
+        grid-column: 1 / -1;
+      }
+
+      @media (min-width: 900px) {
+        .card.tall {
+          grid-row: span 2;
+        }
+      }
+
+      .glyph {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: var(--gold-soft);
+        color: var(--gold);
+        border: 1px solid rgba(242, 179, 61, 0.24);
+      }
+
+      .glyph.moss {
+        background: rgba(95, 191, 126, 0.13);
+        color: var(--moss);
+        border-color: rgba(95, 191, 126, 0.24);
+      }
+
+      .glyph.sky {
+        background: rgba(106, 169, 255, 0.13);
+        color: var(--sky);
+        border-color: rgba(106, 169, 255, 0.24);
+      }
+
+      /* --------------------------------------------------------- steps */
+
+      .steps {
+        display: grid;
+        gap: 16px;
+        counter-reset: step;
+      }
+
+      @media (min-width: 820px) {
+        .steps {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      .step {
+        position: relative;
+        padding: 30px 24px;
+        border-radius: var(--r);
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .step b {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-bottom: 18px;
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 500;
+        color: var(--ink);
+        background: var(--gold);
+      }
+
+      .step h3 {
+        font-size: 19px;
+        margin-bottom: 8px;
+      }
+
+      .step p {
+        color: var(--muted);
+        font-size: 14.5px;
+      }
+
+      /* The thread between steps, on wide screens only — stacked cards on a
+         phone already read as a sequence. */
+      @media (min-width: 820px) {
+        .step::after {
+          content: '';
+          position: absolute;
+          top: 50px;
+          right: -16px;
+          width: 16px;
+          height: 1px;
+          background: var(--line-strong);
+        }
+        .step:last-child::after {
+          display: none;
+        }
+      }
+
+      /* ------------------------------------------------------- privacy */
+
+      .privacy {
+        background:
+          radial-gradient(1000px 620px at 50% -10%, rgba(95, 191, 126, 0.13), transparent 70%),
+          linear-gradient(180deg, #070a0d, #0b1012 55%, #070a0d);
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .shield {
+        position: relative;
+        display: grid;
+        place-items: center;
+        margin-bottom: 8px;
+      }
+
+      .shield img {
+        width: min(100%, 400px);
+        filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.7));
+      }
+
+      .badges {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        margin-top: 46px;
+      }
+
+      .badge {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 22px;
+        border-radius: 18px;
+        border: 1px solid rgba(95, 191, 126, 0.2);
+        background: rgba(95, 191, 126, 0.05);
+      }
+
+      .badge h3 {
+        font-size: 17px;
+        font-family: var(--body);
+        font-weight: 500;
+        letter-spacing: 0;
+        margin-bottom: 5px;
+      }
+
+      .badge p {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .badge svg {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        color: var(--moss);
+        margin-top: 2px;
+      }
+
+
+      /* -------------------------------------------------------- device */
+
+      .stage {
+        display: grid;
+        gap: clamp(30px, 5vw, 60px);
+        align-items: center;
+      }
+
+      @media (min-width: 940px) {
+        .stage {
+          grid-template-columns: 1fr 420px;
+        }
+      }
+
+      .phone {
+        position: relative;
+        width: 300px;
+        margin: 0 auto;
+        padding: 11px;
+        border-radius: 44px;
+        background: linear-gradient(160deg, #2a3038, #14181d);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08),
+          0 50px 90px -30px rgba(0, 0, 0, 0.9);
+      }
+
+      .phone::before {
+        content: '';
+        position: absolute;
+        top: 22px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 84px;
+        height: 22px;
+        border-radius: 99px;
+        background: #0a0c0f;
+        z-index: 3;
+      }
+
+      .screen {
+        position: relative;
+        height: 590px;
+        border-radius: 34px;
+        overflow: hidden;
+        background: #15181d;
+        color: #eaedf0;
+        font-size: 13px;
+      }
+
+      .shot {
+        position: absolute;
+        inset: 0;
+        padding: 46px 15px 15px;
+        opacity: 0;
+        transform: translateX(14px);
+        transition: opacity 0.45s ease, transform 0.45s ease;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .shot.on {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* A faithful-enough reproduction of the real screens, built in markup
+         rather than pasted in as PNGs — it stays sharp, weighs nothing, and
+         can't go stale in the quiet way a screenshot does. */
+      .ui-head {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 21px;
+        letter-spacing: -0.02em;
+        margin-bottom: 2px;
+      }
+
+      .ui-head span {
+        color: var(--gold);
+      }
+
+      .ui-sub {
+        font-size: 12px;
+        font-weight: 300;
+        color: #8b949e;
+        margin-bottom: 14px;
+      }
+
+      .ui-card {
+        background: #1f242b;
+        border-radius: 18px;
+        padding: 14px;
+        margin-bottom: 9px;
+      }
+
+      .ui-ring {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+
+      .ui-ring .mid {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        inset: 0;
+      }
+
+      .ui-ring .mid b {
+        font-family: var(--display);
+        font-weight: 200;
+        font-size: 34px;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+
+      .ui-ring .mid i {
+        font-style: normal;
+        font-size: 10px;
+        font-weight: 300;
+        color: #8b949e;
+      }
+
+      .ui-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid #2c333c;
+        margin-top: 10px;
+        padding-top: 9px;
+        text-align: center;
+      }
+
+      .ui-stats b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 200;
+        font-size: 15px;
+      }
+
+      .ui-stats span {
+        font-size: 8.5px;
+        font-weight: 300;
+        color: #8b949e;
+      }
+
+      .ui-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #1f242b;
+        border-radius: 14px;
+        padding: 9px 11px;
+        margin-bottom: 7px;
+      }
+
+      .ui-thumb {
+        width: 38px;
+        height: 38px;
+        flex: none;
+        border-radius: 50%;
+        background: #2c333c;
+        display: grid;
+        place-items: center;
+        color: #8b949e;
+      }
+
+      .ui-row .txt {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .ui-row .txt b {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 500;
+      }
+
+      .ui-row .txt span {
+        font-size: 10px;
+        font-weight: 300;
+        color: #8b949e;
+      }
+
+      .ui-left {
+        text-align: right;
+        flex: none;
+        line-height: 1.05;
+      }
+
+      .ui-left b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 200;
+        font-size: 21px;
+        letter-spacing: -0.03em;
+      }
+
+      .ui-left span {
+        font-size: 9px;
+        font-weight: 300;
+        color: #8b949e;
+      }
+
+      .ui-need {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-top: 1px solid #2c333c;
+      }
+
+      .ui-need:first-of-type {
+        border-top: none;
+      }
+
+      .ui-need b {
+        font-family: var(--display);
+        font-weight: 200;
+        font-size: 20px;
+        color: var(--gold);
+        min-width: 22px;
+      }
+
+      .ui-need span {
+        font-size: 11px;
+        font-weight: 400;
+      }
+
+      .ui-nav {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 54px;
+        border-top: 1px solid #1f242b;
+        background: #15181d;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        font-size: 9px;
+        color: #6b7079;
+      }
+
+      .ui-nav b {
+        color: var(--gold);
+        font-weight: 500;
+      }
+
+      .ui-fab {
+        position: absolute;
+        right: 14px;
+        bottom: 68px;
+        background: var(--gold);
+        color: #15181d;
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 12px;
+        padding: 9px 15px;
+        border-radius: 99px;
+      }
+
+      .dots {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 26px;
+      }
+
+      .dots button {
+        width: 9px;
+        height: 9px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: var(--slate-600);
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .dots button.on {
+        background: var(--gold);
+        transform: scale(1.2);
+      }
+
+      .shotlist {
+        display: grid;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      .shotpick {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: 1px solid var(--line);
+        border-left: 2px solid transparent;
+        border-radius: 14px;
+        padding: 16px 18px;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .shotpick.on {
+        border-left-color: var(--gold);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .shotpick b {
+        display: block;
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 3px;
+      }
+
+      .shotpick span {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ----------------------------------------------------------- faq */
+
+      .faq {
+        max-width: 780px;
+        margin: 0 auto;
+      }
+
+      details {
+        border-bottom: 1px solid var(--line);
+      }
+
+      summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        list-style: none;
+        cursor: pointer;
+        padding: 26px 0;
+        font-size: clamp(17px, 2vw, 19px);
+        font-weight: 400;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary::after {
+        content: '';
+        flex: none;
+        width: 11px;
+        height: 11px;
+        border-right: 1.6px solid var(--muted);
+        border-bottom: 1.6px solid var(--muted);
+        transform: rotate(45deg) translate(-3px, -3px);
+        transition: transform 0.25s ease;
+      }
+
+      details[open] summary::after {
+        transform: rotate(225deg) translate(-3px, -3px);
+      }
+
+      details p {
+        color: var(--muted);
+        font-size: 15.5px;
+        padding-bottom: 26px;
+        max-width: 68ch;
+      }
+
+      /* ----------------------------------------------------------- cta */
+
+      .cta {
+        text-align: center;
+        background:
+          radial-gradient(900px 500px at 50% 100%, rgba(242, 179, 61, 0.16), transparent 70%),
+          #05070a;
+        border-top: 1px solid var(--line);
+      }
+
+      .cta img {
+        width: min(100%, 340px);
+        margin: 0 auto 8px;
+        filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.7));
+      }
+
+      .cta h2 {
+        max-width: 16ch;
+        margin: 0 auto 20px;
+      }
+
+      .cta .lede {
+        margin-inline: auto;
+      }
+
+      .cta .btns {
+        justify-content: center;
+      }
+
+      footer {
+        padding: 40px 0 60px;
+        border-top: 1px solid var(--line);
+        color: var(--dim);
+        font-size: 13.5px;
+      }
+
+      .foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 28px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      footer a {
+        text-decoration: none;
+      }
+
+      footer a:hover {
+        color: var(--text);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+        .heroart img {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="top" id="top">
+      <div class="page topbar">
+        <a class="mark" href="#top">
+          <img src="../icon-192.png" alt="" />
+          Stash<span>&nbsp;it</span>
+        </a>
+        <nav>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#faq">Questions</a>
+        </nav>
+        <a class="btn primary" href="../">Open the app</a>
+      </div>
+    </header>
+
+    <!-- ============================================================ hero -->
+    <section class="hero">
+      <div class="glow" style="width: 720px; height: 720px; background: #1d4ed8; top: -280px; right: -160px; opacity: 0.28"></div>
+      <div class="glow" style="width: 560px; height: 560px; background: #f2b33d; bottom: -240px; left: -180px; opacity: 0.16"></div>
+
+      <div class="page hero-grid">
+        <div>
+          <span class="eyebrow">
+            <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color: currentColor">
+              <path d="M12 3l7.5 3.2v5.4c0 4.4-3.1 8.3-7.5 9.4-4.4-1.1-7.5-5-7.5-9.4V6.2z" />
+            </svg>
+            Everything stays on your device
+          </span>
+
+          <h1>Your warranties, <em>before</em> they expire.</h1>
+
+          <p class="lede">
+            The dishwasher breaks in month 23 of a 24-month warranty and the receipt is in a drawer
+            somewhere. Stash it keeps every receipt, warranty and manual for everything you own —
+            and tells you what's running out while you can still do something about it.
+          </p>
+
+          <div class="btns">
+            <a class="btn primary" href="../">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
+                <path d="M4.5 17v2.5h15V17" />
+              </svg>
+              Get Stash it — free
+            </a>
+            <a class="btn ghost" href="#meet">See how it works</a>
+          </div>
+
+          <div class="trustline">
+            <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> No account</span>
+            <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> No cloud</span>
+            <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> No tracking</span>
+            <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> Works offline</span>
+          </div>
+        </div>
+
+        <div class="heroart">
+          <img src="img/scout-acorn.webp" alt="Scout, a grey squirrel, holding a golden acorn" width="660" height="660" fetchpriority="high" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================== meet Scout -->
+    <section id="meet">
+      <div class="page split reveal">
+        <div class="splitart">
+          <div class="halo"></div>
+          <img src="img/scout-waving.webp" alt="Scout waving" width="560" height="560" loading="lazy" />
+        </div>
+        <div>
+          <span class="eyebrow">Meet Scout</span>
+          <h2>A squirrel who never forgets where he put things.</h2>
+          <p>
+            Squirrels cache thousands of nuts a season and remember where. It seemed like the right
+            animal for an app about putting things somewhere safe and finding them again years
+            later.
+          </p>
+          <p>
+            Scout is the one keeping watch. He shows you what's covered and what's lapsing, tells
+            you which items are missing a receipt, and curls up and sleeps when there's genuinely
+            nothing left for you to do — which is a state most apps never admit exists.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== features -->
+    <section id="features">
+      <div class="glow" style="width: 620px; height: 620px; background: #6aa9ff; top: 5%; left: -260px; opacity: 0.13"></div>
+
+      <div class="page">
+        <div class="sechead reveal">
+          <span class="eyebrow">What it does</span>
+          <h2>Everything a claim will ask for, in one place.</h2>
+          <p class="lede">
+            Not a filing cabinet. A thing that knows what you own, what it cost, and how long you're
+            still protected.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card reveal">
+            <div class="glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5.5l3.5 2" />
+              </svg>
+            </div>
+            <h3>A countdown, not a filing date</h3>
+            <p>
+              Every item shows what's left of its cover. Under six months it switches to counting
+              days, because that's the point where "four months" and "three months" stop being the
+              same glance.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph moss">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z" />
+                <path d="M9 8h6M9 11.5h6" />
+              </svg>
+            </div>
+            <h3>Receipts straight from your email</h3>
+            <p>
+              Open the order confirmation, share it to Stash it, and the shop, date and price arrive
+              already filled in — with the attachment kept as the receipt.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph sky">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" />
+                <circle cx="12" cy="13" r="3.4" />
+              </svg>
+            </div>
+            <h3>Photograph it and move on</h3>
+            <p>
+              Snap the product, the serial plate, the paperwork — several at once. Adding something
+              takes about twenty seconds, which is the only reason anyone keeps doing it.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 5.5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4z" />
+                <path d="M20 5.5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z" />
+              </svg>
+            </div>
+            <h3>Receipts, warranties, manuals</h3>
+            <p>
+              Filed by what they are, so a claim takes one tap rather than a scroll through a
+              hundred photos of paper.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph moss">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+              </svg>
+            </div>
+            <h3>Organised by room</h3>
+            <p>
+              Because that's how you picture your own house. "What's in the garage" is a scroll, not
+              a search.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph sky">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12M8 11l4 4 4-4" />
+                <path d="M4 17v3.5h16V17" />
+              </svg>
+            </div>
+            <h3>Backups you actually own</h3>
+            <p>
+              One file with every item, document and photo. Keep it anywhere — or connect your own
+              Google Drive and send it there.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================== how it works -->
+    <section id="how">
+      <div class="page">
+        <div class="headrow reveal">
+          <div class="sechead" style="margin-bottom: 0">
+            <span class="eyebrow">How it works</span>
+            <h2>Four taps to your first item.</h2>
+            <p class="lede">No sign-up, no email, no setup wizard. Open it and it's ready.</p>
+          </div>
+          <img src="img/scout-settings.webp" alt="" width="460" height="460" loading="lazy" />
+        </div>
+
+        <div class="steps">
+          <div class="step reveal">
+            <b>1</b>
+            <h3>Open it</h3>
+            <p>It's a website that installs like an app. Nothing to download from a store, nothing to create an account for.</p>
+          </div>
+          <div class="step reveal">
+            <b>2</b>
+            <h3>Add something</h3>
+            <p>Photograph it, name it, say when you bought it and how long it's covered. Everything else can wait.</p>
+          </div>
+          <div class="step reveal">
+            <b>3</b>
+            <h3>Attach the receipt</h3>
+            <p>From your camera, your files, or straight out of the order email in your inbox.</p>
+          </div>
+          <div class="step reveal">
+            <b>4</b>
+            <h3>Forget about it</h3>
+            <p>Scout watches the dates. You find out what's ending while there's still time to act on it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= privacy -->
+    <section class="privacy" id="privacy">
+      <div class="page">
+        <div class="sechead reveal" style="max-width: 52ch; margin-inline: auto; text-align: center">
+          <span class="eyebrow">
+            <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: currentColor">
+              <path d="M12 3l7.5 3.2v5.4c0 4.4-3.1 8.3-7.5 9.4-4.4-1.1-7.5-5-7.5-9.4V6.2z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            Privacy
+          </span>
+          <h2>There is no server. There is nothing to leak.</h2>
+          <p class="lede" style="margin-inline: auto">
+            Most apps in this category are a database of what's inside your house, sitting on
+            somebody else's computer. This one isn't, because there isn't one.
+          </p>
+        </div>
+
+        <div class="shield reveal">
+          <img src="img/scout-alert.webp" alt="Scout standing guard" width="520" height="520" loading="lazy" />
+        </div>
+
+        <div class="badges">
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>It stays on your phone</h3>
+              <p>Items, photos and documents are written to your device's own storage. Nothing is uploaded.</p>
+            </div>
+          </div>
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>No account, ever</h3>
+              <p>No email address, no password, no profile. There's nothing to sign up for and nothing to sign in to.</p>
+            </div>
+          </div>
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>No analytics, no tracking</h3>
+              <p>The app makes no network requests of its own. Nobody, including us, can tell what you own or that you opened it.</p>
+            </div>
+          </div>
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>Your backup, your storage</h3>
+              <p>Export one file and put it where you like. Connect Google Drive and it's your Drive, under your account.</p>
+            </div>
+          </div>
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>Locked to your fingerprint</h3>
+              <p>Turn on the biometric lock and the app won't open without your face or finger.</p>
+            </div>
+          </div>
+          <div class="badge reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg>
+            <div>
+              <h3>Yours to leave</h3>
+              <p>Delete the app and the data goes with it. No export request, no support ticket, no waiting.</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="reveal" style="margin-top: 40px; text-align: center; color: var(--dim); font-size: 14.5px; max-width: 62ch; margin-inline: auto">
+          Being straight about the limits: the lock keeps the app shut, it doesn't encrypt the
+          database — and because nothing is on a server, a lost phone with no backup means lost
+          data. Export one. That's the trade you're making, and it should be yours to make.
+        </p>
+      </div>
+    </section>
+
+    <!-- ======================================================= loved -->
+    <section id="loved">
+      <div class="page">
+        <div class="headrow reveal">
+          <div class="sechead" style="margin-bottom: 0">
+            <span class="eyebrow">Why it sticks</span>
+            <h2>Small enough to keep using.</h2>
+            <p class="lede">
+              Most home-inventory apps are abandoned in week two. This one is built around the
+              twenty seconds it takes to add something.
+            </p>
+          </div>
+          <img src="img/scout-resting.webp" alt="Scout asleep" width="460" height="460" loading="lazy" />
+        </div>
+
+        <div class="cards">
+          <article class="card reveal">
+            <h3>Opens instantly</h3>
+            <p>No splash-screen advertising, no sign-in, no loading spinner waiting on a server. It's on your phone; it just opens.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Works with no signal</h3>
+            <p>In a basement, on a plane, at the back of a shop. There is nothing to be offline from.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Tells you what's missing</h3>
+            <p>Ranked by what it would cost you — a receipt you can't recreate comes before a photo you can take this afternoon.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Never guesses at your expense</h3>
+            <p>An ambiguous date from an email is left blank rather than filled in wrong. A blank field is obvious; a wrong one isn't.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Yours to take away</h3>
+            <p>One export file holds everything, in a documented format. No lock-in because there's nothing to be locked into.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Free, and not funded by you</h3>
+            <p>No ads, no data sale, no subscription for the basics. There's no server bill to cover.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== preview -->
+    <section id="preview">
+      <div class="glow" style="width: 640px; height: 640px; background: #f2b33d; top: 20%; right: -280px; opacity: 0.1"></div>
+      <div class="page">
+        <div class="sechead reveal">
+          <span class="eyebrow">A look inside</span>
+          <h2>Built to be read at a glance.</h2>
+        </div>
+
+        <div class="stage">
+          <div class="reveal" style="order: 2">
+            <div class="shotlist" role="tablist">
+              <button class="shotpick on" data-shot="0" role="tab" aria-selected="true">
+                <b>The dashboard</b>
+                <span>How much of what you own is still covered, and what needs a minute.</span>
+              </button>
+              <button class="shotpick" data-shot="1" role="tab" aria-selected="false">
+                <b>Everything you own</b>
+                <span>Sorted by what expires next, with the countdown as the largest thing on the row.</span>
+              </button>
+              <button class="shotpick" data-shot="2" role="tab" aria-selected="false">
+                <b>One item</b>
+                <span>The photos, the paperwork, the policy number and the phone number to call.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="reveal" style="order: 1">
+            <div class="phone">
+              <div class="screen">
+                <!-- dashboard -->
+                <div class="shot on" data-shot="0">
+                  <div class="ui-head">Stash<span>&nbsp;it</span></div>
+                  <div class="ui-sub">Good morning, Nuno</div>
+                  <div class="ui-card" style="display: flex; align-items: center; gap: 6px">
+                    <div style="position: relative; width: 150px; height: 150px; margin: 4px auto 0">
+              <svg viewBox="0 0 150 150" style="display: block">
+                <g transform="rotate(-90 75 75)">
+                  <circle cx="75" cy="75" r="72" fill="none" stroke="#2c333c" stroke-width="5" />
+                  <circle cx="75" cy="75" r="72" fill="none" stroke="#5fbf7e" stroke-width="5" stroke-dasharray="270 452" stroke-linecap="round" />
+                  <circle cx="75" cy="75" r="72" fill="none" stroke="#f2ce3d" stroke-width="5" stroke-dasharray="72 452" stroke-dashoffset="-275" stroke-linecap="round" />
+                  <circle cx="75" cy="75" r="72" fill="none" stroke="#e05a44" stroke-width="5" stroke-dasharray="45 452" stroke-dashoffset="-352" stroke-linecap="round" />
+                </g>
+              </svg>
+              <div class="mid"><div style="text-align: center"><b>78<span style="font-size: 14px; color: #8b949e">%</span></b><i style="display: block">still covered</i></div></div>
+            </div>
+                    <img src="img/scout-report.webp" alt="" style="width: 92px; flex: none" loading="lazy" />
+                  </div>
+                  <div class="ui-card" style="margin-top: -3px; padding-top: 4px">
+                    <div class="ui-stats">
+                      <div><b>14</b><span>covered</span></div>
+                      <div><b>4</b><span>ending</span></div>
+                      <div><b>3</b><span>lapsed</span></div>
+                      <div><b>2</b><span>none</span></div>
+                    </div>
+                  </div>
+                  <div class="ui-card" style="display: flex; gap: 10px; align-items: stretch">
+                    <img src="img/scout-alert.webp" alt="" style="width: 58px; flex: none; align-self: flex-end" loading="lazy" />
+                    <div style="flex: 1">
+                      <div style="font-size: 12px; font-weight: 500; margin-bottom: 6px">Needs a minute</div>
+                      <div class="ui-need"><b>2</b><span>items have no receipt</span></div>
+                      <div class="ui-need"><b>6</b><span>items have no photo</span></div>
+                    </div>
+                  </div>
+                  <div class="ui-fab">+ Stash it</div>
+                  <div class="ui-nav"><b>Home</b><span>Items</span><span>Settings</span></div>
+                </div>
+
+                <!-- items -->
+                <div class="shot" data-shot="1">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between">
+                    <div class="ui-head" style="font-size: 19px">Items</div>
+                    <img src="img/scout-receipt.webp" alt="" style="width: 68px; margin-top: -14px" loading="lazy" />
+                  </div>
+                  <div style="background: #1f242b; border-radius: 12px; padding: 8px 11px; font-size: 11px; color: #6b7079; margin: 4px 78px 8px 0">Search name, brand, serial…</div>
+                  <div style="display: flex; gap: 5px; margin-bottom: 10px; font-size: 9.5px">
+                    <span style="background: var(--gold); color: #15181d; padding: 4px 9px; border-radius: 99px; font-weight: 500">Expiring</span>
+                    <span style="background: #1f242b; padding: 4px 9px; border-radius: 99px; color: #8b949e">Newest</span>
+                    <span style="background: #1f242b; padding: 4px 9px; border-radius: 99px; color: #8b949e">A–Z</span>
+                  </div>
+                  <div class="ui-row"><div class="ui-thumb">◔</div><div class="txt"><b>Bosch dishwasher</b><span>SMS6ZCI00E · 2024</span></div><div class="ui-left"><b style="color: #f2ce3d">21</b><span>days left</span></div></div>
+                  <div class="ui-row"><div class="ui-thumb">▣</div><div class="txt"><b>Sony television</b><span>XR-55A80L · 2025</span></div><div class="ui-left"><b style="color: #5fbf7e">2y 4m</b><span>left</span></div></div>
+                  <div class="ui-row"><div class="ui-thumb">◍</div><div class="txt"><b>Dyson V15</b><span>SV22 · 2025</span></div><div class="ui-left"><b style="color: #5fbf7e">118</b><span>days left</span></div></div>
+                  <div class="ui-row"><div class="ui-thumb">▤</div><div class="txt"><b>Kitchen mixer</b><span>Artisan · 2021</span></div><div class="ui-left"><b style="color: #e05a44; font-size: 14px">Ended</b><span>7 months ago</span></div></div>
+                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Settings</span></div>
+                </div>
+
+                <!-- detail -->
+                <div class="shot" data-shot="2">
+                  <div style="height: 132px; border-radius: 16px; background: linear-gradient(160deg, #232a33, #1a1f26); display: grid; place-items: center; margin-bottom: 12px; position: relative">
+                    <span style="font-size: 34px; opacity: 0.35">▣</span>
+                    <span style="position: absolute; bottom: 8px; left: 10px; font-size: 9px; background: rgba(0,0,0,0.45); padding: 3px 8px; border-radius: 99px; color: #b9c1c9">3 photos</span>
+                  </div>
+                  <div style="font-family: var(--display); font-size: 21px; font-weight: 500; letter-spacing: -0.02em">Bosch dishwasher</div>
+                  <div style="font-size: 11px; color: #8b949e; margin-bottom: 12px">Bosch · SMS6ZCI00E · Kitchen</div>
+                  <div class="ui-card" style="display: flex; gap: 12px; align-items: center">
+                    <div style="width: 46px; height: 46px; border-radius: 50%; border: 4px solid #f2ce3d; border-right-color: #2c333c; display: grid; place-items: center; font-size: 11px; font-weight: 500">21</div>
+                    <div><div style="font-size: 12px; font-weight: 500">21 days of cover left</div><div style="font-size: 10px; color: #8b949e">Ends 2 September 2026</div></div>
+                  </div>
+                  <div style="display: flex; gap: 6px; margin-bottom: 10px; font-size: 10px">
+                    <span style="border: 1px solid #39414b; padding: 5px 11px; border-radius: 99px">Call Bosch</span>
+                    <span style="border: 1px solid #39414b; padding: 5px 11px; border-radius: 99px">Warranty page</span>
+                  </div>
+                  <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▤</div><div class="txt"><b>Receipt</b><span>PDF · 240 KB</span></div></div>
+                  <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▥</div><div class="txt"><b>Warranty</b><span>PDF · 1.1 MB</span></div></div>
+                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Settings</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="dots" role="tablist">
+              <button data-shot="0" class="on" aria-label="The dashboard"></button>
+              <button data-shot="1" aria-label="Everything you own"></button>
+              <button data-shot="2" aria-label="One item"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= faq -->
+    <section id="faq">
+      <div class="page">
+        <div class="sechead reveal" style="margin-inline: auto; text-align: center; max-width: 30ch">
+          <span class="eyebrow">Questions</span>
+          <h2>The things worth asking.</h2>
+        </div>
+
+        <div class="faq reveal">
+          <details>
+            <summary>Where is my data actually stored?</summary>
+            <p>In your browser's own storage on the device you're using, in the same place a website keeps anything it saves locally. It isn't sent anywhere. Installing the app to your home screen tells the browser to treat that storage as permanent rather than something it may clear when space runs short.</p>
+          </details>
+          <details>
+            <summary>What happens if I lose my phone?</summary>
+            <p>Without a backup, the data is gone — and being straight about that is part of the trade. Export a copy from Settings and keep it somewhere, or connect your own Google Drive and send backups there. The app nudges you when it's been a while.</p>
+          </details>
+          <details>
+            <summary>Is my data encrypted?</summary>
+            <p>The database is not encrypted at rest; it's stored the way every browser database is. The biometric lock keeps the app shut, which stops someone who picks up your unlocked phone — it isn't a defence against someone with your phone, a cable and a laptop. Saying otherwise would be the kind of promise people plan around.</p>
+          </details>
+          <details>
+            <summary>Do you sell or share anything?</summary>
+            <p>There is nothing to sell. The app has no server, no account system and no analytics, so no data about you or your possessions reaches anyone. The only network requests it makes are ones you start — connecting Drive, or loading the page itself.</p>
+          </details>
+          <details>
+            <summary>Which devices does it work on?</summary>
+            <p>Any modern browser: Android, iPhone, Windows, Mac, Linux. It installs to the home screen on Android and on iPhone via Safari's Share → Add to Home Screen. Sharing receipts straight from email is Android-only for now, because iOS doesn't let web apps register as share targets.</p>
+          </details>
+          <details>
+            <summary>Does my data sync between devices?</summary>
+            <p>No — and that's the direct consequence of there being no server. Each device holds its own copy. Moving to a new phone means exporting a backup and restoring it, which takes about a minute.</p>
+          </details>
+          <details>
+            <summary>What does setup involve?</summary>
+            <p>Open the link, tell Scout your name, and add something. There's no account, no email verification and no configuration. Connecting Google Drive is optional and takes a few minutes of one-time setup.</p>
+          </details>
+          <details>
+            <summary>How do updates work?</summary>
+            <p>Like a website: the new version arrives the next time you open it, and it asks before reloading so it can't interrupt what you're doing. Your data is untouched by updates.</p>
+          </details>
+          <details>
+            <summary>What does it cost?</summary>
+            <p>Nothing. The free tier holds 15 items, and everything you've saved stays editable and exportable regardless. There's no server bill to pass on to anyone.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= cta -->
+    <section class="cta">
+      <div class="page">
+        <img class="reveal" src="img/scout-acorn.webp" alt="Scout holding a golden acorn" width="660" height="660" loading="lazy" />
+        <div class="reveal">
+          <h2>Powerful, private, and completely under your control.</h2>
+          <p class="lede">
+            Free, no account, and it opens in the browser you already have. Add one thing and see
+            whether it sticks.
+          </p>
+          <div class="btns">
+            <a class="btn primary" href="../">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
+                <path d="M4.5 17v2.5h15V17" />
+              </svg>
+              Get Stash it — free
+            </a>
+            <a class="btn ghost" href="#faq">Read the questions first</a>
+          </div>
+          <p style="margin-top: 24px; font-size: 13.5px; color: var(--dim)">
+            Opens in your browser · Add to your home screen to install
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="page foot">
+        <span>Stash it — warranties, receipts and manuals for everything you own.</span>
+        <span><a href="../">Open the app</a> · <a href="https://github.com/nuno927-tech/stash-it">Source</a></span>
+      </div>
+    </footer>
+
+    <script>
+      // Reveal on scroll. IntersectionObserver rather than a scroll handler:
+      // the browser does the work off the main thread and nothing runs while
+      // the page is still.
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            e.target.classList.add('in');
+            io.unobserve(e.target);
+          }
+        },
+        { rootMargin: '0px 0px -12% 0px', threshold: 0.08 },
+      );
+      document.querySelectorAll('.reveal').forEach((el, i) => {
+        // A short stagger within a group, capped — a long cascade makes the
+        // last card feel broken rather than choreographed.
+        el.style.transitionDelay = `${Math.min(i % 4, 3) * 70}ms`;
+        io.observe(el);
+      });
+
+      // The bar only gains its backdrop once there's something behind it.
+      const bar = document.querySelector('header.top');
+      const onScroll = () => bar.classList.toggle('stuck', window.scrollY > 12);
+      addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      // The device carousel. Two controls, one state.
+      const shots = [...document.querySelectorAll('.shot')];
+      const picks = [...document.querySelectorAll('.shotpick')];
+      const dots = [...document.querySelectorAll('.dots button')];
+
+      function show(n) {
+        shots.forEach((s) => s.classList.toggle('on', +s.dataset.shot === n));
+        picks.forEach((p) => {
+          const on = +p.dataset.shot === n;
+          p.classList.toggle('on', on);
+          p.setAttribute('aria-selected', String(on));
+        });
+        dots.forEach((d) => d.classList.toggle('on', +d.dataset.shot === n));
+      }
+
+      [...picks, ...dots].forEach((el) => el.addEventListener('click', () => show(+el.dataset.shot)));
+    </script>
+  </body>
+</html>
