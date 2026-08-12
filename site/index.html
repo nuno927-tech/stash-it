@@ -68,6 +68,19 @@
         padding: 0;
       }
 
+      /*
+        Nothing scrolls sideways. The glows are deliberately positioned off
+        the edges to bleed light in, and `overflow-x: hidden` on the body
+        alone doesn't stop that on mobile — the scroll just moves up to the
+        html element. Both need it, and `clip` rather than `hidden` so this
+        can't quietly turn an ancestor into a scroll container and break
+        `position: sticky` further down the page.
+      */
+      html,
+      body {
+        overflow-x: clip;
+      }
+
       html {
         scroll-behavior: smooth;
         -webkit-text-size-adjust: 100%;
@@ -80,7 +93,6 @@
         font-size: 17px;
         line-height: 1.65;
         font-weight: 300;
-        overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
       }
 
@@ -339,7 +351,9 @@
       }
 
       .heroart img {
-        width: min(100%, 520px);
+        height: clamp(250px, 40vw, 500px);
+        width: auto;
+        max-width: 100%;
         filter: drop-shadow(0 50px 70px rgba(0, 0, 0, 0.65));
         animation: bob 6s ease-in-out infinite;
       }
@@ -427,7 +441,10 @@
       }
 
       .splitart img {
-        width: min(100%, 460px);
+        height: clamp(230px, 32vw, 360px);
+        width: auto;
+        max-width: 100%;
+        margin-inline: auto;
         filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.6));
       }
 
@@ -463,10 +480,17 @@
       }
 
       .headrow img {
-        width: clamp(96px, 22vw, 230px);
+        height: clamp(104px, 17vw, 210px);
+        width: auto;
         flex: none;
         margin-left: auto;
         filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6));
+      }
+
+      /* Curled into a ball, he reads smaller than the standing poses at the
+         same height. A little extra puts him on equal footing. */
+      .headrow img.curled {
+        height: clamp(124px, 20vw, 240px);
       }
 
       /* --------------------------------------------------------- cards */
@@ -624,7 +648,10 @@
       }
 
       .shield img {
-        width: min(100%, 400px);
+        height: clamp(220px, 28vw, 330px);
+        width: auto;
+        max-width: 100%;
+        margin-inline: auto;
         filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.7));
       }
 
@@ -1050,7 +1077,9 @@
       }
 
       .cta img {
-        width: min(100%, 340px);
+        height: clamp(220px, 28vw, 330px);
+        width: auto;
+        max-width: 100%;
         margin: 0 auto 8px;
         filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.7));
       }
@@ -1508,7 +1537,7 @@
               twenty seconds it takes to add something.
             </p>
           </div>
-          <img src="img/scout-resting.webp" alt="Scout asleep" width="460" height="400" loading="lazy" />
+          <img class="curled" src="img/scout-resting.webp" alt="Scout asleep" width="460" height="400" loading="lazy" />
         </div>
 
         <div class="cards">
