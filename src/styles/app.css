@@ -1003,8 +1003,128 @@ select.compact {
   font-size: 11.5px;
 }
 
+/* An inline confirmation: restore merge-or-replace, delete, add a photo.
+   Neither `.sheet` nor `.choice` had any rules — only `.choice.danger b` did —
+   so every one of these was a bare browser button under an unstyled heading,
+   at the exact moments the app is asking someone to commit to something. */
+.sheet {
+  background: var(--slate-700);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin: 12px 0 18px;
+}
+
+.sheet h4 {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--slate-800);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  margin-bottom: 9px;
+  color: inherit;
+}
+
+.choice:active {
+  background: var(--slate-600);
+}
+
+.choice-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--wash-gold);
+  color: var(--gold);
+}
+
+.choice-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.choice b,
+.choice-txt b {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.choice > span:not(.choice-icon):not(.choice-txt),
+.choice-txt span {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .choice.danger b {
   color: var(--ember);
+}
+
+/* The same choices, asked as an overlay rather than in the flow. */
+.sheetscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--scrim);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: scrimIn 0.18s ease both;
+}
+
+.sheetcard {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--slate-700);
+  border-top: 1px solid var(--line);
+  border-radius: 26px 26px 0 0;
+  padding: 26px 18px calc(18px + env(safe-area-inset-bottom));
+  animation: sheetUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sheetcard h4 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.sheetcard .lockgrip {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* One button for the photo, with Remove beside it once there's one to lose. */
+.photorow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.photorow .btn.ghost.wide {
+  margin-top: 0;
+  flex: 1;
 }
 
 .btn.ghost.wide {
@@ -2267,30 +2387,6 @@ button.countpill.tappill:active {
   align-items: stretch;
 }
 
-.photoslot-wrap {
-  position: relative;
-  flex: none;
-}
-
-/* Overlaps the slot's corner so the two routes cost one row, not two. */
-.camerabtn {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--gold);
-  color: var(--on-gold);
-  border: 2px solid var(--slate-700);
-  padding: 0;
-}
-
-.camerabtn:active {
-  transform: scale(0.94);
-}
 
 .photoslot {
   flex: none;

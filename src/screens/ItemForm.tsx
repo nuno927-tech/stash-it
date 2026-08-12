@@ -25,6 +25,7 @@ import {
 } from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
+import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { DocsField } from '@/components/DocsField';
 import { ItemIcon } from '@/components/ItemIcon';
 
@@ -75,6 +76,7 @@ export function ItemForm({
   const [staged, setStaged] = useState<StagedDoc[]>(() => prestaged ?? []);
   const [newRoom, setNewRoom] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -204,49 +206,22 @@ export function ItemForm({
           full-width dropzone pushed the first real question below the fold. */}
       <section className="card">
         <div className="identity">
-          <div className="photoslot-wrap">
-            <button
-              type="button"
-              className="photoslot"
-              onClick={() => libraryInput.current?.click()}
-              disabled={busy}
-              aria-label={preview ? 'Replace the photo' : 'Choose a photo'}
-            >
-              {preview ? (
-                <img src={preview} alt="" />
-              ) : (
-                <>
-                  <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
-                  <small>Photo</small>
-                </>
-              )}
-            </button>
-
-            {/* Sits on the slot rather than beside it: the camera is the more
-                likely of the two when the thing is in front of you, and it
-                shouldn't cost a row of layout to offer both. */}
-            <button
-              type="button"
-              className="camerabtn"
-              onClick={() => cameraInput.current?.click()}
-              disabled={busy}
-              aria-label="Take a photo"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
-                <circle cx="12" cy="13" r="3.4" />
-              </svg>
-            </button>
-          </div>
+          {/* One target, not two. A slot with a camera button welded to its
+              corner asked people to notice a 26px difference to make a choice
+              the app can simply ask about. */}
+          <button
+            type="button"
+            className="photoslot"
+            onClick={() => setPicking(true)}
+            disabled={busy}
+            aria-label={preview ? 'Replace the photo' : 'Add a photo'}
+          >
+            {preview ? (
+              <img src={preview} alt="" />
+            ) : (
+              <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
+            )}
+          </button>
 
           <div className="identity-fields">
             <input
@@ -268,19 +243,59 @@ export function ItemForm({
           </div>
         </div>
 
-        {preview && (
+        <div className="photorow">
           <button
             type="button"
-            className="linkish morelink"
-            onClick={() => {
-              URL.revokeObjectURL(preview);
-              setPreview(undefined);
-              setPhoto(null);
-              setRemoved(true);
-            }}
+            className="btn ghost wide"
+            disabled={busy}
+            onClick={() => setPicking(true)}
           >
-            Remove photo
+            <CameraGlyph />
+            {preview ? 'Replace photo' : 'Upload photo'}
           </button>
+
+          {preview && (
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => {
+                URL.revokeObjectURL(preview);
+                setPreview(undefined);
+                setPhoto(null);
+                setRemoved(true);
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+
+        {picking && (
+          <ChoiceSheet
+            title="Add a photo"
+            choices={[
+              {
+                key: 'camera',
+                label: 'Take a photo',
+                note: "For the thing itself, when it's in front of you.",
+                icon: <CameraGlyph />,
+              },
+              {
+                key: 'gallery',
+                label: 'Upload from gallery',
+                note: 'Pick one or several — the first becomes the item’s picture.',
+                icon: <GalleryGlyph />,
+              },
+            ]}
+            onCancel={() => setPicking(false)}
+            onPick={(key) => {
+              setPicking(false);
+              // `capture` is the only thing that guarantees the camera opens;
+              // without it some devices go straight to the library with no way
+              // through. That's why these stay two separate inputs.
+              (key === 'camera' ? cameraInput : libraryInput).current?.click();
+            }}
+          />
         )}
 
         <input
@@ -618,4 +633,43 @@ function coverEnds(purchaseDate: string, unit: WarrantyUnit, amount: string): st
   } catch {
     return null;
   }
+}
+
+function CameraGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
+      <circle cx="12" cy="13" r="3.4" />
+    </svg>
+  );
+}
+
+function GalleryGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <circle cx="8.5" cy="10.5" r="1.6" />
+      <path d="M4 16.5l4.5-4 3.5 3 3-2.5 4 3.5" />
+    </svg>
+  );
 }
