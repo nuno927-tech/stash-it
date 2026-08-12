@@ -10,12 +10,23 @@ import { ItemRow } from '@/components/ItemRow';
 import { Scout } from '@/components/Scout';
 import { RoomIcon } from '@/components/RoomIcon';
 
-export type ItemsFilter = 'ending' | 'expired' | 'nopaperwork';
+export type ItemsFilter =
+  | 'ending'
+  | 'expired'
+  | 'nopaperwork'
+  | 'noreceipt'
+  | 'nowarranty'
+  | 'nodate'
+  | 'nophoto';
 
 const FILTER_LABEL: Record<ItemsFilter, string> = {
   ending: 'Ending soon',
   expired: 'Lapsed',
   nopaperwork: 'No proof of purchase',
+  noreceipt: 'No receipt',
+  nowarranty: 'No warranty length',
+  nodate: 'No purchase date',
+  nophoto: 'No photo',
 };
 
 type Sort = 'room' | 'name' | 'expiry' | 'recent';
@@ -82,15 +93,29 @@ export function Items({
 
   const filtered = useMemo(() => {
     if (!active) return all;
+    const live = docs.filter((d) => !d.deletedAt);
     const withProof = new Set(
-      docs
-        .filter((d) => !d.deletedAt && (d.kind === 'receipt' || d.kind === 'warranty'))
-        .map((d) => d.itemId),
+      live.filter((d) => d.kind === 'receipt' || d.kind === 'warranty').map((d) => d.itemId),
     );
+    const withReceipt = new Set(live.filter((d) => d.kind === 'receipt').map((d) => d.itemId));
+
     return all.filter((i) => {
-      if (active === 'ending') return warrantyState(i) === 'ending-soon';
-      if (active === 'expired') return warrantyState(i) === 'expired';
-      return !withProof.has(i.id);
+      switch (active) {
+        case 'ending':
+          return warrantyState(i) === 'ending-soon';
+        case 'expired':
+          return warrantyState(i) === 'expired';
+        case 'noreceipt':
+          return !withReceipt.has(i.id);
+        case 'nowarranty':
+          return warrantyState(i) === 'unknown';
+        case 'nodate':
+          return !i.purchaseDate;
+        case 'nophoto':
+          return !i.thumbBlobId;
+        default:
+          return !withProof.has(i.id);
+      }
     });
   }, [all, active, docs]);
 

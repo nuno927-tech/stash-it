@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
-import type { Item } from '@/db/types';
-import { metricsFor, type Metrics } from '@/lib/dashboard';
+import type { Doc, Item } from '@/db/types';
+import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
 import { prefsFrom } from '@/lib/prefs';
 import { formatMoney, warrantyLabel, warrantyState, type WarrantyState } from '@/lib/warranty';
+import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { Scout } from '@/components/Scout';
 import { useThumbUrl } from '@/components/useThumbUrl';
@@ -27,7 +28,7 @@ export function Home({
   propertyId: string;
   onAdd: () => void;
   onOpenItem: (id: string) => void;
-  onBrowse: (filter?: 'ending' | 'expired' | 'nopaperwork') => void;
+  onBrowse: (filter?: ItemsFilter) => void;
 }) {
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
   const docs = useLiveQuery(() => db.docs.toArray(), []);
@@ -40,15 +41,12 @@ export function Home({
 
   return (
     <>
-      {/* The wordmark moves under the greeting. Two lines, and the app's name
-          is the smaller of them: you know which app you opened, and the
-          greeting is the only part addressed to you. */}
       <header className="apphead greethead">
         <div className="greet">
-          <h1>{greeting(prefsFrom(settings).displayName)}</h1>
-          <span>
+          <span className="greet-mark">
             Stash<span>&nbsp;it</span>
           </span>
+          <h1>{greeting(prefsFrom(settings).displayName)}</h1>
         </div>
         <div className="avatar">
           <Scout pose="avatar" height={36} alt="Scout" />
@@ -100,18 +98,7 @@ export function Home({
         </button>
       )}
 
-      {m.missingPaperwork > 0 && (
-        <button type="button" className="navrow" onClick={() => onBrowse('nopaperwork')}>
-          <span>
-            <h4>
-              {m.missingPaperwork} {m.missingPaperwork === 1 ? 'item has' : 'items have'} no proof
-              of purchase
-            </h4>
-            <p>A claim asks for the receipt or the policy. These have neither.</p>
-          </span>
-          <Chevron />
-        </button>
-      )}
+      <NeedsCard items={items} docs={docs} onBrowse={onBrowse} />
 
       <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Recently added</span>
@@ -154,7 +141,7 @@ function CoverCard({
   onBrowse,
 }: {
   metrics: Metrics;
-  onBrowse: (filter?: 'ending' | 'expired' | 'nopaperwork') => void;
+  onBrowse: (filter?: ItemsFilter) => void;
 }) {
   const tracked = m.covered + m.endingSoon + m.expired;
   const pct = tracked === 0 ? 0 : Math.round(((m.covered + m.endingSoon) / tracked) * 100);
@@ -230,6 +217,76 @@ function CoverCard({
     </div>
   );
 }
+
+/**
+ * What's unfinished, and what it costs to leave it that way.
+ *
+ * This replaces a single "no proof of purchase" row. The point isn't the
+ * count — it's that each line is a job with an end, and tapping it lands on
+ * exactly the items that need doing rather than on the whole list.
+ *
+ * Ordered by consequence, not by count: a missing receipt can't be recreated
+ * later, a missing photo can be taken this afternoon. Sorting by size would
+ * put the cheap problem first on most people's data.
+ */
+function NeedsCard({
+  items,
+  docs,
+  onBrowse,
+}: {
+  items: Item[];
+  docs: Doc[];
+  onBrowse: (filter?: ItemsFilter) => void;
+}) {
+  const gaps = gapsFor(items, docs);
+
+  // Nothing missing is worth saying out loud, once. It's the only state in the
+  // app that's finished, and a card that vanishes silently reads like a bug.
+  if (gaps.length === 0) {
+    return (
+      <div className="card needscard done">
+        <div className="cardhead">
+          <h3>Nothing needs you</h3>
+        </div>
+        <p className="hint">
+          Every item has a receipt, a warranty length, a date and a photo. That's the whole job.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card needscard">
+      <div className="cardhead">
+        <h3>Needs a minute</h3>
+        <span className="countpill">{gaps.reduce((n, g) => n + g.count, 0)}</span>
+      </div>
+
+      {gaps.map((gap) => (
+        <button
+          key={gap.kind}
+          type="button"
+          className="needrow"
+          onClick={() => onBrowse(GAP_FILTER[gap.kind])}
+        >
+          <span className="needcount">{gap.count}</span>
+          <span className="needtxt">
+            <strong>{gap.label.replace(/^\d+ /, '')}</strong>
+            <small>{gap.why}</small>
+          </span>
+          <Chevron />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const GAP_FILTER: Record<GapKind, ItemsFilter> = {
+  receipt: 'noreceipt',
+  warranty: 'nowarranty',
+  date: 'nodate',
+  photo: 'nophoto',
+};
 
 function Stat({
   n,

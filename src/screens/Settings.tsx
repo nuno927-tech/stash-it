@@ -124,11 +124,14 @@ function Row({
   note,
   control,
   onClick,
+  stacked,
 }: {
   label: string;
   note?: string;
   control?: ReactNode;
   onClick?: () => void;
+  /** Puts the control on its own line. For anything you type into. */
+  stacked?: boolean;
 }) {
   const body = (
     <>
@@ -146,7 +149,7 @@ function Row({
       <Chevron />
     </button>
   ) : (
-    <div className="setrow">{body}</div>
+    <div className={`setrow${stacked ? ' setfield' : ''}`}>{body}</div>
   );
 }
 
@@ -375,6 +378,7 @@ function YourHome({
       <Row
         label="Your name"
         note="What the dashboard calls you. Leave it empty for a plain greeting."
+        stacked
         control={
           <input
             type="text"

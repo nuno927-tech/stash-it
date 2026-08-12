@@ -85,6 +85,85 @@ export function metricsFor(items: Item[], docs: Doc[]): Metrics {
   };
 }
 
+/* ------------------------------------------------------------------ gaps */
+
+/**
+ * The things that are missing.
+ *
+ * Ordered by what it costs you to be missing it, not by how many there are.
+ * A receipt is the one thing a claim will actually ask for and the one thing
+ * you cannot recreate later — a shop will not reissue a receipt from 2023. A
+ * photo you can take this afternoon. Sorting by count would put the cheap
+ * problem at the top on most people's data.
+ */
+export type GapKind = 'receipt' | 'warranty' | 'date' | 'photo';
+
+export interface Gap {
+  kind: GapKind;
+  count: number;
+  /** Second person, and specific: "3 items have no receipt". */
+  label: string;
+  why: string;
+}
+
+const GAP_ORDER: GapKind[] = ['receipt', 'warranty', 'date', 'photo'];
+
+const GAP_COPY: Record<GapKind, { one: string; many: string; why: string }> = {
+  receipt: {
+    one: '1 item has no receipt',
+    many: 'items have no receipt',
+    why: "It's the first thing a claim asks for, and shops won't reissue one.",
+  },
+  warranty: {
+    one: '1 item has no warranty length',
+    many: 'items have no warranty length',
+    why: "Without it there's nothing to count down, so nothing warns you.",
+  },
+  date: {
+    one: '1 item has no purchase date',
+    many: 'items have no purchase date',
+    why: 'Cover is measured from it, so the expiry can only be guessed.',
+  },
+  photo: {
+    one: '1 item has no photo',
+    many: 'items have no photo',
+    why: 'Useful for proving condition, and for finding it in the list.',
+  },
+};
+
+export function gapsFor(items: Item[], docs: Doc[]): Gap[] {
+  const live = items.filter((i) => !i.deletedAt);
+  const liveDocs = docs.filter((d) => !d.deletedAt);
+
+  const withReceipt = new Set(liveDocs.filter((d) => d.kind === 'receipt').map((d) => d.itemId));
+
+  const counts: Record<GapKind, number> = { receipt: 0, warranty: 0, date: 0, photo: 0 };
+
+  for (const item of live) {
+    if (!withReceipt.has(item.id)) counts.receipt++;
+    // Warranty *length*, not the document: an item can have the paperwork
+    // attached and still no term entered, and it's the term that drives every
+    // countdown and every warning in the app.
+    if (!hasTerm(item)) counts.warranty++;
+    if (!item.purchaseDate) counts.date++;
+    if (!item.thumbBlobId) counts.photo++;
+  }
+
+  return GAP_ORDER.filter((kind) => counts[kind] > 0).map((kind) => {
+    const n = counts[kind];
+    const copy = GAP_COPY[kind];
+    return { kind, count: n, label: n === 1 ? copy.one : `${n} ${copy.many}`, why: copy.why };
+  });
+}
+
+function hasTerm(item: Item): boolean {
+  return !!(
+    (item.warranty && (item.warranty.months > 0 || (item.warranty.amount ?? 0) > 0)) ||
+    (item.extendedWarranty &&
+      (item.extendedWarranty.months > 0 || (item.extendedWarranty.amount ?? 0) > 0))
+  );
+}
+
 /** 0..1 share of items that are covered or ending soon, for the bar. */
 export function coverShare(m: Metrics): number {
   const tracked = m.covered + m.endingSoon + m.expired;
