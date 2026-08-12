@@ -309,7 +309,7 @@ function SearchResults({
 }) {
   if (hits.length === 0) {
     return (
-      <div className="empty" style={{ paddingTop: 30 }}>
+      <div className="empty inline">
         <Scout pose="alert" height={120} motion={['float']} shadow alt="" />
         <h3>Nothing found</h3>
         <p>Scout checked names, brands, models, serials, rooms, notes and document titles.</p>
