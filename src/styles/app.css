@@ -20,6 +20,31 @@
   overflow-y: auto;
   padding: 18px 16px 24px;
   -webkit-overflow-scrolling: touch;
+  /* Vertical scrolling stays the browser's; horizontal is ours to interpret.
+     Without this, Chrome can claim a diagonal drag as a scroll and the swipe
+     never completes. */
+  touch-action: pan-y;
+  animation: bodyIn 0.22s ease both;
+}
+
+/* The body is keyed by tab, so switching remounts it and this runs. A screen
+   that simply replaced itself gave the gesture no visible consequence — you
+   couldn't tell whether the swipe had worked or the tap had. */
+@keyframes bodyIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-body {
+    animation: none;
+  }
 }
 
 .apphead {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
-import { configureFeedback, installClickSounds } from '@/lib/feedback';
+import { configureFeedback, feedback, installClickSounds } from '@/lib/feedback';
 import {
   hasNativePrompt,
   installOffer,
@@ -15,6 +15,7 @@ import {
 import { clearBack, pushBack } from '@/lib/backstack';
 import { biometricsAvailable, lockVerdict, type LockVerdict } from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
+import { nextTab } from '@/lib/swipe';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
 import { forgetShareMarker, looksLikeShare, takeShare } from '@/lib/shareInbox';
 import { dismissSplash, splashRemainingMs } from '@/lib/splash';
@@ -23,6 +24,7 @@ import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { LockScreen } from '@/components/LockScreen';
+import { useSwipeNav } from '@/components/useSwipeNav';
 import { Welcome } from '@/components/Welcome';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
@@ -276,6 +278,7 @@ function Shell() {
 
   const mayAdd = canAddItem(count, settings.entitlements);
   const tab: Tab = TAB_FOR[screen.kind];
+  const onTab = !PUSHED[screen.kind];
 
   // A deleted or missing record must not leave the user on a blank screen.
   if ((screen.kind === 'detail' || screen.kind === 'edit') && focused === undefined) {
@@ -284,6 +287,7 @@ function Shell() {
 
   return (
     <Frame
+      swipe={onTab ? { tab, onChange: (t) => go({ kind: t }) } : undefined}
       nav={
         <BottomNav
           active={tab}
@@ -398,10 +402,40 @@ function useInstallOffer() {
   return { show, dismiss: () => setShow('none') };
 }
 
-function Frame({ children, nav }: { children: ReactNode; nav?: ReactNode }) {
+/**
+ * The shell. Given `swipe`, the scrolling body also moves between tabs on a
+ * horizontal drag — offered only on the tabs themselves, because a swipe out
+ * of a half-filled form would be a way to lose work by accident.
+ */
+function Frame({
+  children,
+  nav,
+  swipe,
+}: {
+  children: ReactNode;
+  nav?: ReactNode;
+  swipe?: { tab: Tab; onChange: (t: Tab) => void };
+}) {
+  const body = useRef<HTMLDivElement>(null);
+
+  useSwipeNav(body, !!swipe, (direction) => {
+    if (!swipe) return;
+    const to = nextTab(swipe.tab, direction);
+    // Nothing beyond the ends. A silent no-op at the edge reads as "that's
+    // all there is", which is true and is what the bottom bar already shows.
+    if (!to || to === swipe.tab) return;
+    feedback('nav');
+    swipe.onChange(to);
+  });
+
   return (
     <div className="app">
-      <div className="app-body">{children}</div>
+      {/* Keyed by tab so the incoming screen slides from the side it came
+          from — without it, the content simply replaces itself and the
+          gesture has no visible consequence. */}
+      <div ref={body} className="app-body" key={swipe ? swipe.tab : 'pushed'}>
+        {children}
+      </div>
       {nav}
     </div>
   );
