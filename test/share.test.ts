@@ -17,6 +17,7 @@ function check(label: string, ok: boolean, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `  — ${detail}` : ''}`);
 }
 
+// The marketing page, which is what appUrl() resolves to — not the app.
 const URL_ = 'https://nuno927-tech.github.io/stash-it/';
 
 function abort(): Promise<never> {

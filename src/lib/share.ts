@@ -17,9 +17,19 @@ export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'unavailable';
  * Where the app lives, derived rather than hardcoded so it's right in dev, on
  * a project-path deploy, and anywhere it gets moved later.
  */
+/**
+ * The address to give someone else.
+ *
+ * The marketing page, not the app itself: it says what Stash it is, and it has
+ * an install button. Handing over the raw application drops a stranger into
+ * somebody else's empty dashboard with no explanation.
+ *
+ * They are different paths — the site sits one level above the app, which is
+ * what keeps the app's service worker from answering for the website.
+ */
 export function appUrl(): string {
   if (typeof window === 'undefined') return '';
-  return new URL(import.meta.env.BASE_URL, window.location.origin).href;
+  return new URL(__SITE_PATH__, window.location.origin).href;
 }
 
 export interface ShareDeps {

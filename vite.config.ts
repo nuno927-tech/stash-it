@@ -19,11 +19,27 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 const { version } = createRequire(import.meta.url)('./package.json') as { version: string };
 
 /**
- * GitHub Pages serves a project site from /<repo>/, not the domain root, so
- * every asset URL has to be prefixed. The deploy workflow sets BASE_PATH from
- * the repo name; local builds stay at '/'.
+ * Where the app is served from. GitHub Pages puts a project site under
+ * /<repo>/, and the app sits one level below that again at /<repo>/app/ —
+ * the repo root belongs to the marketing site.
+ *
+ * That split is not cosmetic. While both lived under /<repo>/ the app's
+ * service worker scope and its navigation scope covered the website too, so
+ * an installed phone answered the website's address with the app.
+ *
+ * The deploy workflow sets BASE_PATH; local builds stay at '/'.
  */
 const base = process.env.BASE_PATH ?? '/';
+
+/**
+ * The manifest's scope is deliberately the level above the app.
+ *
+ * It has to include the marketing page or Chromium won't fire
+ * beforeinstallprompt there and the site's install button can't work. It
+ * costs nothing to widen: the service worker's scope comes from where sw.js
+ * sits, not from the manifest, so the worker still only controls the app.
+ */
+const scope = process.env.SITE_PATH ?? base;
 
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
@@ -35,6 +51,10 @@ export default defineConfig(({ mode }) => {
 
     define: {
       __APP_VERSION__: JSON.stringify(version),
+      // Where the marketing site lives. Sharing "the app" should hand someone
+      // a page that explains what it is and offers to install it, not a bare
+      // application they have to work out.
+      __SITE_PATH__: JSON.stringify(single ? './' : scope),
     },
 
     plugins: [
@@ -57,11 +77,13 @@ export default defineConfig(({ mode }) => {
                 // Any unknown path inside the app resolves to the shell. Needed
                 // once routing exists, harmless now.
                 navigateFallback: `${base}index.html`,
-                // …but never the share endpoint, and never the marketing
-                // page. Falling /share back to the shell would hand the POST
-                // to Workbox and lose the payload; falling /welcome back
-                // would serve the app to someone who asked for the website.
-                navigateFallbackDenylist: [/\/share$/, /\/welcome\//],
+                // …but never the share endpoint: falling that back to the
+                // shell would hand the POST to Workbox and lose the payload.
+                //
+                // The marketing site needs no exclusion any more. It lives
+                // above the app, outside this worker's scope, which is the
+                // whole reason the app moved down a level.
+                navigateFallbackDenylist: [/\/share$/],
               },
               manifest: {
                 id: base,
@@ -69,7 +91,7 @@ export default defineConfig(({ mode }) => {
                 short_name: 'Stash it',
                 description: 'Warranties, receipts and manuals for everything you own.',
                 start_url: base,
-                scope: base,
+                scope,
                 display: 'standalone',
                 orientation: 'portrait',
                 // Matches the HTML splash exactly. The OS draws this one and

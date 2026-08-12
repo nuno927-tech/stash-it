@@ -33,27 +33,33 @@ jobs:
 
       - run: npm test
 
-      # A project site lives at https://<user>.github.io/<repo>/, so every
-      # asset URL, the service worker scope and the manifest start_url all need
-      # that prefix. vite.config.ts reads it from here.
+      # A project site lives at https://<user>.github.io/<repo>/. The marketing
+      # site takes that root and the app sits at /<repo>/app/ — see the note in
+      # vite.config.ts for why they can't share a path.
+      #
+      # SITE_PATH is the manifest scope: one level above the app, so the
+      # website is inside it and its install button can work.
       - name: Build
         run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /${{ github.event.repository.name }}/app/
+          SITE_PATH: /${{ github.event.repository.name }}/
 
-      # The marketing page ships alongside the app rather than replacing it at
-      # the root: /stash-it/ is the installed PWA's start_url and scope, and
-      # moving the app would break every existing installation.
-      - name: Add the marketing site
+      # The site at the root, the app underneath it. site/sw.js lands at the
+      # app's old address on purpose: it's a worker that unregisters itself,
+      # so anyone still carrying the old one stops being served a cached app
+      # shell where the website should be.
+      - name: Assemble the site and the app
         run: |
-          mkdir -p dist/welcome
-          cp -r site/* dist/welcome/
+          mkdir -p out/app
+          cp -r dist/* out/app/
+          cp -r site/* out/
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: out
 
   deploy:
     needs: build

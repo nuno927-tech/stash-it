@@ -13,3 +13,4 @@ Thumbs.db
 # src/assets/mascot are committed; regenerate them with scripts/mascot.mjs.
 design/mascot-originals/
 design/preview/
+out/
