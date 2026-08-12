@@ -59,9 +59,11 @@ type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 export function Settings({
   propertyId,
   onOpenRooms,
+  onTour,
 }: {
   propertyId: string;
   onOpenRooms: () => void;
+  onTour: () => void;
 }) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [notice, setNotice] = useState<Notice>(null);
@@ -100,6 +102,7 @@ export function Settings({
         onNotice={setNotice}
         taps={taps}
         onTapVersion={() => setTaps((t) => tap(t, Date.now()))}
+        onTour={onTour}
       />
       {unlocked(taps) && (
         <Developer
@@ -653,10 +656,12 @@ function AboutApp({
   onNotice,
   taps,
   onTapVersion,
+  onTour,
 }: {
   onNotice: (n: Notice) => void;
   taps: TapState;
   onTapVersion: () => void;
+  onTour: () => void;
 }) {
   const url = appUrl();
   // `settled` is true here on purpose: by the time someone is reading
@@ -701,6 +706,12 @@ function AboutApp({
           }
         />
       )}
+
+      <Row
+        label="Take the tour"
+        note="Six short screens on what the app does. Nothing changes by watching it."
+        onClick={onTour}
+      />
 
       {/* A share target is invisible: nothing in the app hints that Stash it
           is now in the Android share sheet, and nobody goes looking. One line

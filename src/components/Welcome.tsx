@@ -1,45 +1,50 @@
 import { useState } from 'react';
-import { db } from '@/db/db';
+import { createPortal } from 'react-dom';
+import { db, nowISO } from '@/db/db';
 import { feedback } from '@/lib/feedback';
 import { cleanName, greeting, MAX_NAME_LENGTH } from '@/lib/greeting';
-import { nowISO } from '@/db/db';
+import { remindLater } from '@/lib/tour';
 import { Scout } from './Scout';
 
 /**
- * First run, and one question.
+ * First run: one question, and one offer.
  *
- * It asks for a name and nothing else. Everything else the app needs it can
- * find out later or guess, and a first-run flow that wants four answers before
- * showing you anything is the reason people abandon apps on the first screen.
+ * It asks for a name and whether you want the tour. Everything else the app
+ * can find out later or guess, and a first-run flow wanting four answers
+ * before showing you anything is why people abandon apps on screen one.
  *
- * Skipping is a real answer, recorded as one — `onboardedAt` is set either
- * way, so declining isn't mistaken for never having been asked and the sheet
- * doesn't come back tomorrow.
+ * Centred, and sized by its content. It used to be a bottom sheet at a fixed
+ * 72vh, inherited from the lock screen — on a short phone the content was
+ * taller than the sheet, and a centred flex column that overflows clips from
+ * the *top*, which put Scout off the screen entirely. Nothing here has a fixed
+ * height any more; it grows to fit and scrolls if it must.
  */
-export function Welcome() {
+export function Welcome({ onTour }: { onTour: () => void }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
   // No onDone: the shell renders this off a live query of the same record, so
   // writing onboardedAt is what closes it. One source of truth for "have we
   // asked", rather than a flag here that could disagree with the database.
-  const finish = async (value: string) => {
+  const finish = async (tour: boolean) => {
     setBusy(true);
-    feedback(value ? 'save' : 'tap');
+    feedback(name ? 'save' : 'tap');
     await db.settings.update('singleton', {
-      displayName: cleanName(value),
+      displayName: cleanName(name),
       onboardedAt: nowISO(),
+      // Declining now is "later", not "never" — a specific date, three days
+      // out, rather than a promise the app has no intention of keeping.
+      tourRemindAt: tour ? undefined : remindLater(),
     });
+    if (tour) onTour();
   };
 
   const preview = cleanName(name);
 
-  return (
-    <div className="fullscrim" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-      <div className="fullsheet welcomesheet">
-        <span className="grip" aria-hidden="true" />
-
-        <Scout pose="waving" height={150} motion={['float', 'breathe']} shadow alt="Scout waving" />
+  return createPortal(
+    <div className="fullscrim centred" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div className="welcomecard">
+        <Scout pose="waving" height={132} motion={['float', 'breathe']} shadow alt="Scout waving" />
 
         <h2 id="welcome-title">Hello, I'm Scout</h2>
         <p>I'll keep an eye on your warranties. What should I call you?</p>
@@ -48,7 +53,7 @@ export function Welcome() {
           className="welcomeform"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!busy) void finish(name);
+            if (!busy) void finish(true);
           }}
         >
           <input
@@ -67,14 +72,20 @@ export function Welcome() {
           <p className="welcomepreview">{greeting(preview)}</p>
 
           <button type="submit" className="btn wide tallbtn" disabled={busy}>
-            {preview ? `Nice to meet you, ${preview}` : 'Continue'}
+            Take the tour
           </button>
         </form>
 
-        <button type="button" className="linkish" disabled={busy} onClick={() => void finish('')}>
-          Skip
+        <button
+          type="button"
+          className="linkish"
+          disabled={busy}
+          onClick={() => void finish(false)}
+        >
+          Remind me later
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

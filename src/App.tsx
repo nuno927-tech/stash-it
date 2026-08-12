@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
@@ -22,6 +23,7 @@ import {
 } from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
 import { nextTab } from '@/lib/swipe';
+import { remindLater, tourDue } from '@/lib/tour';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
 import { forgetShareMarker, looksLikeShare, takeShare } from '@/lib/shareInbox';
 import { dismissSplash, raiseSplash, splashRemainingMs } from '@/lib/splash';
@@ -30,6 +32,8 @@ import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { useSwipeNav } from '@/components/useSwipeNav';
+import { Scout } from '@/components/Scout';
+import { Tour } from '@/components/Tour';
 import { Welcome } from '@/components/Welcome';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
@@ -314,6 +318,12 @@ function Shell() {
   const offer = useInstallOffer();
   const share = usePendingShare(settings?.currency ?? 'USD');
 
+  const [tour, setTour] = useState(false);
+  const dueTour = tourDue({
+    doneAt: settings?.tourDoneAt,
+    remindAt: settings?.tourRemindAt,
+  });
+
   // A share is an instruction: the user picked this app out of the sheet to
   // put a receipt somewhere. Opening anything other than the form would be
   // asking them to say it twice.
@@ -416,18 +426,35 @@ function Shell() {
         ))}
 
       {screen.kind === 'settings' && (
-        <Settings propertyId={property.id} onOpenRooms={() => go({ kind: 'rooms' })} />
+        <Settings
+          propertyId={property.id}
+          onOpenRooms={() => go({ kind: 'rooms' })}
+          onTour={() => setTour(true)}
+        />
       )}
 
       {screen.kind === 'rooms' && (
         <Rooms propertyId={property.id} onBack={() => pop({ kind: 'settings' })} />
       )}
 
-      {/* One sheet at a time, and this one first. Being asked to install
-          before anyone has said hello is the wrong order, and two stacked
-          sheets on a first launch is how an app gets deleted. */}
+      {/*
+        One sheet at a time, in the order a person would expect: hello, then
+        the tour they asked for, then — last — the invitation to install.
+        Being asked to install before anyone has said hello is the wrong way
+        round, and two stacked sheets on a first launch is how an app gets
+        deleted.
+      */}
       {!settings.onboardedAt ? (
-        <Welcome />
+        <Welcome onTour={() => setTour(true)} />
+      ) : tour ? (
+        <Tour onClose={() => setTour(false)} />
+      ) : dueTour ? (
+        <TourNudge
+          onTake={() => setTour(true)}
+          onLater={() =>
+            void db.settings.update('singleton', { tourRemindAt: remindLater() })
+          }
+        />
       ) : (
         offer.show !== 'none' && <InstallPrompt offer={offer.show} onClose={offer.dismiss} />
       )}
@@ -484,6 +511,33 @@ function useInstallOffer() {
   // down, so the next launch asks again — until the app is installed, which
   // answers the question permanently on its own.
   return { show, dismiss: () => setShow('none') };
+}
+
+/**
+ * Three days later, as promised.
+ *
+ * Small on purpose. The tour is six screens; being dropped into it unasked
+ * would be worse than never being offered, so this is the smallest thing that
+ * can carry a yes and a no.
+ */
+function TourNudge({ onTake, onLater }: { onTake: () => void; onLater: () => void }) {
+  return createPortal(
+    <div className="sheetscrim" role="dialog" aria-modal="true" aria-label="Take the tour">
+      <div className="sheetcard">
+        <Scout pose="waving" height={96} motion={['breathe']} alt="" />
+        <h4>Ready for that tour?</h4>
+        <p className="hint">Six short screens. You can stop at any point.</p>
+
+        <button type="button" className="btn wide" onClick={onTake}>
+          Take the tour
+        </button>
+        <button type="button" className="btn ghost" onClick={onLater}>
+          In a few days
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 /**

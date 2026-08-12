@@ -2000,10 +2000,48 @@ a.pick {
   font-size: 15px;
 }
 
-/* Tall enough that the keyboard, which takes the bottom third once the field
-   is focused, doesn't cover what it's asking about. */
-.welcomesheet {
-  height: 72vh;
+/*
+  Centred and sized by its content. It was a bottom sheet at a fixed 72vh,
+  inherited from the lock screen — and on a short phone the content was taller
+  than the sheet. A centred flex column that overflows clips from the *top*,
+  which put Scout entirely off the screen. Nothing here has a fixed height.
+*/
+.fullscrim.centred {
+  justify-content: center;
+  padding: 20px;
+}
+
+.welcomecard {
+  width: 100%;
+  max-width: 400px;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  background: var(--slate-800);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px 22px 16px;
+  animation: cardIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.welcomecard h2 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 27px;
+  letter-spacing: -0.03em;
+  margin: 12px 0 6px;
+}
+
+.welcomecard p {
+  font-size: 13.5px;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 30ch;
 }
 
 .welcomeform {
@@ -2822,4 +2860,92 @@ button.countpill.tappill:active {
   font-weight: 300;
   line-height: 1.5;
   color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ tour */
+
+/* Full screen, because it is the only thing being read. Six of them in a row
+   with the app peeking through the edges would be neither one thing nor the
+   other. */
+.tourscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  background: var(--slate-900);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: calc(52px + env(safe-area-inset-top)) 26px calc(26px + env(safe-area-inset-bottom));
+  text-align: center;
+  touch-action: pan-y;
+  animation: scrimIn 0.22s ease both;
+}
+
+.tourskip {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 16px;
+}
+
+.tourbody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 0;
+  will-change: transform;
+}
+
+.tourbody h2 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 16px 0 8px;
+  max-width: 20ch;
+}
+
+.tourbody p {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 34ch;
+}
+
+.tourfoot {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tourdots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tourdots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--slate-600);
+  transition: background 0.2s ease;
+}
+
+.tourdots i.on {
+  background: var(--gold);
+}
+
+.sheetcard .rig {
+  margin: 0 auto 8px;
+  display: block;
 }

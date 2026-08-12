@@ -195,6 +195,10 @@ export interface Settings {
   displayName?: string;
   /** Set once the welcome has been answered, either way. */
   onboardedAt?: string;
+  /** Set when the tour was finished or skipped; stops it being offered. */
+  tourDoneAt?: string;
+  /** When "remind me later" comes due. Absent means no reminder pending. */
+  tourRemindAt?: string;
 }
 
 export const SEED_ROOMS = [
