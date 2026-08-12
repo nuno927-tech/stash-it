@@ -27,7 +27,6 @@ import { PhotoError, storePhoto } from '@/lib/photo';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { DocsField } from '@/components/DocsField';
-import { ItemIcon } from '@/components/ItemIcon';
 
 /**
  * One form, two modes: pass an `item` to edit it, omit one to create.
@@ -206,20 +205,24 @@ export function ItemForm({
           full-width dropzone pushed the first real question below the fold. */}
       <section className="card">
         <div className="identity">
-          {/* One target, not two. A slot with a camera button welded to its
-              corner asked people to notice a 26px difference to make a choice
-              the app can simply ask about. */}
+          {/* The square says what it is for. A separate button underneath
+              repeated a control the user was already looking at — the slot is
+              the obvious place to tap, so it should be the one that's
+              labelled. */}
           <button
             type="button"
             className="photoslot"
             onClick={() => setPicking(true)}
             disabled={busy}
-            aria-label={preview ? 'Replace the photo' : 'Add a photo'}
+            aria-label={preview ? 'Replace the photo' : 'Upload a photo'}
           >
             {preview ? (
               <img src={preview} alt="" />
             ) : (
-              <ItemIcon item={{ name: form.name, brand: form.brand }} size={26} />
+              <>
+                <CameraGlyph />
+                <small>Upload photo</small>
+              </>
             )}
           </button>
 
@@ -243,18 +246,8 @@ export function ItemForm({
           </div>
         </div>
 
-        <div className="photorow">
-          <button
-            type="button"
-            className="btn ghost wide"
-            disabled={busy}
-            onClick={() => setPicking(true)}
-          >
-            <CameraGlyph />
-            {preview ? 'Replace photo' : 'Upload photo'}
-          </button>
-
-          {preview && (
+        {preview && (
+          <div className="photorow">
             <button
               type="button"
               className="linkish"
@@ -265,10 +258,10 @@ export function ItemForm({
                 setRemoved(true);
               }}
             >
-              Remove
+              Remove photo
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {picking && (
           <ChoiceSheet

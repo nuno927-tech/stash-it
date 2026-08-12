@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { pushBack } from '@/lib/backstack';
 
 export interface Choice {
@@ -9,16 +10,23 @@ export interface Choice {
 }
 
 /**
- * A short question, asked as a bottom sheet.
+ * A short question, asked as a card in the middle of the screen.
  *
- * For the cases where two controls sat side by side because the app couldn't
- * be bothered to ask — a photo slot with a camera button welded to its corner,
- * say. Two half-labelled targets in the space of one is harder to read than a
- * single clear button and one question, and the question can afford to say
- * what each option actually does.
+ * ── Why this is a portal ──────────────────────────────────────────────────
+ * It was rendered where it was used, inside the item form, and appeared at the
+ * bottom of the scrolled page instead of over it: you had to scroll to find
+ * the dialog. `position: fixed` is only fixed to the viewport when no ancestor
+ * establishes a containing block, and a transform, filter or animation
+ * anywhere up the tree quietly does. The form is inside an animated screen
+ * wrapper inside a scrolling body, so the odds of that were always high — and
+ * the failure is invisible until it happens on a long page.
  *
- * Anchored to the bottom because that's where the thumb is, and dismissible by
- * the system back gesture like everything else that can be closed.
+ * Rendering into document.body removes the question entirely. There is no
+ * ancestor left to be relative to.
+ *
+ * Centred, not bottom-anchored: with two options and a cancel there isn't
+ * enough content to justify a sheet, and the middle of the screen is where
+ * your eyes already are.
  */
 export function ChoiceSheet({
   title,
@@ -33,7 +41,13 @@ export function ChoiceSheet({
 }) {
   useEffect(() => pushBack(onCancel), [onCancel]);
 
-  return (
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  return createPortal(
     <div
       className="sheetscrim"
       role="dialog"
@@ -43,7 +57,6 @@ export function ChoiceSheet({
     >
       {/* The scrim closes; the card must not close when tapped through. */}
       <div className="sheetcard" onClick={(e) => e.stopPropagation()}>
-        <span className="lockgrip" aria-hidden="true" />
         <h4>{title}</h4>
 
         {choices.map((c) => (
@@ -60,6 +73,7 @@ export function ChoiceSheet({
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

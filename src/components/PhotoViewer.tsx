@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { pushBack } from '@/lib/backstack';
 import { feedback } from '@/lib/feedback';
 
@@ -58,7 +59,11 @@ export function PhotoViewer({
   if (shots.length === 0) return null;
   const shot = shots[at]!;
 
-  return (
+  // Into document.body, for the same reason ChoiceSheet is: a `position:
+  // fixed` overlay rendered inside an animated, scrolling screen is fixed to
+  // that screen rather than the viewport, and lands wherever the page happens
+  // to be scrolled to.
+  return createPortal(
     <div
       className="viewer"
       role="dialog"
@@ -134,6 +139,7 @@ export function PhotoViewer({
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
