@@ -20,6 +20,8 @@ export interface Prefs {
   haptics: boolean;
   /** How the Items list opens: rooms shut, or everything on show. */
   roomsView: RoomsView;
+  /** Ask for a fingerprint or face check before the app opens. */
+  biometricLock: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -31,6 +33,9 @@ export const DEFAULT_PREFS: Prefs = {
   // Collapsed: with a dozen rooms the expanded list is a long scroll, and the
   // question people arrive with is usually "what's in the garage".
   roomsView: 'collapsed',
+  // Off until asked for. Switching it on costs an enrolment prompt, and a lock
+  // nobody chose is a lock they'll be surprised by at the worst moment.
+  biometricLock: false,
 };
 
 export function prefsFrom(settings: Settings | undefined): Prefs {
@@ -39,6 +44,7 @@ export function prefsFrom(settings: Settings | undefined): Prefs {
     sounds: settings?.sounds ?? DEFAULT_PREFS.sounds,
     haptics: settings?.haptics ?? DEFAULT_PREFS.haptics,
     roomsView: settings?.roomsView ?? DEFAULT_PREFS.roomsView,
+    biometricLock: settings?.biometricLock ?? DEFAULT_PREFS.biometricLock,
   };
 }
 

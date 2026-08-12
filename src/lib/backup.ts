@@ -40,8 +40,16 @@ export interface BackupManifest {
   encrypted: boolean;
 }
 
-/** Settings minus the things that must not travel. */
-export type PortableSettings = Omit<Settings, 'entitlements'>;
+/**
+ * Settings minus the things that must not travel: a paid unlock, and a lock
+ * credential that only exists in one device's keychain. Carrying the latter
+ * into a restore would raise a lock screen no authenticator on the new device
+ * could ever satisfy.
+ */
+export type PortableSettings = Omit<
+  Settings,
+  'entitlements' | 'biometricLock' | 'lockCredentialId'
+>;
 
 export interface BundleData {
   items: Item[];
@@ -127,7 +135,12 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
 
   let portableSettings: PortableSettings | null = null;
   if (settings) {
-    const { entitlements: _dropped, ...rest } = settings;
+    const {
+      entitlements: _dropped,
+      biometricLock: _lock,
+      lockCredentialId: _cred,
+      ...rest
+    } = settings;
     portableSettings = rest;
   }
 
@@ -374,13 +387,17 @@ export async function restoreBundle(
       await mergeTable(db.maintenance, data.maintenance, result, mode);
 
       // --- settings: take the bundle's preferences, keep this device's
-      // entitlements. A restored file can never grant a paid unlock.
+      // entitlements. A restored file can never grant a paid unlock, and it
+      // can never turn this phone's lock on or off either — the credential
+      // that satisfies it is local.
       if (data.settings && localSettings) {
         await db.settings.put({
           ...data.settings,
           id: 'singleton',
           entitlements: localSettings.entitlements,
           devModeEnabled: localSettings.devModeEnabled,
+          biometricLock: localSettings.biometricLock,
+          lockCredentialId: localSettings.lockCredentialId,
         });
       }
     },

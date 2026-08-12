@@ -1,7 +1,7 @@
 {
   "name": "stash-it",
   "private": true,
-  "version": "0.11.2",
+  "version": "0.12.0",
   "type": "module",
   "description": "Warranties, receipts and manuals for everything you own. Local-first PWA.",
   "scripts": {
@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "serve:single": "vite preview --outDir dist-single --port 4180",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev",
+    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev && npm run test:lock",
     "test:backup": "node scripts/run-test.mjs test/backup.roundtrip.ts",
     "test:add": "node scripts/run-test.mjs test/additem.test.ts",
     "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts",
@@ -27,7 +27,8 @@
     "test:format": "node scripts/run-test.mjs test/format.test.ts",
     "test:install": "node scripts/run-test.mjs test/install.test.ts",
     "test:share": "node scripts/run-test.mjs test/share.test.ts",
-    "test:dev": "node scripts/run-test.mjs test/devmode.test.ts"
+    "test:dev": "node scripts/run-test.mjs test/devmode.test.ts",
+    "test:lock": "node scripts/run-test.mjs test/lock.test.ts"
   },
   "dependencies": {
     "dexie": "^4.4.4",

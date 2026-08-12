@@ -1298,17 +1298,25 @@ a.pick {
   background: var(--wash-gold);
 }
 
+/* A pill that says what it does. The bare plus was unlabelled — fine once you
+   know, but "add" and "stash" are the app's whole vocabulary and the button is
+   where that verb should live. */
 .fab {
   position: absolute;
   right: 18px;
   bottom: 88px;
-  width: 58px;
-  height: 58px;
-  border-radius: 19px;
+  height: 52px;
+  padding: 0 20px 0 17px;
+  border-radius: var(--r-pill);
   background: var(--gold);
   color: var(--on-gold);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   border: none;
   box-shadow: var(--fab-shadow);
 }
@@ -1614,6 +1622,89 @@ a.pick {
   font-size: 11px;
   display: grid;
   place-items: center;
+}
+
+/* ------------------------------------------------------------------ lock */
+
+/* Two thirds of the screen, anchored to the bottom. Not full-height: the strip
+   of scrim above it is what makes this read as a sheet over your things rather
+   than a sign-in page, and the thumb reaches everything that matters. */
+.lockscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--slate-900);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: scrimIn 0.2s ease both;
+}
+
+.locksheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 67vh;
+  min-height: 380px;
+  background: var(--slate-800);
+  border-top: 1px solid var(--line);
+  border-radius: 30px 30px 0 0;
+  padding: 14px 26px calc(30px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  animation: sheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lockgrip {
+  position: absolute;
+  top: 14px;
+  width: 38px;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--slate-600);
+}
+
+.locksheet h2 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 30px;
+  letter-spacing: -0.03em;
+  margin: 14px 0 8px;
+}
+
+.locksheet p {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 30ch;
+  margin-bottom: 6px;
+}
+
+.locknote {
+  color: var(--ember);
+}
+
+.lockbtn {
+  max-width: 300px;
+  height: 54px;
+  margin-top: 18px;
+  font-size: 15px;
+}
+
+.lockfoot {
+  position: absolute;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  max-width: 34ch;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--muted);
+  opacity: 0.75;
 }
 
 @keyframes scrimIn {

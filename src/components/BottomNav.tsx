@@ -48,8 +48,8 @@ export function BottomNav({
           aria-label={addDisabled ? 'Item limit reached' : 'Add an item'}
         >
           <svg
-            width="26"
-            height="26"
+            width="19"
+            height="19"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -58,6 +58,7 @@ export function BottomNav({
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
+          Stash it
         </button>
       )}
 

@@ -24,6 +24,13 @@ import {
   promptInstall,
 } from '@/lib/install';
 import {
+  biometricsAvailable,
+  canOfferLock,
+  clearLock,
+  enrolBiometrics,
+  saveLock,
+} from '@/lib/lock';
+import {
   BACKUP_REMINDER_CHOICES,
   CURRENCIES,
   prefsFrom,
@@ -68,6 +75,7 @@ export function Settings({
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 
       <Appearance settings={settings} />
+      <LockCard settings={settings} onNotice={setNotice} />
       <YourHome settings={settings} onOpenRooms={onOpenRooms} />
       <Backup settings={settings} onNotice={setNotice} />
       <AboutApp
@@ -261,6 +269,82 @@ function Appearance({ settings }: { settings: SettingsRecord }) {
           />
         }
       />
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ lock */
+
+/**
+ * The switch, and the truth about what it does.
+ *
+ * The note says "locks the app" rather than "protects your data", because
+ * WebAuthn authenticates and does not encrypt: the database is readable to
+ * anyone with the phone, a cable and a devtools window either way. Overstating
+ * it would be the kind of promise someone plans around.
+ */
+function LockCard({
+  settings,
+  onNotice,
+}: {
+  settings: SettingsRecord;
+  onNotice: (n: Notice) => void;
+}) {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const on = prefsFrom(settings).biometricLock;
+
+  useEffect(() => {
+    void biometricsAvailable().then(setAvailable);
+  }, []);
+
+  // Nothing to offer on a device with no sensor, and a dead switch invites the
+  // question "why won't this work" rather than answering it.
+  if (available === null || !canOfferLock(available)) return null;
+
+  const toggle = async (next: boolean) => {
+    setBusy(true);
+    onNotice(null);
+    try {
+      if (!next) {
+        await clearLock();
+        feedback('delete');
+        return;
+      }
+      const id = await enrolBiometrics();
+      if (!id) {
+        feedback('error');
+        onNotice({ tone: 'bad', text: 'The device did not confirm. The lock is still off.' });
+        return;
+      }
+      await saveLock(id);
+      feedback('save');
+      onNotice({ tone: 'ok', text: 'Locked. You will be asked next time the app opens.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Lock">
+      <Row
+        label="Unlock with biometrics"
+        note="Ask for your fingerprint or face before the app opens."
+        control={
+          <Toggle
+            on={on}
+            label="Unlock with biometrics"
+            onChange={(next) => {
+              if (!busy) void toggle(next);
+            }}
+          />
+        }
+      />
+      <p className="hint">
+        This locks the app, not the data. What you've saved is stored unencrypted, the way every
+        browser database is — so the lock stops someone picking up your phone, not someone with
+        your phone and a laptop.
+      </p>
     </Card>
   );
 }

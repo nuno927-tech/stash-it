@@ -77,6 +77,9 @@ async function main() {
 
   await db.settings.update('singleton', {
     entitlements: { proUnlock: true, reportUnlock: true, source: 'web' },
+    // A lock enrolled on the exporting device. It means nothing anywhere else.
+    biometricLock: true,
+    lockCredentialId: 'credential-from-the-old-phone',
   });
 
   const before = {
@@ -95,6 +98,11 @@ async function main() {
   const parsed = await parseBundle(blob);
   check('manifest counts match the database', parsed.manifest.counts.items === before.items);
   check('entitlements are stripped from the file', !('entitlements' in (parsed.data.settings ?? {})));
+  check(
+    'the lock credential never leaves the device',
+    !('lockCredentialId' in (parsed.data.settings ?? {})) &&
+      !('biometricLock' in (parsed.data.settings ?? {})),
+  );
   check('soft-deleted item is in the bundle', parsed.data.items.some((i) => i.deletedAt));
 
   /* --------------------------------------------------- replace restore */
@@ -104,6 +112,9 @@ async function main() {
   // has not paid. Restoring must not change that.
   await db.settings.update('singleton', {
     entitlements: { proUnlock: false, reportUnlock: false },
+    // …and no biometric lock of its own.
+    biometricLock: false,
+    lockCredentialId: undefined,
   });
   await restoreBundle(parsed, 'replace');
 
@@ -123,6 +134,10 @@ async function main() {
 
   const settings = await db.settings.get('singleton');
   check('restore cannot grant a paid unlock', settings!.entitlements.proUnlock === false);
+  // Otherwise restoring onto a new phone raises a lock screen that no
+  // authenticator on that phone could ever satisfy.
+  check('and cannot lock the receiving device', !settings!.biometricLock);
+  check('nor leave a foreign credential behind', settings!.lockCredentialId === undefined);
 
   /* ----------------------------------------------------- merge restore */
 

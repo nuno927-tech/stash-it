@@ -12,12 +12,14 @@ import {
   watchInstallability,
   type InstallOffer,
 } from '@/lib/install';
+import { biometricsAvailable, lockVerdict, type LockVerdict } from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
 import { dismissSplash, splashRemainingMs } from '@/lib/splash';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { LockScreen } from '@/components/LockScreen';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
@@ -98,7 +100,52 @@ export default function App() {
     );
   }
 
-  return boot.status === 'ready' ? <Shell /> : <Frame>{null}</Frame>;
+  return boot.status === 'ready' ? <Gate /> : <Frame>{null}</Frame>;
+}
+
+/**
+ * The lock, between boot and the app.
+ *
+ * Nothing renders behind it — an empty shell, not a blurred dashboard — so
+ * there's no arrangement of screenshots or scroll position that leaks what's
+ * inside before the check passes.
+ *
+ * Unlocking is state, not a reload: the settings record still says the lock is
+ * on, so re-reading it would simply lock the app again.
+ */
+function Gate() {
+  const settings = useLiveQuery(() => db.settings.get('singleton'), []);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+
+  useEffect(() => {
+    void biometricsAvailable().then(setAvailable);
+  }, []);
+
+  // `available === null` is still asking. Rendering Shell first and the lock a
+  // beat later would show the dashboard to someone who shouldn't see it.
+  if (!settings || available === null) return <Frame>{null}</Frame>;
+
+  const verdict: LockVerdict = unlocked
+    ? 'open'
+    : lockVerdict({
+        enabled: settings.biometricLock ?? false,
+        credentialId: settings.lockCredentialId,
+        available,
+      });
+
+  if (verdict === 'open') return <Shell />;
+
+  return (
+    <>
+      <Frame>{null}</Frame>
+      <LockScreen
+        credentialId={settings.lockCredentialId ?? ''}
+        verdict={verdict}
+        onUnlocked={() => setUnlocked(true)}
+      />
+    </>
+  );
 }
 
 function Shell() {

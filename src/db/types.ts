@@ -165,6 +165,14 @@ export interface Settings {
   sounds?: boolean;
   haptics?: boolean;
   roomsView?: 'collapsed' | 'expanded';
+
+  /**
+   * Biometric lock. `lockCredentialId` is the WebAuthn credential this device
+   * enrolled — meaningless anywhere else, which is why both are stripped from
+   * a backup rather than travelling with it.
+   */
+  biometricLock?: boolean;
+  lockCredentialId?: string;
 }
 
 export const SEED_ROOMS = [
