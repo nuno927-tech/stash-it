@@ -707,15 +707,16 @@ function Support({ settings }: { settings: SettingsRecord }) {
 
   return (
     <section className="card supportcard">
+      {/* Across the top rather than beside the text: this pose is wide, and
+          squeezed into a column it becomes a small piece of furniture with a
+          squirrel somewhere in it. */}
       <div className="supporthead">
-        <Scout pose="lounge" height={104} motion={['breathe']} alt="" />
-        <div>
-          <h3>Buy Scout a drink</h3>
-          <p>
-            Stash it is free, has no ads and sells nothing. If it saved you a warranty, you can say
-            so.
-          </p>
-        </div>
+        <Scout pose="lounge" height={136} motion={['breathe']} alt="" />
+        <h3>Buy Scout a drink</h3>
+        <p>
+          Stash it is free, has no ads and sells nothing. If it saved you a warranty, you can say
+          so.
+        </p>
       </div>
 
       {monthly && due && (
