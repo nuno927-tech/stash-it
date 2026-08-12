@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
+import { pushBack } from '@/lib/backstack';
 import { activeItemCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
 import {
@@ -605,7 +607,17 @@ function Backup({
   );
 }
 
-/** No default, by design — both options destroy something if picked carelessly. */
+/**
+ * Merge or replace, asked as a dialog.
+ *
+ * It used to appear as another block at the bottom of the Backup card, below
+ * the fold on most phones — you picked a file, the screen appeared not to
+ * react, and the question you now had to answer was somewhere further down. A
+ * choice this consequential has to arrive in front of you.
+ *
+ * No default, by design: both options destroy something if picked carelessly,
+ * and there is no third option that means "do the safe thing".
+ */
 function RestoreChoice({
   bundle,
   busy,
@@ -619,27 +631,42 @@ function RestoreChoice({
 }) {
   const { counts, exportedAt } = bundle.manifest;
 
-  return (
-    <div className="sheet">
-      <h4>
-        Backup from {exportedAt.slice(0, 10)} — {counts.items} items, {counts.docs} documents,{' '}
-        {counts.blobs} files
-      </h4>
+  useEffect(() => pushBack(onCancel), [onCancel]);
 
-      <button type="button" className="choice" disabled={busy} onClick={() => onChoose('merge')}>
-        <b>Merge</b>
-        <span>Keep both. Where the same record exists in each, the newer edit wins.</span>
-      </button>
+  return createPortal(
+    <div className="sheetscrim" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+      <div className="sheetcard" onClick={(e) => e.stopPropagation()}>
+        <h4 id="restore-title">Restore this backup?</h4>
+        <p className="hint" style={{ textAlign: 'center', marginBottom: 16 }}>
+          From {exportedAt.slice(0, 10)} — {counts.items} items, {counts.docs} documents,{' '}
+          {counts.blobs} files.
+        </p>
 
-      <button type="button" className="choice" disabled={busy} onClick={() => onChoose('replace')}>
-        <b>Replace</b>
-        <span>Wipe what's on this phone and restore the backup exactly. For a new device.</span>
-      </button>
+        <button type="button" className="choice" disabled={busy} onClick={() => onChoose('merge')}>
+          <span className="choice-txt">
+            <b>Merge</b>
+            <span>Keep both. Where the same record exists in each, the newer edit wins.</span>
+          </span>
+        </button>
 
-      <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>
-        Cancel
-      </button>
-    </div>
+        <button
+          type="button"
+          className="choice danger"
+          disabled={busy}
+          onClick={() => onChoose('replace')}
+        >
+          <span className="choice-txt">
+            <b>Replace</b>
+            <span>Wipe what's on this phone and restore the backup exactly. For a new device.</span>
+          </span>
+        </button>
+
+        <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

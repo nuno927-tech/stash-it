@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { feedback } from '@/lib/feedback';
 import { promptInstall, type InstallOffer } from '@/lib/install';
 import { Scout } from './Scout';
@@ -28,10 +29,12 @@ export function InstallPrompt({ offer, onClose }: { offer: InstallOffer; onClose
     onClose();
   };
 
-  return (
+  // Into document.body: a fixed overlay rendered inside the shell is at the
+  // mercy of whatever that shell does with overflow and transforms.
+  return createPortal(
     <div className="installscrim" role="dialog" aria-modal="true" aria-labelledby="install-title">
       <div className="installsheet">
-        <Scout pose="acorn" height={124} motion={['float', 'breathe']} shadow />
+        <Scout pose="acorn" height={110} motion={['float', 'breathe']} shadow alt="" />
 
         <h2 id="install-title">Keep Stash it on your home screen</h2>
 
@@ -53,7 +56,8 @@ export function InstallPrompt({ offer, onClose }: { offer: InstallOffer; onClose
           Not now
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

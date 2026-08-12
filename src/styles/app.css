@@ -1178,10 +1178,25 @@ select.compact {
 .sheetcard h4 {
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 21px;
-  letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin-bottom: 10px;
   text-align: center;
+}
+
+.sheetcard .hint {
+  margin-bottom: 16px;
+}
+
+/* Replace destroys what's on the device. It should not look like the safe
+   one, and it should not be the one a thumb lands on by momentum. */
+.choice.danger {
+  border-color: rgba(224, 90, 68, 0.35);
+}
+
+.choice.danger:active {
+  background: var(--wash-ember);
 }
 
 @keyframes cardIn {
@@ -1849,21 +1864,35 @@ a.pick {
 
 /* ------------------------------------------------------------- install */
 
+/*
+  Centred, and fixed to the viewport rather than absolute inside .app.
+
+  It was bottom-anchored inside a container with overflow: hidden, so when the
+  content grew taller than the space — which it did the moment Scout was
+  cropped to the subject and stopped being mostly empty pixels — it overflowed
+  upwards and the heading was clipped off the top. Bottom-anchoring only ever
+  worked while the card happened to be short enough, which is not a property
+  anyone can maintain.
+*/
 .installscrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 40;
   background: var(--scrim);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 16px;
+  display: grid;
+  place-items: center;
+  padding: 20px;
   animation: scrimIn 0.25s ease both;
 }
 
 .installsheet {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
+  /* Never taller than the screen, and scrollable if the content ever gets
+     there — the failure this replaces was silent, and a scrollbar isn't. */
+  max-height: 100%;
+  overflow-y: auto;
   background: var(--slate-800);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -1872,15 +1901,16 @@ a.pick {
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: sheetUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: cardIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .installsheet h2 {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 21px;
-  letter-spacing: -0.02em;
-  margin: 18px 0 9px;
+  font-weight: 200;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 14px 0 9px;
 }
 
 .installsheet p {
