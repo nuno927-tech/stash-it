@@ -67,6 +67,27 @@
         opacity: 0;
         pointer-events: none;
       }
+      /*
+        Waiting for a fingerprint. Android draws its verification dialog over
+        the bottom two thirds, so the mark moves up into the third it leaves
+        alone — the app stays recognisably itself while the platform asks the
+        question, and there is no second screen of our own to look at.
+      */
+      #splash.waiting {
+        justify-content: flex-start;
+        padding-top: 7vh;
+        gap: 14px;
+      }
+      #splash.waiting img {
+        width: 128px;
+        height: 128px;
+      }
+      #splash.waiting h1 {
+        font-size: 30px;
+      }
+      #splash.waiting p {
+        opacity: 0;
+      }
       #splash img {
         width: 190px;
         height: 190px;

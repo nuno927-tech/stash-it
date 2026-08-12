@@ -35,9 +35,9 @@ export function Welcome() {
   const preview = cleanName(name);
 
   return (
-    <div className="lockscrim" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-      <div className="locksheet welcomesheet">
-        <span className="lockgrip" aria-hidden="true" />
+    <div className="fullscrim" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div className="fullsheet welcomesheet">
+        <span className="grip" aria-hidden="true" />
 
         <Scout pose="wave" height={150} motion={['float', 'breathe']} shadow alt="Scout waving" />
 
@@ -66,7 +66,7 @@ export function Welcome() {
               sentence about what the field is for. */}
           <p className="welcomepreview">{greeting(preview)}</p>
 
-          <button type="submit" className="btn wide lockbtn" disabled={busy}>
+          <button type="submit" className="btn wide tallbtn" disabled={busy}>
             {preview ? `Nice to meet you, ${preview}` : 'Continue'}
           </button>
         </form>

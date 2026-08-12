@@ -35,3 +35,18 @@ export function dismissSplash(): void {
 export function splashRemainingMs(now = Date.now()): number {
   return Math.max(0, MIN_VISIBLE_MS - (now - startedAt));
 }
+
+/**
+ * Slides the mark up into the top third and keeps the splash on screen.
+ *
+ * This is the whole of the lock screen now. There used to be a card that said
+ * "Stash it is locked — use your fingerprint or face", which was a screen
+ * whose only content was a description of the dialog about to cover it. The
+ * splash is already up, already says which app this is, and Android's prompt
+ * takes the bottom two thirds — so the honest version is to move our half out
+ * of the way and let the platform ask.
+ */
+export function raiseSplash(): void {
+  document.getElementById('splash')?.classList.add('waiting');
+}
+

@@ -1930,13 +1930,12 @@ a.pick {
 
 /* ------------------------------------------------------------------ lock */
 
-/* A column: Scout in the top third, the card in the bottom two.
-
-   The split is functional. Android draws its verification dialog as a bottom
-   sheet, so it lands on the card and leaves the top third alone — which is the
-   only way anything of ours stays on screen while the platform asks the
-   question. */
-.lockscrim {
+/* The first-run sheet. These were the lock screen's classes until the lock
+   stopped having a screen — it's now the launch splash and the platform's own
+   dialog, nothing of ours. Renamed rather than left as `.lock*` on the one
+   thing still using them, because a lock class with no lock is how a
+   stylesheet starts lying. */
+.fullscrim {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -1948,20 +1947,10 @@ a.pick {
   animation: scrimIn 0.2s ease both;
 }
 
-.lockstage {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px 16px calc(16px + env(safe-area-inset-top));
-  min-height: 0;
-}
-
-.locksheet {
+.fullsheet {
   position: relative;
   width: 100%;
   max-width: 480px;
-  height: 67vh;
   min-height: 340px;
   flex: none;
   background: var(--slate-800);
@@ -1977,7 +1966,7 @@ a.pick {
   animation: sheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.lockgrip {
+.grip {
   position: absolute;
   top: 14px;
   width: 38px;
@@ -1986,7 +1975,7 @@ a.pick {
   background: var(--slate-600);
 }
 
-.locksheet h2 {
+.fullsheet h2 {
   font-family: var(--font-display);
   font-weight: 200;
   font-size: 30px;
@@ -1994,7 +1983,7 @@ a.pick {
   margin: 14px 0 8px;
 }
 
-.locksheet p {
+.fullsheet p {
   font-size: 14px;
   font-weight: 300;
   line-height: 1.6;
@@ -2003,19 +1992,15 @@ a.pick {
   margin-bottom: 6px;
 }
 
-.locknote {
-  color: var(--ember);
-}
-
-.lockbtn {
+.tallbtn {
   max-width: 300px;
   height: 54px;
   margin-top: 18px;
   font-size: 15px;
 }
 
-/* Taller than the lock sheet: it holds a field and the keyboard will take the
-   bottom third of the screen when that field is focused. */
+/* Tall enough that the keyboard, which takes the bottom third once the field
+   is focused, doesn't cover what it's asking about. */
 .welcomesheet {
   height: 72vh;
 }
@@ -2345,15 +2330,31 @@ button.prodhero {
   font-size: 14px;
 }
 
+/* Over the splash, at the bottom, and only when something has gone wrong.
+   Not a lock screen — the two states where doing nothing would leave someone
+   staring at a mark with no way past it. */
 .lockfoot {
-  position: absolute;
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  max-width: 34ch;
-  font-size: 11px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px;
+  text-align: center;
+}
+
+.lockfoot p {
+  font-size: 13px;
   font-weight: 300;
-  line-height: 1.5;
-  color: var(--muted);
-  opacity: 0.75;
+  color: #6b7079;
+}
+
+.lockfoot .btn {
+  min-width: 180px;
 }
 
 @keyframes scrimIn {

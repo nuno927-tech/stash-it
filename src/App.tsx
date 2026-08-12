@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
@@ -13,17 +13,22 @@ import {
   type InstallOffer,
 } from '@/lib/install';
 import { clearBack, pushBack } from '@/lib/backstack';
-import { biometricsAvailable, lockVerdict, type LockVerdict } from '@/lib/lock';
+import {
+  biometricsAvailable,
+  clearLock,
+  lockVerdict,
+  verifyBiometrics,
+  type LockVerdict,
+} from '@/lib/lock';
 import { prefsFrom } from '@/lib/prefs';
 import { nextTab } from '@/lib/swipe';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
 import { forgetShareMarker, looksLikeShare, takeShare } from '@/lib/shareInbox';
-import { dismissSplash, splashRemainingMs } from '@/lib/splash';
+import { dismissSplash, raiseSplash, splashRemainingMs } from '@/lib/splash';
 import { requestPersistence } from '@/lib/storage';
 import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { InstallPrompt } from '@/components/InstallPrompt';
-import { LockScreen } from '@/components/LockScreen';
 import { useSwipeNav } from '@/components/useSwipeNav';
 import { Welcome } from '@/components/Welcome';
 import { Home } from '@/screens/Home';
@@ -90,12 +95,8 @@ export default function App() {
     };
   }, []);
 
-  // Fade the launch splash once there's something worth revealing. It's static
-  // markup in index.html, so the shell has already mounted underneath it by the
-  // time this runs — the dashboard is painted and settled before it clears.
-  if (boot.status !== 'booting') dismissSplash();
-
   if (boot.status === 'error') {
+    dismissSplash();
     return (
       <Frame>
         <div className="empty">
@@ -110,46 +111,107 @@ export default function App() {
 }
 
 /**
- * The lock, between boot and the app.
+ * The lock, between boot and the app — and with no screen of its own.
  *
- * Nothing renders behind it — an empty shell, not a blurred dashboard — so
- * there's no arrangement of screenshots or scroll position that leaks what's
- * inside before the check passes.
+ * There used to be a card here reading "Stash it is locked, use your
+ * fingerprint or face". It was a screen whose entire content described the
+ * dialog that was about to cover it. The splash is already up, already says
+ * which app this is, and Android's prompt occupies the bottom two thirds — so
+ * the mark simply moves into the third it leaves alone and the platform asks
+ * the question. One screen, not two.
  *
- * Unlocking is state, not a reload: the settings record still says the lock is
- * on, so re-reading it would simply lock the app again.
+ * Nothing of the app renders behind it either way, so there's no arrangement
+ * of screenshots or scroll position that leaks what's inside before the check
+ * passes.
  */
 function Gate() {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [unlocked, setUnlocked] = useState(false);
+  const [stuck, setStuck] = useState<'no' | 'retry' | 'stranded'>('no');
+  const asked = useRef(false);
 
   useEffect(() => {
     void biometricsAvailable().then(setAvailable);
   }, []);
 
-  // `available === null` is still asking. Rendering Shell first and the lock a
-  // beat later would show the dashboard to someone who shouldn't see it.
-  if (!settings || available === null) return <Frame>{null}</Frame>;
+  const verdict: LockVerdict =
+    !settings || available === null
+      ? 'locked' // still asking; assume the strictest answer
+      : unlocked
+        ? 'open'
+        : lockVerdict({
+            enabled: settings.biometricLock ?? false,
+            credentialId: settings.lockCredentialId,
+            available,
+          });
 
-  const verdict: LockVerdict = unlocked
-    ? 'open'
-    : lockVerdict({
-        enabled: settings.biometricLock ?? false,
-        credentialId: settings.lockCredentialId,
-        available,
-      });
+  const credentialId = settings?.lockCredentialId ?? '';
+  const ready = !!settings && available !== null;
 
-  if (verdict === 'open') return <Shell />;
+  const unlock = useCallback(async () => {
+    setStuck('no');
+    raiseSplash();
+    const outcome = await verifyBiometrics(credentialId);
+    if (outcome === 'unlocked') {
+      feedback('save');
+      // Fades from where it is rather than sliding back to centre first —
+      // recentring on the way out is a movement that means nothing.
+      dismissSplash();
+      setUnlocked(true);
+      return;
+    }
+    feedback('error');
+    // Cancelled is a decision; anything else suggests the credential itself
+    // is broken, which is the only case that earns a way past.
+    setStuck(outcome === 'cancelled' ? 'retry' : 'stranded');
+  }, [credentialId]);
 
+  useEffect(() => {
+    if (!ready || asked.current) return;
+
+    if (verdict === 'open') {
+      // Nothing to ask. The splash clears and the dashboard is underneath.
+      asked.current = true;
+      dismissSplash();
+      return;
+    }
+    if (verdict === 'stranded') {
+      asked.current = true;
+      raiseSplash();
+      setStuck('stranded');
+      return;
+    }
+    // Once. React runs effects twice in development and a second WebAuthn
+    // call aborts the first, which looks exactly like a broken sensor.
+    asked.current = true;
+    void unlock();
+  }, [ready, verdict, unlock]);
+
+  if (verdict === 'open' && ready) return <Shell />;
+
+  // The splash is the screen. This is only the minimum needed so that a
+  // cancelled check, or a credential that no longer exists, isn't a locked
+  // door with no handle.
   return (
     <>
       <Frame>{null}</Frame>
-      <LockScreen
-        credentialId={settings.lockCredentialId ?? ''}
-        verdict={verdict}
-        onUnlocked={() => setUnlocked(true)}
-      />
+      {stuck !== 'no' && (
+        <div className="lockfoot">
+          {stuck === 'stranded' ? (
+            <>
+              <p>This device can no longer do the check.</p>
+              <button type="button" className="btn ghost" onClick={() => void clearLock()}>
+                Turn the lock off
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn" onClick={() => void unlock()}>
+              Unlock
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }
