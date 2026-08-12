@@ -22,6 +22,8 @@ export interface Prefs {
   roomsView: RoomsView;
   /** Ask for a fingerprint or face check before the app opens. */
   biometricLock: boolean;
+  /** What the greeting calls you. Empty is a valid answer. */
+  displayName: string;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -36,6 +38,7 @@ export const DEFAULT_PREFS: Prefs = {
   // Off until asked for. Switching it on costs an enrolment prompt, and a lock
   // nobody chose is a lock they'll be surprised by at the worst moment.
   biometricLock: false,
+  displayName: '',
 };
 
 export function prefsFrom(settings: Settings | undefined): Prefs {
@@ -45,6 +48,7 @@ export function prefsFrom(settings: Settings | undefined): Prefs {
     haptics: settings?.haptics ?? DEFAULT_PREFS.haptics,
     roomsView: settings?.roomsView ?? DEFAULT_PREFS.roomsView,
     biometricLock: settings?.biometricLock ?? DEFAULT_PREFS.biometricLock,
+    displayName: settings?.displayName ?? DEFAULT_PREFS.displayName,
   };
 }
 

@@ -105,6 +105,20 @@ export function warrantyProgress(item: Item, now = new Date()): number {
 }
 
 /**
+ * Under six months, the clock switches to days.
+ *
+ * "5m" and "4m" are the same glance — a month is too coarse to act on, and by
+ * the time it reads "1m" the window to do something about an extended plan or
+ * a return has usually gone. A number that ticks every day reads as a
+ * countdown, which is what the last stretch of a warranty is. Calendar
+ * arithmetic rather than a day count, so the switch happens on the same date
+ * of the month regardless of which months are in the way.
+ */
+export function inFinalStretch(end: Date, now = new Date()): boolean {
+  return end <= addMonths(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 6);
+}
+
+/**
  * "2y 4m", "21 days", "Ended". Short enough for the list chip.
  *
  * A term entered in days counts down in days for its whole life, however long
@@ -119,14 +133,53 @@ export function warrantyLabel(item: Item, now = new Date()): string {
   if (days < 0) return 'Ended';
   if (days === 0) return 'Ends today';
 
-  if (countsInDays(item)) return `${days} ${days === 1 ? 'day' : 'days'}`;
-  if (days < 45) return `${days} ${days === 1 ? 'day' : 'days'}`;
+  if (countsInDays(item) || inFinalStretch(end, now)) {
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }
 
   const months = Math.floor(days / 30.44);
   if (months < 12) return `${months}m`;
   const years = Math.floor(months / 12);
   const rem = months % 12;
   return rem ? `${years}y ${rem}m` : `${years}y`;
+}
+
+/**
+ * The same answer, split so a list row can set the number in large type and
+ * the unit underneath it. One string at 26px would wrap; "2y 4m" over "left"
+ * puts the weight on the part that changes.
+ */
+export interface WarrantyParts {
+  value: string;
+  unit: string;
+}
+
+export function warrantyParts(item: Item, now = new Date()): WarrantyParts {
+  const end = effectiveExpiry(item);
+  if (!end) return { value: '—', unit: 'no warranty' };
+
+  const days = daysUntil(end, now);
+  if (days < 0) return { value: 'Ended', unit: sinceLabel(-days) };
+  if (days === 0) return { value: 'Today', unit: 'last day' };
+
+  if (countsInDays(item) || inFinalStretch(end, now)) {
+    return { value: String(days), unit: days === 1 ? 'day left' : 'days left' };
+  }
+
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return { value: String(months), unit: 'months left' };
+
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return { value: rem ? `${years}y ${rem}m` : `${years}y`, unit: 'left' };
+}
+
+function sinceLabel(daysAgo: number): string {
+  if (daysAgo < 31) return `${daysAgo} ${daysAgo === 1 ? 'day' : 'days'} ago`;
+  const months = Math.floor(daysAgo / 30.44);
+  if (months < 12) return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
 }
 
 /** True when the policy running the clock was entered in days. */

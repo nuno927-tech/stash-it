@@ -53,7 +53,10 @@ export function Items({
   const startCollapsed = prefsFrom(settings).roomsView === 'collapsed';
 
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<Sort>('room');
+  // Expiring first, by default. Grouping by room answers "what's in the
+  // garage", which is a question you ask occasionally; "what needs me this
+  // month" is the one the app exists for, and it should not need a tap.
+  const [sort, setSort] = useState<Sort>('expiry');
   const [active, setActive] = useState<ItemsFilter | undefined>(filter);
 
   // Which rooms the user has toggled away from the default this session.

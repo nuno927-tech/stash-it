@@ -15,6 +15,7 @@ import {
 } from '@/lib/backup';
 import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
+import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
 import {
   forgetDismissal,
   hasNativePrompt,
@@ -361,6 +362,29 @@ function YourHome({
 }) {
   return (
     <Card title="Your home">
+      {/* Used in exactly one place — the greeting on the dashboard — so the
+          note says so rather than implying an account exists. */}
+      <Row
+        label="Your name"
+        note="What the dashboard calls you. Leave it empty for a plain greeting."
+        control={
+          <input
+            type="text"
+            className="setinput"
+            defaultValue={prefsFrom(settings).displayName}
+            placeholder="Name"
+            aria-label="Your name"
+            maxLength={MAX_NAME_LENGTH}
+            enterKeyHint="done"
+            // On blur, not on every keystroke: a write per character is a
+            // write per character, and the greeting has no reason to flicker
+            // through half-typed names.
+            onBlur={(e) => void setPref('displayName', cleanName(e.target.value))}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        }
+      />
+
       <Row
         label="Rooms"
         note="Add, rename and reorder the rooms items live in."

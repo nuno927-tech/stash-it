@@ -1,5 +1,5 @@
 import type { Item } from '@/db/types';
-import { warrantyLabel, warrantyProgress, warrantyState, type WarrantyState } from '@/lib/warranty';
+import { warrantyParts, warrantyProgress, warrantyState, type WarrantyState } from '@/lib/warranty';
 import { ItemIcon } from './ItemIcon';
 import { WarrantyRing } from './WarrantyRing';
 import { useThumbUrl } from './useThumbUrl';
@@ -14,6 +14,7 @@ const CHIP_CLASS: Record<WarrantyState, string> = {
 export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) => void }) {
   const state = warrantyState(item);
   const thumb = useThumbUrl(item.thumbBlobId);
+  const left = warrantyParts(item);
 
   const meta = [item.model, item.purchaseDate?.slice(0, 4)].filter(Boolean).join(' · ');
 
@@ -31,7 +32,13 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) =>
         <p>{meta || 'No model recorded'}</p>
       </div>
 
-      <div className={`chip ${CHIP_CLASS[state]}`}>{warrantyLabel(item)}</div>
+      {/* The number is the reason to open the row, so it gets the type. The
+          unit sits under it in small caps-free muted text rather than beside
+          it — "142 days left" on one line at this size wraps on a phone. */}
+      <div className={`timeleft ${CHIP_CLASS[state]}${/^\d+$/.test(left.value) ? '' : ' wordy'}`}>
+        <strong>{left.value}</strong>
+        <small>{left.unit}</small>
+      </div>
     </button>
   );
 }

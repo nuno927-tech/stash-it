@@ -40,6 +40,34 @@
   color: var(--gold);
 }
 
+/* The greeting leads and the wordmark follows it, small. You know which app
+   you opened; the line addressed to you is the new information. */
+.greethead {
+  align-items: flex-start;
+}
+
+.greet h1 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.greet > span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+.greet > span span {
+  color: var(--gold);
+}
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -468,6 +496,56 @@ button.coverstat:active {
 .chip.none {
   background: var(--slate-600);
   color: var(--muted);
+}
+
+/* The countdown on a list row. It was a 10px pill, the same weight as the
+   model number — but it's the reason the row is worth looking at, so it gets
+   the largest type on the line. Colour carries the state; no pill needed. */
+.timeleft {
+  flex: none;
+  min-width: 62px;
+  text-align: right;
+  line-height: 1.05;
+}
+
+.timeleft strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 27px;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeleft small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 300;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.timeleft.ok strong {
+  color: var(--moss);
+}
+.timeleft.warn strong {
+  color: var(--honey);
+}
+.timeleft.dead strong {
+  color: var(--ember);
+}
+.timeleft.none strong {
+  color: var(--muted);
+}
+
+/* "Ended", "Today" and "2y 4m" are words, not a two-digit number, and at 27px
+   they crowd the item name off the row. The component says which it is rather
+   than the stylesheet guessing from the content. */
+.timeleft.wordy strong {
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
 }
 
 /* ------------------------------------------------------------- detail */
@@ -1695,6 +1773,45 @@ a.pick {
   height: 54px;
   margin-top: 18px;
   font-size: 15px;
+}
+
+/* Taller than the lock sheet: it holds a field and the keyboard will take the
+   bottom third of the screen when that field is focused. */
+.welcomesheet {
+  height: 72vh;
+}
+
+.welcomeform {
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.welcomeform input {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 300;
+}
+
+.welcomepreview {
+  margin: 12px 0 0;
+  min-height: 20px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 200;
+  color: var(--gold);
+}
+
+.setinput {
+  flex: none;
+  width: 130px;
+  text-align: right;
+  font-size: 14px;
 }
 
 .lockfoot {

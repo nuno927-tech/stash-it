@@ -173,6 +173,11 @@ export interface Settings {
    */
   biometricLock?: boolean;
   lockCredentialId?: string;
+
+  /** What the greeting calls you. Empty means asked and declined. */
+  displayName?: string;
+  /** Set once the welcome has been answered, either way. */
+  onboardedAt?: string;
 }
 
 export const SEED_ROOMS = [

@@ -3,6 +3,8 @@ import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
 import type { Item } from '@/db/types';
 import { metricsFor, type Metrics } from '@/lib/dashboard';
+import { greeting } from '@/lib/greeting';
+import { prefsFrom } from '@/lib/prefs';
 import { formatMoney, warrantyLabel, warrantyState, type WarrantyState } from '@/lib/warranty';
 import { ItemIcon } from '@/components/ItemIcon';
 import { Scout } from '@/components/Scout';
@@ -29,6 +31,7 @@ export function Home({
 }) {
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
   const docs = useLiveQuery(() => db.docs.toArray(), []);
+  const settings = useLiveQuery(() => db.settings.get('singleton'), []);
 
   if (!items || !docs) return null;
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
@@ -37,9 +40,15 @@ export function Home({
 
   return (
     <>
-      <header className="apphead">
-        <div className="apptitle">
-          Stash<span>&nbsp;it</span>
+      {/* The wordmark moves under the greeting. Two lines, and the app's name
+          is the smaller of them: you know which app you opened, and the
+          greeting is the only part addressed to you. */}
+      <header className="apphead greethead">
+        <div className="greet">
+          <h1>{greeting(prefsFrom(settings).displayName)}</h1>
+          <span>
+            Stash<span>&nbsp;it</span>
+          </span>
         </div>
         <div className="avatar">
           <Scout pose="avatar" height={36} alt="Scout" />

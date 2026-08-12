@@ -22,6 +22,7 @@ import { applyTheme, watchSystemTheme } from '@/lib/theme';
 import { BottomNav, type Tab } from '@/components/BottomNav';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { LockScreen } from '@/components/LockScreen';
+import { Welcome } from '@/components/Welcome';
 import { Home } from '@/screens/Home';
 import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
@@ -308,8 +309,13 @@ function Shell() {
         <Rooms propertyId={property.id} onBack={() => setScreen({ kind: 'settings' })} />
       )}
 
-      {offer.show !== 'none' && (
-        <InstallPrompt offer={offer.show} onClose={offer.dismiss} />
+      {/* One sheet at a time, and this one first. Being asked to install
+          before anyone has said hello is the wrong order, and two stacked
+          sheets on a first launch is how an app gets deleted. */}
+      {!settings.onboardedAt ? (
+        <Welcome />
+      ) : (
+        offer.show !== 'none' && <InstallPrompt offer={offer.show} onClose={offer.dismiss} />
       )}
     </Frame>
   );

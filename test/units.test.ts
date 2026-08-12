@@ -20,6 +20,7 @@ import {
   termToMonths,
   toISODate,
   warrantyLabel,
+  warrantyParts,
   warrantyState,
 } from '@/lib/warranty';
 
@@ -116,6 +117,50 @@ async function main() {
   check('a 24-month term reads as years', warrantyLabel(withTerm('months', 24)) === '2y', warrantyLabel(withTerm('months', 24)));
   check('a month term is not day-based', !countsInDays(withTerm('months', 24)));
   check('singular day', warrantyLabel(withTerm('days', 1)) === '1 day', warrantyLabel(withTerm('days', 1)));
+
+  /* ------------------------------------------- the last six months, in days */
+
+  // Once there's less than half a year left, a month-based term switches to a
+  // daily countdown: "5m" and "4m" are the same glance, and the window to do
+  // something about it closes while the label still says "1m".
+  const twelveMonths = withTerm('months', 12);
+  check(
+    'a year out, months are enough',
+    warrantyLabel(twelveMonths) === '11m',
+    warrantyLabel(twelveMonths),
+  );
+
+  // Seven months elapsed of a twelve-month term: five to go.
+  const fiveLeft = withTerm('months', 12, 213);
+  check(
+    'inside six months it counts days',
+    /^\d+ days$/.test(warrantyLabel(fiveLeft)),
+    warrantyLabel(fiveLeft),
+  );
+
+  // Either side of the boundary, on a term long enough that the old rule would
+  // never have switched.
+  const justOver = withTerm('years', 5, 5 * 365 - 200);
+  const justUnder = withTerm('years', 5, 5 * 365 - 150);
+  check('just over six months still reads in months', /m$/.test(warrantyLabel(justOver)), warrantyLabel(justOver));
+  check('just under six months reads in days', /days$/.test(warrantyLabel(justUnder)), warrantyLabel(justUnder));
+
+  /* ------------------------------------------------------------- the parts */
+
+  const parts = warrantyParts(fiveLeft);
+  check('the number is split from its unit', /^\d+$/.test(parts.value), parts.value);
+  check('and the unit says what it is', parts.unit === 'days left', parts.unit);
+
+  const long = warrantyParts(withTerm('years', 5));
+  check('a long term keeps the compact value', long.value === '4y 11m', long.value);
+  check('with a bare unit', long.unit === 'left', long.unit);
+
+  const gone = warrantyParts(withTerm('months', 12, 400));
+  check('an expired item says so', gone.value === 'Ended', gone.value);
+  check('and how long ago', /ago$/.test(gone.unit), gone.unit);
+
+  const none = warrantyParts({ ...withTerm('months', 12), warranty: undefined });
+  check('no warranty, no number', none.value === '—' && none.unit === 'no warranty');
 
   check('term label reads naturally', termLabel(withTerm('days', 90).warranty) === '90 days');
   check('and singularises', termLabel(withTerm('years', 1).warranty) === '1 year');
