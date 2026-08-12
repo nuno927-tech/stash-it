@@ -158,10 +158,13 @@ function Gate() {
     raiseSplash();
     const outcome = await verifyBiometrics(credentialId);
     if (outcome === 'unlocked') {
-      feedback('save');
+      // No separate "saved" cue here: the launch chime a moment later is the
+      // confirmation, and two tones a few hundred milliseconds apart read as
+      // one muddled sound rather than two meanings.
+      //
       // Fades from where it is rather than sliding back to centre first —
       // recentring on the way out is a movement that means nothing.
-      dismissSplash();
+      dismissSplash(() => feedback('launch'));
       setUnlocked(true);
       return;
     }
@@ -177,7 +180,7 @@ function Gate() {
     if (verdict === 'open') {
       // Nothing to ask. The splash clears and the dashboard is underneath.
       asked.current = true;
-      dismissSplash();
+      dismissSplash(() => feedback('launch'));
       return;
     }
     if (verdict === 'stranded') {

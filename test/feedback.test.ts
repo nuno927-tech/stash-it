@@ -61,7 +61,7 @@ check('four distinct sounds across the four cases', everyCue.size === 4, [...eve
 
 /* --------------------------------------------------------------- haptics */
 
-const ALL: Cue[] = ['tap', 'nav', 'expand', 'collapse', 'save', 'attach', 'delete', 'error'];
+const ALL: Cue[] = ['tap', 'nav', 'expand', 'collapse', 'save', 'attach', 'delete', 'error', 'launch'];
 const ms = (c: Cue) => {
   const b = buzzFor(c);
   return Array.isArray(b) ? b.filter((_, i) => i % 2 === 0).reduce((a, n) => a + n, 0) : b;
@@ -81,6 +81,13 @@ check('a tap is the lightest of all', ms('tap') === Math.min(...ALL.map(ms)), `$
 check('navigation is firmer than a tap', ms('nav') > ms('tap'));
 check('deleting is firmer than navigating', ms('delete') > ms('nav'));
 check('an error is the most insistent', ms('error') === Math.max(...ALL.map(ms)), `${ms('error')}ms`);
+
+/* ---------------------------------------------------------------- launch */
+
+// Fires unprompted, once, as the app appears — so it has to be lighter than
+// anything the user asked for. A jolt on open would feel like an alarm.
+check('opening is a tick, not a jolt', ms('launch') <= 10, `${ms('launch')}ms`);
+check('and lighter than a save', ms('launch') < ms('save'));
 
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

@@ -25,7 +25,8 @@ export type Cue =
   | 'save'
   | 'delete'
   | 'error'
-  | 'attach';
+  | 'attach'
+  | 'launch';
 
 interface Voice {
   /** Frequencies in Hz, played in sequence. */
@@ -51,6 +52,11 @@ const VOICES: Record<Cue, Voice> = {
   attach: { notes: [523.25, 784], step: 0.06, type: 'triangle', gain: 0.06 },
   delete: { notes: [392, 261.63], step: 0.075, type: 'sine', gain: 0.06 },
   error: { notes: [233.08, 233.08], step: 0.11, type: 'square', gain: 0.04 },
+  // The app opening. Three rising notes, under a fifth of a second — long
+  // enough to be a phrase rather than a beep, short enough that it's finished
+  // before the dashboard has settled. Heard at most once per launch, which is
+  // the only reason it's allowed to have a shape at all.
+  launch: { notes: [523.25, 659.25, 880], step: 0.062, type: 'sine', gain: 0.05 },
 };
 
 /**
@@ -71,6 +77,7 @@ const BUZZ: Record<Cue, number | number[]> = {
   attach: 14,
   delete: [22, 45, 22],
   error: [30, 60, 30],
+  launch: 10,
 };
 
 /** Exposed so the tick scale can be asserted rather than eyeballed. */
@@ -128,6 +135,13 @@ function tone(voice: Voice): void {
 /**
  * Fire a cue. Safe to call from anywhere — it does nothing when the relevant
  * preference is off, and never throws.
+ *
+ * A note on the launch cue specifically: browsers refuse to start an
+ * AudioContext, and ignore navigator.vibrate, without a user gesture. Opening
+ * an app from the home screen is not a gesture the page can see, so on a cold
+ * start this may make no sound at all — and that is the correct outcome. The
+ * alternative is queueing it until the first tap, which would play "the app
+ * has opened" some minutes after it opened.
  */
 export function feedback(cue: Cue): void {
   try {
