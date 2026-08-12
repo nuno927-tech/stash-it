@@ -6,9 +6,9 @@ import { configureFeedback, feedback, installClickSounds } from '@/lib/feedback'
 import {
   hasNativePrompt,
   installOffer,
+  isAndroid,
   isIOSSafari,
   isStandalone,
-  wasDismissed,
   watchInstallability,
   type InstallOffer,
 } from '@/lib/install';
@@ -441,26 +441,48 @@ function Shell() {
  *
  * Held back until the splash has cleared: a dialog appearing over a launch
  * screen reads as an error, not an invitation.
+ *
+ * `settled` is the grace period for `beforeinstallprompt`. Chromium fires it
+ * whenever it likes and sometimes never; waiting a few seconds before showing
+ * the written instructions means the real button wins whenever it turns up.
  */
 function useInstallOffer() {
   const [show, setShow] = useState<InstallOffer>('none');
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
+    const at = window.setTimeout(() => setSettled(true), 3500);
+    return () => window.clearTimeout(at);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const evaluate = () => {
       const next = installOffer({
         standalone: isStandalone(),
-        dismissed: wasDismissed(),
         nativePrompt: hasNativePrompt(),
         iosSafari: isIOSSafari(),
+        android: isAndroid(),
+        settled,
       });
       // A beat after the splash, so the app is visible behind it first.
-      window.setTimeout(() => setShow(next), splashRemainingMs() + 700);
+      window.setTimeout(() => {
+        if (!cancelled) setShow(next);
+      }, splashRemainingMs() + 700);
     };
 
     evaluate();
-    return watchInstallability(evaluate);
-  }, []);
+    const stop = watchInstallability(evaluate);
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [settled]);
 
+  // Dismissal lasts as long as this session and no longer. Nothing is written
+  // down, so the next launch asks again — until the app is installed, which
+  // answers the question permanently on its own.
   return { show, dismiss: () => setShow('none') };
 }
 

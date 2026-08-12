@@ -17,9 +17,8 @@ import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
 import {
-  forgetDismissal,
   hasNativePrompt,
-  installOfferIgnoringDismissal,
+  installOffer,
   isAndroid,
   isIOSSafari,
   isStandalone,
@@ -660,11 +659,15 @@ function AboutApp({
   onTapVersion: () => void;
 }) {
   const url = appUrl();
-  const offer = installOfferIgnoringDismissal({
+  // `settled` is true here on purpose: by the time someone is reading
+  // Settings, the browser has long since decided whether it will offer a
+  // button, and the written steps are better than an empty space.
+  const offer = installOffer({
     standalone: isStandalone(),
-    dismissed: false,
     nativePrompt: hasNativePrompt(),
     iosSafari: isIOSSafari(),
+    android: isAndroid(),
+    settled: true,
   });
   const hint = tapHint(taps);
 
@@ -685,18 +688,13 @@ function AboutApp({
           note={
             offer === 'native'
               ? 'Opens full screen, and makes the browser far less willing to clear your data.'
-              : 'In Safari, tap Share then Add to Home Screen. That also protects your data.'
+              : offer === 'ios'
+                ? 'In Safari, tap Share then Add to Home Screen. That also protects your data.'
+                : 'From the browser menu, choose Add to Home screen. That also protects your data.'
           }
           control={
             offer === 'native' ? (
-              <button
-                type="button"
-                className="minibtn"
-                onClick={() => {
-                  forgetDismissal();
-                  void promptInstall();
-                }}
-              >
+              <button type="button" className="minibtn" onClick={() => void promptInstall()}>
                 Install
               </button>
             ) : undefined

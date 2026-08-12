@@ -21,8 +21,6 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const DISMISSED_KEY = 'stash-it:install-dismissed';
-
 let deferred: BeforeInstallPromptEvent | null = null;
 let onChange: (() => void) | null = null;
 
@@ -88,30 +86,6 @@ export function hasNativePrompt(): boolean {
   return deferred !== null;
 }
 
-export function wasDismissed(): boolean {
-  try {
-    return localStorage.getItem(DISMISSED_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-export function rememberDismissal(): void {
-  try {
-    localStorage.setItem(DISMISSED_KEY, new Date().toISOString());
-  } catch {
-    // Private mode. Worst case the prompt appears again next launch.
-  }
-}
-
-export function forgetDismissal(): void {
-  try {
-    localStorage.removeItem(DISMISSED_KEY);
-  } catch {
-    /* nothing to do */
-  }
-}
-
 export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   if (!deferred) return 'unavailable';
   await deferred.prompt();
@@ -124,30 +98,41 @@ export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unava
 
 /* ---------------------------------------------------------------- policy */
 
-export type InstallOffer = 'none' | 'native' | 'ios';
+export type InstallOffer = 'none' | 'native' | 'ios' | 'manual';
 
 export interface InstallState {
   standalone: boolean;
-  dismissed: boolean;
   nativePrompt: boolean;
   iosSafari: boolean;
+  android: boolean;
+  /** The browser has had its chance to fire beforeinstallprompt and hasn't. */
+  settled: boolean;
 }
 
 /**
- * Whether to offer, and in which form. Pure so the rules can be tested — the
- * combinations matter more than they look, and getting one wrong means either
- * nagging someone who already installed or hiding it from someone who can't
- * discover it any other way.
+ * Whether to offer, and in which form.
+ *
+ * There is no "dismissed" any more, and its absence is the point. The prompt
+ * used to write a flag to localStorage on "Not now" and never ask again — but
+ * uninstalling a PWA doesn't clear the origin's localStorage, so a single
+ * dismissal months ago silenced the prompt permanently, including through a
+ * reinstall. The one person who most needs the invitation is the one who
+ * hasn't installed yet, and they were the only ones not getting it.
+ *
+ * So it asks on every launch until the app is actually installed, at which
+ * point `standalone` ends it for good. "Not now" closes the sheet for the
+ * session, which is all it should ever have meant.
+ *
+ * Pure, because the combinations matter more than they look.
  */
 export function installOffer(state: InstallState): InstallOffer {
-  if (state.standalone) return 'none'; // already installed
-  if (state.dismissed) return 'none';
+  if (state.standalone) return 'none'; // already installed; nothing to offer
   if (state.nativePrompt) return 'native';
   if (state.iosSafari) return 'ios';
+  // Chromium fires beforeinstallprompt when it feels like it, and sometimes
+  // not at all — a reinstall, a fresh profile, an engagement heuristic. Once
+  // it's had its chance, fall back to telling people where the menu item is
+  // rather than leaving them with nothing.
+  if (state.android && state.settled) return 'manual';
   return 'none';
-}
-
-/** Settings shows the option even after a dismissal — just not on its own. */
-export function installOfferIgnoringDismissal(state: InstallState): InstallOffer {
-  return installOffer({ ...state, dismissed: false });
 }

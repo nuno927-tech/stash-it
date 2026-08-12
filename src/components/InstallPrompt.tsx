@@ -1,34 +1,31 @@
 import { useState } from 'react';
 import { feedback } from '@/lib/feedback';
-import { promptInstall, rememberDismissal, type InstallOffer } from '@/lib/install';
+import { promptInstall, type InstallOffer } from '@/lib/install';
 import { Scout } from './Scout';
 
 /**
- * The first-run invitation to install.
+ * The invitation to install.
  *
  * A sheet rather than a banner, because the reason to install isn't obvious
  * and a one-line bar can't carry it: installing is what earns persistent
  * storage, which is what stops the browser evicting a database that exists
  * nowhere else. That's worth two sentences and a moment of attention.
  *
- * Dismissible, and remembered — asked once, not every launch.
+ * Asked on every launch until the app is installed. It used to remember a
+ * dismissal forever, which sounds polite and wasn't — the flag outlived
+ * uninstalling the app, so the people who hadn't installed were precisely the
+ * people no longer being asked. "Not now" means not now.
  */
 export function InstallPrompt({ offer, onClose }: { offer: InstallOffer; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
 
   if (offer === 'none') return null;
 
-  const close = (remember: boolean) => {
-    if (remember) rememberDismissal();
-    onClose();
-  };
-
   const install = async () => {
     setBusy(true);
     const outcome = await promptInstall();
     feedback(outcome === 'accepted' ? 'save' : 'tap');
-    // Either way the question has been answered; don't ask again.
-    close(true);
+    onClose();
   };
 
   return (
@@ -44,19 +41,54 @@ export function InstallPrompt({ offer, onClose }: { offer: InstallOffer; onClose
           the address bar.
         </p>
 
-        {offer === 'native' ? (
+        {offer === 'native' && (
           <button type="button" className="btn wide" disabled={busy} onClick={install}>
             {busy ? 'Opening…' : 'Install'}
           </button>
-        ) : (
-          <IOSSteps />
         )}
+        {offer === 'ios' && <IOSSteps />}
+        {offer === 'manual' && <AndroidSteps />}
 
-        <button type="button" className="btn ghost" onClick={() => close(true)}>
+        <button type="button" className="btn ghost" onClick={onClose}>
           Not now
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Chromium didn't offer us a button this time. That happens — a fresh profile,
+ * a recent uninstall, an engagement heuristic nobody documents — and the menu
+ * item is there regardless, so say where it is rather than showing nothing.
+ */
+function AndroidSteps() {
+  return (
+    <ol className="installsteps">
+      <li>
+        <span className="stepnum">1</span>
+        <span>
+          Tap
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+            aria-label="the browser menu"
+          >
+            <circle cx="12" cy="5" r="1.9" />
+            <circle cx="12" cy="12" r="1.9" />
+            <circle cx="12" cy="19" r="1.9" />
+          </svg>
+          in the browser bar
+        </span>
+      </li>
+      <li>
+        <span className="stepnum">2</span>
+        <span>Choose Add to Home screen, or Install app</span>
+      </li>
+    </ol>
   );
 }
 

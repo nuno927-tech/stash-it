@@ -4,11 +4,12 @@
  *   npm run test:install
  *
  * The combinations matter more than they look. Get one wrong and you either
- * nag someone who already installed, or hide the option from the one platform
- * where it can't be discovered any other way.
+ * nag someone who already installed, or hide the option from the one person
+ * who needs it — which is exactly what happened, and is why there is no
+ * "dismissed" input any more.
  */
 
-import { installOffer, installOfferIgnoringDismissal, type InstallState } from '@/lib/install';
+import { installOffer, type InstallState } from '@/lib/install';
 
 let failures = 0;
 
@@ -19,19 +20,25 @@ function check(label: string, ok: boolean, detail = '') {
 
 const state = (over: Partial<InstallState> = {}): InstallState => ({
   standalone: false,
-  dismissed: false,
   nativePrompt: false,
   iosSafari: false,
+  android: false,
+  settled: false,
   ...over,
 });
 
 /* --------------------------------------------------------- the happy paths */
 
-check('Chromium with a captured event offers the button', installOffer(state({ nativePrompt: true })) === 'native');
+check(
+  'Chromium with a captured event offers the button',
+  installOffer(state({ nativePrompt: true, android: true })) === 'native',
+);
 check('iOS Safari gets instructions instead', installOffer(state({ iosSafari: true })) === 'ios');
 
 /* ------------------------------------------------------------ suppression */
 
+// Installed is the only thing that ends the invitation, and it ends it for
+// good — there's nothing left to offer.
 check(
   'an installed app is never nagged',
   installOffer(state({ standalone: true, nativePrompt: true })) === 'none',
@@ -40,44 +47,37 @@ check(
   'not even on iOS',
   installOffer(state({ standalone: true, iosSafari: true })) === 'none',
 );
-check('a dismissal is respected', installOffer(state({ nativePrompt: true, dismissed: true })) === 'none');
-check('on iOS too', installOffer(state({ iosSafari: true, dismissed: true })) === 'none');
-
 check(
-  'installed beats dismissed — both mean silence',
-  installOffer(state({ standalone: true, dismissed: true, nativePrompt: true })) === 'none',
+  'nor with the written steps',
+  installOffer(state({ standalone: true, android: true, settled: true })) === 'none',
 );
 
-/* --------------------------------------------------- nothing worth offering */
+/* ------------------------------------------------- the event that never came */
 
-check('a desktop browser with no event says nothing', installOffer(state()) === 'none');
+// Chromium fires beforeinstallprompt when it likes and sometimes not at all —
+// a fresh profile, a recent uninstall, an engagement heuristic. Before this,
+// that combination showed nothing whatsoever, which is how someone ends up
+// unable to install an app that keeps telling them to install it.
 check(
-  'nor a non-Safari iOS browser, which cannot install at all',
-  installOffer(state({ iosSafari: false })) === 'none',
-);
-
-/* ------------------------------------------------------------ the native win */
-
-check(
-  'a real prompt beats instructions when somehow both apply',
-  installOffer(state({ nativePrompt: true, iosSafari: true })) === 'native',
-);
-
-/* -------------------------------------------------------------- settings */
-
-// Settings keeps the option visible after a dismissal — someone who tapped
-// "Not now" and changed their mind shouldn't have to clear site data.
-check(
-  'settings ignores the dismissal',
-  installOfferIgnoringDismissal(state({ nativePrompt: true, dismissed: true })) === 'native',
+  'while the browser might still fire, wait',
+  installOffer(state({ android: true, settled: false })) === 'none',
 );
 check(
-  'settings still hides it once installed',
-  installOfferIgnoringDismissal(state({ standalone: true, dismissed: true })) === 'none',
+  'once it has had its chance, say where the menu is',
+  installOffer(state({ android: true, settled: true })) === 'manual',
 );
 check(
-  'and still says nothing when there is nothing to say',
-  installOfferIgnoringDismissal(state({ dismissed: true })) === 'none',
+  'a real button always beats written steps',
+  installOffer(state({ android: true, settled: true, nativePrompt: true })) === 'native',
+);
+
+/* ------------------------------------------------------------- elsewhere */
+
+// A desktop browser with no event and no platform we have instructions for.
+check('nothing to say on an unknown platform', installOffer(state({ settled: true })) === 'none');
+check(
+  'and a Chrome-on-iOS user is not sent to a Safari menu',
+  installOffer(state({ iosSafari: false, settled: true })) === 'none',
 );
 
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
