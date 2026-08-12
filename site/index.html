@@ -17,7 +17,7 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="img/scout-acorn.webp" />
-    <link rel="icon" href="../icon-192.png" />
+    <link rel="icon" href="img/icon.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,6 +25,7 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:wght@300..700&display=swap"
       rel="stylesheet"
     />
+    <link rel="manifest" href="../manifest.webmanifest" />
     <link rel="preload" as="image" href="img/scout-acorn.webp" />
 
     <style>
@@ -85,6 +86,7 @@
 
       img {
         max-width: 100%;
+        height: auto;
         display: block;
       }
 
@@ -1089,6 +1091,84 @@
         color: var(--text);
       }
 
+
+      /* ------------------------------------------------------- install */
+
+      .ios {
+        position: fixed;
+        inset: auto 0 0;
+        z-index: 60;
+        display: none;
+        justify-content: center;
+        padding: 0 16px calc(20px + env(safe-area-inset-bottom));
+      }
+
+      .ios.on {
+        display: flex;
+      }
+
+      .ios-card {
+        width: 100%;
+        max-width: 420px;
+        background: #12161c;
+        border: 1px solid var(--line-strong);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.9);
+        animation: up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      @keyframes up {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      .ios-card h3 {
+        font-size: 21px;
+        margin-bottom: 6px;
+      }
+
+      .ios-card p {
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+
+      .ios-step {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 11px 13px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .ios-step b {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        flex: none;
+        border-radius: 50%;
+        background: var(--gold-soft);
+        color: var(--gold);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .ios-card .btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         html {
           scroll-behavior: auto;
@@ -1109,7 +1189,7 @@
     <header class="top" id="top">
       <div class="page topbar">
         <a class="mark" href="#top">
-          <img src="../icon-192.png" alt="" />
+          <img src="img/icon.png" alt="" width="96" height="96" />
           Stash<span>&nbsp;it</span>
         </a>
         <nav>
@@ -1118,7 +1198,7 @@
           <a href="#privacy">Privacy</a>
           <a href="#faq">Questions</a>
         </nav>
-        <a class="btn primary" href="../">Open the app</a>
+        <a class="btn primary js-open" href="../">Open the app</a>
       </div>
     </header>
 
@@ -1145,7 +1225,7 @@
           </p>
 
           <div class="btns">
-            <a class="btn primary" href="../">
+            <a class="btn primary js-get" href="../">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
                 <path d="M4.5 17v2.5h15V17" />
@@ -1164,7 +1244,7 @@
         </div>
 
         <div class="heroart">
-          <img src="img/scout-acorn.webp" alt="Scout, a grey squirrel, holding a golden acorn" width="660" height="660" fetchpriority="high" />
+          <img src="img/scout-acorn.webp" alt="Scout, a grey squirrel, holding a golden acorn" width="361" height="660" fetchpriority="high" />
         </div>
       </div>
     </section>
@@ -1174,7 +1254,7 @@
       <div class="page split reveal">
         <div class="splitart">
           <div class="halo"></div>
-          <img src="img/scout-waving.webp" alt="Scout waving" width="560" height="560" loading="lazy" />
+          <img src="img/scout-waving.webp" alt="Scout waving" width="523" height="560" loading="lazy" />
         </div>
         <div>
           <span class="eyebrow">Meet Scout</span>
@@ -1304,7 +1384,7 @@
             <h2>Four taps to your first item.</h2>
             <p class="lede">No sign-up, no email, no setup wizard. Open it and it's ready.</p>
           </div>
-          <img src="img/scout-settings.webp" alt="" width="460" height="460" loading="lazy" />
+          <img src="img/scout-settings.webp" alt="" width="386" height="460" loading="lazy" />
         </div>
 
         <div class="steps">
@@ -1343,7 +1423,7 @@
             </svg>
             Privacy
           </span>
-          <h2>There is no server. There is nothing to leak.</h2>
+          <h2>No server. Nothing to leak.</h2>
           <p class="lede" style="margin-inline: auto">
             Most apps in this category are a database of what's inside your house, sitting on
             somebody else's computer. This one isn't, because there isn't one.
@@ -1351,7 +1431,7 @@
         </div>
 
         <div class="shield reveal">
-          <img src="img/scout-alert.webp" alt="Scout standing guard" width="520" height="520" loading="lazy" />
+          <img src="img/scout-alert.webp" alt="Scout standing guard" width="443" height="520" loading="lazy" />
         </div>
 
         <div class="badges">
@@ -1419,7 +1499,7 @@
               twenty seconds it takes to add something.
             </p>
           </div>
-          <img src="img/scout-resting.webp" alt="Scout asleep" width="460" height="460" loading="lazy" />
+          <img src="img/scout-resting.webp" alt="Scout asleep" width="460" height="400" loading="lazy" />
         </div>
 
         <div class="cards">
@@ -1623,7 +1703,7 @@
     <!-- ========================================================= cta -->
     <section class="cta">
       <div class="page">
-        <img class="reveal" src="img/scout-acorn.webp" alt="Scout holding a golden acorn" width="660" height="660" loading="lazy" />
+        <img class="reveal" src="img/scout-acorn.webp" alt="Scout holding a golden acorn" width="361" height="660" loading="lazy" />
         <div class="reveal">
           <h2>Powerful, private, and completely under your control.</h2>
           <p class="lede">
@@ -1631,7 +1711,7 @@
             whether it sticks.
           </p>
           <div class="btns">
-            <a class="btn primary" href="../">
+            <a class="btn primary js-get" href="../">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
                 <path d="M4.5 17v2.5h15V17" />
@@ -1650,11 +1730,120 @@
     <footer>
       <div class="page foot">
         <span>Stash it — warranties, receipts and manuals for everything you own.</span>
-        <span><a href="../">Open the app</a> · <a href="https://github.com/nuno927-tech/stash-it">Source</a></span>
+        <span><a class="js-open" href="../">Open the app</a> · <a href="https://github.com/nuno927-tech/stash-it">Source</a></span>
       </div>
     </footer>
 
+
+    <!-- iOS has no install API. The only honest thing is the two taps. -->
+    <div class="ios" id="ios">
+      <div class="ios-card">
+        <h3>Add Stash it to your home screen</h3>
+        <p>iPhone has no install button for web apps, so Safari does it from the Share menu.</p>
+        <div class="ios-step">
+          <b>1</b>
+          <span>
+            Tap
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px">
+              <path d="M12 15V3.5M8.5 7 12 3.5 15.5 7" />
+              <path d="M6 11H4.5v9.5h15V11H18" />
+            </svg>
+            Share in the Safari toolbar
+          </span>
+        </div>
+        <div class="ios-step"><b>2</b><span>Choose Add to Home Screen</span></div>
+        <a class="btn primary js-open" href="../">Open it in the browser instead</a>
+        <button class="btn ghost" type="button" id="ios-close" style="width: 100%; margin-top: 8px; cursor: pointer; font: inherit">Not now</button>
+      </div>
+    </div>
+
     <script>
+      /*
+        The download button.
+        ---------------------------------------------------------------------
+        This page is inside the app's scope and links the app's manifest, so
+        Chromium treats it as the app's own page: beforeinstallprompt fires
+        here, and prompt() installs Stash it at its real start_url rather than
+        bookmarking the marketing page.
+
+        It needs the app's service worker to be controlling something for the
+        install criteria to be met, and this page doesn't register it — so it
+        does, from the app's own sw.js. The scope comes from where that script
+        lives, not from where it was registered.
+
+        Everything degrades: the buttons are ordinary links to the app first,
+        and JavaScript only upgrades them. With no script, no event and no
+        support, tapping still opens the app.
+      */
+      const APP = new URL('../', location.href).href;
+
+      // Opened straight from disk, `../` is a folder on your computer. Point
+      // at the deployed app instead so a local preview isn't a dead end.
+      const appHref = location.protocol === 'file:'
+        ? 'https://nuno927-tech.github.io/stash-it/'
+        : APP;
+      document.querySelectorAll('.js-open, .js-get').forEach((a) => (a.href = appHref));
+
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        navigator.serviceWorker.register(APP + 'sw.js', { scope: APP }).catch(() => {
+          // No worker means no install prompt, which the fallbacks handle.
+        });
+      }
+
+      let deferred = null;
+      const getButtons = [...document.querySelectorAll('.js-get')];
+
+      function label(text) {
+        getButtons.forEach((b) => {
+          const node = [...b.childNodes].reverse().find((n) => n.nodeType === 3 && n.textContent.trim());
+          if (node) node.textContent = ' ' + text;
+        });
+      }
+
+      addEventListener('beforeinstallprompt', (e) => {
+        // Without this Chromium shows its own mini-infobar, which is easy to
+        // miss and impossible to style.
+        e.preventDefault();
+        deferred = e;
+        label('Install Stash it');
+      });
+
+      addEventListener('appinstalled', () => {
+        deferred = null;
+        label('Open Stash it');
+      });
+
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+      const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+      const iosSheet = document.getElementById('ios');
+      document.getElementById('ios-close').addEventListener('click', () => iosSheet.classList.remove('on'));
+      iosSheet.addEventListener('click', (e) => {
+        if (e.target === iosSheet) iosSheet.classList.remove('on');
+      });
+
+      if (isIOS && !installed) label('Add to Home Screen');
+
+      getButtons.forEach((btn) =>
+        btn.addEventListener('click', async (e) => {
+          if (deferred) {
+            e.preventDefault();
+            deferred.prompt();
+            const { outcome } = await deferred.userChoice;
+            // Single-use: a second prompt() on the same event throws.
+            deferred = null;
+            if (outcome === 'accepted') label('Open Stash it');
+            return;
+          }
+          if (isIOS && !installed) {
+            e.preventDefault();
+            iosSheet.classList.add('on');
+          }
+          // Otherwise the link does what links do, and opens the app.
+        }),
+      );
+
       // Reveal on scroll. IntersectionObserver rather than a scroll handler:
       // the browser does the work off the main thread and nothing runs while
       // the page is still.

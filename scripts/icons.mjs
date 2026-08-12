@@ -68,6 +68,12 @@ render(TIGHT, 512).save('public/icon-512.png', 'PNG', optimize=True)
 render(TIGHT, 180).save('public/apple-touch-icon.png', 'PNG', optimize=True)
 render(WIDE, 512).save('public/icon-maskable-512.png', 'PNG', optimize=True)
 
+# The marketing site keeps its own copy rather than reaching up a directory
+# for the app's. A ../ path resolves correctly once deployed and to nothing at
+# all when the file is opened straight from disk, which is exactly when
+# someone is reviewing it.
+render(TIGHT, 96).save('site/img/icon.png', 'PNG', optimize=True)
+
 print('icon-192, icon-512, icon-maskable-512, apple-touch-icon')
 `;
 

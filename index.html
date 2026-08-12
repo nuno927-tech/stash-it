@@ -86,16 +86,17 @@
         to give up; the type doesn't.
       */
       #splash.waiting img {
-        width: 96px;
-        height: 96px;
+        height: 108px;
       }
       #splash.waiting p {
         margin-top: -4px;
       }
+      /* Height, not a square box. The cut-out is portrait now that it's
+         cropped to the subject rather than to the whole render, and a square
+         with object-fit would leave 40px of nothing either side. */
       #splash img {
-        width: 190px;
-        height: 190px;
-        object-fit: contain;
+        height: 200px;
+        width: auto;
         animation: splashFloat 4.4s ease-in-out infinite;
       }
       #splash h1 {
