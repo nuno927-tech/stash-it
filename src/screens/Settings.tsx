@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItemCount } from '@/db/repo';
-import { FREE_ITEM_LIMIT } from '@/db/types';
+import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
 import { clearDemoItems, seedDemoItems } from '@/dev/seed';
 import {
   BundleError,
@@ -14,14 +14,6 @@ import {
   type RestoreMode,
   type RestoreResult,
 } from '@/lib/backup';
-import {
-  formatBytes,
-  persistenceState,
-  requestPersistence,
-  storageUsage,
-  type PersistState,
-  type StorageUsage,
-} from '@/lib/storage';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import {
   forgetDismissal,
@@ -31,7 +23,6 @@ import {
   isStandalone,
   promptInstall,
 } from '@/lib/install';
-import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import {
   BACKUP_REMINDER_CHOICES,
   CURRENCIES,
@@ -41,9 +32,27 @@ import {
   type RoomsView,
   type ThemeChoice,
 } from '@/lib/prefs';
+import { appUrl, shareApp, shareMessage } from '@/lib/share';
+import {
+  formatBytes,
+  persistenceState,
+  requestPersistence,
+  storageUsage,
+  type PersistState,
+  type StorageUsage,
+} from '@/lib/storage';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
+/**
+ * Settings, grouped by whose question it answers.
+ *
+ * The old page was one flat run of rows at identical weight — appearance next
+ * to backups next to developer toggles — so finding anything meant reading all
+ * of it. Now: how it looks, how your home is set up, keeping your data safe,
+ * the app itself. Developer is folded away, because it exists for exactly one
+ * person and it isn't the one holding the phone.
+ */
 export function Settings({
   propertyId,
   onOpenRooms,
@@ -52,65 +61,9 @@ export function Settings({
   onOpenRooms: () => void;
 }) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
-  const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
-
-  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  const [pending, setPending] = useState<ParsedBundle | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   if (!settings) return null;
-
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
-    setNotice(null);
-    try {
-      await fn();
-    } catch (e) {
-      feedback('error');
-      setNotice({
-        tone: 'bad',
-        text: e instanceof BundleError ? e.message : `Something went wrong: ${(e as Error).message}`,
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onExport = () =>
-    run(async () => {
-      const { blob, filename } = await exportBundle();
-      const how = await saveBundle(blob, filename);
-      feedback('save');
-      setNotice({
-        tone: 'ok',
-        text: how === 'shared' ? `Shared ${filename}.` : `Saved ${filename} to your downloads.`,
-      });
-    });
-
-  const onPickFile = (file: File | undefined) => {
-    if (!file) return;
-    run(async () => {
-      const bundle = await parseBundle(file);
-      setPending(bundle);
-    });
-  };
-
-  const onRestore = (mode: RestoreMode) => {
-    const bundle = pending;
-    if (!bundle) return;
-    run(async () => {
-      const r = await restoreBundle(bundle, mode);
-      feedback('save');
-      setPending(null);
-      setNotice({ tone: 'ok', text: describe(r) });
-    });
-  };
-
-  const setPro = (proUnlock: boolean) =>
-    db.settings.update('singleton', {
-      entitlements: { ...settings.entitlements, proUnlock },
-    });
 
   return (
     <>
@@ -121,268 +74,144 @@ export function Settings({
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 
       <Appearance settings={settings} />
-
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Your home</span>
-      </div>
-
-      <button type="button" className="navrow" onClick={onOpenRooms}>
-        <span>
-          <h4>Rooms</h4>
-          <p>Add, rename and reorder the rooms items can live in.</p>
-        </span>
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        >
-          <path d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-
-      <div className="setrow">
-        <div>
-          <h4>Currency</h4>
-          <p>Used for new items. Each item keeps the currency it was saved with.</p>
-        </div>
-        <select
-          className="compact"
-          value={settings.currency}
-          aria-label="Default currency"
-          onChange={(e) => db.settings.update('singleton', { currency: e.target.value })}
-        >
-          {[...new Set([settings.currency, ...CURRENCIES])].map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Items open</h4>
-          <p>Whether rooms start shut or already showing what's inside.</p>
-        </div>
-        <select
-          className="compact"
-          value={prefsFrom(settings).roomsView}
-          aria-label="How the Items list opens"
-          onChange={(e) => setPref('roomsView', e.target.value as RoomsView)}
-        >
-          <option value="collapsed">Collapsed</option>
-          <option value="expanded">Expanded</option>
-        </select>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Warn me before a warranty ends</h4>
-          <p>How much notice you want on the home screen.</p>
-        </div>
-        <select
-          className="compact"
-          value={settings.reminderOffsetsDays[0] ?? 30}
-          aria-label="Warranty warning lead time"
-          onChange={(e) =>
-            db.settings.update('singleton', { reminderOffsetsDays: [Number(e.target.value)] })
-          }
-        >
-          {REMINDER_CHOICES.map((r) => (
-            <option key={r.days} value={r.days}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Backup</span>
-        <span>{settings.lastBackupAt ? `Last ${settings.lastBackupAt.slice(0, 10)}` : 'Never'}</span>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Export everything</h4>
-          <p>
-            One file with every item, document and photo. Save it somewhere you'll still have it if
-            you lose this phone.
-          </p>
-        </div>
-        <button type="button" className="minibtn" disabled={busy} onClick={onExport}>
-          Export
-        </button>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Restore from a backup</h4>
-          <p>Reads a .stashit file. You'll choose how it merges before anything changes.</p>
-        </div>
-        <button
-          type="button"
-          className="minibtn ghost"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-        >
-          Choose file
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".stashit,application/zip"
-          hidden
-          onChange={(e) => {
-            onPickFile(e.target.files?.[0]);
-            e.target.value = '';
-          }}
-        />
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Remind me to back up</h4>
-          <p>Nothing leaves this device on its own, so the reminder is the safety net.</p>
-        </div>
-        <select
-          className="compact"
-          value={settings.backupReminderDays}
-          aria-label="Backup reminder frequency"
-          onChange={(e) =>
-            db.settings.update('singleton', { backupReminderDays: Number(e.target.value) })
-          }
-        >
-          {BACKUP_REMINDER_CHOICES.map((b) => (
-            <option key={b.days} value={b.days}>
-              {b.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {pending && (
-        <RestoreChoice
-          bundle={pending}
-          busy={busy}
-          onCancel={() => setPending(null)}
-          onChoose={onRestore}
-        />
-      )}
-
-      <InstallRow />
-
-      <ShareRow onResult={(text) => setNotice(text ? { tone: 'ok', text } : null)} />
-
-      <StorageSection />
-
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Developer</span>
-        <span>
-          {count} / {settings.entitlements.proUnlock ? '∞' : FREE_ITEM_LIMIT}
-        </span>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Pro unlock</h4>
-          <p>Lifts the {FREE_ITEM_LIMIT}-item cap. Entitlement flag, no purchase.</p>
-        </div>
-        <button
-          type="button"
-          className={`toggle${settings.entitlements.proUnlock ? ' on' : ''}`}
-          role="switch"
-          aria-checked={settings.entitlements.proUnlock}
-          aria-label="Pro unlock"
-          onClick={() => setPro(!settings.entitlements.proUnlock)}
-        >
-          <span />
-        </button>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Demo items</h4>
-          <p>The four mockup items, dated to land on covered, ending soon and expired.</p>
-        </div>
-        <div className="setactions">
-          <button
-            type="button"
-            className="minibtn"
-            disabled={busy}
-            onClick={() => run(() => seedDemoItems(propertyId))}
-          >
-            Seed
-          </button>
-          <button
-            type="button"
-            className="minibtn ghost"
-            disabled={busy}
-            onClick={() => run(clearDemoItems)}
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-
-      <About schemaVersion={settings.schemaVersion} />
+      <YourHome settings={settings} onOpenRooms={onOpenRooms} />
+      <Backup settings={settings} onNotice={setNotice} />
+      <StorageCard />
+      <AboutApp onNotice={setNotice} schemaVersion={settings.schemaVersion} />
+      <Developer settings={settings} propertyId={propertyId} />
     </>
   );
 }
 
-/**
- * Version, schema and storage estimate in one place. The schema version is
- * here on purpose: when a backup won't restore, it's the first thing worth
- * knowing, and asking someone to find it in DevTools is not a support plan.
- */
-function About({ schemaVersion }: { schemaVersion: number }) {
+/* ------------------------------------------------------------ primitives */
+
+function Card({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <>
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>About</span>
+    <section className="card setcard">
+      <div className="cardhead">
+        <h3>{title}</h3>
+        {aside}
       </div>
-      <dl className="facts">
-        <div className="row">
-          <dt>Version</dt>
-          <dd style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{__APP_VERSION__}</dd>
-        </div>
-        <div className="row">
-          <dt>Data schema</dt>
-          <dd style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>v{schemaVersion}</dd>
-        </div>
-      </dl>
-      <p className="hint" style={{ marginTop: 14 }}>
-        Stash it keeps everything on this device. Nothing is uploaded, so your backup file is the
-        only copy that survives losing the phone.
-      </p>
-    </>
+      {children}
+    </section>
   );
 }
+
+/** A labelled row. The control sits right, the explanation under the label. */
+function Row({
+  label,
+  note,
+  control,
+  onClick,
+}: {
+  label: string;
+  note?: string;
+  control?: ReactNode;
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
+      <span className="setrow-txt">
+        <strong>{label}</strong>
+        {note && <small>{note}</small>}
+      </span>
+      {control}
+    </>
+  );
+
+  return onClick ? (
+    <button type="button" className="setrow tappable" onClick={onClick}>
+      {body}
+      <Chevron />
+    </button>
+  ) : (
+    <div className="setrow">{body}</div>
+  );
+}
+
+function Toggle({
+  on,
+  label,
+  onChange,
+}: {
+  on: boolean;
+  label: string;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`toggle${on ? ' on' : ''}`}
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      data-cue="none"
+      onClick={() => onChange(!on)}
+    >
+      <span />
+    </button>
+  );
+}
+
+function Pick<T extends string | number>({
+  value,
+  label,
+  options,
+  onChange,
+}: {
+  value: T;
+  label: string;
+  options: { value: T; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <select
+      className="compact"
+      value={value}
+      aria-label={label}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg
+      className="rowgo"
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------ appearance */
 
 const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'Match device' },
+  { value: 'system', label: 'Auto' },
 ];
 
-/**
- * Appearance and feedback. Both toggles fire their own cue when switched on,
- * so you hear or feel exactly what you've just agreed to rather than finding
- * out the next time you save something.
- */
-function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
+function Appearance({ settings }: { settings: SettingsRecord }) {
   const prefs = prefsFrom(settings);
   const canBuzz = hapticsSupported();
 
   return (
-    <>
-      <div className="seclabel">
-        <span>Appearance</span>
-      </div>
-
+    <Card title="Appearance">
       <div className="seg">
         {THEMES.map((t) => (
           <button
@@ -396,220 +225,228 @@ function Appearance({ settings }: { settings: import('@/db/types').Settings }) {
         ))}
       </div>
 
-      <div className="setrow">
-        <div>
-          <h4>Sounds</h4>
-          <p>Clicks as you tap, and short tones when something saves, attaches or fails.</p>
-        </div>
-        <button
-          type="button"
-          className={`toggle${prefs.sounds ? ' on' : ''}`}
-          role="switch"
-          aria-checked={prefs.sounds}
-          aria-label="Sounds"
-          data-cue="none"
-          onClick={() => {
-            const next = !prefs.sounds;
-            setPref('sounds', next);
-            if (next) previewCue('save', { sounds: true, haptics: false });
-          }}
-        >
-          <span />
-        </button>
-      </div>
+      <Row
+        label="Sounds"
+        note="Clicks as you tap, and short tones when something saves."
+        control={
+          <Toggle
+            on={prefs.sounds}
+            label="Sounds"
+            onChange={(next) => {
+              setPref('sounds', next);
+              if (next) previewCue('save', { sounds: true, haptics: false });
+            }}
+          />
+        }
+      />
 
-      <div className="setrow">
-        <div>
-          <h4>Haptics</h4>
-          <p>
-            {canBuzz
-              ? 'A gentle tick as you tap, and a firmer one when something saves or is deleted.'
-              : 'This browser has no vibration support, so this does nothing here. It will on a phone that does.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          className={`toggle${prefs.haptics ? ' on' : ''}`}
-          role="switch"
-          aria-checked={prefs.haptics}
-          aria-label="Haptics"
-          data-cue="none"
-          onClick={() => {
-            const next = !prefs.haptics;
-            setPref('haptics', next);
-            if (next) previewCue('save', { sounds: false, haptics: true });
-          }}
-        >
-          <span />
-        </button>
-      </div>
-    </>
+      <Row
+        label="Haptics"
+        note={
+          canBuzz
+            ? 'A gentle tick as you tap, firmer when something saves or is deleted.'
+            : 'This browser has no vibration support, so this does nothing here.'
+        }
+        control={
+          <Toggle
+            on={prefs.haptics}
+            label="Haptics"
+            onChange={(next) => {
+              setPref('haptics', next);
+              if (next) previewCue('save', { sounds: false, haptics: true });
+            }}
+          />
+        }
+      />
+    </Card>
   );
 }
 
-/**
- * Passing the app on. Sits next to Install because both are about the app
- * itself rather than the user's data — everything above this point is theirs,
- * everything here is about Stash it.
- */
-function ShareRow({ onResult }: { onResult: (message: string | null) => void }) {
-  const url = appUrl();
+/* -------------------------------------------------------------- the home */
 
-  const share = async () => {
-    const outcome = await shareApp(url);
-    feedback(outcome === 'cancelled' ? 'tap' : 'save');
-    onResult(shareMessage(outcome, url));
+function YourHome({
+  settings,
+  onOpenRooms,
+}: {
+  settings: SettingsRecord;
+  onOpenRooms: () => void;
+}) {
+  return (
+    <Card title="Your home">
+      <Row
+        label="Rooms"
+        note="Add, rename and reorder the rooms items live in."
+        onClick={onOpenRooms}
+      />
+
+      <Row
+        label="Items open"
+        note="Whether rooms start shut or already showing what's inside."
+        control={
+          <Pick
+            value={prefsFrom(settings).roomsView}
+            label="How the Items list opens"
+            options={[
+              { value: 'collapsed', label: 'Collapsed' },
+              { value: 'expanded', label: 'Expanded' },
+            ]}
+            onChange={(v) => setPref('roomsView', v as RoomsView)}
+          />
+        }
+      />
+
+      <Row
+        label="Currency"
+        note="Used for new items. Each item keeps what it was saved with."
+        control={
+          <Pick
+            value={settings.currency}
+            label="Default currency"
+            options={[...new Set([settings.currency, ...CURRENCIES])].map((c) => ({
+              value: c,
+              label: c,
+            }))}
+            onChange={(v) => db.settings.update('singleton', { currency: v })}
+          />
+        }
+      />
+
+      <Row
+        label="Warn me before a warranty ends"
+        note="How much notice you want on the home screen."
+        control={
+          <Pick
+            value={settings.reminderOffsetsDays[0] ?? 30}
+            label="Warranty warning lead time"
+            options={REMINDER_CHOICES.map((r) => ({ value: r.days, label: r.label }))}
+            onChange={(v) =>
+              db.settings.update('singleton', { reminderOffsetsDays: [Number(v)] })
+            }
+          />
+        }
+      />
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------------------- backup */
+
+function Backup({
+  settings,
+  onNotice,
+}: {
+  settings: SettingsRecord;
+  onNotice: (n: Notice) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<ParsedBundle | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    onNotice(null);
+    try {
+      await fn();
+    } catch (e) {
+      feedback('error');
+      onNotice({
+        tone: 'bad',
+        text: e instanceof BundleError ? e.message : `Something went wrong: ${(e as Error).message}`,
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return (
-    <>
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Spread it around</span>
-      </div>
-      <div className="setrow">
-        <div>
-          <h4>Share Stash it</h4>
-          <p>Send someone the link. There's no account to sign up for, so it's just an address.</p>
-        </div>
-        <button type="button" className="minibtn" onClick={share} data-cue="none">
-          <span className="sharebtn">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="18" cy="5" r="2.6" />
-              <circle cx="6" cy="12" r="2.6" />
-              <circle cx="18" cy="19" r="2.6" />
-              <path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" />
-            </svg>
-            Share
-          </span>
-        </button>
-      </div>
-    </>
-  );
-}
-
-/**
- * The install option, still reachable after the first-run sheet was dismissed.
- * Someone who tapped "Not now" and later changed their mind shouldn't have to
- * clear site data to find it again.
- */
-function InstallRow() {
-  const offer = installOfferIgnoringDismissal({
-    standalone: isStandalone(),
-    dismissed: false,
-    nativePrompt: hasNativePrompt(),
-    iosSafari: isIOSSafari(),
-  });
-
-  if (isStandalone()) {
-    return (
-      <>
-        <div className="seclabel" style={{ marginTop: 28 }}>
-          <span>Home screen</span>
-        </div>
-        <p className="hint">
-          Installed. That's also what earns your data the browser's strongest storage promise.
-        </p>
-      </>
-    );
-  }
-
-  if (offer === 'none') return null;
+  const last = settings.lastBackupAt;
 
   return (
-    <>
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Home screen</span>
-      </div>
-      <div className="setrow">
-        <div>
-          <h4>Install Stash it</h4>
-          <p>
-            {offer === 'native'
-              ? 'Opens full screen, and makes the browser far less willing to clear your data.'
-              : 'In Safari, tap Share then Add to Home Screen. That also protects your data from being cleared.'}
-          </p>
-        </div>
-        {offer === 'native' && (
-          <button
-            type="button"
-            className="minibtn"
-            onClick={() => {
-              forgetDismissal();
-              void promptInstall();
-            }}
-          >
-            Install
-          </button>
-        )}
-      </div>
-    </>
-  );
-}
+    <Card
+      title="Backup"
+      aside={<span className="countpill">{last ? last.slice(0, 10) : 'Never'}</span>}
+    >
+      {/* The export is the most consequential button on the screen, so it gets
+          the full-width treatment rather than being a control at the end of a
+          row of explanation. */}
+      <button
+        type="button"
+        className="btn wide"
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            const { blob, filename } = await exportBundle();
+            const how = await saveBundle(blob, filename);
+            feedback('save');
+            onNotice({
+              tone: 'ok',
+              text: how === 'shared' ? `Shared ${filename}.` : `Saved ${filename}.`,
+            });
+          })
+        }
+      >
+        Export everything
+      </button>
+      <p className="hint">
+        One file with every item, document and photo. Nothing leaves this device on its own, so
+        this is the only copy that survives losing the phone.
+      </p>
 
-const PERSIST_COPY: Record<PersistState, { label: string; note: string }> = {
-  persisted: {
-    label: 'Protected',
-    note: 'This device has promised to keep your data until you delete it.',
-  },
-  'best-effort': {
-    label: 'Best effort',
-    note: 'The browser may clear your data if it needs space. Installing the app to your home screen usually earns protection — export a backup either way.',
-  },
-  unsupported: {
-    label: 'Unknown',
-    note: "This browser won't say whether your data is protected. Export a backup.",
-  },
-};
-
-function StorageSection() {
-  const [state, setState] = useState<PersistState>('unsupported');
-  const [usage, setUsage] = useState<StorageUsage | null>(null);
-
-  const refresh = () =>
-    Promise.all([persistenceState(), storageUsage()]).then(([s, u]) => {
-      setState(s);
-      setUsage(u);
-    });
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  const copy = PERSIST_COPY[state];
-
-  return (
-    <>
-      <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Storage</span>
-        <span>{usage ? `${formatBytes(usage.usedBytes)} used` : '—'}</span>
-      </div>
-
-      <div className="setrow">
-        <div>
-          <h4>Data durability — {copy.label}</h4>
-          <p>{copy.note}</p>
-        </div>
-        {state === 'best-effort' && (
+      <Row
+        label="Restore from a backup"
+        note="You'll choose how it merges before anything changes."
+        control={
           <button
             type="button"
             className="minibtn ghost"
-            onClick={() => requestPersistence().then(refresh)}
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
           >
-            Request
+            Choose file
           </button>
-        )}
-      </div>
-    </>
+        }
+      />
+
+      <Row
+        label="Remind me"
+        note="A nudge to export, since nothing syncs anywhere."
+        control={
+          <Pick
+            value={settings.backupReminderDays}
+            label="Backup reminder frequency"
+            options={BACKUP_REMINDER_CHOICES.map((b) => ({ value: b.days, label: b.label }))}
+            onChange={(v) => db.settings.update('singleton', { backupReminderDays: Number(v) })}
+          />
+        }
+      />
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".stashit,application/zip"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) run(async () => setPending(await parseBundle(file)));
+        }}
+      />
+
+      {pending && (
+        <RestoreChoice
+          bundle={pending}
+          busy={busy}
+          onCancel={() => setPending(null)}
+          onChoose={(mode) =>
+            run(async () => {
+              const r = await restoreBundle(pending, mode);
+              feedback('save');
+              setPending(null);
+              onNotice({ tone: 'ok', text: describe(r) });
+            })
+          }
+        />
+      )}
+    </Card>
   );
 }
 
@@ -656,4 +493,233 @@ function describe(r: RestoreResult): string {
     return `Replaced. ${r.added} records and ${r.blobsAdded} files restored.`;
   }
   return `Merged. ${r.added} added, ${r.updated} updated, ${r.skipped} already current.`;
+}
+
+/* --------------------------------------------------------------- storage */
+
+const PERSIST_COPY: Record<PersistState, { label: string; note: string }> = {
+  persisted: {
+    label: 'Protected',
+    note: 'This device has promised to keep your data until you delete it.',
+  },
+  'best-effort': {
+    label: 'Best effort',
+    note: 'The browser may clear your data if it needs space. Installing usually earns protection.',
+  },
+  unsupported: {
+    label: 'Unknown',
+    note: "This browser won't say whether your data is protected. Keep a backup.",
+  },
+};
+
+function StorageCard() {
+  const [state, setState] = useState<PersistState>('unsupported');
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
+
+  const refresh = () =>
+    Promise.all([persistenceState(), storageUsage()]).then(([s, u]) => {
+      setState(s);
+      setUsage(u);
+    });
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const copy = PERSIST_COPY[state];
+
+  return (
+    <Card
+      title="Storage"
+      aside={usage ? <span className="countpill">{formatBytes(usage.usedBytes)}</span> : undefined}
+    >
+      <Row
+        label={copy.label}
+        note={copy.note}
+        control={
+          state === 'best-effort' ? (
+            <button
+              type="button"
+              className="minibtn ghost"
+              onClick={() => requestPersistence().then(refresh)}
+            >
+              Request
+            </button>
+          ) : undefined
+        }
+      />
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------- the app */
+
+function AboutApp({
+  onNotice,
+  schemaVersion,
+}: {
+  onNotice: (n: Notice) => void;
+  schemaVersion: number;
+}) {
+  const url = appUrl();
+  const installed = isStandalone();
+  const offer = installOfferIgnoringDismissal({
+    standalone: installed,
+    dismissed: false,
+    nativePrompt: hasNativePrompt(),
+    iosSafari: isIOSSafari(),
+  });
+
+  return (
+    <Card title="Stash it" aside={<span className="countpill">v{__APP_VERSION__}</span>}>
+      {installed ? (
+        <Row
+          label="Installed"
+          note="Which is also what earns your data the browser's strongest storage promise."
+        />
+      ) : offer !== 'none' ? (
+        <Row
+          label="Add to home screen"
+          note={
+            offer === 'native'
+              ? 'Opens full screen, and makes the browser far less willing to clear your data.'
+              : 'In Safari, tap Share then Add to Home Screen. That also protects your data.'
+          }
+          control={
+            offer === 'native' ? (
+              <button
+                type="button"
+                className="minibtn"
+                onClick={() => {
+                  forgetDismissal();
+                  void promptInstall();
+                }}
+              >
+                Install
+              </button>
+            ) : undefined
+          }
+        />
+      ) : null}
+
+      <Row
+        label="Share Stash it"
+        note="There's no account to sign up for, so it's just an address."
+        control={
+          <button
+            type="button"
+            className="minibtn ghost"
+            data-cue="none"
+            onClick={async () => {
+              const outcome = await shareApp(url);
+              feedback(outcome === 'cancelled' ? 'tap' : 'save');
+              const text = shareMessage(outcome, url);
+              onNotice(text ? { tone: 'ok', text } : null);
+            }}
+          >
+            Share
+          </button>
+        }
+      />
+
+      <p className="hint">
+        Everything you add stays on this device. Data schema v{schemaVersion} — worth knowing if a
+        backup ever refuses to restore.
+      </p>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------- developer */
+
+/**
+ * Folded away by default. It exists for exactly one person, and it isn't the
+ * one holding the phone — but it's the only way to exercise the paywall and
+ * populate a screen without typing, so it stays reachable.
+ */
+function Developer({ settings, propertyId }: { settings: SettingsRecord; propertyId: string }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
+
+  const run = (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    void fn().finally(() => setBusy(false));
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="expander"
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+      >
+        Developer
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    );
+  }
+
+  return (
+    <Card
+      title="Developer"
+      aside={
+        <button type="button" className="linkish" aria-expanded onClick={() => setOpen(false)}>
+          Hide
+        </button>
+      }
+    >
+      <Row
+        label="Pro unlock"
+        note={`Lifts the ${FREE_ITEM_LIMIT}-item cap. Currently ${count} ${count === 1 ? 'item' : 'items'}.`}
+        control={
+          <Toggle
+            on={settings.entitlements.proUnlock}
+            label="Pro unlock"
+            onChange={(proUnlock) =>
+              db.settings.update('singleton', {
+                entitlements: { ...settings.entitlements, proUnlock },
+              })
+            }
+          />
+        }
+      />
+
+      <Row
+        label="Demo items"
+        note="Four fixtures dated to land on covered, ending soon and expired."
+        control={
+          <span className="setactions">
+            <button
+              type="button"
+              className="minibtn"
+              disabled={busy}
+              onClick={() => run(() => seedDemoItems(propertyId))}
+            >
+              Seed
+            </button>
+            <button
+              type="button"
+              className="minibtn ghost"
+              disabled={busy}
+              onClick={() => run(clearDemoItems)}
+            >
+              Clear
+            </button>
+          </span>
+        }
+      />
+    </Card>
+  );
 }

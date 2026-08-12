@@ -1104,26 +1104,66 @@ a.pick {
 
 /* -------------------------------------------------------------- settings */
 
+.setcard {
+  padding: 16px 4px 8px 16px;
+}
+
+.setcard .cardhead,
+.setcard > .seg,
+.setcard > .btn,
+.setcard > .hint,
+.setcard > .sheet {
+  margin-right: 12px;
+}
+
+/* Rows divide themselves rather than sitting in boxes: inside a card the
+   hairline is enough, and a box in a box reads as clutter. */
 .setrow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--slate-700);
+  gap: 14px;
+  width: 100%;
+  padding: 13px 12px 13px 0;
+  border-top: 1px solid var(--slate-600);
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  color: inherit;
 }
 
-.setrow h4 {
-  font-size: 13.5px;
+.setcard > .setrow:first-of-type {
+  border-top: none;
+}
+
+.setrow.tappable:active {
+  background: var(--slate-600);
+}
+
+.setrow-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.setrow-txt strong {
+  display: block;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
-.setrow p {
+.setrow-txt small {
+  display: block;
   font-size: 11.5px;
   color: var(--muted);
   line-height: 1.45;
-  max-width: 32ch;
+}
+
+.rowgo {
+  flex: none;
+  color: var(--muted);
 }
 
 .setactions {
@@ -1140,11 +1180,12 @@ a.pick {
   padding: 8px 14px;
   border-radius: var(--r-pill);
   border: none;
+  flex: none;
 }
 
 .minibtn.ghost {
-  background: var(--slate-700);
-  color: var(--muted);
+  background: var(--slate-600);
+  color: var(--text);
 }
 
 .minibtn:disabled {
@@ -1175,73 +1216,11 @@ a.pick {
   border-radius: 50%;
   background: var(--text);
   display: block;
+  transition: transform 0.18s ease;
 }
 
 .toggle.on span {
   background: var(--on-gold);
-}
-
-.notice {
-  border-radius: var(--r-md);
-  padding: 11px 13px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.notice.ok {
-  background: var(--wash-moss);
-  color: var(--moss);
-}
-
-.notice.bad {
-  background: var(--wash-ember);
-  color: var(--ember);
-}
-
-.sheet {
-  background: var(--slate-700);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: 16px;
-  margin: 14px 0 6px;
-}
-
-.sheet h4 {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 400;
-  line-height: 1.5;
-  margin-bottom: 14px;
-}
-
-.choice {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: var(--slate-800);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 13px;
-  margin-bottom: 9px;
-}
-
-.choice b {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gold);
-  margin-bottom: 4px;
-}
-
-.choice span {
-  font-size: 11.5px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.choice:disabled {
-  opacity: 0.5;
 }
 
 /* ------------------------------------------------------------------ nav */
