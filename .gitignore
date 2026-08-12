@@ -8,3 +8,8 @@ dev-dist/
 Thumbs.db
 .vite/
 *.tsbuildinfo
+
+# Mascot source renders: 40 MB of 1024px pairs. The cut-out webp files in
+# src/assets/mascot are committed; regenerate them with scripts/mascot.mjs.
+design/mascot-originals/
+design/preview/

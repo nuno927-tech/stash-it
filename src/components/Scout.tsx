@@ -1,21 +1,59 @@
 import acorn from '@/assets/mascot/scout-acorn.webp';
 import alert from '@/assets/mascot/scout-alert.webp';
 import avatar from '@/assets/mascot/scout-avatar.webp';
-import stand from '@/assets/mascot/scout-stand.webp';
-import wave from '@/assets/mascot/scout-wave.webp';
+import receipt from '@/assets/mascot/scout-receipt.webp';
+import report from '@/assets/mascot/scout-report.webp';
+import resting from '@/assets/mascot/scout-resting.webp';
+import settings from '@/assets/mascot/scout-settings.webp';
+import waving from '@/assets/mascot/scout-waving.webp';
 
 /**
  * Scout, the mascot. Poses are imported rather than referenced from /public so
  * the single-file build can inline them — see `npm run build:single`.
  *
+ * Each pose means something, and the meaning is the point of having eight of
+ * them rather than one. Scout asleep on a card with nothing left to do says
+ * "you're finished" more plainly than the sentence next to it does.
+ *
+ *   acorn     guarding the thing itself — launch, install
+ *   waving    hello — first run, and only first run
+ *   report    presenting your numbers — the dashboard
+ *   receipt   holding the paperwork — items
+ *   settings  at a control desk — settings
+ *   alert     ears up, something needs you
+ *   resting   curled up, nothing does
+ *   avatar    a face, for the places 36px is all there is
+ *
+ * Cut from paired renders — see scripts/mascot.mjs. Every pose has a real
+ * alpha channel including its contact shadow, so they sit on cream and on
+ * slate without a plate behind them.
+ *
  * Motion rule from the concept: combine at most two primitives. Float plus
  * breathe reads alive; adding a third reads seasick.
  */
 
-export type ScoutPose = 'acorn' | 'wave' | 'stand' | 'alert' | 'avatar';
+export type ScoutPose =
+  | 'acorn'
+  | 'waving'
+  | 'report'
+  | 'receipt'
+  | 'settings'
+  | 'alert'
+  | 'resting'
+  | 'avatar';
+
 export type ScoutMotion = 'float' | 'breathe' | 'alert' | 'pop' | 'none';
 
-const SRC: Record<ScoutPose, string> = { acorn, wave, stand, alert, avatar };
+const SRC: Record<ScoutPose, string> = {
+  acorn,
+  waving,
+  report,
+  receipt,
+  settings,
+  alert,
+  resting,
+  avatar,
+};
 
 const MOTION_CLASS: Record<ScoutMotion, string> = {
   float: 'm-float',

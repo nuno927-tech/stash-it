@@ -163,6 +163,11 @@ function CoverCard({
 
   return (
     <div className="covercard">
+      {/* Scout presenting the figures. It's a field report — his, about your
+          house — and the pose is the only thing on the card that says the
+          numbers were gathered rather than merely displayed. */}
+      <Scout pose="report" height={72} motion={['breathe']} alt="" />
+
       <div className="coverring">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
@@ -245,12 +250,14 @@ function NeedsCard({
   if (gaps.length === 0) {
     return (
       <div className="card needscard done">
-        <div className="cardhead">
+        {/* Asleep, because there is nothing to do. The pose carries the state
+            faster than the heading does, and it's the only place in the app
+            that gets to say "finished". */}
+        <Scout pose="resting" height={64} motion={['breathe']} alt="" />
+        <div className="needsdone-txt">
           <h3>Nothing needs you</h3>
+          <p>Every item has a receipt, a warranty length, a date and a photo.</p>
         </div>
-        <p className="hint">
-          Every item has a receipt, a warranty length, a date and a photo. That's the whole job.
-        </p>
       </div>
     );
   }
@@ -258,7 +265,12 @@ function NeedsCard({
   return (
     <div className="card needscard">
       <div className="cardhead">
-        <h3>Needs a minute</h3>
+        {/* Ears up. Same card, opposite posture — the difference between the
+            two states should be legible before a word is read. */}
+        <span className="needshead">
+          <Scout pose="alert" height={40} motion={['alert']} alt="" />
+          <h3>Needs a minute</h3>
+        </span>
         <span className="countpill">{gaps.reduce((n, g) => n + g.count, 0)}</span>
       </div>
 
@@ -375,7 +387,7 @@ function shortMoney({ currency, cents }: { currency: string; cents: number }): s
 function EmptyHome({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="empty">
-      <Scout pose="wave" height={210} motion={['float', 'pop']} shadow alt="Scout waving" />
+      <Scout pose="acorn" height={200} motion={['float', 'pop']} shadow alt="" />
       <h3>Nothing stashed yet</h3>
       <p>Add your first item and Scout will keep track of the warranty for you.</p>
       <button type="button" className="btn" onClick={onAdd}>

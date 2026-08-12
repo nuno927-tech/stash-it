@@ -39,7 +39,7 @@ export function Welcome() {
       <div className="fullsheet welcomesheet">
         <span className="grip" aria-hidden="true" />
 
-        <Scout pose="wave" height={150} motion={['float', 'breathe']} shadow alt="Scout waving" />
+        <Scout pose="waving" height={150} motion={['float', 'breathe']} shadow alt="Scout waving" />
 
         <h2 id="welcome-title">Hello, I'm Scout</h2>
         <p>I'll keep an eye on your warranties. What should I call you?</p>

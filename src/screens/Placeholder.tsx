@@ -4,7 +4,7 @@ import { Scout } from '@/components/Scout';
 export function Placeholder({ title, note }: { title: string; note: string }) {
   return (
     <div className="empty">
-      <Scout pose="stand" height={150} motion={['float']} shadow />
+      <Scout pose="alert" height={150} motion={['float']} shadow />
       <h3>{title}</h3>
       <p>{note}</p>
     </div>

@@ -126,7 +126,7 @@ export function Items({
   if (all.length === 0) {
     return (
       <div className="empty">
-        <Scout pose="stand" height={170} motion={['float']} shadow />
+        <Scout pose="receipt" height={180} motion={['float']} shadow alt="" />
         <h3>Nothing stashed yet</h3>
         <p>Everything you add shows up here, grouped by the room it lives in.</p>
         <button type="button" className="btn" onClick={onAdd}>
@@ -140,7 +140,10 @@ export function Items({
     <>
       <header className="apphead">
         <div className="apptitle">Items</div>
-        <span className="countpill">{all.length}</span>
+        <span className="headmark">
+          <span className="countpill">{all.length}</span>
+          <Scout pose="receipt" height={44} motion={['breathe']} alt="" />
+        </span>
       </header>
 
       <div className="searchbar">
@@ -286,7 +289,7 @@ function SearchResults({
   if (hits.length === 0) {
     return (
       <div className="empty" style={{ paddingTop: 30 }}>
-        <Scout pose="stand" height={120} motion={['float']} shadow />
+        <Scout pose="alert" height={120} motion={['float']} shadow alt="" />
         <h3>Nothing found</h3>
         <p>Scout checked names, brands, models, serials, rooms, notes and document titles.</p>
       </div>

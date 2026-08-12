@@ -2703,3 +2703,62 @@ button.countpill.tappill:active {
 .savebar .btn {
   margin: 0;
 }
+
+/* ------------------------------------------------------------ the mascot */
+
+/* Scout in a screen header, beside the title. Small, and never a control —
+   he's a signpost for which room of the app you're in, not a button. */
+.headmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  line-height: 0;
+}
+
+/* On the cover card he stands to the right of the ring, tucked against the
+   top edge so the ring keeps the centre. */
+.covercard {
+  position: relative;
+}
+
+.covercard > .rig {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+
+/* Ears up, next to the heading that says what needs doing. */
+.needshead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.needshead h3 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Curled up, with the good news beside him. */
+.needscard.done {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.needsdone-txt h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.needsdone-txt p {
+  font-size: 11.5px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--muted);
+}

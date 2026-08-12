@@ -44,6 +44,7 @@ import {
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
 import { DriveCard } from '@/components/DriveCard';
+import { Scout } from '@/components/Scout';
 
 type Notice = { tone: 'ok' | 'bad'; text: string } | null;
 
@@ -74,6 +75,9 @@ export function Settings({
     <>
       <header className="apphead">
         <div className="apptitle">Settings</div>
+        <span className="headmark">
+          <Scout pose="settings" height={48} motion={['breathe']} alt="" />
+        </span>
       </header>
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
