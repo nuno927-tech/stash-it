@@ -199,6 +199,13 @@ export interface Settings {
   tourDoneAt?: string;
   /** When "remind me later" comes due. Absent means no reminder pending. */
   tourRemindAt?: string;
+
+  /**
+   * Tipping. `donateMonthly` is a reminder, not a subscription — Venmo has no
+   * way to schedule a payment from a link, so the app can only ask again.
+   */
+  donateMonthly?: boolean;
+  donateLastAt?: string;
 }
 
 export const SEED_ROOMS = [

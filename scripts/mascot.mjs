@@ -32,6 +32,7 @@ const APP = [
   { name: 'resting', size: 240 }, // 110 when there's nothing to do
   { name: 'settings', size: 240 }, // 110 on its own card
   { name: 'waving', size: 320 }, // 150 on the welcome sheet
+  { name: 'lounge', size: 400 }, // 190 on the support card
 ];
 
 /**
@@ -47,6 +48,7 @@ const WEB = [
   { name: 'settings', size: 460 },
   { name: 'resting', size: 460 },
   { name: 'report', size: 420 },
+  { name: 'lounge', size: 560 },
 ];
 
 mkdirSync(TO, { recursive: true });

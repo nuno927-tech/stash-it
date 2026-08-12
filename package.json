@@ -1,7 +1,7 @@
 {
   "name": "stash-it",
   "private": true,
-  "version": "0.25.0",
+  "version": "0.26.0",
   "type": "module",
   "description": "Warranties, receipts and manuals for everything you own. Local-first PWA.",
   "scripts": {
@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "serve:single": "vite preview --outDir dist-single --port 4180",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev && npm run test:lock && npm run test:receipt && npm run test:greeting && npm run test:drive && npm run test:gaps && npm run test:backstack && npm run test:swipe && npm run test:tour && npm run test:css",
+    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev && npm run test:lock && npm run test:receipt && npm run test:greeting && npm run test:drive && npm run test:gaps && npm run test:backstack && npm run test:swipe && npm run test:tour && npm run test:donate && npm run test:css",
     "test:backup": "node scripts/run-test.mjs test/backup.roundtrip.ts",
     "test:add": "node scripts/run-test.mjs test/additem.test.ts",
     "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts",
@@ -36,6 +36,7 @@
     "test:backstack": "node scripts/run-test.mjs test/backstack.test.ts",
     "test:swipe": "node scripts/run-test.mjs test/swipe.test.ts",
     "test:tour": "node scripts/run-test.mjs test/tour.test.ts",
+    "test:donate": "node scripts/run-test.mjs test/donate.test.ts",
     "test:css": "node scripts/check-css.mjs"
   },
   "dependencies": {

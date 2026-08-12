@@ -2979,3 +2979,92 @@ button.countpill.tappill:active {
   margin: 0 auto 8px;
   display: block;
 }
+
+/* --------------------------------------------------------------- support */
+
+/* Warmer than the cards above it, because it's the one that asks. */
+.supportcard {
+  background: linear-gradient(165deg, var(--wash-gold-soft), var(--slate-700) 60%);
+  border: 1px solid var(--wash-gold-line);
+  padding: 16px;
+}
+
+.supporthead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.supporthead .rig {
+  flex: none;
+}
+
+.supporthead h3 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  margin-bottom: 5px;
+}
+
+.supporthead p {
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* Two by two. Four in a row makes each label a truncated word, and the label
+   is the part that makes an amount easy to say yes to. */
+.tiers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tier {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--slate-800);
+  color: inherit;
+  text-align: left;
+}
+
+.tier.on {
+  border-color: var(--gold);
+  background: var(--wash-gold);
+}
+
+.tier b {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.tier.on b {
+  color: var(--gold);
+}
+
+.tier span {
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.supportcard .setrow {
+  padding-right: 0;
+}
+
+.supportcard .hint {
+  margin-top: 2px;
+}

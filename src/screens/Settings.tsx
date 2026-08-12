@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db/db';
+import { db, nowISO } from '@/db/db';
 import { pushBack } from '@/lib/backstack';
 import { activeItemCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
@@ -16,6 +16,7 @@ import {
   type RestoreResult,
 } from '@/lib/backup';
 import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
+import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
 import {
@@ -106,6 +107,7 @@ export function Settings({
         onTapVersion={() => setTaps((t) => tap(t, Date.now()))}
         onTour={onTour}
       />
+      <Support settings={settings} />
       {unlocked(taps) && (
         <Developer
           settings={settings}
@@ -675,6 +677,121 @@ function describe(r: RestoreResult): string {
     return `Replaced. ${r.added} records and ${r.blobsAdded} files restored.`;
   }
   return `Merged. ${r.added} added, ${r.updated} updated, ${r.skipped} already current.`;
+}
+
+
+/* --------------------------------------------------------------- support */
+
+/**
+ * The tip jar.
+ *
+ * Below everything functional and above nothing, because it's the one card
+ * that asks rather than offers. Four amounts with plain descriptions instead
+ * of a number field: naming what the money buys is easier to say yes to than
+ * being asked to value someone's work on the spot.
+ *
+ * The link opens Venmo with the amount and note already filled in. Nothing
+ * about the payment passes through this app — there's no integration to have,
+ * which is also why the monthly option is a reminder rather than a standing
+ * order. See src/lib/donate.ts.
+ */
+function Support({ settings }: { settings: SettingsRecord }) {
+  const [picked, setPicked] = useState(TIERS[1]!);
+  const monthly = settings.donateMonthly ?? false;
+  const due = monthlyDue(settings.donateLastAt);
+
+  const send = () => {
+    feedback('save');
+    void db.settings.update('singleton', { donateLastAt: nowISO() });
+  };
+
+  return (
+    <section className="card supportcard">
+      <div className="supporthead">
+        <Scout pose="lounge" height={104} motion={['breathe']} alt="" />
+        <div>
+          <h3>Buy Scout a drink</h3>
+          <p>
+            Stash it is free, has no ads and sells nothing. If it saved you a warranty, you can say
+            so.
+          </p>
+        </div>
+      </div>
+
+      {monthly && due && (
+        <p className="hint warnhint">It's been a month since the last one, if you still want to.</p>
+      )}
+
+      <div className="tiers">
+        {TIERS.map((t) => (
+          <button
+            key={t.amount}
+            type="button"
+            className={`tier${picked.amount === t.amount ? ' on' : ''}`}
+            aria-pressed={picked.amount === t.amount}
+            onClick={() => setPicked(t)}
+          >
+            <b>{money(t.amount)}</b>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <Row
+        label="Make it monthly"
+        note="Venmo can't schedule a payment from a link, so Stash it will remind you instead."
+        control={
+          <Toggle
+            on={monthly}
+            label="Make it monthly"
+            onChange={(next) =>
+              db.settings.update('singleton', {
+                donateMonthly: next,
+                donateLastAt: next ? (settings.donateLastAt ?? nowISO()) : undefined,
+              })
+            }
+          />
+        }
+      />
+
+      {/* An anchor, not a button: it leaves the app, and the long-press menu
+          that gives — copy the link, open in a new tab — is worth keeping. */}
+      <a
+        className="btn wide"
+        href={venmoUrl({ amount: picked.amount, note: picked.note, monthly })}
+        target="_blank"
+        rel="noreferrer"
+        onClick={send}
+      >
+        <VenmoGlyph />
+        Send {money(picked.amount)} on Venmo
+      </a>
+
+      <p className="hint">
+        Opens Venmo with the amount filled in — you confirm it there. Marked private, so it doesn't
+        appear in anyone's feed.
+      </p>
+    </section>
+  );
+}
+
+function VenmoGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 7.5h18v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z" />
+      <path d="M3 7.5 7 4h10l4 3.5M8 12h4" />
+    </svg>
+  );
 }
 
 /* ------------------------------------------------------------- the app */
