@@ -3246,13 +3246,18 @@ button.countpill.tappill:active {
   margin-top: 2px;
 }
 
-/* The heading is a button, and must not look like one. */
+/* The heading is a button, and must not look like one.
+   No `font: inherit` here. The shorthand resets family, weight and size to
+   the body font, and this rule sits below `.apptitle` in the file — so at
+   equal specificity it won, and the one heading in the app that happens to be
+   a button was set in the body face while every other title used the display
+   one. `button { font: inherit }` in base.css already handles the browser
+   default; this only has to stop overriding what the title asked for. */
 .titletap {
   background: none;
   border: none;
   padding: 0;
   color: inherit;
-  font: inherit;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
