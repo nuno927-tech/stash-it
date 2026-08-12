@@ -64,6 +64,7 @@
   color: var(--muted);
   margin-bottom: 12px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
 }
 
@@ -1880,8 +1881,42 @@ button.countpill.tappill:active {
   font-weight: 600;
 }
 
+/* The quiet action: "See all", "New room", "Something else", "Clear".
+ *
+ * This class had no rules at all, so every one of them was rendering as a raw
+ * browser button — grey, bevelled, and the only thing in the app that looked
+ * like 1998. A thin hairline pill instead: it reads as secondary next to a
+ * filled .btn or .minibtn, but is unmistakably a control, which a bare run of
+ * text is not.
+ */
+.linkish {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 5px 13px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  line-height: 1.45;
+}
+
+.linkish:active {
+  background: var(--slate-600);
+  color: var(--text);
+}
+
+.linkish:disabled {
+  opacity: 0.45;
+}
+
 .morelink {
-  display: inline-block;
+  align-self: flex-start;
   margin-top: 12px;
 }
 
