@@ -43,6 +43,20 @@ FLOOR = 0.10
 # nothing we're removing is four pixels wide.
 SCALE = 4
 
+# The crop is decided at a threshold the subject actually meets, not at "any
+# alpha at all". Some renders carry a wide, near-invisible ambient glow off to
+# one side; it survives the floor at two or three percent, and because it is
+# joined to the squirrel the connectivity pass keeps it. Cropping to it padded
+# the alert pose with 167 empty pixels down its left edge — a third of the
+# frame — so centring the box put the visible animal noticeably right of centre.
+#
+# Measured across all eight poses the bounding box is stable from 0.2 to 0.7 and
+# only explodes below 0.1: these edges are a couple of pixels of antialiasing,
+# not a long fur falloff. So 0.2 finds the true silhouette and the margin below
+# gives those pixels back.
+CROP_AT = 0.20
+CROP_MARGIN = 3
+
 
 def alpha_and_colour(white_path: str, black_path: str):
     w = np.asarray(Image.open(white_path).convert('RGB'), float) / 255
@@ -126,5 +140,10 @@ def cutout(name: str, source_dir: str) -> Image.Image:
     rgba = np.concatenate([colour, alpha[..., None]], axis=2)
     img = Image.fromarray((rgba * 255).round().astype('uint8'), 'RGBA')
 
-    box = Image.fromarray((alpha > 0.02).astype('uint8') * 255).getbbox()
-    return img.crop(box) if box else img
+    box = Image.fromarray((alpha >= CROP_AT).astype('uint8') * 255).getbbox()
+    if not box:
+        return img
+
+    x0, y0, x1, y1 = box
+    m, (w, h) = CROP_MARGIN, img.size
+    return img.crop((max(0, x0 - m), max(0, y0 - m), min(w, x1 + m), min(h, y1 + m)))
