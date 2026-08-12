@@ -131,7 +131,6 @@ export function Settings({
         pending={pending}
         setPending={setPending}
       />
-      <DriveCard settings={settings} onNotice={setNotice} onRestore={setPending} />
       <AboutApp
         onNotice={setNotice}
         taps={taps}
@@ -139,12 +138,21 @@ export function Settings({
         onTour={onTour}
       />
       <Support settings={settings} />
+
+      {/* Drive lives here rather than beside the file backup. It needs an OAuth
+          client ID pasted in before it does anything, which makes it a thing
+          for whoever is building the app, not a setting for whoever is using
+          it. Hidden with the rest of the developer tools until the version
+          pill has been tapped ten times. */}
       {unlocked(taps) && (
-        <Developer
-          settings={settings}
-          propertyId={propertyId}
-          onHide={() => setTaps(NO_TAPS)}
-        />
+        <>
+          <Developer
+            settings={settings}
+            propertyId={propertyId}
+            onHide={() => setTaps(NO_TAPS)}
+          />
+          <DriveCard settings={settings} onNotice={setNotice} onRestore={setPending} />
+        </>
       )}
     </>
   );
@@ -170,14 +178,11 @@ function Row({
   note,
   control,
   onClick,
-  stacked,
 }: {
   label: string;
   note?: string;
   control?: ReactNode;
   onClick?: () => void;
-  /** Puts the control on its own line. For anything you type into. */
-  stacked?: boolean;
 }) {
   const body = (
     <>
@@ -195,7 +200,7 @@ function Row({
       <Chevron />
     </button>
   ) : (
-    <div className={`setrow${stacked ? ' setfield' : ''}`}>{body}</div>
+    <div className="setrow">{body}</div>
   );
 }
 
@@ -424,11 +429,10 @@ function YourHome({
       <Row
         label="Your name"
         note="What the dashboard calls you. Leave it empty for a plain greeting."
-        stacked
         control={
           <input
             type="text"
-            className="setinput"
+            className="setinput compact"
             defaultValue={prefsFrom(settings).displayName}
             placeholder="Name"
             aria-label="Your name"
@@ -566,27 +570,30 @@ function Backup({
           })
         }
       >
+        {/* The size rides on the button rather than sitting in a row of its
+            own further down. "How much am I about to write out" is a fact
+            about this action, and it was being reported as if it were a
+            separate setting. */}
         Export everything
+        {usage && <span className="btnnote">{formatBytes(usage.usedBytes)}</span>}
       </button>
       <p className="hint">
         One file with every item, document and photo. Nothing leaves this device on its own, so
         this is the only copy that survives losing the phone.
       </p>
 
-      <Row
-        label="Restore from a backup"
-        note="You'll choose how it merges before anything changes."
-        control={
-          <button
-            type="button"
-            className="minibtn ghost"
-            disabled={busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            Choose file
-          </button>
-        }
-      />
+      {/* Restoring is the other half of the same job, so it gets the same
+          button. As a "Choose file" control at the end of a row it read as a
+          minor setting, which is not what replacing your whole database is. */}
+      <button
+        type="button"
+        className="btn wide ghost"
+        disabled={busy}
+        onClick={() => fileInput.current?.click()}
+      >
+        Import from a backup
+      </button>
+      <p className="hint">You'll choose how it merges before anything changes.</p>
 
       <Row
         label="Remind me"
@@ -600,14 +607,6 @@ function Backup({
           />
         }
       />
-
-      {usage && (
-        <Row
-          label="On this device"
-          note="Items, documents and photos, as they sit in the browser's storage."
-          control={<span className="setval">{formatBytes(usage.usedBytes)}</span>}
-        />
-      )}
 
       <input
         ref={fileInput}
@@ -887,18 +886,6 @@ function AboutApp({
         label="Take the tour"
         note="Six short screens on what the app does. Nothing changes by watching it."
         onClick={onTour}
-      />
-
-      {/* A share target is invisible: nothing in the app hints that Stash it
-          is now in the Android share sheet, and nobody goes looking. One line
-          here is the only place it can be said. */}
-      <Row
-        label="Import from email"
-        note={
-          isAndroid()
-            ? 'Open a receipt in your mail app, tap Share, choose Stash it. The attachment and what it says get filled into a new item.'
-            : 'On Android, receipts can be shared straight from the mail app. On this device, save the attachment and add it to an item.'
-        }
       />
 
       <button

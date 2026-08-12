@@ -21,6 +21,7 @@ import {
   docsWithFiles,
   docSubtitle,
   isBlobReferenced,
+  renameDoc,
   titleFromFilename,
 } from '@/lib/docs';
 import { exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
@@ -163,6 +164,28 @@ async function main() {
 
   await changeDocKind('does-not-exist', 'receipt');
   check('reclassifying a missing document does not throw', true);
+
+  /* ------------------------------------------------------- renaming */
+
+  // Attaching no longer asks for a title, so this is the only way one gets
+  // written by hand. It has to behave like the attach path did.
+  await renameDoc(named, '  Bosch cover, 5 year  ');
+  const renamed = (await db.docs.get(named))!;
+  check('a new title is saved, trimmed', renamed.title === 'Bosch cover, 5 year', renamed.title);
+  check('and shows as the subtitle', docSubtitle(renamed) === 'Bosch cover, 5 year');
+
+  await renameDoc(named, '   ');
+  const blanked = (await db.docs.get(named))!;
+  check('clearing it falls back to the kind', blanked.title === 'Receipt', blanked.title);
+  check('so the row never goes nameless', docHeadline(blanked) === 'Receipt');
+  check('and the empty title adds no subtitle', docSubtitle(blanked) === null);
+
+  const stamp = (await db.docs.get(named))!.updatedAt;
+  await renameDoc(named, 'Receipt');
+  check('renaming to the same title is a no-op', (await db.docs.get(named))!.updatedAt === stamp);
+
+  await renameDoc('does-not-exist', 'Anything');
+  check('renaming a missing document does not throw', true);
 
   // Clean up so the counts below stay meaningful.
   await deleteDoc(misfiled);

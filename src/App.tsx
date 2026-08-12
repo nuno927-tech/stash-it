@@ -180,6 +180,13 @@ function Gate() {
     if (verdict === 'open') {
       // Nothing to ask. The splash clears and the dashboard is underneath.
       asked.current = true;
+      // Latch it. `settings` is a live query, so turning the lock on from the
+      // Settings screen used to flip this verdict back to 'locked' under a
+      // running app: the gate stopped rendering the shell, the effect had
+      // already fired, and the screen went blank until a reload. A session
+      // that has been let in stays in — which is also what the confirmation
+      // promises, that you'll be asked next time the app opens.
+      setUnlocked(true);
       dismissSplash(() => feedback('launch'));
       return;
     }

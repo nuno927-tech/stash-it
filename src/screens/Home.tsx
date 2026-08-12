@@ -5,10 +5,17 @@ import type { Doc, Item } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
 import { prefsFrom } from '@/lib/prefs';
-import { formatMoney, warrantyLabel, warrantyState, type WarrantyState } from '@/lib/warranty';
+import {
+  effectiveExpiry,
+  formatMoney,
+  warrantyLabel,
+  warrantyState,
+  type WarrantyState,
+} from '@/lib/warranty';
 import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { Scout } from '@/components/Scout';
+import { TimeLeft } from '@/components/TimeLeft';
 import { useThumbUrl } from '@/components/useThumbUrl';
 
 /**
@@ -87,11 +94,12 @@ export function Home({
           <span className="nextup-txt">
             <span className="fieldlabel">Next to expire</span>
             <strong>{m.nextToExpire.item.name}</strong>
-            <small>{warrantyLabel(m.nextToExpire.item)} of cover left</small>
+            {/* The date, not the countdown again. The countdown is on the
+                right in the same type the Items list uses; saying it twice in
+                two different formats was the whole confusion. */}
+            <small>{endsOn(m.nextToExpire.item)}</small>
           </span>
-          <span className={`chip ${CHIP[warrantyState(m.nextToExpire.item)]}`}>
-            {warrantyLabel(m.nextToExpire.item)}
-          </span>
+          <TimeLeft item={m.nextToExpire.item} />
         </button>
       )}
 
@@ -390,6 +398,17 @@ function shortMoney({ currency, cents }: { currency: string; cents: number }): s
   } catch {
     return formatMoney(cents, currency);
   }
+}
+
+/** "Ends 14 Mar 2027" — the fact the countdown on the right doesn't carry. */
+function endsOn(item: Item): string {
+  const end = effectiveExpiry(item);
+  if (!end) return 'No warranty recorded';
+  return `Ends ${end.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })}`;
 }
 
 function EmptyHome({ onAdd }: { onAdd: () => void }) {

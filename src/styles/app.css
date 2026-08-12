@@ -1464,6 +1464,15 @@ a.pick {
   gap: 9px;
 }
 
+/* A fact about the action, carried on the button itself — the size of the
+   export, and nothing that needs its own row. Quieter than the label so it
+   reads as a detail rather than a second instruction. */
+.btnnote {
+  font-weight: 500;
+  opacity: 0.62;
+  font-variant-numeric: tabular-nums;
+}
+
 /* -------------------------------------------------------------- settings */
 
 .setcard {
@@ -2420,6 +2429,17 @@ button.prodhero {
   font-size: 14px;
 }
 
+/* The same field, sitting where a dropdown or a switch would. Sized to match
+   `select.compact` so the right-hand column of the card lines up rather than
+   having one control that's twice the height of its neighbours. */
+.setinput.compact {
+  width: 8.5em;
+  flex: none;
+  font-size: 13px;
+  padding: 9px 12px;
+  text-align: right;
+}
+
 /* Over the splash, at the bottom, and only when something has gone wrong.
    Not a lock screen — the two states where doing nothing would leave someone
    staring at a mark with no way past it. */
@@ -2676,6 +2696,12 @@ button.countpill.tappill:active {
 .doctiles.two {
   grid-template-columns: repeat(2, 1fr);
   margin-top: 8px;
+}
+
+/* On the item page there's no card behind them, and the default fill is the
+   page's own colour. */
+.doctiles.raised .doctile {
+  background: var(--slate-700);
 }
 
 .doctile {

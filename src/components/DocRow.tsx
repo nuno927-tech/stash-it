@@ -10,6 +10,7 @@ import {
   downloadDoc,
   formatBytes,
   openDoc,
+  renameDoc,
   type DocWithFile,
 } from '@/lib/docs';
 
@@ -183,7 +184,7 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
       {retyping && (
         <div className="sheet">
           <h4>What is this document?</h4>
-          <div className="chiprow" style={{ marginBottom: 0 }}>
+          <div className="chiprow">
             {DOC_KINDS.map((k) => (
               <button
                 key={k.kind}
@@ -200,6 +201,21 @@ export function DocRow({ doc }: { doc: DocWithFile }) {
               </button>
             ))}
           </div>
+
+          {/* Naming belongs here rather than on the way in. Attaching asks for
+              nothing but the file, so the one time a title is worth typing is
+              when you're looking at a row that doesn't say enough. */}
+          <label className="field">
+            <span className="fieldlabel">Call it something else</span>
+            <input
+              type="text"
+              defaultValue={docSubtitle(doc) ?? ''}
+              placeholder={docHeadline(doc)}
+              enterKeyHint="done"
+              onBlur={(e) => void renameDoc(doc.id, e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+          </label>
         </div>
       )}
 

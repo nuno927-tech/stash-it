@@ -215,6 +215,23 @@ export async function changeDocKind(docId: string, kind: DocKind): Promise<void>
 }
 
 /**
+ * Renames a document.
+ *
+ * Attaching asks for nothing but the file, so this is where a title gets
+ * written when the automatic one isn't good enough. An empty title is stored
+ * as the kind rather than as nothing, which is what every other path does and
+ * what `docHeadline` expects to find.
+ */
+export async function renameDoc(docId: string, title: string): Promise<void> {
+  const doc = await db.docs.get(docId);
+  if (!doc) return;
+
+  const next = title.trim() || DOC_KIND_LABEL[doc.kind];
+  if (next === doc.title) return;
+  await db.docs.update(docId, { title: next, updatedAt: nowISO() });
+}
+
+/**
  * Soft delete, then drop the blob if nothing else points at it. Blobs are
  * deduped by hash, so the same receipt attached to two items shares one
  * record — deleting one attachment must not take the other's file with it.

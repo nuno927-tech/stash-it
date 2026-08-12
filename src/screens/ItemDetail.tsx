@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { activeRooms, softDeleteItem } from '@/db/repo';
 import type { DocKind, Item } from '@/db/types';
 import { feedback } from '@/lib/feedback';
-import { docsWithFiles } from '@/lib/docs';
+import { attachFile, docsWithFiles, DocError } from '@/lib/docs';
 import { phoneHref } from '@/lib/format';
 import {
   effectiveExpiry,
@@ -13,9 +13,10 @@ import {
   warrantyState,
   type WarrantyState,
 } from '@/lib/warranty';
-import { AttachDoc } from '@/components/AttachDoc';
 import { DocRow } from '@/components/DocRow';
+import { DocTiles } from '@/components/DocTiles';
 import { ItemIcon } from '@/components/ItemIcon';
+import { LinkDoc } from '@/components/LinkDoc';
 import { PhotoViewer } from '@/components/PhotoViewer';
 import { useItemPhotos } from '@/components/useItemPhotos';
 import { WarrantyRing, STATE_STROKE } from '@/components/WarrantyRing';
@@ -43,7 +44,8 @@ export function ItemDetail({
   const room = rooms.find((r) => r.id === item.roomId);
 
   const [confirming, setConfirming] = useState(false);
-  const [attaching, setAttaching] = useState<DocKind | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [docError, setDocError] = useState<string>();
   const [viewing, setViewing] = useState<number | null>(null);
   const shots = useItemPhotos(item);
 
@@ -172,36 +174,43 @@ export function ItemDetail({
         <span>{docs.length}</span>
       </div>
 
-      {docs.length === 0 && !attaching && (
-        <p className="hint">
-          Nothing attached yet. The receipt and the warranty policy are the two a claim will ask
-          for.
-        </p>
-      )}
-
       {docs.map((d) => (
         <DocRow key={d.id} doc={d} />
       ))}
 
-      {attaching ? (
-        <AttachDoc
+      {/* The same tiles as the add form: one tap says what it is and opens the
+          picker, and the file's own name becomes the title. Nothing to fill
+          in — the sheet that used to be here asked for the kind you'd already
+          chosen, then a source, then a title, before it would take the file. */}
+      <DocTiles
+        raised
+        onFiles={(kind, files) => {
+          setDocError(undefined);
+          void attachAll(item.id, kind, files).catch((e: unknown) => {
+            feedback('error');
+            setDocError(e instanceof DocError ? e.message : (e as Error).message);
+          });
+        }}
+      />
+
+      {docError && <div className="notice bad">{docError}</div>}
+
+      {docs.length === 0 && (
+        <p className="hint">
+          Nothing attached yet. The receipt and the warranty are the two a claim will ask for.
+        </p>
+      )}
+
+      <button type="button" className="linkish morelink" onClick={() => setLinking(true)}>
+        Link to one on the web
+      </button>
+
+      {linking && (
+        <LinkDoc
           itemId={item.id}
-          defaultKind={attaching}
-          onDone={() => setAttaching(null)}
-          onCancel={() => setAttaching(null)}
+          onDone={() => setLinking(false)}
+          onCancel={() => setLinking(false)}
         />
-      ) : (
-        <div className="photoactions">
-          <button type="button" className="minibtn" onClick={() => setAttaching('warranty')}>
-            Add warranty
-          </button>
-          <button type="button" className="minibtn ghost" onClick={() => setAttaching('receipt')}>
-            Add receipt
-          </button>
-          <button type="button" className="minibtn ghost" onClick={() => setAttaching('manual')}>
-            Add manual
-          </button>
-        </div>
       )}
 
       {confirming ? (
@@ -230,6 +239,19 @@ export function ItemDetail({
       )}
     </>
   );
+}
+
+/**
+ * Writes a whole selection. Several files from one tap are pages of one
+ * document — a three-page warranty photographed page by page — so they're
+ * numbered in the order they were picked. A single file keeps whatever
+ * `attachFile` makes of its filename.
+ */
+async function attachAll(itemId: string, kind: DocKind, files: File[]): Promise<void> {
+  for (const [i, file] of files.entries()) {
+    await attachFile(itemId, kind, file, files.length > 1 ? `Page ${i + 1}` : undefined);
+  }
+  feedback('attach');
 }
 
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
