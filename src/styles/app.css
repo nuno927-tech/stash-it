@@ -815,6 +815,32 @@ button.coverstat:active {
   color: var(--muted);
 }
 
+/* The icon and the name are one line, not a name with a glyph floating near
+   it. Neither class was defined, so the icon sat on its own baseline and the
+   name wrapped underneath it on a narrow phone. */
+.roomtitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomglyph {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--slate-700);
+  color: var(--muted);
+  font-style: normal;
+}
+
 .roomrow input {
   flex: 1;
   padding: 9px 11px !important;
@@ -829,6 +855,46 @@ button.coverstat:active {
 
 .addroom input {
   flex: 1;
+}
+
+/* The same job in the item form. It had no rules, so the field and its Add
+   button stacked instead of sitting on one line. */
+.newroom {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.newroom input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The filter you arrived with, and the way out of it. Unstyled it was a grey
+   browser button announcing "No proof of purchase · 3 of 41" — which reads as
+   an error rather than as something you chose and can undo. */
+.activefilter {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  padding: 7px 13px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--wash-gold-line);
+  background: var(--wash-gold-soft);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.activefilter span {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.activefilter:active {
+  background: var(--wash-gold);
 }
 
 .navrow {
