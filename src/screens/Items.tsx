@@ -31,11 +31,18 @@ const FILTER_LABEL: Record<ItemsFilter, string> = {
 
 type Sort = 'room' | 'name' | 'expiry' | 'recent';
 
+/**
+ * Ordered by how often the answer is wanted, not alphabetically and not by
+ * how the type union happens to read. Expiring is the default and therefore
+ * first; Room is the most specific question and goes last.
+ */
+const SORTS: Sort[] = ['expiry', 'recent', 'name', 'room'];
+
 const SORT_LABEL: Record<Sort, string> = {
-  room: 'Room',
-  name: 'A–Z',
   expiry: 'Expiring',
   recent: 'Newest',
+  name: 'A–Z',
+  room: 'Room',
 };
 
 const UNASSIGNED = '\0unassigned';
@@ -138,15 +145,26 @@ export function Items({
 
   return (
     <>
-      <header className="apphead">
-        <div className="apptitle">Items</div>
-        <span className="headmark">
-          <span className="countpill">{all.length}</span>
-          <Scout pose="receipt" height={44} motion={['breathe']} alt="" />
-        </span>
-      </header>
+      {/*
+        Title, search and filters travel together and stick to the top. On a
+        list this long, scrolling used to take the search box with it — so
+        finding something meant scrolling back up first, which is the opposite
+        of what a search box is for.
 
-      <div className="searchbar">
+        Scout stands to the right across both rows. The search field is
+        shortened to make the room rather than him being squeezed into a
+        corner; the field was wider than any query anyone types anyway.
+      */}
+      <div className="itemshead">
+        <header className="apphead">
+          <div className="apptitle">Items</div>
+        </header>
+
+        <div className="itemsmark">
+          <Scout pose="receipt" height={104} motion={['breathe']} alt="" />
+        </div>
+
+        <div className="searchbar">
         <svg
           width="18"
           height="18"
@@ -188,14 +206,11 @@ export function Items({
             </svg>
           </button>
         )}
-      </div>
+        </div>
 
-      {searching ? (
-        <SearchResults hits={hits} onOpenItem={onOpenItem} />
-      ) : (
-        <>
+        {!searching && (
           <div className="chiprow">
-            {(Object.keys(SORT_LABEL) as Sort[]).map((s) => (
+            {SORTS.map((s) => (
               <button
                 key={s}
                 type="button"
@@ -206,7 +221,13 @@ export function Items({
               </button>
             ))}
           </div>
+        )}
+      </div>
 
+      {searching ? (
+        <SearchResults hits={hits} onOpenItem={onOpenItem} />
+      ) : (
+        <>
           {active && (
             <button type="button" className="activefilter" onClick={() => setActive(undefined)}>
               {FILTER_LABEL[active]} · {filtered.length} of {all.length}

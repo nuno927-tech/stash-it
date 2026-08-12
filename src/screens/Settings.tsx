@@ -75,10 +75,15 @@ export function Settings({
     <>
       <header className="apphead">
         <div className="apptitle">Settings</div>
-        <span className="headmark">
-          <Scout pose="settings" height={48} motion={['breathe']} alt="" />
-        </span>
       </header>
+
+      {/* His own card rather than a decoration in the header. It's the one
+          screen that's entirely about adjusting things, and he's at a control
+          desk doing exactly that. */}
+      <div className="card scoutcard">
+        <Scout pose="settings" height={110} motion={['breathe']} alt="" />
+        <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
+      </div>
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 

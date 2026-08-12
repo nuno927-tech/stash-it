@@ -43,11 +43,11 @@ const TO = 'src/assets/mascot';
  */
 const POSES = [
   { name: 'acorn', size: 400 }, // 200 on the empty dashboard
-  { name: 'alert', size: 260 }, // 120 when a search finds nothing
+  { name: 'alert', size: 300 }, // 130 beside what needs doing
   { name: 'receipt', size: 360 }, // 180 on the empty items list
-  { name: 'report', size: 200 }, // 72 on the cover card
-  { name: 'resting', size: 180 }, // 64 when there's nothing to do
-  { name: 'settings', size: 160 }, // 48 in the settings header
+  { name: 'report', size: 320 }, // 150 beside the ring
+  { name: 'resting', size: 240 }, // 110 when there's nothing to do
+  { name: 'settings', size: 240 }, // 110 on its own card
   { name: 'waving', size: 320 }, // 150 on the welcome sheet
 ];
 
@@ -87,31 +87,6 @@ for (const { name, size } of POSES) {
   const out = `${TO}/scout-${name}.webp`;
   console.log(execFileSync('python3', ['-c', python, name, String(size), out]).toString().trim());
 }
-
-/**
- * The avatar is the head of the acorn pose, not a separate render. A 36px
- * circle of a full-body mascot is a grey smudge; cropping to the face is the
- * only way anything reads at that size.
- */
-const avatar = `
-from PIL import Image
-import numpy as np
-img = Image.open('${TO}/scout-acorn.webp')
-a = np.asarray(img)[..., 3]
-box = Image.fromarray((a > 8).astype('uint8') * 255).getbbox()
-x0, y0, x1, y1 = box
-w = x1 - x0
-# The head occupies roughly the top 45% of the standing poses. Square, and
-# centred on the face rather than on the bounding box.
-side = int(w * 0.60)
-cx = (x0 + x1) // 2
-cy = y0 + int((y1 - y0) * 0.19)
-img.crop((cx - side // 2, cy - side // 2, cx + side // 2, cy + side // 2)).resize(
-    (160, 160), Image.LANCZOS
-).save('${TO}/scout-avatar.webp', 'WEBP', quality=90, method=6)
-print('avatar    160x160')
-`;
-console.log(execFileSync('python3', ['-c', avatar]).toString().trim());
 
 /**
  * The launch screen loads its image from /public directly — it paints before

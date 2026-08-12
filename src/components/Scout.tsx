@@ -1,6 +1,5 @@
 import acorn from '@/assets/mascot/scout-acorn.webp';
 import alert from '@/assets/mascot/scout-alert.webp';
-import avatar from '@/assets/mascot/scout-avatar.webp';
 import receipt from '@/assets/mascot/scout-receipt.webp';
 import report from '@/assets/mascot/scout-report.webp';
 import resting from '@/assets/mascot/scout-resting.webp';
@@ -22,7 +21,6 @@ import waving from '@/assets/mascot/scout-waving.webp';
  *   settings  at a control desk — settings
  *   alert     ears up, something needs you
  *   resting   curled up, nothing does
- *   avatar    a face, for the places 36px is all there is
  *
  * Cut from paired renders — see scripts/mascot.mjs. Every pose has a real
  * alpha channel including its contact shadow, so they sit on cream and on
@@ -39,8 +37,7 @@ export type ScoutPose =
   | 'receipt'
   | 'settings'
   | 'alert'
-  | 'resting'
-  | 'avatar';
+  | 'resting';
 
 export type ScoutMotion = 'float' | 'breathe' | 'alert' | 'pop' | 'none';
 
@@ -52,7 +49,6 @@ const SRC: Record<ScoutPose, string> = {
   settings,
   alert,
   resting,
-  avatar,
 };
 
 const MOTION_CLASS: Record<ScoutMotion, string> = {

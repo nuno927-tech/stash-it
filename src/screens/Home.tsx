@@ -48,9 +48,6 @@ export function Home({
           </span>
           <h1>{greeting(prefsFrom(settings).displayName)}</h1>
         </div>
-        <div className="avatar">
-          <Scout pose="avatar" height={36} alt="Scout" />
-        </div>
       </header>
 
       {m.endingSoon > 0 && (
@@ -146,7 +143,10 @@ function CoverCard({
   const tracked = m.covered + m.endingSoon + m.expired;
   const pct = tracked === 0 ? 0 : Math.round(((m.covered + m.endingSoon) / tracked) * 100);
 
-  const size = 208;
+  // Smaller than it was alone, because Scout now stands beside it rather than
+  // perching in a corner. A 208 ring and a mascot worth looking at don't both
+  // fit across a phone, and a mascot too small to read is just clutter.
+  const size = 176;
   const stroke = 6;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -163,12 +163,11 @@ function CoverCard({
 
   return (
     <div className="covercard">
-      {/* Scout presenting the figures. It's a field report — his, about your
-          house — and the pose is the only thing on the card that says the
-          numbers were gathered rather than merely displayed. */}
-      <Scout pose="report" height={72} motion={['breathe']} alt="" />
-
-      <div className="coverring">
+      {/* Scout presenting the figures, standing at the ring's shoulder. It's a
+          field report — his, about your house — and the pose is the only thing
+          on the card saying the numbers were gathered rather than displayed. */}
+      <div className="coverrow">
+        <div className="coverring">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
             <circle
@@ -204,13 +203,16 @@ function CoverCard({
             })}
           </g>
         </svg>
-        <div className="coverring-mid">
-          <strong>
-            {pct}
-            <i>%</i>
-          </strong>
-          <span>still covered</span>
+          <div className="coverring-mid">
+            <strong>
+              {pct}
+              <i>%</i>
+            </strong>
+            <span>still covered</span>
+          </div>
         </div>
+
+        <Scout pose="report" height={148} motion={['breathe']} alt="" />
       </div>
 
       <div className="coverstats">
@@ -253,7 +255,9 @@ function NeedsCard({
         {/* Asleep, because there is nothing to do. The pose carries the state
             faster than the heading does, and it's the only place in the app
             that gets to say "finished". */}
-        <Scout pose="resting" height={64} motion={['breathe']} alt="" />
+        <div className="needsaside">
+          <Scout pose="resting" height={104} motion={['breathe']} alt="" />
+        </div>
         <div className="needsdone-txt">
           <h3>Nothing needs you</h3>
           <p>Every item has a receipt, a warranty length, a date and a photo.</p>
@@ -264,31 +268,35 @@ function NeedsCard({
 
   return (
     <div className="card needscard">
-      <div className="cardhead">
-        {/* Ears up. Same card, opposite posture — the difference between the
-            two states should be legible before a word is read. */}
-        <span className="needshead">
-          <Scout pose="alert" height={40} motion={['alert']} alt="" />
-          <h3>Needs a minute</h3>
-        </span>
-        <span className="countpill">{gaps.reduce((n, g) => n + g.count, 0)}</span>
+      {/* Ears up, down the left of the card. Same card, opposite posture — the
+          difference between the two states should be legible before a word
+          is read. */}
+      <div className="needsaside">
+        <Scout pose="alert" height={124} motion={['alert']} alt="" />
       </div>
 
-      {gaps.map((gap) => (
-        <button
-          key={gap.kind}
-          type="button"
-          className="needrow"
-          onClick={() => onBrowse(GAP_FILTER[gap.kind])}
-        >
-          <span className="needcount">{gap.count}</span>
-          <span className="needtxt">
-            <strong>{gap.label.replace(/^\d+ /, '')}</strong>
-            <small>{gap.why}</small>
-          </span>
-          <Chevron />
-        </button>
-      ))}
+      <div className="needsbody">
+        <div className="cardhead">
+          <h3>Needs a minute</h3>
+          <span className="countpill">{gaps.reduce((n, g) => n + g.count, 0)}</span>
+        </div>
+
+        {gaps.map((gap) => (
+          <button
+            key={gap.kind}
+            type="button"
+            className="needrow"
+            onClick={() => onBrowse(GAP_FILTER[gap.kind])}
+          >
+            <span className="needcount">{gap.count}</span>
+            <span className="needtxt">
+              <strong>{gap.label.replace(/^\d+ /, '')}</strong>
+              <small>{gap.why}</small>
+            </span>
+            <Chevron />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
