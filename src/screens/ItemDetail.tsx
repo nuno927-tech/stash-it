@@ -17,6 +17,7 @@ import {
   warrantyState,
   type WarrantyState,
 } from '@/lib/warranty';
+import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { CoverList } from '@/components/CoverList';
 import { DocRow } from '@/components/DocRow';
 import { DocTiles } from '@/components/DocTiles';
@@ -224,29 +225,22 @@ export function ItemDetail({
         />
       )}
 
-      {confirming ? (
-        <div className="sheet">
-          <h4>
-            Delete {item.name}? It moves to the bin for 30 days, and deleting frees a free-tier slot
-            straight away.
-          </h4>
-          <button type="button" className="choice danger" onClick={onDelete}>
-            <b>Delete</b>
-            <span>Recoverable for 30 days, then gone for good.</span>
-          </button>
-          <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>
-            Keep it
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="btn ghost wide"
-          aria-expanded={false}
-          onClick={() => setConfirming(true)}
-        >
-          Delete item
-        </button>
+      <button
+        type="button"
+        className="btn ghost wide"
+        aria-haspopup="dialog"
+        aria-expanded={confirming}
+        onClick={() => setConfirming(true)}
+      >
+        Delete item
+      </button>
+
+      {confirming && (
+        <ConfirmDelete
+          name={item.name}
+          onConfirm={onDelete}
+          onCancel={() => setConfirming(false)}
+        />
       )}
 
       {/* Last in the tree, first on the screen — it portals to the body, so

@@ -71,7 +71,7 @@ export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
   { pose: 'receipt', name: 'Paperwork', where: 'The items list' },
   { pose: 'folder', name: 'Filing day', where: 'After you save something, and in the tour' },
   { pose: 'settings', name: 'At the desk', where: 'This screen' },
-  { pose: 'alert', name: 'Ears up', where: 'When something needs a minute' },
+  { pose: 'alert', name: 'Ears up', where: 'When something needs a minute, or needs confirming' },
   { pose: 'resting', name: 'Off duty', where: 'When nothing does' },
   { pose: 'lounge', name: 'Feet up', where: 'The tip jar' },
 ];

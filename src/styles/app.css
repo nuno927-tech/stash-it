@@ -3240,36 +3240,38 @@ button.countpill.tappill:active {
   color: var(--muted);
 }
 
-/* ----------------------------------------------------- stash the paper too */
+/* ------------------------------------------------------- dialogs with Scout */
 
 /*
-  Shown after every save. It started as a strip along the top of the item page,
-  which is the polite version and the version you stop seeing by the fourth
-  one. A dialog gets read.
+  Two of these: "now file the paper" after a save, and the delete
+  confirmation. Both were inline blocks in the page before, and both were
+  being missed for the same reason — one was a strip you stop registering, the
+  other opened below the bottom of the screen.
 
-  Everything below is the other half of that bargain: something you have to
-  dismiss a few hundred times has to be trivially dismissable. Four ways out —
-  the ×, the button, a swipe either way, and the scrim.
+  Everything below is the other half of that bargain. Something you have to
+  dismiss a few hundred times has to be trivially dismissable, so there are
+  four ways out and all of them mean cancel.
 */
-.paperscrim {
+.dlgscrim {
   position: fixed;
   inset: 0;
   z-index: 80;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 16px;
-  background: rgba(6, 8, 12, 0.62);
+  padding: 18px 14px;
+  background: rgba(6, 8, 12, 0.66);
   backdrop-filter: blur(2px);
   animation: scrimIn 0.18s ease both;
 }
 
-.papermodal {
+.dlgcard {
   position: relative;
   width: 100%;
-  max-width: 340px;
+  /* Wider than the sheets elsewhere: Scout is the point of this one, and at
+     340 he was a thumbnail with a paragraph under him. */
+  max-width: 400px;
   max-height: 100%;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3277,53 +3279,97 @@ button.countpill.tappill:active {
   background: var(--slate-800);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  padding: 18px 20px 16px;
+  padding: 16px 22px 20px;
   animation: cardIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
-  /* The card interprets vertical drags itself; leaving this to the browser
-     meant the first few pixels went to a scroll that had nowhere to go. */
+  /* The card interprets vertical drags itself; left to the browser, the first
+     few pixels went to a scroll that had nowhere to go. Scrolling, for the
+     rare case that needs it, belongs to .dlgscroll inside. */
   touch-action: none;
   cursor: grab;
 }
 
-.papermodal:active {
+.dlgcard:active {
   cursor: grabbing;
+}
+
+.dlgscroll {
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* pan-y, not none: this is the one part that may need to scroll, and pan-y
+     under the scrim's own axis still leaves the browser able to do it. */
+  touch-action: pan-y;
+}
+
+/* Scout gives room back on a short phone rather than pushing the buttons off
+   the bottom of a four-inch screen. */
+.dlgcard .rig img {
+  max-height: 30vh;
+  width: auto;
 }
 
 /* The only hint that the card can be thrown. A dialog with no visible handle
    is a dialog nobody tries to swipe. */
-.paperpill {
-  width: 38px;
+.dlgpill {
+  width: 40px;
   height: 4px;
   flex: none;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border-radius: var(--r-pill);
   background: var(--slate-600);
 }
 
-.paperclose {
+.dlgclose {
   position: absolute;
   top: 8px;
   right: 8px;
 }
 
-.papermodal h2 {
+.dlgcard h2 {
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 25px;
+  font-size: 28px;
   letter-spacing: -0.03em;
-  margin: 10px 0 7px;
+  line-height: 1.15;
+  margin: 12px 0 8px;
+  /* "Delete <name>?" takes whatever the item is called, and some of them are
+     a model number and a paragraph. Three lines is a title; six is the dialog
+     eating the buttons. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
-.papermodal p {
-  font-size: 13px;
+.dlgcard p {
+  font-size: 14px;
   font-weight: 300;
   line-height: 1.6;
   color: var(--muted);
-  max-width: 32ch;
+  max-width: 30ch;
 }
 
-.papermodal .btn {
-  margin-top: 16px;
+.dlgcard > .btn {
+  margin-top: 18px;
+}
+
+/* Two answers rather than one acknowledgement. Full width so neither is the
+   narrow one your thumb misses. */
+.dlgactions {
+  width: 100%;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.dlgactions .btn {
+  margin: 0;
 }
 
 /* ------------------------------------------------------- the items header */
