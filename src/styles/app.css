@@ -803,8 +803,16 @@ button.coverstat:active {
   list-style: none;
   margin: 0;
   padding: 0;
-  /* Stops the browser claiming vertical drags for scrolling mid-reorder. */
-  touch-action: pan-x;
+  /*
+    No touch-action here. It used to say `pan-x`, meaning "the browser may pan
+    horizontally and nothing else" — and touch-action intersects down the
+    ancestor chain, so pan-x against the scroller's pan-y left `none`. A touch
+    starting anywhere on this list scrolled in no direction at all, which on a
+    property with more rooms than fit the screen made the rest unreachable.
+
+    The drag never needed it. It starts on `.grip`, which sets
+    `touch-action: none` on itself; that is the element the browser consults.
+  */
 }
 
 .roomrow {
@@ -2162,14 +2170,15 @@ a.pick {
   animation: sheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.grip {
-  position: absolute;
-  top: 14px;
-  width: 38px;
-  height: 4px;
-  border-radius: var(--r-pill);
-  background: var(--slate-600);
-}
+/*
+  The sheet's drag pill used to live here as `.grip`. Nothing rendered it —
+  Welcome is the only user of `.fullsheet` and it draws no handle — but the
+  name collided with the room list's reorder handle 1,300 lines above, and
+  being later it won. Every one of those handles turned into a 38×4 grey bar,
+  absolutely positioned, so all of them stacked in one corner on top of the
+  back arrow and none appeared on their rows. Deleted rather than renamed:
+  there is no sheet to drag.
+*/
 
 .fullsheet h2 {
   font-family: var(--font-display);
@@ -2408,18 +2417,12 @@ button.prodhero {
 
 /* ----------------------------------------------------------- needs a minute */
 
-.needscard {
-  padding: 16px 4px 6px 16px;
-  margin-bottom: 12px;
-}
-
+/* The card's own box is set with the rest of its layout, down in "needs
+   attention" — two `.needscard {` rules in one sheet is how the room grips
+   came to be 4px tall. Only what's specific to the rows lives here. */
 .needscard .cardhead,
 .needscard > .hint {
   margin-right: 12px;
-}
-
-.needscard.done {
-  padding-bottom: 16px;
 }
 
 .needrow {
@@ -3204,6 +3207,7 @@ button.countpill.tappill:active {
   align-items: stretch;
   gap: 12px;
   padding: 14px 4px 6px 12px;
+  margin-bottom: 12px;
 }
 
 .needsaside {
