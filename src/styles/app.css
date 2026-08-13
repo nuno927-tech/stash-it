@@ -2845,10 +2845,13 @@ button.countpill.tappill:active {
 }
 
 .nudge {
+  /* A column flex container doesn't constrain its children's width, so
+     anything wider than the card pushes out of it rather than wrapping. */
+  min-width: 0;
   border: 1px solid var(--wash-gold-line);
   background: var(--wash-gold-soft);
   border-radius: var(--r-lg);
-  padding: 13px 14px;
+  padding: 14px 14px 15px;
 }
 
 .nudge-txt strong {
@@ -2865,11 +2868,28 @@ button.countpill.tappill:active {
   color: var(--muted);
 }
 
+/*
+  Centred under the text, and allowed to wrap.
+
+  Both buttons declare `flex: none` in their own rules — sensible where they
+  sit beside a growing label in a settings row, wrong here: a flex row of items
+  that refuse to shrink and can't wrap overflows its card rather than
+  rearranging, which is exactly what it did. Overridden to shrink, told to
+  wrap, and centred so a single button doesn't hug the left edge of a card
+  whose text it belongs to.
+*/
 .nudge-acts {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.nudge-acts > button {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* The tip is the one nudge that asks rather than warns, so it drops the
