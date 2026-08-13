@@ -75,27 +75,39 @@
       */
       #splash.waiting {
         justify-content: flex-start;
-        padding-top: 4vh;
+        padding-top: 2.5vh;
         gap: 12px;
       }
       /*
-        Only Scout shrinks. The wordmark and the line under it stay exactly as
-        they are in the centred state — the two launches should read as the
-        same screen in two positions, not as two different screens, and the
-        title changing size is what would give that away. Scout has the room
-        to give up; the type doesn't.
+        Only Scout changes size. The wordmark and the line under it stay
+        exactly as they are in the centred state — the two launches should read
+        as the same screen in two positions, not as two different screens, and
+        the title changing size is what would give that away. Scout has the
+        room to give up; the type doesn't.
+
+        The ceiling is what has to fit above Android's prompt, which claims
+        roughly the bottom two thirds. At 170px the whole block — Scout, the
+        wordmark and the subtitle — comes to about 35vh on a phone, so the
+        platform's sheet lands just under it.
       */
       #splash.waiting img {
-        height: 108px;
+        height: min(21vh, 170px);
       }
       #splash.waiting p {
         margin-top: -4px;
       }
-      /* Height, not a square box. The cut-out is portrait now that it's
-         cropped to the subject rather than to the whole render, and a square
-         with object-fit would leave 40px of nothing either side. */
+      /*
+        Centred, with no dialog coming, Scout takes the screen.
+
+        Sized by height and capped against the width, because the cut-out is
+        portrait — 206 × 400, so it's roughly twice as tall as it is wide.
+        Sizing it by width would make a squirrel the height of the phone; the
+        170vw ceiling is that ratio in reverse, holding him to about 85% of the
+        screen's width on anything narrow. The 64vh leaves the wordmark and its
+        line the room they need on a short screen.
+      */
       #splash img {
-        height: 200px;
+        height: min(64vh, 170vw);
         width: auto;
         animation: splashFloat 4.4s ease-in-out infinite;
       }
