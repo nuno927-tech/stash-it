@@ -395,11 +395,13 @@ export function coverSummary(item: Item, now = new Date()): string | null {
   const all = coveragesOf(item);
   if (all.length < 2) return null;
 
-  const count = `${all.length} policies`;
+  // How many there are is drawn on the ring; this line is only for which one.
+  // Saying both put a number in two places on the same row, and the count was
+  // the less useful half — knowing it's the fabric tells you what to do.
   const next = nextToLapse(item, now);
-  if (next) return `${coverageLabel(next.coverage)} ends first · ${count}`;
-  if (hasLifetime(item)) return `Covered for life · ${count}`;
-  return `All ended · ${count}`;
+  if (next) return `${coverageLabel(next.coverage)} ends first`;
+  if (hasLifetime(item)) return 'Covered for life';
+  return 'Every policy has ended';
 }
 
 function sinceLabel(daysAgo: number): string {

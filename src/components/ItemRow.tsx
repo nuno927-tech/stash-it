@@ -1,5 +1,5 @@
 import type { Item } from '@/db/types';
-import { coverageArcs, coverSummary } from '@/lib/warranty';
+import { coverageArcs, coveragesOf, coverSummary } from '@/lib/warranty';
 import { ItemIcon } from './ItemIcon';
 import { TimeLeft } from './TimeLeft';
 import { MAX_RINGS, RING_STEP, WarrantyRing } from './WarrantyRing';
@@ -21,17 +21,26 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) =>
   // The photo gives up whatever the extra rings take, and no more. Computed
   // from the ring count rather than a class per count, because it has to match
   // the step the ring actually draws with — see WarrantyRing.
-  const rings = Math.min(coverageArcs(item).length, MAX_RINGS);
-  const inset = 5 + (rings - 1) * RING_STEP;
+  const arcs = coverageArcs(item);
+  const policies = coveragesOf(item).length;
+  const inset = 5 + (Math.min(arcs.length, MAX_RINGS) - 1) * RING_STEP;
 
   return (
     <button type="button" className="item" onClick={() => onOpen?.(item.id)}>
-      {/* One arc per policy, outermost expiring first. */}
+      {/* One arc per policy, outermost expiring first. The count sits on the
+          corner because the arcs stop being countable past three or so — and
+          past four they aren't all drawn, so the ring alone would understate
+          an item with six. */}
       <div className="thumbwrap">
-        <WarrantyRing size={50} stroke={3} arcs={coverageArcs(item)} />
+        <WarrantyRing size={50} stroke={3} arcs={arcs} />
         <div className="thumb" style={{ inset }}>
           {thumb ? <img src={thumb} alt="" /> : <ItemIcon item={item} />}
         </div>
+        {policies > 1 && (
+          <span className="ringcount" aria-label={`${policies} policies`}>
+            {policies}
+          </span>
+        )}
       </div>
 
       <div className="item-txt">

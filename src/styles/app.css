@@ -481,6 +481,34 @@ button.coverstat:active {
   transform: rotate(-90deg);
 }
 
+/*
+  How many policies, on the corner of the stack.
+
+  Deliberately not gold: a coloured dot on a thumbnail is the notification
+  vocabulary, and five policies is not a problem to fix. It reads as a count
+  because it's a number in a circle, and that's all it has to do. The border
+  is the row's own background, so it punches a hole in whichever arc it
+  overlaps instead of sitting on top of one.
+*/
+.ringcount {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  border: 2px solid var(--slate-700);
+  background: var(--slate-600);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* stroke-width is set per-instance by WarrantyRing, not here. */
 .ring circle {
   fill: none;
@@ -1068,6 +1096,27 @@ select.compact {
   border-radius: 13px;
   color: var(--gold);
   background: var(--wash-gold);
+}
+
+/*
+  A document's title comes from its filename, and filenames are long and
+  frequently have no spaces in them — "Bosch_SHXM4AY55N_extended_cover_2026.pdf"
+  is one unbreakable word as far as the layout is concerned. Without a floor of
+  zero on this flex item, that word sets the card's width and the card grows
+  past the screen. Every line inside it truncates rather than wraps: three
+  wrapped lines of filename is not more useful than one, and it costs the row
+  its shape.
+*/
+.doc-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-txt strong,
+.doc-txt small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .doc-txt strong {

@@ -263,21 +263,22 @@ async function main() {
   check('and nothing recorded still draws a track', noRing.length === 1);
   check('as an empty one', noRing[0]!.progress === 0 && noRing[0]!.state === 'unknown');
 
+  // The count lives on the ring badge, so this line carries only the name.
   check(
-    'the row names what ends first, and how many',
-    coverSummary(couch) === 'Fabric ends first · 5 policies',
+    'the row names what ends first',
+    coverSummary(couch) === 'Fabric ends first',
     String(coverSummary(couch)),
   );
   check('one policy gets no cover line', coverSummary(item({ warranty: { months: 12 } })) === null);
   check('nor does an item with none', coverSummary(empty) === null);
   check(
     'a lifetime-only survivor says so',
-    coverSummary(oldCouch) === 'Covered for life · 5 policies',
+    coverSummary(oldCouch) === 'Covered for life',
     String(coverSummary(oldCouch)),
   );
   check(
     'and everything lapsed says that',
-    coverSummary(noFrame) === 'All ended · 4 policies',
+    coverSummary(noFrame) === 'Every policy has ended',
     String(coverSummary(noFrame)),
   );
 
