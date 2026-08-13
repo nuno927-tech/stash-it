@@ -18,6 +18,7 @@ import {
 import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
+import { contactUrl, platformWord, type ContactKind } from '@/lib/contact';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
 import { armNudgePreview } from '@/lib/nudges';
 import {
@@ -887,6 +888,17 @@ function AboutApp({
   onTour: () => void;
 }) {
   const url = appUrl();
+
+  const writeIn = (kind: ContactKind) => {
+    feedback('tap');
+    // location, not window.open: a mailto in a new tab leaves an empty tab
+    // behind on desktop once the mail client takes over.
+    window.location.href = contactUrl(kind, {
+      version: __APP_VERSION__,
+      standalone: isStandalone(),
+      platform: platformWord(),
+    });
+  };
   // `settled` is true here on purpose: by the time someone is reading
   // Settings, the browser has long since decided whether it will offer a
   // button, and the written steps are better than an empty space.
@@ -924,6 +936,30 @@ function AboutApp({
         label="Take the tour"
         note="Six short screens on what the app does. Nothing changes by watching it."
         onClick={onTour}
+      />
+
+      {/*
+        A mailto, not a form. A form needs somewhere to post to and this app
+        has no server — so the mail app the user already has is the only piece
+        of infrastructure that's certain to exist. It also means they see the
+        whole message, context line included, before anything is sent.
+      */}
+      <Row
+        label="Ask a question"
+        note="Opens your mail app, addressed and with the version filled in."
+        onClick={() => writeIn('question')}
+      />
+
+      <Row
+        label="Suggest a feature"
+        note="What should it do that it doesn't? Every version so far came from someone asking."
+        onClick={() => writeIn('idea')}
+      />
+
+      <Row
+        label="Report something broken"
+        note="What happened, and what you expected instead."
+        onClick={() => writeIn('bug')}
       />
 
       <button
