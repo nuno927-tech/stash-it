@@ -3243,42 +3243,87 @@ button.countpill.tappill:active {
 /* ----------------------------------------------------- stash the paper too */
 
 /*
-  Shown after every save, so it is built to be seen a few hundred times: a low
-  wash rather than a card, no border, no button, nothing to dismiss. The
-  difference between a reminder and a nag is mostly how loud it is.
+  Shown after every save. It started as a strip along the top of the item page,
+  which is the polite version and the version you stop seeing by the fourth
+  one. A dialog gets read.
 
-  Scout on the left and the words on the right, matching the needs-attention
-  card — a second layout for a second small figure-plus-text block would be two
-  ways of saying the same thing.
+  Everything below is the other half of that bargain: something you have to
+  dismiss a few hundred times has to be trivially dismissable. Four ways out —
+  the ×, the button, a swipe either way, and the scrim.
 */
-.papercard {
+.paperscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding: 10px 14px 10px 6px;
-  border-radius: var(--r-md);
-  background: var(--wash-gold);
-  animation: bodyIn 0.3s ease both;
+  justify-content: center;
+  padding: 20px 16px;
+  background: rgba(6, 8, 12, 0.62);
+  backdrop-filter: blur(2px);
+  animation: scrimIn 0.18s ease both;
 }
 
-.papertxt {
-  flex: 1;
-  min-width: 0;
+.papermodal {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--slate-800);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 18px 20px 16px;
+  animation: cardIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* The card interprets vertical drags itself; leaving this to the browser
+     meant the first few pixels went to a scroll that had nowhere to go. */
+  touch-action: none;
+  cursor: grab;
 }
 
-.papertxt h4 {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--gold);
-  margin-bottom: 3px;
+.papermodal:active {
+  cursor: grabbing;
 }
 
-.papertxt p {
-  font-size: 11.5px;
+/* The only hint that the card can be thrown. A dialog with no visible handle
+   is a dialog nobody tries to swipe. */
+.paperpill {
+  width: 38px;
+  height: 4px;
+  flex: none;
+  margin-bottom: 10px;
+  border-radius: var(--r-pill);
+  background: var(--slate-600);
+}
+
+.paperclose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.papermodal h2 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 25px;
+  letter-spacing: -0.03em;
+  margin: 10px 0 7px;
+}
+
+.papermodal p {
+  font-size: 13px;
   font-weight: 300;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--muted);
+  max-width: 32ch;
+}
+
+.papermodal .btn {
+  margin-top: 16px;
 }
 
 /* ------------------------------------------------------- the items header */

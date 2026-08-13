@@ -1,5 +1,5 @@
 /**
- * Swiping between tabs.
+ * Swiping: between tabs, and throwing a card off the screen.
  *
  *   npm run test:swipe
  *
@@ -10,7 +10,12 @@
  */
 
 import {
+  dismissedByDrag,
+  DISMISS_FLICK_PIXELS,
+  DISMISS_PIXELS,
   DOMINANCE,
+  FLICK_PIXELS,
+  MIN_PIXELS,
   nextTab,
   startedAtEdge,
   swipeVerdict,
@@ -120,6 +125,31 @@ function main() {
   check('so does the right', startedAtEdge(W - 8, W));
   check('the middle is ours', !startedAtEdge(W / 2, W));
   check('and just inside the guard', !startedAtEdge(40, W));
+
+  /* ------------------------------------------------ throwing a card away */
+
+  /*
+    The paper reminder after every save. Deliberately looser than the tab
+    swipe, and the asymmetry is the argument: changing tabs by accident loses
+    your place, closing a reminder by accident costs nothing at all.
+  */
+  const d = (dy: number, elapsed = 500) => dismissedByDrag({ dy, elapsed });
+
+  check('a firm drag down closes it', d(DISMISS_PIXELS));
+  check('and so does one up — the card is centred, not anchored', d(-DISMISS_PIXELS));
+  check('a nudge does not', !d(12));
+  check('nor does a slow short drag', !d(DISMISS_FLICK_PIXELS + 2, 900));
+  check('but a flick that short does', d(DISMISS_FLICK_PIXELS + 2, 200));
+  check('a flick upward too', d(-(DISMISS_FLICK_PIXELS + 2), 200));
+  check('a tap is not a throw', !d(0, 90));
+
+  // Looser than the tab gesture, checked rather than asserted in a comment:
+  // the day someone tunes one of these, the relationship should hold.
+  check(
+    'it takes less than changing tabs',
+    DISMISS_PIXELS < MIN_PIXELS && DISMISS_FLICK_PIXELS < FLICK_PIXELS,
+    `${DISMISS_PIXELS} vs ${MIN_PIXELS}, ${DISMISS_FLICK_PIXELS} vs ${FLICK_PIXELS}`,
+  );
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

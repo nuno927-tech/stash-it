@@ -52,6 +52,13 @@ export function ItemDetail({
   const rooms = useLiveQuery(() => activeRooms(item.propertyId), [item.propertyId]) ?? [];
   const room = rooms.find((r) => r.id === item.roomId);
 
+  /*
+    Latched from the prop rather than read from it, so dismissing sticks. The
+    prop stays true for as long as this screen is on the stack — reading it
+    directly would put the dialog back on the next render.
+  */
+  const [paperOpen, setPaperOpen] = useState(justSaved);
+
   const [confirming, setConfirming] = useState(false);
   const [linking, setLinking] = useState(false);
   const [docError, setDocError] = useState<string>();
@@ -88,9 +95,6 @@ export function ItemDetail({
         </button>
       </header>
 
-      {/* Above the photo, not below the fold. The moment after saving is the
-          only moment the paper receipt is still in reach. */}
-      {justSaved && <StashThePaper />}
 
       {/* Tapping the photo opens it full screen. A receipt shot at arm's
           length is unreadable at this size, so the hero has to be a door. */}
@@ -244,6 +248,10 @@ export function ItemDetail({
           Delete item
         </button>
       )}
+
+      {/* Last in the tree, first on the screen — it portals to the body, so
+          where it sits here only decides what it reads after in the DOM. */}
+      {paperOpen && <StashThePaper onClose={() => setPaperOpen(false)} />}
     </>
   );
 }

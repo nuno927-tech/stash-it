@@ -70,6 +70,40 @@ export function swipeVerdict(g: Gesture): Direction | null {
   return g.dx < 0 ? 'left' : 'right';
 }
 
+/* ------------------------------------------------- throwing a card away */
+
+/**
+ * A drag that means "get this out of my way".
+ *
+ * Either direction. The card it dismisses is centred rather than anchored to
+ * an edge, so there is no correct way to throw it — insisting on downwards
+ * would only teach people the gesture doesn't work.
+ *
+ * Looser than the tab swipe on purpose. Changing tabs by accident loses your
+ * place; closing a reminder by accident costs nothing, and the reminder is
+ * shown after every single save. When the failure is that asymmetric, the
+ * threshold should be too.
+ *
+ * "Looser" means under MIN_PIXELS, not merely under the tab swipe's effective
+ * threshold on a phone. That one scales with the screen and the floor doesn't,
+ * so only beating the floor makes the claim true on every device rather than
+ * on the handset it happened to be tuned against. A test holds it to that.
+ */
+export const DISMISS_PIXELS = 44;
+export const DISMISS_FLICK_PIXELS = 24;
+
+export interface Drag {
+  dy: number;
+  /** Milliseconds from first contact to release. */
+  elapsed: number;
+}
+
+export function dismissedByDrag({ dy, elapsed }: Drag): boolean {
+  const ay = Math.abs(dy);
+  if (ay >= DISMISS_PIXELS) return true;
+  return elapsed <= FLICK_MS && ay >= DISMISS_FLICK_PIXELS;
+}
+
 /**
  * The system back gesture owns the screen edges on Android, and a swipe that
  * starts there is already spoken for. Ours must not also fire, or one gesture
