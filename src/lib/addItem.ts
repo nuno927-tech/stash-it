@@ -162,12 +162,12 @@ export const UNIT_LABEL: Record<CoverageUnit, string> = {
  * ones common enough to be worth saving the typing.
  */
 export const COVERAGE_LABELS = [
+  'Warranty',
+  'Limited warranty',
   'Extended warranty',
+  'Parts and labour',
   'Money back',
   'Free service',
-  'Parts',
-  'Labour',
-  'Frame',
 ];
 
 /** Examples of what a policy covers, shown as the field's placeholder. */

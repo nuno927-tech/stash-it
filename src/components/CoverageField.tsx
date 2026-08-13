@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { CoverageUnit, WarrantyUnit } from '@/db/types';
 import {
   blankCoverage,
@@ -92,6 +92,10 @@ function CoverageRow({
   const known = presets.includes(amount);
   const [custom, setCustom] = useState(!!draft.amount.trim() && !known);
   const [more, setMore] = useState(false);
+  // Set by the Custom chip, so an emptied field doesn't bring the presets
+  // back under the cursor mid-edit.
+  const [naming, setNaming] = useState(false);
+  const nameInput = useRef<HTMLInputElement>(null);
 
   const ends = coverEnds(purchaseDate, draft.unit, draft.amount);
 
@@ -101,6 +105,7 @@ function CoverageRow({
 
       <div className="covhead">
         <input
+          ref={nameInput}
           type="text"
           className="covname"
           value={draft.label}
@@ -131,8 +136,12 @@ function CoverageRow({
       </div>
 
       {/* Only offered while the name is still empty. Once it says "Fabric"
-          these are six ways to overwrite it by accident. */}
-      {!draft.label.trim() && (
+          these are six ways to overwrite it by accident.
+
+          Custom doesn't set anything — it puts the cursor in the field above
+          and gets out of the way. The field was always free text; without a
+          chip saying so, a row of preset names reads as the whole menu. */}
+      {!draft.label.trim() && !naming && (
         <div className="chiprow">
           {COVERAGE_LABELS.map((name) => (
             <button
@@ -144,6 +153,16 @@ function CoverageRow({
               {name}
             </button>
           ))}
+          <button
+            type="button"
+            className="pick"
+            onClick={() => {
+              setNaming(true);
+              nameInput.current?.focus();
+            }}
+          >
+            Custom
+          </button>
         </div>
       )}
 
