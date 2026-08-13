@@ -68,6 +68,28 @@ export function pushBack(onBack: () => void): () => void {
 }
 
 /**
+ * Hands the topmost entry to a different screen, keeping its history entry.
+ *
+ * For a sideways move at the same depth: the add form saves and becomes the
+ * item it just created. One screen replaces another, the stack is no deeper
+ * and no shallower, and there is exactly one thing to go back from.
+ *
+ * Doing it as release-then-push instead would be a race. `history.back()` is
+ * asynchronous; pushing a new entry before its popstate arrives leaves the
+ * browser's depth and ours disagreeing, which is the bug this whole module
+ * exists to avoid. Nothing needs to move — only the handler changes.
+ *
+ * Returns false when there was nothing to replace, so the caller can take an
+ * entry properly rather than assume it has one.
+ */
+export function replaceTopBack(onBack: () => void): boolean {
+  const top = stack[stack.length - 1];
+  if (!top) return false;
+  top.onBack = onBack;
+  return true;
+}
+
+/**
  * Drops every entry at once, for a jump that isn't "up" — tapping a tab while
  * three screens deep. Without it, Back afterwards would walk you through
  * screens you've visibly left.

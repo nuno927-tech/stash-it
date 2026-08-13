@@ -10,7 +10,7 @@
  * the depth of our stack always matches the number of entries we've taken.
  */
 
-import { backDepth, clearBack, pushBack } from '@/lib/backstack';
+import { backDepth, clearBack, pushBack, replaceTopBack } from '@/lib/backstack';
 
 let failures = 0;
 
@@ -119,6 +119,41 @@ function main() {
   check('without running any handler', jumped.length === 0, jumped.join());
 
   check('clearing an empty stack is safe', (clearBack(), backDepth() === 0));
+
+  /* ------------------------------------------------------- the swap */
+
+  /*
+    The bug, exactly as reported: back from an item you had just created left
+    the app, while back from the same item opened any other way went where it
+    should.
+
+    The add form took an entry. Saving handed it back and moved to the item —
+    a screen that never took one of its own. So the stack was empty, and back
+    belonged to the browser again. One screen with two behaviours, decided by a
+    route the user can't see.
+  */
+  const went: string[] = [];
+  const releaseAdd = pushBack(() => went.push('left the add form'));
+  check('the add form holds one entry', browser.depth() === 1 && backDepth() === 1);
+
+  const swapped = replaceTopBack(() => went.push('back to the items list'));
+  check('saving hands that entry to the item', swapped);
+  check('at the same depth — no deeper', browser.depth() === 1, String(browser.depth()));
+  check('and no shallower', backDepth() === 1, String(backDepth()));
+
+  browser.hist.back();
+  check('back now goes to the list', went.join() === 'back to the items list', went.join());
+  check('rather than out of the app', browser.depth() === 0 && backDepth() === 0);
+
+  // The release the shell was holding for the add form refers to an entry the
+  // gesture has already consumed. It must stay a no-op, or the next back press
+  // eats an entry that isn't ours.
+  releaseAdd();
+  check('the old release is inert afterwards', browser.depth() === 0 && backDepth() === 0);
+
+  // Nothing open: the caller has to be told, so it can take an entry properly
+  // instead of assuming it inherited one.
+  check('there is nothing to swap when nothing is open', !replaceTopBack(() => went.push('never')));
 
   /* ------------------------------------------------- past the last entry */
 

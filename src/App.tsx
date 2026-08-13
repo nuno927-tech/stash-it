@@ -13,7 +13,7 @@ import {
   watchInstallability,
   type InstallOffer,
 } from '@/lib/install';
-import { clearBack, pushBack } from '@/lib/backstack';
+import { clearBack, pushBack, replaceTopBack } from '@/lib/backstack';
 import {
   biometricsAvailable,
   clearLock,
@@ -380,14 +380,39 @@ function Shell() {
    * because two ways of stepping up that land in different places would be two
    * different gestures wearing the same name.
    *
+   * Takes the screen rather than reading the current one, because `replace`
+   * has to ask this about a screen that isn't open yet.
+   *
    * Null for the forms. Everything else on this list is something you're
    * reading, where leaving costs nothing.
    */
   const upFrom = (s: Screen): Screen | null => {
-    if (s.kind === 'detail') return back();
+    if (s.kind === 'detail') return s.from === 'home' ? { kind: 'home' } : { kind: 'items' };
     if (s.kind === 'rooms') return { kind: 'settings' };
     if (s.kind === 'bin') return { kind: 'items' };
     return null;
+  };
+
+  /**
+   * One pushed screen becoming another at the same depth.
+   *
+   * The add form saving is the only case: it stops existing, and the item it
+   * created takes its place. It used to `pop` — hand the entry back, then land
+   * on a screen that never took one of its own. So Back from an item you had
+   * just created found an empty stack and left the app, while Back from that
+   * same item reached any other way worked perfectly. One screen, two
+   * behaviours, depending on how you got there.
+   *
+   * The entry is kept and handed over instead.
+   */
+  const replace = (next: Screen) => {
+    const up = upFrom(next) ?? { kind: 'items' as const };
+    // No entry to inherit — a share that opened the form on a cold start, say.
+    // Take one properly rather than assume.
+    if (!replaceTopBack(() => setScreen(up))) {
+      releaseRef.current.push(pushBack(() => setScreen(up)));
+    }
+    setScreen(next);
   };
   const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
 
@@ -476,7 +501,7 @@ function Shell() {
             prefill={share?.prefill}
             prestaged={share?.staged}
             banner={share?.banner}
-            onSaved={(id) => pop({ kind: 'detail', id, from: origin, saved: true })}
+            onSaved={(id) => replace({ kind: 'detail', id, from: origin, saved: true })}
             onCancel={() => pop(back())}
           />
         ) : (
