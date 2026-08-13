@@ -605,11 +605,15 @@ function Backup({
       </p>
 
       {/* Restoring is the other half of the same job, so it gets the same
-          button. As a "Choose file" control at the end of a row it read as a
-          minor setting, which is not what replacing your whole database is. */}
+          button — gold, not the ghost outline it had. Two halves of one pair
+          drawn at different weights implied one of them was the safe,
+          secondary option, and if anything the reverse is true: export writes
+          a file, import can replace everything you own. The merge-or-replace
+          dialog is where that gets its warning, not the button that opens a
+          file picker. */}
       <button
         type="button"
-        className="btn wide ghost"
+        className="btn wide"
         disabled={busy}
         onClick={() => fileInput.current?.click()}
       >
