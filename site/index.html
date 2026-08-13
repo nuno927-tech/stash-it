@@ -323,15 +323,54 @@
         overflow: hidden;
       }
 
+      /*
+        Two arrangements out of one DOM, so Scout never ends up stranded under
+        the whole block.
+
+        Narrow: the headline runs the full width, then the paragraph and Scout
+        share a row — he's beside the words rather than below everything, and
+        small enough to leave the text a readable measure.
+
+        Wide: back to the classic hero, copy left and a full-height Scout on
+        the right, which is where the eye expects the art once there's room
+        for it.
+      */
       .hero-grid {
         display: grid;
-        gap: clamp(30px, 5vw, 60px);
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          'lead lead'
+          'say art'
+          'trust trust';
+        column-gap: clamp(14px, 4vw, 34px);
+        row-gap: 18px;
         align-items: center;
+      }
+
+      .hero-lead {
+        grid-area: lead;
+      }
+      .hero-say {
+        grid-area: say;
+      }
+      .heroart {
+        grid-area: art;
+      }
+      /* Four ticks in a 240px column would stack into a list. Given the full
+         width they stay the single line they're meant to be. */
+      .hero-trust {
+        grid-area: trust;
       }
 
       @media (min-width: 940px) {
         .hero-grid {
           grid-template-columns: 1.05fr 1fr;
+          grid-template-areas:
+            'lead art'
+            'say art'
+            'trust art';
+          column-gap: clamp(30px, 5vw, 60px);
+          row-gap: 0;
         }
       }
 
@@ -351,11 +390,21 @@
       }
 
       .heroart img {
-        height: clamp(250px, 40vw, 500px);
+        /* Beside a paragraph rather than under the page, so he's sized to the
+           column he shares. The height cap keeps the text at a readable
+           measure on a phone; the wide rule below lets him stand up again. */
+        height: clamp(160px, 34vw, 280px);
         width: auto;
         max-width: 100%;
-        filter: drop-shadow(0 50px 70px rgba(0, 0, 0, 0.65));
+        filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.6));
         animation: bob 6s ease-in-out infinite;
+      }
+
+      @media (min-width: 940px) {
+        .heroart img {
+          height: clamp(250px, 40vw, 500px);
+          filter: drop-shadow(0 50px 70px rgba(0, 0, 0, 0.65));
+        }
       }
 
       .heroart::after {
@@ -1238,7 +1287,7 @@
       <div class="glow" style="width: 560px; height: 560px; background: #f2b33d; bottom: -240px; left: -180px; opacity: 0.16"></div>
 
       <div class="page hero-grid">
-        <div>
+        <div class="hero-lead">
           <span class="eyebrow">
             <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color: currentColor">
               <path d="M12 3l7.5 3.2v5.4c0 4.4-3.1 8.3-7.5 9.4-4.4-1.1-7.5-5-7.5-9.4V6.2z" />
@@ -1247,7 +1296,9 @@
           </span>
 
           <h1>Your warranties, <em>before</em> they expire.</h1>
+        </div>
 
+        <div class="hero-say">
           <p class="lede">
             The dishwasher dies in month 23 of a 24-month warranty and the receipt is in a drawer.
             Somewhere. Stash it holds the paperwork for everything you own, and counts down what's
@@ -1265,6 +1316,9 @@
             <a class="btn ghost" href="#meet">See how it works</a>
           </div>
 
+        </div>
+
+        <div class="hero-trust">
           <div class="trustline">
             <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> No account</span>
             <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5 10 17.5 19 7" /></svg> No cloud</span>
