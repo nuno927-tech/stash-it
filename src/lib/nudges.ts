@@ -152,6 +152,33 @@ export function dueNudges(
 }
 
 /**
+ * Whether the dashboard should draw the samples instead of the real thing.
+ *
+ * A module-level flag, not a setting and not a database field, because it must
+ * not survive anything: not a reload, not a restore, and not walking away from
+ * the screen. Armed from the developer card, read once when the dashboard
+ * mounts, and cleared when the dashboard is left — see Home.
+ *
+ * The preview belongs on the dashboard rather than under the button that
+ * triggers it. A reminder is a card in a particular place, competing with the
+ * greeting and the ring for the same attention; rendered inside a settings
+ * card it looks fine and tells you nothing about whether it works there.
+ */
+let previewArmed = false;
+
+export function armNudgePreview(): void {
+  previewArmed = true;
+}
+
+export function nudgePreviewArmed(): boolean {
+  return previewArmed;
+}
+
+export function clearNudgePreview(): void {
+  previewArmed = false;
+}
+
+/**
  * One of each, forced, for the developer card. Real copy from the real
  * functions — a preview that renders its own sample text is a preview of
  * nothing.

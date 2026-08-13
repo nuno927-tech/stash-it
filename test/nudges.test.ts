@@ -15,10 +15,13 @@
 
 import type { Settings } from '@/db/types';
 import {
+  armNudgePreview,
   backupNudge,
+  clearNudgePreview,
   DEFAULT_ENDING_SOON_DAYS,
   dueNudges,
   endingSoonDays,
+  nudgePreviewArmed,
   sampleNudges,
   tipNudge,
   warrantyNudge,
@@ -147,6 +150,18 @@ function main() {
   check('no settings, no nudges', dueNudges({ settings: undefined, itemCount: 9, endingSoon: 3 }, NOW).length === 0);
 
   /* ------------------------------------------------------ the preview */
+
+  // Armed from the developer card, read by the dashboard, cleared on leaving
+  // it. Nothing persists it: a preview that survives a reload is a preview
+  // somebody will eventually mistake for the real alarm.
+  check('nothing is armed to begin with', !nudgePreviewArmed());
+  armNudgePreview();
+  check('arming shows', nudgePreviewArmed());
+  clearNudgePreview();
+  check('and leaving the screen clears it', !nudgePreviewArmed());
+  clearNudgePreview();
+  check('clearing twice is harmless', !nudgePreviewArmed());
+
 
   const samples = sampleNudges(NOW);
   check('the developer preview has one of each', samples.length === 3, `${samples.length}`);

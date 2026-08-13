@@ -462,6 +462,7 @@ function Shell() {
           propertyId={property.id}
           onOpenRooms={() => go({ kind: 'rooms' })}
           onTour={() => setTour(true)}
+          onHome={() => go({ kind: 'home' })}
         />
       )}
 

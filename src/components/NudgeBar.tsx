@@ -15,10 +15,13 @@ import type { Nudge } from '@/lib/nudges';
  */
 export function NudgeBar({
   nudges,
+  preview,
   onAct,
   onDismiss,
 }: {
   nudges: Nudge[];
+  /** Samples from the developer card, not the real state of your data. */
+  preview?: boolean;
   onAct: (n: Nudge) => void;
   onDismiss: (n: Nudge) => void;
 }) {
@@ -26,6 +29,14 @@ export function NudgeBar({
 
   return (
     <div className="nudges">
+      {/* Said plainly, because otherwise a preview of "no backup yet" on a
+          dashboard is indistinguishable from the real alarm. */}
+      {preview && (
+        <p className="nudgenote">
+          Preview — these are samples. Leaving this screen clears them.
+        </p>
+      )}
+
       {nudges.map((n) => (
         <div key={n.kind} className={`nudge ${n.kind}`}>
           <div className="nudge-txt">

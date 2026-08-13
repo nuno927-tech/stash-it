@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
 import type { Doc, Item } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
-import { dueNudges, type NudgeKind } from '@/lib/nudges';
+import {
+  clearNudgePreview,
+  dueNudges,
+  nudgePreviewArmed,
+  sampleNudges,
+  type NudgeKind,
+} from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import {
   effectiveExpiry,
@@ -44,6 +50,15 @@ export function Home({
   onSettings: () => void;
 }) {
   const [hidden, setHidden] = useState<NudgeKind[]>([]);
+
+  /*
+    The developer preview, if it was armed before we got here. Read into state
+    on mount rather than on every render: the flag is cleared when this screen
+    unmounts, and a later re-render — dismissing one of the cards, say — would
+    otherwise re-read it as false and take all three away mid-interaction.
+  */
+  const [previewing] = useState(() => nudgePreviewArmed());
+  useEffect(() => () => clearNudgePreview(), []);
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
   const docs = useLiveQuery(() => db.docs.toArray(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
@@ -56,11 +71,11 @@ export function Home({
   // The reminders, such as they are. No push notification exists to deliver
   // these — see src/lib/nudges.ts — so the next time the app is opened is the
   // only moment there is to say anything.
-  const nudges = dueNudges({
-    settings,
-    itemCount: items.length,
-    endingSoon: m.endingSoon,
-  }).filter((n) => !hidden.includes(n.kind));
+  const nudges = (
+    previewing
+      ? sampleNudges()
+      : dueNudges({ settings, itemCount: items.length, endingSoon: m.endingSoon })
+  ).filter((n) => !hidden.includes(n.kind));
 
   return (
     <>
@@ -75,6 +90,7 @@ export function Home({
 
       <NudgeBar
         nudges={nudges}
+        preview={previewing}
         onAct={(n) => (n.kind === 'warranty' ? onBrowse('ending') : onSettings())}
         onDismiss={(n) => setHidden((h) => [...h, n.kind])}
       />

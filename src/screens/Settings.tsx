@@ -19,7 +19,7 @@ import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
-import { sampleNudges } from '@/lib/nudges';
+import { armNudgePreview } from '@/lib/nudges';
 import {
   hasNativePrompt,
   installOffer,
@@ -47,7 +47,6 @@ import {
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
 import { getEndingSoonDays } from '@/lib/warranty';
-import { NudgeBar } from '@/components/NudgeBar';
 import { DriveCard } from '@/components/DriveCard';
 import { ScoutGallery } from '@/components/ScoutGallery';
 import { Scout } from '@/components/Scout';
@@ -74,10 +73,12 @@ export function Settings({
   propertyId,
   onOpenRooms,
   onTour,
+  onHome,
 }: {
   propertyId: string;
   onOpenRooms: () => void;
   onTour: () => void;
+  onHome: () => void;
 }) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [notice, setNotice] = useState<Notice>(null);
@@ -154,6 +155,7 @@ export function Settings({
             settings={settings}
             propertyId={propertyId}
             onHide={() => setTaps(NO_TAPS)}
+            onHome={onHome}
           />
           <DriveCard settings={settings} onNotice={setNotice} onRestore={setPending} />
         </>
@@ -993,13 +995,15 @@ function Developer({
   settings,
   propertyId,
   onHide,
+  onHome,
 }: {
   settings: SettingsRecord;
   propertyId: string;
   onHide: () => void;
+  /** The preview belongs on the dashboard, so the button has to go there. */
+  onHome: () => void;
 }) {
   const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
-  const [preview, setPreview] = useState(false);
 
   return (
     <Card
@@ -1027,36 +1031,38 @@ function Developer({
       />
 
       {/*
-        Every reminder this app has, on demand.
+        Every reminder this app has, shown where it actually appears.
 
         None of them is a push notification — there's no server to send one and
-        nothing running while the app is shut, so a reminder here is a card on
-        the dashboard the next time you open it. The catch is that each one is
-        governed by a date: the backup nudge waits for the interval to lapse,
-        the tip waits a month. Left alone you'd wait weeks to find out whether
-        the copy reads well or the button goes where it should.
+        nothing running while the app is shut, so a reminder is a card on the
+        dashboard the next time you open it. Each real one is gated behind a
+        date: the backup waits for the interval to lapse, the tip waits a
+        month, so without this you'd wait weeks to see whether the copy reads
+        well.
 
-        Drawn with the component the dashboard uses, from the same functions,
-        on forced inputs. A preview that renders its own version of the thing
-        is a preview of nothing.
+        This used to draw the samples right here, under the button. They looked
+        fine — and told you nothing, because a reminder is a card in a
+        particular place competing with the greeting and the ring for the same
+        glance. So the button arms a flag and takes you to the dashboard, and
+        leaving the dashboard clears it.
       */}
       <Row
         label="Preview the reminders"
-        note="The backup, warranty and tip nudges as they appear on the dashboard. Nothing is saved."
+        note="Puts the backup, warranty and tip cards on the dashboard as samples. Leaving the dashboard clears them; nothing is saved."
         control={
-          <button type="button" className="minibtn ghost" onClick={() => setPreview((p) => !p)}>
-            {preview ? 'Hide' : 'Show'}
+          <button
+            type="button"
+            className="minibtn ghost"
+            onClick={() => {
+              armNudgePreview();
+              feedback('nav');
+              onHome();
+            }}
+          >
+            Show on Home
           </button>
         }
       />
-
-      {preview && (
-        <NudgeBar
-          nudges={sampleNudges()}
-          onAct={() => feedback('tap')}
-          onDismiss={() => setPreview(false)}
-        />
-      )}
 
       <Row
         label="Warning threshold"
