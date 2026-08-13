@@ -10,6 +10,7 @@
  */
 
 import {
+  BACK_DIRECTION,
   dismissedByDrag,
   DISMISS_FLICK_PIXELS,
   DISMISS_PIXELS,
@@ -125,6 +126,26 @@ function main() {
   check('so does the right', startedAtEdge(W - 8, W));
   check('the middle is ours', !startedAtEdge(W / 2, W));
   check('and just inside the guard', !startedAtEdge(40, W));
+
+  /* ------------------------------------------------------- stepping back */
+
+  /*
+    A pushed screen — an item, the rooms list, the bin — reads a horizontal
+    swipe as "up one level". Getting the sign backwards would send people
+    deeper, or nowhere, so the direction is named in one place and checked
+    against the verdict that produces it.
+  */
+  check('back is to the right', BACK_DIRECTION === 'right');
+  check(
+    'and a rightward drag produces it',
+    swipeVerdict(g({ dx: 120 })) === BACK_DIRECTION,
+  );
+  check('dragging the other way is not back', swipeVerdict(g({ dx: -120 })) !== BACK_DIRECTION);
+
+  // Our gesture and Android's system back must not both fire. The edge belongs
+  // to the system, and useSwipeNav refuses to start there — which is what
+  // makes it safe to put a back swipe on the same screens.
+  check('a swipe from the edge is never ours', startedAtEdge(10, W) && startedAtEdge(W - 10, W));
 
   /* ------------------------------------------------ throwing a card away */
 

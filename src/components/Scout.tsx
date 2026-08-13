@@ -1,5 +1,6 @@
 import acorn from '@/assets/mascot/scout-acorn.webp';
 import alert from '@/assets/mascot/scout-alert.webp';
+import bin from '@/assets/mascot/scout-bin.webp';
 import folder from '@/assets/mascot/scout-folder.webp';
 import lounge from '@/assets/mascot/scout-lounge.webp';
 import receipt from '@/assets/mascot/scout-receipt.webp';
@@ -12,7 +13,7 @@ import waving from '@/assets/mascot/scout-waving.webp';
  * Scout, the mascot. Poses are imported rather than referenced from /public so
  * the single-file build can inline them — see `npm run build:single`.
  *
- * Each pose means something, and the meaning is the point of having nine of
+ * Each pose means something, and the meaning is the point of having ten of
  * them rather than one. Scout asleep on a card with nothing left to do says
  * "you're finished" more plainly than the sentence next to it does.
  *
@@ -21,6 +22,7 @@ import waving from '@/assets/mascot/scout-waving.webp';
  *   report    presenting your numbers — the dashboard
  *   receipt   holding the paperwork — items
  *   folder    filing the paper original — after a save, and in the tour
+ *   bin       fishing receipts back out — recently deleted
  *   settings  at a control desk — settings
  *   alert     ears up, something needs you
  *   resting   curled up, nothing does
@@ -40,6 +42,7 @@ export type ScoutPose =
   | 'report'
   | 'receipt'
   | 'folder'
+  | 'bin'
   | 'settings'
   | 'alert'
   | 'resting'
@@ -53,6 +56,7 @@ const SRC: Record<ScoutPose, string> = {
   report,
   receipt,
   folder,
+  bin,
   settings,
   alert,
   resting,
@@ -70,6 +74,7 @@ export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
   { pose: 'report', name: 'The field report', where: 'Beside the ring on the dashboard' },
   { pose: 'receipt', name: 'Paperwork', where: 'The items list' },
   { pose: 'folder', name: 'Filing day', where: 'After you save something, and in the tour' },
+  { pose: 'bin', name: 'Second thoughts', where: 'Recently deleted, getting something back out' },
   { pose: 'settings', name: 'At the desk', where: 'This screen' },
   { pose: 'alert', name: 'Ears up', where: 'When something needs a minute, or needs confirming' },
   { pose: 'resting', name: 'Off duty', where: 'When nothing does' },

@@ -24,7 +24,7 @@ import {
 import { endingSoonDays } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import { setEndingSoonDays } from '@/lib/warranty';
-import { nextTab } from '@/lib/swipe';
+import { BACK_DIRECTION, nextTab } from '@/lib/swipe';
 import { remindLater, tourDue } from '@/lib/tour';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
 import { forgetShareMarker, looksLikeShare, takeShare } from '@/lib/shareInbox';
@@ -374,6 +374,21 @@ function Shell() {
       ? screen.from
       : 'items';
   const back = (): Screen => (origin === 'home' ? { kind: 'home' } : { kind: 'items' });
+
+  /**
+   * Where the back arrow in the header goes — and so where a swipe back goes,
+   * because two ways of stepping up that land in different places would be two
+   * different gestures wearing the same name.
+   *
+   * Null for the forms. Everything else on this list is something you're
+   * reading, where leaving costs nothing.
+   */
+  const upFrom = (s: Screen): Screen | null => {
+    if (s.kind === 'detail') return back();
+    if (s.kind === 'rooms') return { kind: 'settings' };
+    if (s.kind === 'bin') return { kind: 'items' };
+    return null;
+  };
   const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
 
   if (!property || !settings) return <Frame>{null}</Frame>;
@@ -381,6 +396,7 @@ function Shell() {
   const mayAdd = canAddItem(count, settings.entitlements);
   const tab: Tab = TAB_FOR[screen.kind];
   const onTab = !PUSHED[screen.kind];
+  const up = upFrom(screen);
 
   // A deleted or missing record must not leave the user on a blank screen.
   if ((screen.kind === 'detail' || screen.kind === 'edit') && focused === undefined) {
@@ -390,6 +406,7 @@ function Shell() {
   return (
     <Frame
       swipe={onTab ? { tab, onChange: (t) => go({ kind: t }) } : undefined}
+      onSwipeBack={up ? () => pop(up) : undefined}
       nav={
         <BottomNav
           active={tab}
@@ -590,30 +607,52 @@ function TourNudge({ onTake, onLater }: { onTake: () => void; onLater: () => voi
 }
 
 /**
- * The shell. Given `swipe`, the scrolling body also moves between tabs on a
- * horizontal drag — offered only on the tabs themselves, because a swipe out
- * of a half-filled form would be a way to lose work by accident.
+ * The shell. The scrolling body reads a horizontal drag as either a tab change
+ * or a step back, depending on where you are — never both, since a screen
+ * can't be a tab and a push at the same time.
+ *
+ * Neither is offered on the add and edit forms: a swipe out of a half-filled
+ * form is a way to lose work by accident.
  */
 function Frame({
   children,
   nav,
   swipe,
+  onSwipeBack,
 }: {
   children: ReactNode;
   nav?: ReactNode;
   swipe?: { tab: Tab; onChange: (t: Tab) => void };
+  onSwipeBack?: () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);
   const tab = swipe?.tab;
 
-  useSwipeNav(body, !!swipe, (direction) => {
-    if (!swipe) return;
-    const to = nextTab(swipe.tab, direction);
-    // Nothing beyond the ends. A silent no-op at the edge reads as "that's
-    // all there is", which is true and is what the bottom bar already shows.
-    if (!to || to === swipe.tab) return;
-    feedback('nav');
-    swipe.onChange(to);
+  useSwipeNav(body, !!swipe || !!onSwipeBack, (direction) => {
+    if (swipe) {
+      const to = nextTab(swipe.tab, direction);
+      // Nothing beyond the ends. A silent no-op at the edge reads as "that's
+      // all there is", which is true and is what the bottom bar already shows.
+      if (!to || to === swipe.tab) return;
+      feedback('nav');
+      swipe.onChange(to);
+      return;
+    }
+
+    /*
+      Content follows the finger, so dragging right reveals what's to the left
+      — which is where you came from. Only right: there is nothing forward of
+      a pushed screen to swipe towards.
+
+      This is our own gesture, and useSwipeNav ignores anything starting within
+      26px of an edge, so it doesn't fight Android's system back. It's the
+      answer to that gesture being the only way out on a phone with no visible
+      back button in reach of a thumb.
+    */
+    if (direction === BACK_DIRECTION && onSwipeBack) {
+      feedback('nav');
+      onSwipeBack();
+    }
   });
 
   // The container survives a tab change, so its scroll position does too —

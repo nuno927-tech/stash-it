@@ -94,6 +94,16 @@ export function Bin({ propertyId, onBack }: { propertyId: string; onBack: () => 
         </div>
       ) : (
         <>
+          {/* Scout up to his elbows in the wastepaper basket, which is the
+              screen's whole proposition — nothing here has gone yet. */}
+          <div className="binmark">
+            <Scout pose="bin" height={130} motion={['breathe']} alt="" />
+            <p>
+              Nothing has gone yet. Anything here can come straight back, with its photos and
+              documents, until its {PURGE_AFTER_DAYS} days run out.
+            </p>
+          </div>
+
           <div className="seclabel">
             <span>{binCount(items.length)}</span>
             <span>Erased after {PURGE_AFTER_DAYS} days</span>

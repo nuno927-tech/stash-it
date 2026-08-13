@@ -70,6 +70,16 @@ export function swipeVerdict(g: Gesture): Direction | null {
   return g.dx < 0 ? 'left' : 'right';
 }
 
+/**
+ * Which way "back" is.
+ *
+ * Content follows the finger, so dragging right reveals what's to the left of
+ * the screen — which is where you came from. Named rather than written as a
+ * literal in the shell because it has to agree with the sign convention in
+ * `swipeVerdict`, and those two live in different files.
+ */
+export const BACK_DIRECTION: Direction = 'right';
+
 /* ------------------------------------------------- throwing a card away */
 
 /**

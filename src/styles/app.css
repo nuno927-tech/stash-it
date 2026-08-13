@@ -3402,6 +3402,27 @@ button.countpill.tappill:active {
   white-space: nowrap;
 }
 
+/* Scout up to his elbows in the basket. Stated as reassurance rather than as
+   a warning: nothing on this screen has actually gone. */
+.binmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px 10px 4px;
+  border-radius: var(--r-md);
+  background: var(--wash-gold-soft);
+}
+
+.binmark p {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
 .binlist {
   list-style: none;
   margin: 0;
