@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { CoverageUnit, WarrantyUnit } from '@/db/types';
 import {
   blankCoverage,
@@ -8,6 +9,7 @@ import {
   WARRANTY_PRESETS,
   type CoverageDraft,
 } from '@/lib/addItem';
+import { pushBack } from '@/lib/backstack';
 import { formatPhoneInput } from '@/lib/format';
 import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
 
@@ -45,7 +47,7 @@ export function CoverageField({
   return (
     <section className="card">
       <div className="cardhead">
-        <h3>Cover</h3>
+        <h3>Coverage</h3>
         {real.length > 1 && <span className="countpill">{real.length}</span>}
       </div>
 
@@ -92,10 +94,10 @@ function CoverageRow({
   const known = presets.includes(amount);
   const [custom, setCustom] = useState(!!draft.amount.trim() && !known);
   const [more, setMore] = useState(false);
-  // Set by the Custom chip, so an emptied field doesn't bring the presets
-  // back under the cursor mid-edit.
   const [naming, setNaming] = useState(false);
-  const nameInput = useRef<HTMLInputElement>(null);
+
+  // A name the user wrote, as opposed to one of the seven on offer.
+  const customName = COVERAGE_LABELS.includes(draft.label) ? '' : draft.label.trim();
 
   const ends = coverEnds(purchaseDate, draft.unit, draft.amount);
 
@@ -104,15 +106,17 @@ function CoverageRow({
       {index > 0 && <div className="covrule" />}
 
       <div className="covhead">
-        <input
-          ref={nameInput}
-          type="text"
-          className="covname"
-          value={draft.label}
-          onChange={(e) => onPatch({ label: e.target.value })}
-          placeholder={index === 0 ? 'Warranty' : 'What is this one for?'}
-          aria-label="What this policy is for"
-        />
+        {/*
+          The name is chosen, not typed. Every policy on a receipt is one of a
+          handful of things, and a free-text box asked the user to invent the
+          vocabulary — which produced "warranty", "Warranty" and "3yr warr" for
+          the same idea. The seven buttons are the vocabulary; Custom is the
+          way out, and it asks properly rather than leaving an empty field
+          sitting there for everyone who didn't need it.
+        */}
+        <span className={`covwhat${draft.label.trim() ? '' : ' unset'}`}>
+          {draft.label.trim() || 'What is this one for?'}
+        </span>
         {!only && (
           <button
             type="button"
@@ -135,35 +139,50 @@ function CoverageRow({
         )}
       </div>
 
-      {/* Only offered while the name is still empty. Once it says "Fabric"
-          these are six ways to overwrite it by accident.
-
-          Custom doesn't set anything — it puts the cursor in the field above
-          and gets out of the way. The field was always free text; without a
-          chip saying so, a row of preset names reads as the whole menu. */}
-      {!draft.label.trim() && !naming && (
-        <div className="chiprow">
-          {COVERAGE_LABELS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className="pick"
-              onClick={() => onPatch({ label: name })}
-            >
-              {name}
-            </button>
-          ))}
+      <div className="seg names">
+        {COVERAGE_LABELS.slice(0, 3).map((name) => (
           <button
+            key={name}
             type="button"
-            className="pick"
-            onClick={() => {
-              setNaming(true);
-              nameInput.current?.focus();
-            }}
+            className={draft.label === name ? 'on' : ''}
+            onClick={() => onPatch({ label: name })}
           >
-            Custom
+            {name}
           </button>
-        </div>
+        ))}
+      </div>
+
+      <div className="seg names">
+        {COVERAGE_LABELS.slice(3).map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={draft.label === name ? 'on' : ''}
+            onClick={() => onPatch({ label: name })}
+          >
+            {name}
+          </button>
+        ))}
+        {/* Shows the custom name once there is one, so the row still says
+            what it is without a separate field repeating it back. */}
+        <button
+          type="button"
+          className={customName ? 'on' : ''}
+          onClick={() => setNaming(true)}
+        >
+          {customName || 'Custom'}
+        </button>
+      </div>
+
+      {naming && (
+        <NameDialog
+          initial={customName}
+          onSave={(name) => {
+            onPatch({ label: name });
+            setNaming(false);
+          }}
+          onCancel={() => setNaming(false)}
+        />
       )}
 
       <input
@@ -325,4 +344,61 @@ function coverEnds(purchaseDate: string, unit: CoverageUnit, amount: string): st
   } catch {
     return null;
   }
+}
+
+/**
+ * Typing a name the buttons don't offer.
+ *
+ * A dialog rather than a field that's always there: on the overwhelming
+ * majority of policies one of the seven names is right, and an empty text box
+ * under them would be a question asked of everybody to serve the few. Asking
+ * only when Custom is pressed also means the answer arrives complete, instead
+ * of being read out of a half-typed field on save.
+ */
+function NameDialog({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial);
+  useEffect(() => pushBack(onCancel), [onCancel]);
+
+  const save = () => {
+    const clean = name.trim();
+    if (clean) onSave(clean);
+    else onCancel();
+  };
+
+  return createPortal(
+    <div className="sheetscrim" role="dialog" aria-modal="true" aria-label="Name this policy">
+      <div className="sheetcard" onClick={(e) => e.stopPropagation()}>
+        <h4>What is this policy for?</h4>
+        <label className="field">
+          <span className="fieldlabel">Name</span>
+          <input
+            type="text"
+            value={name}
+            autoFocus
+            enterKeyHint="done"
+            maxLength={40}
+            placeholder="Fabric, springs, screen…"
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && save()}
+          />
+        </label>
+        <p className="hint">Whatever the paperwork calls it. It shows on the item as the name of this policy.</p>
+        <button type="button" className="btn wide" onClick={save}>
+          Use this name
+        </button>
+        <button type="button" className="btn ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
 }

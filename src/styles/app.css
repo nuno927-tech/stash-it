@@ -1028,6 +1028,23 @@ select.compact {
   padding: 9px 2px;
 }
 
+/* Policy names, which are words rather than the one-word labels a segmented
+   control usually holds. "Extended warranty" cannot fit a third of a phone on
+   one line, so these wrap — with a fixed height so both rows stay level
+   whether their labels wrapped or not. */
+.seg.names {
+  margin-bottom: 8px;
+}
+
+.seg.names button {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 7px 5px;
+  min-height: 38px;
+  white-space: normal;
+}
+
 /* The question the segmented control answers, above it rather than beside
    it — a hint that follows its control reads as a footnote to the control. */
 .remindhint {
@@ -2797,24 +2814,23 @@ button.countpill.tappill:active {
   margin-bottom: 10px;
 }
 
-/* The name is the heading of its own block, so it's typed at heading size
-   with no box around it — a labelled field here would make the row look like
-   a form inside a form. */
-.covname {
+/* The heading of its own block, and now a label rather than a field: the
+   name comes from the buttons underneath. */
+.covwhat {
   flex: 1;
   min-width: 0;
-  background: none !important;
-  border: none !important;
-  border-bottom: 1px solid var(--slate-600) !important;
-  border-radius: 0 !important;
-  padding: 4px 0 7px !important;
   font-family: var(--font-display);
-  font-size: 16px !important;
+  font-size: 16px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.covname:focus {
-  border-bottom-color: var(--gold) !important;
+/* Nothing chosen yet, so it reads as a prompt rather than as a name. */
+.covwhat.unset {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .covcovers {
