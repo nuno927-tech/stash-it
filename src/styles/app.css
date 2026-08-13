@@ -832,8 +832,10 @@ button.coverstat:active {
    thing you can take hold of". */
 .grip {
   flex: none;
-  width: 32px;
-  height: 38px;
+  width: 36px;
+  /* A touch target, not a glyph. Anything under about 44px on a phone is a
+     control people miss and then conclude is broken. */
+  height: 44px;
   display: grid;
   place-items: center;
   background: var(--slate-700);

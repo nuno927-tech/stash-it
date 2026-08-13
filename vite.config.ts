@@ -63,9 +63,29 @@ export default defineConfig(({ mode }) => {
         ? [viteSingleFile()]
         : [
             VitePWA({
-              registerType: 'prompt',
+              /*
+                'prompt' was the wrong choice, and it was why fixes appeared
+                not to work. Under 'prompt' a new worker installs and then
+                waits for every client to close before it takes over — and an
+                installed PWA on a phone is never really closed. Nothing in the
+                app registered the worker or offered the refresh either, so the
+                only thing that ever triggered the handover was the OS killing
+                the app for memory. People ran a build or two behind for days
+                and reported bugs that had already been fixed.
+
+                'autoUpdate' takes over on the next launch: skipWaiting and
+                clientsClaim, plus the reload in main.tsx for the case where a
+                new build lands while the app is open.
+              */
+              registerType: 'autoUpdate',
               includeAssets: ['apple-touch-icon.png'],
               workbox: {
+                // The point of the change above: don't wait for the last tab.
+                skipWaiting: true,
+                clientsClaim: true,
+                // Precaches from previous builds are dead weight the moment
+                // this one claims the page.
+                cleanupOutdatedCaches: true,
                 // Pulled in at the top of the generated worker, so its fetch
                 // listener is registered before Workbox's routing. That's what
                 // lets it answer the share POST — first respondWith wins.
