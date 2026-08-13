@@ -19,10 +19,23 @@ import { formatMoneyInput } from './format';
 import { coveragesOf, DEFAULT_COVERAGE_LABEL, termToMonths } from './warranty';
 
 export class ValidationError extends Error {}
+/**
+ * The cap, refused politely.
+ *
+ * Takes the count because "delete one" is wrong for the case that actually
+ * matters: someone who subscribed, added thirty items, and then let the
+ * subscription lapse. Nothing of theirs is removed or hidden — every item
+ * stays readable, editable and exportable — but they'd have to remove sixteen
+ * to get under the line, and being told to "delete one" reads as a bug on top
+ * of a disappointment.
+ */
 export class ItemLimitError extends Error {
-  constructor() {
+  constructor(count = FREE_ITEM_LIMIT) {
+    const over = count - FREE_ITEM_LIMIT + 1;
     super(
-      `Free tier holds ${FREE_ITEM_LIMIT} items. Delete one, or unlock Pro — everything you've already saved stays editable and exportable either way.`,
+      count > FREE_ITEM_LIMIT
+        ? `You have ${count} items and the free tier holds ${FREE_ITEM_LIMIT}. Nothing has been removed — everything you've saved stays editable and exportable. To add more, subscribe again or remove ${over}.`
+        : `Free tier holds ${FREE_ITEM_LIMIT} items. Remove one, or subscribe — everything you've already saved stays editable and exportable either way.`,
     );
   }
 }
@@ -321,7 +334,7 @@ export async function saveNewItem(
 
   const settings = await db.settings.get('singleton');
   const count = await activeItemCount(propertyId);
-  if (settings && !canAddItem(count, settings.entitlements)) throw new ItemLimitError();
+  if (settings && !canAddItem(count, settings.entitlements)) throw new ItemLimitError(count);
 
   return createItem(draft);
 }

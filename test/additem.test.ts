@@ -9,7 +9,7 @@
 
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
-import { activeItemCount } from '@/db/repo';
+import { activeItemCount, canAddItem } from '@/db/repo';
 import { FREE_ITEM_LIMIT } from '@/db/types';
 import {
   blankCoverage,
@@ -144,10 +144,16 @@ async function main() {
     threw = (e as Error).constructor.name;
   }
   check('the cap blocks item 16', threw === 'ItemLimitError', threw || 'nothing thrown');
-  check(
-    'the cap message names the way out',
-    /Pro/.test(new ItemLimitError().message) && /editable/.test(new ItemLimitError().message),
-  );
+  const atLimit = new ItemLimitError(FREE_ITEM_LIMIT).message;
+  check('the cap message names the way out', /subscribe/.test(atLimit), atLimit);
+  check('and promises nothing is lost', /editable/.test(atLimit), atLimit);
+  check('at the line it asks for one', /Remove one/.test(atLimit), atLimit);
+
+  // Over the line — the lapsed subscriber — needs different arithmetic and a
+  // different reassurance. "Remove one" there would be simply untrue.
+  const over = new ItemLimitError(30).message;
+  check('over the line it counts properly', /remove 16/.test(over), over);
+  check('and leads with what was not taken', /Nothing has been removed/.test(over), over);
 
   // Deleting must free a slot immediately — otherwise the cap is a trap.
   const victim = (await db.items.toArray()).find((i) => i.name.startsWith('Filler'))!;
@@ -166,6 +172,65 @@ async function main() {
     (await activeItemCount(property.id)) > FREE_ITEM_LIMIT,
     `${await activeItemCount(property.id)} items`,
   );
+
+  /* ------------------------------------------- lapsing back to free */
+
+  /*
+    The case that will actually happen: someone subscribes, fills the app up,
+    then stops paying. Nothing of theirs may be deleted, hidden or locked —
+    they made those records. The only thing that stops is adding more.
+  */
+  {
+    await db.settings.update('singleton', {
+      entitlements: { proUnlock: true, reportUnlock: false },
+    });
+    const before = await activeItemCount(property.id);
+    for (let i = 0; i < 20; i++) {
+      await saveNewItem(form({ name: `Pro item ${i}` }), property.id);
+    }
+    const full = await activeItemCount(property.id);
+    check('a subscriber can pass the cap', full === before + 20, `${full}`);
+
+    // The subscription lapses.
+    await db.settings.update('singleton', {
+      entitlements: { proUnlock: false, reportUnlock: false },
+    });
+    const lapsed = (await db.settings.get('singleton'))!;
+
+    check('adding is refused', !canAddItem(full, lapsed.entitlements));
+    check(
+      'but every item is still there',
+      (await activeItemCount(property.id)) === full,
+      `${await activeItemCount(property.id)}`,
+    );
+
+    // Still fully usable: readable, editable, and it comes out in a backup.
+    const one = (await db.items.filter((i) => i.name === 'Pro item 7').toArray())[0]!;
+    await saveEditedItem(one.id, formFromItem({ ...one, name: 'Renamed while free' }, 'USD'), property.id);
+    check(
+      'and editing one still works',
+      (await db.items.get(one.id))!.name === 'Renamed while free',
+    );
+
+    let refused = '';
+    try {
+      await saveNewItem(form({ name: 'One too many' }), property.id);
+    } catch (e) {
+      refused = (e as Error).message;
+    }
+    check('the save path refuses too', refused.includes('free tier holds'), refused);
+    // "Delete one" would be wrong here — they'd have to remove sixteen.
+    check('and the message counts honestly', refused.includes(`remove ${full - FREE_ITEM_LIMIT + 1}`), refused);
+    check('while promising nothing was taken', refused.includes('Nothing has been removed'), refused);
+
+    // Clean up so the cap tests below start from a known place.
+    for (const i of await db.items.filter((x) => x.name.startsWith('Pro item') || x.name === 'Renamed while free').toArray()) {
+      await db.items.delete(i.id);
+    }
+    await db.settings.update('singleton', {
+      entitlements: { proUnlock: true, reportUnlock: false },
+    });
+  }
 
   /* -------------------------------------------------------------- edit */
 
