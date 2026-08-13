@@ -1758,7 +1758,7 @@ a.pick {
 }
 
 .m-alert img {
-  animation: alertPerk 3.6s ease-in-out infinite;
+  animation: alertPerk 5.4s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
 
@@ -1798,20 +1798,25 @@ a.pick {
   }
 }
 
+/* A double-take, not a jump. The perk was seven pixels and four degrees every
+   3.6 seconds, which on a card you're trying to read is a distraction rather
+   than a bit of life — and the card only exists when something needs doing, so
+   it's already asking for attention by being there. Half the movement, and
+   less often. */
 @keyframes alertPerk {
   0%,
-  62%,
+  70%,
   100% {
     transform: translateY(0) rotate(0deg);
   }
-  68% {
-    transform: translateY(-7px) rotate(-4deg);
+  76% {
+    transform: translateY(-3px) rotate(-1.5deg);
   }
-  74% {
-    transform: translateY(0) rotate(3deg);
+  82% {
+    transform: translateY(0) rotate(1deg);
   }
-  80% {
-    transform: translateY(-3px) rotate(0deg);
+  88% {
+    transform: translateY(-1.5px) rotate(0deg);
   }
 }
 
@@ -2976,9 +2981,11 @@ button.countpill.tappill:active {
 
 /* ------------------------------------------------------------ the mascot */
 
-/* Scout down the left, the work down the right. He's bottom-aligned and the
-   column stretches, so on a card with four rows he stands its full height and
-   on a card with one he still has his feet on the floor. */
+/* Scout down the left, the work down the right. Centred in the column rather
+   than standing on the bottom of it: the card grows a row at a time as things
+   go missing, and bottom alignment meant he sank a little further from the
+   heading with each one — by four rows he was level with the last line and
+   reading as part of it rather than as the card's own figure. */
 .needscard {
   display: flex;
   align-items: stretch;
@@ -2989,7 +2996,7 @@ button.countpill.tappill:active {
 .needsaside {
   flex: none;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 
