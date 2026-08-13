@@ -28,9 +28,21 @@ export interface Prefs {
 
 export const DEFAULT_PREFS: Prefs = {
   theme: 'system',
-  // Off by default. An app that chirps the first time you open it, without
-  // being asked, is an app people silence at the OS level and never re-enable.
-  sounds: false,
+  /*
+    On by default.
+
+    The original reasoning — an app that chirps unasked gets silenced at the OS
+    level — is sound for an app that pings at you. It doesn't describe this
+    one: the cues are a tick on tap, a short tone on save, and a chime at
+    launch, all of them responses to something the user just did. And they're
+    already governed by the phone's own switch, since a device on silent plays
+    nothing regardless of what's set here.
+
+    Off by default also meant almost nobody heard them. A feature that has to
+    be discovered in Settings before it can be experienced is a feature most
+    people never know exists.
+  */
+  sounds: true,
   haptics: true,
   // Collapsed: with a dozen rooms the expanded list is a long scroll, and the
   // question people arrive with is usually "what's in the garage".

@@ -35,19 +35,21 @@ async function main() {
 
   const fresh = await db.settings.get('singleton');
   check('a record written before prefs existed still reads', prefsFrom(fresh).theme === 'system');
-  check('sounds default to off', prefsFrom(fresh).sounds === false);
+  check('sounds default to on', prefsFrom(fresh).sounds === true);
   check('haptics default to on', prefsFrom(fresh).haptics === true);
   check('undefined settings still yield defaults', prefsFrom(undefined).theme === DEFAULT_PREFS.theme);
 
   await setPref('theme', 'light');
-  await setPref('sounds', true);
-  check('a preference persists', prefsFrom(await db.settings.get('singleton')).theme === 'light');
-  check('booleans persist', prefsFrom(await db.settings.get('singleton')).sounds === true);
-
   await setPref('sounds', false);
+  check('a preference persists', prefsFrom(await db.settings.get('singleton')).theme === 'light');
+  // Explicitly stored `false` has to win over a default of true — the whole
+  // point of a default is that it stops applying once someone answers.
+  check('turning one off persists', prefsFrom(await db.settings.get('singleton')).sounds === false);
+
+  await setPref('sounds', true);
   check(
-    'turning one back off persists too',
-    prefsFrom(await db.settings.get('singleton')).sounds === false,
+    'turning it back on persists too',
+    prefsFrom(await db.settings.get('singleton')).sounds === true,
   );
 
   check('system resolves to dark when the device is dark', resolveTheme('system', true) === 'dark');
