@@ -27,6 +27,7 @@ const SITE = 'site/img';
 const APP = [
   { name: 'acorn', size: 400 }, // 200 on the empty dashboard
   { name: 'alert', size: 300 }, // 130 beside what needs doing
+  { name: 'folder', size: 260 }, // 92 after a save, 130 in the tour
   { name: 'receipt', size: 360 }, // 180 on the empty items list
   { name: 'report', size: 320 }, // 150 beside the ring
   { name: 'resting', size: 240 }, // 110 when there's nothing to do
@@ -44,6 +45,7 @@ const WEB = [
   { name: 'acorn', size: 660 },
   { name: 'waving', size: 560 },
   { name: 'alert', size: 520 },
+  { name: 'folder', size: 520 },
   { name: 'receipt', size: 460 },
   { name: 'settings', size: 460 },
   { name: 'resting', size: 460 },

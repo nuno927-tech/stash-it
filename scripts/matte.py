@@ -17,8 +17,18 @@ faithfully preserves that we don't want.
    every render at roughly 36% alpha. It is invisible against white — which is
    why it survived review — and becomes a floating sprite the moment the
    cut-out is placed on anything dark. It cannot be keyed out by colour because
-   it has no colour of its own; it is a translucent overlay. It can be removed
-   by connectivity: it doesn't touch the squirrel.
+   it has no colour of its own; it is a translucent overlay.
+
+   Connectivity used to be enough: it doesn't touch the squirrel. Then came a
+   pose standing on a reflective floor, where the reflection reaches across the
+   gap at ten or fifteen percent alpha and hands the sparkle a bridge. Raising
+   the threshold that decides "connected" severs it — and also severs whiskers,
+   which are just as faint. Every pose changed; that route is closed.
+
+   So it is knocked out by position instead, which is safe because it has one.
+   Measured across all ten renders the stamp lands in exactly the same 24×24
+   pixels, 48 in from the right edge and 48 up from the bottom, every time.
+   That is the behaviour of a stamp, not of a subject.
 
 2. THE GROUND SHADOW. Part of the background in both renders, so it lands at
    very low alpha and reads as a grey haze on a dark page rather than as a
@@ -57,6 +67,20 @@ SCALE = 4
 CROP_AT = 0.20
 CROP_MARGIN = 3
 
+# The watermark's box, as an inset from the bottom-right corner. The stamp
+# occupies 48..72 px in from each edge in every render; the slack is added
+# outward, toward the corner, and never inward. Two pixels the other way was
+# enough to clip the top edge of the folder pose's paperwork, which sits
+# closer to that corner than anything else Scout has ever held.
+MARK_NEAR, MARK_FAR = 44, 72
+
+# Nothing in that box has ever been more than about half opaque — the stamp
+# reads 0.31 against nothing and 0.51 over a dark reflective floor. Fur and
+# paper go to 1.0. If a future render puts part of the subject in the corner,
+# this trips and the export stops, rather than quietly punching a 24px hole in
+# whatever was standing there.
+MARK_CEILING = 0.75
+
 
 def alpha_and_colour(white_path: str, black_path: str):
     w = np.asarray(Image.open(white_path).convert('RGB'), float) / 255
@@ -70,6 +94,25 @@ def alpha_and_colour(white_path: str, black_path: str):
     # see; at α ≈ 0 the division is meaningless and the pixel is invisible.
     colour = np.clip(b / np.maximum(alpha, 1e-4)[..., None], 0, 1)
     return alpha, colour
+
+
+def drop_watermark(alpha: np.ndarray, name: str) -> np.ndarray:
+    """Zero the generator's stamp, and refuse if the subject is standing on it."""
+    h, w = alpha.shape
+    ys = slice(h - MARK_FAR, h - MARK_NEAR)
+    xs = slice(w - MARK_FAR, w - MARK_NEAR)
+
+    peak = float(alpha[ys, xs].max())
+    if peak > MARK_CEILING:
+        raise ValueError(
+            f'{name}: something {peak:.2f} opaque is in the watermark corner. '
+            f'That box is assumed to hold nothing but the stamp — check the render '
+            f'before letting this through.'
+        )
+
+    out = alpha.copy()
+    out[ys, xs] = 0.0
+    return out
 
 
 def keep_subject(alpha: np.ndarray) -> np.ndarray:
@@ -135,7 +178,7 @@ def cutout(name: str, source_dir: str) -> Image.Image:
         f'{source_dir}/scout-{name}-white.png',
         f'{source_dir}/scout-{name}-black.png',
     )
-    alpha = keep_subject(alpha)
+    alpha = keep_subject(drop_watermark(alpha, name))
 
     rgba = np.concatenate([colour, alpha[..., None]], axis=2)
     img = Image.fromarray((rgba * 255).round().astype('uint8'), 'RGBA')

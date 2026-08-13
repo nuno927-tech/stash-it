@@ -22,9 +22,13 @@ export interface TourStep {
 
 /**
  * Ordered as a first week with the app, not as a feature list: what it is,
- * how to put something in, what it tells you back, what it wants from you,
- * and — last, because it's the one that matters when things go wrong — how to
- * make sure you don't lose it.
+ * how to put something in, what to do with the paper it came with, what it
+ * tells you back, what it wants from you, and — last, because it's the one
+ * that matters when things go wrong — how to make sure you don't lose it.
+ *
+ * The paper step sits third, immediately after adding, because that is the
+ * minute the receipt is still in your hand. Told at the end it's advice; told
+ * there it's an instruction you can act on.
  */
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -38,6 +42,12 @@ export const TOUR_STEPS: TourStep[] = [
     pose: 'receipt',
     title: 'Adding something takes a photo and a date',
     body: 'Name it, photograph it, say when you bought it and how long the warranty runs. Everything else is optional and can wait.',
+  },
+  {
+    key: 'paper',
+    pose: 'folder',
+    title: 'Then stash the paper too',
+    body: "A photo settles most claims. Some still want the original, so keep it in a folder somewhere dry — the app holds the copy, you hold the proof. Paper doesn't need charging.",
   },
   {
     key: 'watch',

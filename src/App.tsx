@@ -65,7 +65,13 @@ type Screen =
   | { kind: 'settings' }
   | { kind: 'add'; from: Origin }
   | { kind: 'rooms' }
-  | { kind: 'detail'; id: string; from: Origin }
+  /*
+    `saved` marks the one arrival that came from creating this item, so the
+    detail screen can tell you to file the paper copy. It lives on the screen
+    rather than on the record: it's a fact about this navigation, not about the
+    item, and going back and opening it again builds a fresh screen without it.
+  */
+  | { kind: 'detail'; id: string; from: Origin; saved?: boolean }
   | { kind: 'edit'; id: string; from: Origin };
 
 /** Which nav tab stays lit while a pushed screen is open. */
@@ -423,6 +429,7 @@ function Shell() {
       {screen.kind === 'detail' && focused && (
         <ItemDetail
           item={focused}
+          justSaved={screen.saved === true}
           onBack={() => pop(back())}
           onEdit={() => go({ kind: 'edit', id: focused.id, from: origin })}
           onDeleted={() => pop(back())}
@@ -447,7 +454,7 @@ function Shell() {
             prefill={share?.prefill}
             prestaged={share?.staged}
             banner={share?.banner}
-            onSaved={(id) => pop({ kind: 'detail', id, from: origin })}
+            onSaved={(id) => pop({ kind: 'detail', id, from: origin, saved: true })}
             onCancel={() => pop(back())}
           />
         ) : (

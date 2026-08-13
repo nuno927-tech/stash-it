@@ -23,6 +23,7 @@ import { DocTiles } from '@/components/DocTiles';
 import { ItemIcon } from '@/components/ItemIcon';
 import { LinkDoc } from '@/components/LinkDoc';
 import { PhotoViewer } from '@/components/PhotoViewer';
+import { StashThePaper } from '@/components/StashThePaper';
 import { useItemPhotos } from '@/components/useItemPhotos';
 import { WarrantyRing, STATE_STROKE } from '@/components/WarrantyRing';
 
@@ -35,11 +36,14 @@ const HEADLINE: Record<WarrantyState, (label: string) => string> = {
 
 export function ItemDetail({
   item,
+  justSaved = false,
   onBack,
   onEdit,
   onDeleted,
 }: {
   item: Item;
+  /** True only when you arrived here by creating this item a second ago. */
+  justSaved?: boolean;
   onBack: () => void;
   onEdit: () => void;
   onDeleted: () => void;
@@ -83,6 +87,10 @@ export function ItemDetail({
           Edit
         </button>
       </header>
+
+      {/* Above the photo, not below the fold. The moment after saving is the
+          only moment the paper receipt is still in reach. */}
+      {justSaved && <StashThePaper />}
 
       {/* Tapping the photo opens it full screen. A receipt shot at arm's
           length is unreadable at this size, so the hero has to be a door. */}
