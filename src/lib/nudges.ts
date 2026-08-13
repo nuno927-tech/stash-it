@@ -39,6 +39,23 @@ export interface Nudge {
 export const DEFAULT_ENDING_SOON_DAYS = 30;
 
 /**
+ * The card's class list, namespaced.
+ *
+ * It used to be `nudge ${kind}`, which for the warranty reminder produced
+ * `class="nudge warranty"` — and `.warranty` is the item page's ring block:
+ * `display: flex; align-items: center`. So that one card, and only that one,
+ * laid its text and its buttons out side by side and pushed them off the edge.
+ * The other two were fine, because nothing in the stylesheet is called
+ * `.backup` or `.tip`.
+ *
+ * Bare kind names as CSS classes are a collision waiting for whichever word
+ * gets used twice. Prefixed, they can't be.
+ */
+export function nudgeClass(kind: NudgeKind): string {
+  return `nudge nudge-${kind}`;
+}
+
+/**
  * How much notice the user asked for before a warranty ends.
  *
  * Clamped rather than trusted: a restored backup written by a future version,

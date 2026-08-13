@@ -1,4 +1,4 @@
-import type { Nudge } from '@/lib/nudges';
+import { nudgeClass, type Nudge } from '@/lib/nudges';
 
 /**
  * Where a reminder actually shows up.
@@ -38,7 +38,7 @@ export function NudgeBar({
       )}
 
       {nudges.map((n) => (
-        <div key={n.kind} className={`nudge ${n.kind}`}>
+        <div key={n.kind} className={nudgeClass(n.kind)}>
           <div className="nudge-txt">
             <strong>{n.title}</strong>
             <p>{n.body}</p>

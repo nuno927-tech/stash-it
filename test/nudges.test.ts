@@ -21,8 +21,10 @@ import {
   DEFAULT_ENDING_SOON_DAYS,
   dueNudges,
   endingSoonDays,
+  nudgeClass,
   nudgePreviewArmed,
   sampleNudges,
+  type NudgeKind,
   tipNudge,
   warrantyNudge,
 } from '@/lib/nudges';
@@ -162,6 +164,21 @@ function main() {
   clearNudgePreview();
   check('clearing twice is harmless', !nudgePreviewArmed());
 
+
+  /* ----------------------------------------------------- the class names */
+
+  // The bug this guards: the card was written as `nudge ${kind}`, so the
+  // warranty reminder rendered as `class="nudge warranty"` — and `.warranty`
+  // is the item page's ring block, a flex row. That one card laid its text and
+  // buttons out side by side and pushed them off the edge; the other two were
+  // fine, because nothing is called `.backup` or `.tip`.
+  const kinds: NudgeKind[] = ['backup', 'warranty', 'tip'];
+  for (const kind of kinds) {
+    const cls = nudgeClass(kind).split(' ');
+    check(`${kind} keeps the shared class`, cls[0] === 'nudge', cls.join(' '));
+    check(`${kind} is namespaced`, cls[1] === `nudge-${kind}`, cls.join(' '));
+    check(`${kind} adds no bare class`, !cls.includes(kind), cls.join(' '));
+  }
 
   const samples = sampleNudges(NOW);
   check('the developer preview has one of each', samples.length === 3, `${samples.length}`);

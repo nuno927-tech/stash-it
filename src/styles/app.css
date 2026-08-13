@@ -2892,9 +2892,19 @@ button.countpill.tappill:active {
   min-width: 0;
 }
 
+/* Every kind carries a prefixed class — see nudgeClass. `nudge backup`,
+   `nudge warranty`, `nudge tip` was the obvious spelling and a trap: the
+   stylesheet already has a `.warranty` (the item page's ring block, a flex
+   row), so that one card laid itself out sideways. */
+.nudge-backup,
+.nudge-warranty {
+  border-color: var(--wash-gold-line);
+  background: var(--wash-gold-soft);
+}
+
 /* The tip is the one nudge that asks rather than warns, so it drops the
    gold and sits quietly. */
-.nudge.tip {
+.nudge-tip {
   border-color: var(--slate-600);
   background: var(--slate-700);
 }
