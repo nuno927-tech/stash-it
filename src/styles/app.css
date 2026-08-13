@@ -1056,6 +1056,34 @@ select.compact {
   padding: 9px 2px;
 }
 
+/* Five choices of lead time. "2 months" is the widest and there are five of
+   them, so this is as small as the labels go before they wrap. */
+.seg.five button {
+  font-size: 11px;
+  padding: 9px 1px;
+}
+
+/* A setting whose control is a segmented row: label and note stacked above it
+   rather than beside it, since the control wants the card's full width. The
+   hairline keeps the card's rhythm with the plain rows around it. */
+.segrow {
+  padding: 13px 12px 2px 0;
+  border-top: 1px solid var(--slate-600);
+}
+
+.setcard > .segrow:first-of-type {
+  border-top: none;
+}
+
+.segrow .setrow-txt {
+  display: block;
+  margin-bottom: 9px;
+}
+
+.segrow .seg {
+  margin: 0 0 10px;
+}
+
 /* Policy names, which are words rather than the one-word labels a segmented
    control usually holds. "Extended warranty" cannot fit a third of a phone on
    one line, so these wrap — with a fixed height so both rows stay level

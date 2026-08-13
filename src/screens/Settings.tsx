@@ -204,6 +204,51 @@ function Row({
   );
 }
 
+/**
+ * A setting whose options are few enough to show all at once.
+ *
+ * A dropdown hides every choice but the current one behind a tap and a native
+ * picker; with four or five short options there's no reason for either. The
+ * label sits above rather than beside, because a segmented control needs the
+ * full width of the card and a control that wide next to a label is a control
+ * squeezed into whatever's left.
+ */
+function SegRow<T extends string | number>({
+  label,
+  note,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  note?: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="segrow">
+      <span className="setrow-txt">
+        <strong>{label}</strong>
+        {note && <small>{note}</small>}
+      </span>
+      <div className={`seg${options.length >= 5 ? ' five' : ''}`} role="group" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            className={value === o.value ? 'on' : ''}
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Toggle({
   on,
   label,
@@ -453,20 +498,15 @@ function YourHome({
         onClick={onOpenRooms}
       />
 
-      <Row
+      <SegRow
         label="Items open"
         note="Whether rooms start shut or already showing what's inside."
-        control={
-          <Pick
-            value={prefsFrom(settings).roomsView}
-            label="How the Items list opens"
-            options={[
-              { value: 'collapsed', label: 'Collapsed' },
-              { value: 'expanded', label: 'Expanded' },
-            ]}
-            onChange={(v) => setPref('roomsView', v as RoomsView)}
-          />
-        }
+        value={prefsFrom(settings).roomsView}
+        options={[
+          { value: 'collapsed', label: 'Collapsed' },
+          { value: 'expanded', label: 'Expanded' },
+        ]}
+        onChange={(v) => setPref('roomsView', v as RoomsView)}
       />
 
       <Row
@@ -485,19 +525,12 @@ function YourHome({
         }
       />
 
-      <Row
+      <SegRow
         label="Warn me before a warranty ends"
         note="How much notice you want on the home screen."
-        control={
-          <Pick
-            value={settings.reminderOffsetsDays[0] ?? 30}
-            label="Warranty warning lead time"
-            options={REMINDER_CHOICES.map((r) => ({ value: r.days, label: r.label }))}
-            onChange={(v) =>
-              db.settings.update('singleton', { reminderOffsetsDays: [Number(v)] })
-            }
-          />
-        }
+        value={settings.reminderOffsetsDays[0] ?? 30}
+        options={REMINDER_CHOICES.map((r) => ({ value: r.days, label: r.label }))}
+        onChange={(days) => db.settings.update('singleton', { reminderOffsetsDays: [days] })}
       />
     </Card>
   );
