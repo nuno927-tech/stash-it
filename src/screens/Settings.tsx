@@ -551,6 +551,28 @@ function Backup({
       title="Backup"
       aside={<span className="countpill">{last ? last.slice(0, 10) : 'Never'}</span>}
     >
+      {/* The reminder leads. It's the only setting in the card — the other two
+          controls are actions — and it's the one that decides whether the
+          actions ever get used. As a dropdown at the bottom it was a footnote
+          to two buttons; as a segmented row at the top it's the question the
+          card is really asking. */}
+      <p className="hint remindhint">
+        Nothing syncs anywhere, so a backup only exists if you make one. How
+        often should Scout nudge you?
+      </p>
+      <div className="seg four">
+        {BACKUP_REMINDER_CHOICES.map((b) => (
+          <button
+            key={b.days}
+            type="button"
+            className={settings.backupReminderDays === b.days ? 'on' : ''}
+            onClick={() => db.settings.update('singleton', { backupReminderDays: b.days })}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+
       {/* The export is the most consequential button on the screen, so it gets
           the full-width treatment rather than being a control at the end of a
           row of explanation. */}
@@ -594,19 +616,6 @@ function Backup({
         Import from a backup
       </button>
       <p className="hint">You'll choose how it merges before anything changes.</p>
-
-      <Row
-        label="Remind me"
-        note="A nudge to export, since nothing syncs anywhere."
-        control={
-          <Pick
-            value={settings.backupReminderDays}
-            label="Backup reminder frequency"
-            options={BACKUP_REMINDER_CHOICES.map((b) => ({ value: b.days, label: b.label }))}
-            onChange={(v) => db.settings.update('singleton', { backupReminderDays: Number(v) })}
-          />
-        }
-      />
 
       <input
         ref={fileInput}

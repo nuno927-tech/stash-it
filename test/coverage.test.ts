@@ -16,9 +16,12 @@ import { blankCoverage, draftFromForm, emptyForm, formFromItem, saveNewItem } fr
 import { exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
 import { gapsFor } from '@/lib/dashboard';
 import { searchItems } from '@/lib/search';
+import { MAX_RINGS } from '@/components/WarrantyRing';
 import {
+  coverageArcs,
   coverageLabel,
   coverageSchedule,
+  coverSummary,
   coverageTermLabel,
   coveragesOf,
   effectiveExpiry,
@@ -237,6 +240,46 @@ async function main() {
   check('including the lifetime one', backToForm.coverages[0]?.unit === 'lifetime');
   check('with its name', backToForm.coverages[0]?.label === 'Frame');
   check('and a lifetime row has no amount to edit', backToForm.coverages[0]?.amount === '');
+
+  /* ------------------------------------------------- what the row shows */
+
+  const arcs = coverageArcs(couch);
+  check('one arc per policy', arcs.length === 5, `${arcs.length}`);
+  check('the first is the one running out', arcs[0]!.state === 'covered');
+  check(
+    'and they are ordered soonest first',
+    arcs.every((a, i) => i === 0 || a.progress >= arcs[i - 1]!.progress - 0.5),
+  );
+  check('the lifetime arc is full', arcs[4]!.progress === 1);
+  check(
+    'the drawn ones are capped at four',
+    Math.min(arcs.length, MAX_RINGS) === 4,
+    `${Math.min(arcs.length, MAX_RINGS)}`,
+  );
+
+  const oneRing = coverageArcs(item({ name: 'Plain', purchaseDate: boughtYearsAgo(1), warranty: { months: 24 } }));
+  check('a single warranty draws one arc', oneRing.length === 1, `${oneRing.length}`);
+  const noRing = coverageArcs(empty);
+  check('and nothing recorded still draws a track', noRing.length === 1);
+  check('as an empty one', noRing[0]!.progress === 0 && noRing[0]!.state === 'unknown');
+
+  check(
+    'the row names what ends first, and how many',
+    coverSummary(couch) === 'Fabric ends first · 5 policies',
+    String(coverSummary(couch)),
+  );
+  check('one policy gets no cover line', coverSummary(item({ warranty: { months: 12 } })) === null);
+  check('nor does an item with none', coverSummary(empty) === null);
+  check(
+    'a lifetime-only survivor says so',
+    coverSummary(oldCouch) === 'Covered for life · 5 policies',
+    String(coverSummary(oldCouch)),
+  );
+  check(
+    'and everything lapsed says that',
+    coverSummary(noFrame) === 'All ended · 4 policies',
+    String(coverSummary(noFrame)),
+  );
 
   /* ------------------------------------------------------------- the rest */
 

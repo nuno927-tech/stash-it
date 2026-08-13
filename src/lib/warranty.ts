@@ -352,6 +352,56 @@ export function coverageState(d: DatedCoverage): WarrantyState {
   return d.daysLeft! <= ENDING_SOON_DAYS ? 'ending-soon' : 'covered';
 }
 
+/** How much of one policy's term is left, 0..1, for its arc. */
+export function coverageProgress(d: DatedCoverage, item: Item): number {
+  if (!d.end) return 1; // lifetime: a full circle, because it never empties
+  const start = d.coverage.startsOn ?? item.purchaseDate;
+  if (!start) return 0;
+
+  const total = daysUntil(d.end, parseDate(start));
+  if (total <= 0) return 0;
+  return Math.max(0, Math.min(1, d.daysLeft! / total));
+}
+
+/**
+ * One arc per policy for the list row's ring, soonest to lapse outermost.
+ *
+ * The caller draws only the first few — see MAX_RINGS — which is why the order
+ * matters: the ones that get dropped are the ones furthest from mattering.
+ */
+export function coverageArcs(
+  item: Item,
+  now = new Date(),
+): { progress: number; state: WarrantyState }[] {
+  const schedule = coverageSchedule(item, now);
+  if (schedule.length === 0) {
+    // Still one ring, drawn as an empty track. A row with no ring at all reads
+    // as a different kind of row rather than as an item with nothing recorded.
+    return [{ progress: 0, state: 'unknown' }];
+  }
+  return schedule.map((d) => ({
+    progress: coverageProgress(d, item),
+    state: coverageState(d),
+  }));
+}
+
+/**
+ * The cover line under an item's name: what ends first, and how many there
+ * are. Only for items with more than one policy — on everything else the row
+ * keeps showing the model and the year, which is more useful than the word
+ * "Warranty" repeated down the page.
+ */
+export function coverSummary(item: Item, now = new Date()): string | null {
+  const all = coveragesOf(item);
+  if (all.length < 2) return null;
+
+  const count = `${all.length} policies`;
+  const next = nextToLapse(item, now);
+  if (next) return `${coverageLabel(next.coverage)} ends first · ${count}`;
+  if (hasLifetime(item)) return `Covered for life · ${count}`;
+  return `All ended · ${count}`;
+}
+
 function sinceLabel(daysAgo: number): string {
   if (daysAgo < 31) return `${daysAgo} ${daysAgo === 1 ? 'day' : 'days'} ago`;
   const months = Math.floor(daysAgo / 30.44);

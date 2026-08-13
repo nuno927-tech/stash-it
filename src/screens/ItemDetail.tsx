@@ -132,7 +132,15 @@ export function ItemDetail({
 
       <div className="warranty">
         <div className="bigring">
-          <WarrantyRing size={62} stroke={5} progress={warrantyProgress(item)} state={state} />
+          {/* The big ring keeps to one arc. The stack belongs on the list,
+              where it answers "which of these has more than one"; here the
+              question is already answered by the Cover list a few lines
+              down, and four arcs at 62px would be decoration. */}
+          <WarrantyRing
+            size={62}
+            stroke={5}
+            arcs={[{ progress: warrantyProgress(item), state }]}
+          />
           <span className="lbl" style={{ color: STATE_STROKE[state] }}>
             {ringLabel(item, state)}
           </span>

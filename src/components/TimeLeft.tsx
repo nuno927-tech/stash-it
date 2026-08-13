@@ -26,13 +26,18 @@ export function TimeLeft({ item }: { item: Item }) {
   // to the stylesheet to guess from the content.
   const wordy = /^\d+$/.test(left.value) ? '' : ' wordy';
 
+  /*
+    Deliberately just the number and its unit — `left.which` is available and
+    is not drawn here. The right-hand column's job in a list is to be
+    comparable down the page, and a second line that appears on some rows and
+    not others breaks that alignment on exactly the rows that already draw the
+    eye with a busier ring. The policy's name goes in the row's second line
+    instead; see coverSummary.
+  */
   return (
     <div className={`timeleft ${TONE[warrantyState(item)]}${wordy}`}>
       <strong>{left.value}</strong>
       <small>{left.unit}</small>
-      {/* Which policy the number belongs to, on items that have several. A
-          countdown that doesn't say what it's counting is worse than none. */}
-      {left.which && <small className="whichcov">{left.which}</small>}
     </div>
   );
 }
