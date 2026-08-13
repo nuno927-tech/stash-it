@@ -12,6 +12,7 @@ import {
   type RoomDeleteStrategy,
 } from '@/db/repo';
 import { feedback } from '@/lib/feedback';
+import { dropTarget, moveWithin } from '@/lib/reorder';
 import { RoomIcon } from '@/components/RoomIcon';
 import type { Room } from '@/db/types';
 
@@ -22,8 +23,13 @@ import type { Room } from '@/db/types';
  * holds items, the user decides where they go first — losing a dishwasher
  * because you tidied up your room list would be unforgivable.
  */
+/* A stable empty array. `useLiveQuery(...) ?? []` builds a fresh one on every
+   render until the query resolves, and the reorder hook watches that value —
+   a new reference each render meant it reset its own state each render. */
+const NO_ROOMS: Room[] = [];
+
 export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () => void }) {
-  const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? [];
+  const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? NO_ROOMS;
   const counts = useLiveQuery(() => itemCountsByRoom(propertyId), [propertyId]);
 
   const [adding, setAdding] = useState('');
@@ -95,9 +101,18 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
 
       {error && <div className="notice bad">{error}</div>}
 
+      {/* The two numbers have to add up to what you own, so the total is
+          stated rather than left to be inferred from a list you'd have to
+          sum yourself. */}
       <div className="seclabel">
         <span>{rooms.length} rooms</span>
-        <span>{counts ? `${counts.unassigned} unassigned` : ''}</span>
+        <span>
+          {counts
+            ? `${counts.total} ${counts.total === 1 ? 'item' : 'items'}${
+                counts.unassigned ? ` · ${counts.unassigned} unassigned` : ''
+              }`
+            : ''}
+        </span>
       </div>
 
       <ul
@@ -121,7 +136,9 @@ export function Rooms({ propertyId, onBack }: { propertyId: string; onBack: () =
               {/*
                 A grip rather than the whole row: the row is also the rename
                 target, and a list where touching a name might drag it instead
-                is a list nobody trusts.
+                is a list nobody trusts. Drawn as a button — a filled chip with
+                a border — because as six bare dots it read as decoration and
+                nobody knew the list could be reordered at all.
               */}
               <button
                 type="button"
@@ -284,19 +301,15 @@ function useDragOrder(rooms: Room[], commit: (ids: string[]) => Promise<unknown>
     setOffset(dy);
 
     // Which row is the pointer over now? Measured rather than assumed, because
-    // rows aren't all the same height once one is being renamed.
-    const at = rows.current.findIndex((el) => {
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return e.clientY >= r.top && e.clientY <= r.bottom;
-    });
+    // rows aren't all the same height once one is being renamed — and skipping
+    // the held row, whose box follows the finger and would otherwise match
+    // every time. See src/lib/reorder.ts.
+    const spans = rows.current.map((el) => (el ? el.getBoundingClientRect() : null));
+    const at = dropTarget(spans, e.clientY, from.current);
+    if (at === null) return;
 
-    if (at === -1 || at === from.current) return;
-
-    const next = [...live.current];
-    const [held] = next.splice(from.current, 1);
-    if (!held) return;
-    next.splice(at, 0, held);
+    const next = moveWithin(live.current, from.current, at);
+    if (next === live.current) return;
 
     live.current = next;
     from.current = at;

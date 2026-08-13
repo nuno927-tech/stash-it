@@ -259,22 +259,39 @@ export async function reorderRooms(propertyId: string, orderedIds: string[]): Pr
 }
 
 /** Item counts for every room in one pass, plus the unassigned tally. */
+/**
+ * How many items sit in each room, and how many sit in none.
+ *
+ * Counted against the *live* rooms, not against whatever id an item happens to
+ * carry. An item can point at a room that no longer exists — a delete that
+ * didn't clear it, a restore from a backup written on another device, a room
+ * removed while the item was open on another screen. Those used to land in the
+ * map under a key nothing on screen looks up, so they were counted nowhere:
+ * the per-room numbers and "N unassigned" didn't add up to what you owned, and
+ * the missing items were invisible in both.
+ *
+ * A room the app can't show is, from the user's point of view, no room at all,
+ * so those items count as unassigned — which is also the state the Items list
+ * already puts them in when it groups.
+ */
 export async function itemCountsByRoom(
   propertyId: string,
-): Promise<{ byRoom: Map<string, number>; unassigned: number }> {
-  const items = await activeItems(propertyId);
+): Promise<{ byRoom: Map<string, number>; unassigned: number; total: number }> {
+  const [items, rooms] = await Promise.all([activeItems(propertyId), activeRooms(propertyId)]);
+  const live = new Set(rooms.map((r) => r.id));
+
   const byRoom = new Map<string, number>();
   let unassigned = 0;
 
   for (const item of items) {
-    if (!item.roomId) {
+    if (!item.roomId || !live.has(item.roomId)) {
       unassigned++;
       continue;
     }
     byRoom.set(item.roomId, (byRoom.get(item.roomId) ?? 0) + 1);
   }
 
-  return { byRoom, unassigned };
+  return { byRoom, unassigned, total: items.length };
 }
 
 export async function itemCountForRoom(roomId: string): Promise<number> {

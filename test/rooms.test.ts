@@ -163,6 +163,30 @@ async function main() {
   const counts = await itemCountsByRoom(pid);
   check('the bulk count agrees', counts.byRoom.get(garage.id) === 2);
   check('unassigned items are tallied', counts.unassigned === 1, `${counts.unassigned}`);
+  check('the total is reported', counts.total === 3, `${counts.total}`);
+
+  // The numbers on the Rooms screen have to account for every item. An item
+  // pointing at a room that isn't in the list — a stale id from a restore, a
+  // delete that didn't clear it — used to be counted under a key nothing on
+  // screen reads, so it appeared in neither column.
+  const orphan = await saveNewItem({ ...emptyForm('USD'), name: 'Ghost Lamp' }, pid);
+  await db.items.update(orphan, { roomId: 'a-room-that-does-not-exist' });
+
+  const withOrphan = await itemCountsByRoom(pid);
+  const live = await activeRooms(pid);
+  const shown = live.reduce((n, r) => n + (withOrphan.byRoom.get(r.id) ?? 0), 0);
+  check('an item in a missing room counts as unassigned', withOrphan.unassigned === 2, `${withOrphan.unassigned}`);
+  check(
+    'so the columns add up to the total',
+    shown + withOrphan.unassigned === withOrphan.total,
+    `${shown} + ${withOrphan.unassigned} vs ${withOrphan.total}`,
+  );
+  check(
+    'and no phantom room is reported',
+    [...withOrphan.byRoom.keys()].every((id) => live.some((r) => r.id === id)),
+  );
+
+  await db.items.update(orphan, { deletedAt: new Date().toISOString() });
 
   /* ------------------------------------------- delete never cascades */
 
