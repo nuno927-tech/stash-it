@@ -3372,6 +3372,78 @@ button.countpill.tappill:active {
   margin: 0;
 }
 
+/* --------------------------------------------------------- recently deleted */
+
+/* The way in, at the foot of the items list. Quiet on purpose: it's a door for
+   the rare occasion you want it, not a fixture of the screen. */
+.binlink {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px 14px;
+  border: 1px dashed var(--slate-600);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--muted);
+  text-align: left;
+  font-size: 13px;
+}
+
+.binlink:active {
+  background: var(--slate-700);
+}
+
+.binlink small {
+  font-size: 11.5px;
+  font-weight: 300;
+  white-space: nowrap;
+}
+
+.binlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.binrow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--slate-700);
+}
+
+.bintxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bintxt strong {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bintxt small {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* The countdown is the only reason this screen exists. Once it's short it
+   stops being a detail and starts being the point. */
+.bintxt small.urgent {
+  color: var(--ember);
+}
+
 /* ------------------------------------------------------- the items header */
 
 /*

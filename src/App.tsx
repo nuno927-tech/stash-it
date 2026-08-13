@@ -42,6 +42,7 @@ import { ItemDetail } from '@/screens/ItemDetail';
 import { ItemForm } from '@/screens/ItemForm';
 import { Items, type ItemsFilter } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
+import { Bin } from '@/screens/Bin';
 import { Rooms } from '@/screens/Rooms';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
@@ -65,6 +66,7 @@ type Screen =
   | { kind: 'settings' }
   | { kind: 'add'; from: Origin }
   | { kind: 'rooms' }
+  | { kind: 'bin' }
   /*
     `saved` marks the one arrival that came from creating this item, so the
     detail screen can tell you to file the paper copy. It lives on the screen
@@ -83,6 +85,7 @@ const TAB_FOR: Record<Screen['kind'], Tab> = {
   detail: 'items',
   edit: 'items',
   rooms: 'settings',
+  bin: 'items',
 };
 
 export default function App() {
@@ -274,6 +277,7 @@ const PUSHED: Record<Screen['kind'], boolean> = {
   detail: true,
   edit: true,
   rooms: true,
+  bin: true,
 };
 
 function Shell() {
@@ -423,6 +427,7 @@ function Shell() {
           filter={screen.filter}
           onOpenItem={(id) => go({ kind: 'detail', id, from: 'items' })}
           onAdd={() => go({ kind: 'add', from: 'items' })}
+          onOpenBin={() => go({ kind: 'bin' })}
         />
       )}
 
@@ -475,6 +480,10 @@ function Shell() {
 
       {screen.kind === 'rooms' && (
         <Rooms propertyId={property.id} onBack={() => pop({ kind: 'settings' })} />
+      )}
+
+      {screen.kind === 'bin' && (
+        <Bin propertyId={property.id} onBack={() => pop({ kind: 'items' })} />
       )}
 
       {/*

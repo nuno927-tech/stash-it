@@ -44,19 +44,58 @@ export async function restoreItem(id: string): Promise<void> {
 
 export const PURGE_AFTER_DAYS = 30;
 
+/**
+ * Everything in the bin, soonest to go first.
+ *
+ * That order rather than most-recently-deleted: the only question this screen
+ * answers is "what am I about to lose", and the answer belongs at the top.
+ */
+export async function deletedItems(propertyId: string): Promise<Item[]> {
+  const rows = await db.items.where('propertyId').equals(propertyId).toArray();
+  return rows
+    .filter((i) => i.deletedAt)
+    .sort((a, b) => (a.deletedAt! < b.deletedAt! ? -1 : 1));
+}
+
+export async function deletedItemCount(propertyId: string): Promise<number> {
+  return (await deletedItems(propertyId)).length;
+}
+
+/**
+ * Erase one item and everything only it was holding.
+ *
+ * Shared by the thirty-day sweep and the "delete now" button, because two
+ * routines that both mean "erase this" and clean up differently is how blobs
+ * are orphaned — invisibly, and only in the storage figure.
+ */
+async function erase(item: Item): Promise<void> {
+  const docs = await db.docs.where('itemId').equals(item.id).toArray();
+  const blobIds = docs.map((d) => d.blobId).filter(Boolean) as string[];
+  if (item.thumbBlobId) blobIds.push(item.thumbBlobId);
+  if (item.photoBlobId) blobIds.push(item.photoBlobId);
+  await db.blobs.bulkDelete(blobIds);
+  await db.docs.bulkDelete(docs.map((d) => d.id));
+  await db.items.delete(item.id);
+}
+
+/** Skip the wait. Only reachable from the bin, and only after a confirmation. */
+export async function purgeItemNow(id: string): Promise<void> {
+  const item = await db.items.get(id);
+  if (item) await erase(item);
+}
+
+export async function emptyBin(propertyId: string): Promise<number> {
+  const gone = await deletedItems(propertyId);
+  for (const item of gone) await erase(item);
+  return gone.length;
+}
+
 export async function purgeExpiredDeletes(now = Date.now()): Promise<number> {
   const cutoff = now - PURGE_AFTER_DAYS * 86_400_000;
   const stale = (await db.items.toArray()).filter(
     (i) => i.deletedAt && new Date(i.deletedAt).getTime() < cutoff,
   );
-  for (const item of stale) {
-    const docs = await db.docs.where('itemId').equals(item.id).toArray();
-    const blobIds = docs.map((d) => d.blobId).filter(Boolean) as string[];
-    if (item.thumbBlobId) blobIds.push(item.thumbBlobId);
-    await db.blobs.bulkDelete(blobIds);
-    await db.docs.bulkDelete(docs.map((d) => d.id));
-    await db.items.delete(item.id);
-  }
+  for (const item of stale) await erase(item);
   return stale.length;
 }
 

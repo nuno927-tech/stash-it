@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeItems, activeRooms } from '@/db/repo';
+import { activeItems, activeRooms, deletedItems } from '@/db/repo';
 import type { Item } from '@/db/types';
+import { binSummary } from '@/lib/bin';
 import { prefsFrom } from '@/lib/prefs';
 import { matchSummary, searchItems } from '@/lib/search';
 import { effectiveExpiry, warrantyState } from '@/lib/warranty';
@@ -58,13 +59,16 @@ export function Items({
   filter,
   onOpenItem,
   onAdd,
+  onOpenBin,
 }: {
   propertyId: string;
   filter?: ItemsFilter;
   onOpenItem: (id: string) => void;
   onAdd: () => void;
+  onOpenBin: () => void;
 }) {
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
+  const binned = useLiveQuery(() => deletedItems(propertyId), [propertyId]) ?? [];
   const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? [];
   const docs = useLiveQuery(() => db.docs.toArray(), []) ?? [];
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
@@ -139,6 +143,9 @@ export function Items({
         <button type="button" className="btn" onClick={onAdd}>
           Add an item
         </button>
+        {/* Deleting the last item lands you here, which makes this the one
+            screen where the way back to the bin matters most. */}
+        <BinLink binned={binned} onOpenBin={onOpenBin} />
       </div>
     );
   }
@@ -296,7 +303,28 @@ export function Items({
           )}
         </>
       )}
+
+      <BinLink binned={binned} onOpenBin={onOpenBin} />
     </>
+  );
+}
+
+/**
+ * The way into the bin, shown only when there's something in it.
+ *
+ * An always-present "Recently deleted (0)" is a row that answers no question,
+ * on the screen that can least afford another one. And the moment the app
+ * promises the bin — the delete confirmation — is a moment there is certainly
+ * something inside it, so the promise is never made about a row that isn't
+ * there.
+ */
+function BinLink({ binned, onOpenBin }: { binned: Item[]; onOpenBin: () => void }) {
+  if (binned.length === 0) return null;
+  return (
+    <button type="button" className="binlink" onClick={onOpenBin}>
+      <span>Recently deleted</span>
+      <small>{binSummary(binned)}</small>
+    </button>
   );
 }
 

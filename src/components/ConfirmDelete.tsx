@@ -1,3 +1,4 @@
+import { PURGE_AFTER_DAYS } from '@/db/repo';
 import { ScoutDialog } from './ScoutDialog';
 
 /**
@@ -31,9 +32,12 @@ export function ConfirmDelete({
       alt="Scout, ears up"
       onClose={onCancel}
     >
+      {/* Naming the place, not just the policy. This said "it goes to the bin
+          for 30 days" for months while there was no bin anywhere in the app —
+          a promise nobody could check and nobody could use. */}
       <p>
-        It goes to the bin for 30 days, so you can change your mind. The free-tier slot comes back
-        straight away.
+        It waits {PURGE_AFTER_DAYS} days under <b>Recently deleted</b>, at the bottom of the Items
+        list. The free-tier slot comes back straight away.
       </p>
 
       {/* The destructive option is the one that has to be chosen, never the
