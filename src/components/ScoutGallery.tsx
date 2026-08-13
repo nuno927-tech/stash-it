@@ -88,9 +88,36 @@ export function ScoutGallery({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      <p className="galleryfoot">
-        Drawn once, cut out of paired renders, and reused everywhere. There is no ninth pose.
-      </p>
+      {/* The reward for twenty-five taps. Nobody needs it, which is the only
+          reason it's allowed to be this long. */}
+      <section className="scoutlore">
+        <h3>How Scout got the job</h3>
+
+        <p>
+          A grey squirrel caches around ten thousand nuts a year and loses most of them. This is
+          usually explained as bad memory. It isn't. It's that no one has ever asked a squirrel for
+          proof of purchase, so no squirrel has ever kept any.
+        </p>
+
+        <p>
+          Scout kept his. The acorn, obviously — but also the twig it came off, a note of which
+          tree, and a photograph of the hollow he put it in, dated. The others in the oak thought
+          this was excessive. It stayed excessive right up until the February the walnut store went
+          missing and exactly one resident could produce a filing system.
+        </p>
+
+        <p>
+          By March he was doing everyone's paperwork. By the following winter he had opinions about
+          extended cover. When this app needed someone to keep track of things people own, he was
+          the only candidate who turned up holding a receipt, and he has been holding it ever since
+          — through eight outfits, one house move and a brief unexplained period of lounging.
+        </p>
+
+        <p className="lorekick">
+          In all that time nobody has asked him to prove a single thing. He keeps it ready anyway.
+          That's the whole job.
+        </p>
+      </section>
     </div>,
     document.body,
   );
