@@ -19,6 +19,7 @@ import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
 import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
+import { sampleNudges } from '@/lib/nudges';
 import {
   hasNativePrompt,
   installOffer,
@@ -45,6 +46,8 @@ import {
 } from '@/lib/prefs';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
+import { getEndingSoonDays } from '@/lib/warranty';
+import { NudgeBar } from '@/components/NudgeBar';
 import { DriveCard } from '@/components/DriveCard';
 import { ScoutGallery } from '@/components/ScoutGallery';
 import { Scout } from '@/components/Scout';
@@ -131,13 +134,14 @@ export function Settings({
         pending={pending}
         setPending={setPending}
       />
-      <AboutApp
-        onNotice={setNotice}
-        taps={taps}
-        onTapVersion={() => setTaps((t) => tap(t, Date.now()))}
-        onTour={onTour}
-      />
+      <AboutApp onNotice={setNotice} onTour={onTour} />
       <Support settings={settings} />
+
+      {/* The version, last, in a card of its own. It's a fact about the build
+          rather than a setting, and it was riding on the About card's header
+          where it read as that card's badge. Ten taps still opens the
+          developer tools; nothing about it advertises that. */}
+      <VersionCard taps={taps} onTap={() => setTaps((t) => tap(t, Date.now()))} />
 
       {/* Drive lives here rather than beside the file backup. It needs an OAuth
           client ID pasted in before it does anything, which makes it a thing
@@ -875,13 +879,9 @@ function VenmoGlyph() {
 
 function AboutApp({
   onNotice,
-  taps,
-  onTapVersion,
   onTour,
 }: {
   onNotice: (n: Notice) => void;
-  taps: TapState;
-  onTapVersion: () => void;
   onTour: () => void;
 }) {
   const url = appUrl();
@@ -895,19 +895,9 @@ function AboutApp({
     android: isAndroid(),
     settled: true,
   });
-  const hint = tapHint(taps);
 
   return (
-    <Card
-      title="Stash it"
-      aside={
-        /* Ten taps here reveals the developer card. Nothing about the pill
-           advertises that, which is the point. */
-        <button type="button" className="countpill tappill" data-cue="none" onClick={onTapVersion}>
-          {hint ?? `v${__APP_VERSION__}`}
-        </button>
-      }
-    >
+    <Card title="Stash it">
       {offer !== 'none' && (
         <Row
           label="Add to home screen"
@@ -952,6 +942,27 @@ function AboutApp({
   );
 }
 
+/**
+ * The build, and the way into the developer tools.
+ *
+ * Its own card at the foot of the page. As a pill in the About card's header
+ * it read as a badge on that card — and it isn't a setting at all, it's a fact
+ * about what you're running, which is the sort of thing that belongs at the
+ * bottom next to nothing else.
+ */
+function VersionCard({ taps, onTap }: { taps: TapState; onTap: () => void }) {
+  const hint = tapHint(taps);
+
+  return (
+    <section className="card versioncard">
+      <button type="button" className="tappill" data-cue="none" onClick={onTap}>
+        Stash it <span>v{__APP_VERSION__}</span>
+      </button>
+      <p>{hint ?? 'Everything you own, on your own phone.'}</p>
+    </section>
+  );
+}
+
 function ShareGlyph() {
   return (
     <svg
@@ -988,6 +999,7 @@ function Developer({
   onHide: () => void;
 }) {
   const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
+  const [preview, setPreview] = useState(false);
 
   return (
     <Card
@@ -1012,6 +1024,43 @@ function Developer({
             }
           />
         }
+      />
+
+      {/*
+        Every reminder this app has, on demand.
+
+        None of them is a push notification — there's no server to send one and
+        nothing running while the app is shut, so a reminder here is a card on
+        the dashboard the next time you open it. The catch is that each one is
+        governed by a date: the backup nudge waits for the interval to lapse,
+        the tip waits a month. Left alone you'd wait weeks to find out whether
+        the copy reads well or the button goes where it should.
+
+        Drawn with the component the dashboard uses, from the same functions,
+        on forced inputs. A preview that renders its own version of the thing
+        is a preview of nothing.
+      */}
+      <Row
+        label="Preview the reminders"
+        note="The backup, warranty and tip nudges as they appear on the dashboard. Nothing is saved."
+        control={
+          <button type="button" className="minibtn ghost" onClick={() => setPreview((p) => !p)}>
+            {preview ? 'Hide' : 'Show'}
+          </button>
+        }
+      />
+
+      {preview && (
+        <NudgeBar
+          nudges={sampleNudges()}
+          onAct={() => feedback('tap')}
+          onDismiss={() => setPreview(false)}
+        />
+      )}
+
+      <Row
+        label="Warning threshold"
+        note={`"Ending soon" means ${getEndingSoonDays()} days or less right now — the value set by "Warn me before a warranty ends".`}
       />
     </Card>
   );

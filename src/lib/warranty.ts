@@ -6,6 +6,28 @@ export const DEFAULT_COVERAGE_LABEL = 'Warranty';
 
 export const ENDING_SOON_DAYS = 30;
 
+/**
+ * How close to the end counts as "ending soon", in days.
+ *
+ * A module-level value with a setter, rather than an argument threaded through
+ * `warrantyState`, `coverageState`, the dashboard, both list screens and the
+ * item page. Every one of those call sites would have to fetch the settings
+ * record to pass it, and a fifteen-file signature change is how a preference
+ * ends up read in four places out of five.
+ *
+ * Set once from the live settings record — see Shell in App.tsx — so the whole
+ * app agrees on the answer at any instant. Tests set it and put it back.
+ */
+let endingSoon = ENDING_SOON_DAYS;
+
+export function setEndingSoonDays(days: number): void {
+  endingSoon = Math.max(1, Math.min(365, Math.round(days)));
+}
+
+export function getEndingSoonDays(): number {
+  return endingSoon;
+}
+
 /** Parses YYYY-MM-DD as a local calendar date, not UTC midnight. */
 export function parseDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -218,7 +240,7 @@ export function warrantyState(item: Item, now = new Date()): WarrantyState {
 
   const next = nextToLapse(item, now);
   if (next) {
-    return next.daysLeft! <= ENDING_SOON_DAYS ? 'ending-soon' : 'covered';
+    return next.daysLeft! <= endingSoon ? 'ending-soon' : 'covered';
   }
   // Every dated policy has run out. A lifetime policy means the item is still
   // covered for something, so it must not be painted as expired.
@@ -349,7 +371,7 @@ export function coverageParts(d: DatedCoverage, now = new Date()): WarrantyParts
 export function coverageState(d: DatedCoverage): WarrantyState {
   if (!d.end) return 'covered';
   if (d.daysLeft! < 0) return 'expired';
-  return d.daysLeft! <= ENDING_SOON_DAYS ? 'ending-soon' : 'covered';
+  return d.daysLeft! <= endingSoon ? 'ending-soon' : 'covered';
 }
 
 /** How much of one policy's term is left, 0..1, for its arc. */

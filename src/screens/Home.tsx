@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItems } from '@/db/repo';
 import type { Doc, Item } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
+import { dueNudges, type NudgeKind } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import {
   effectiveExpiry,
@@ -14,6 +16,7 @@ import {
 } from '@/lib/warranty';
 import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
+import { NudgeBar } from '@/components/NudgeBar';
 import { Scout } from '@/components/Scout';
 import { TimeLeft } from '@/components/TimeLeft';
 import { useThumbUrl } from '@/components/useThumbUrl';
@@ -31,12 +34,16 @@ export function Home({
   onAdd,
   onOpenItem,
   onBrowse,
+  onSettings,
 }: {
   propertyId: string;
   onAdd: () => void;
   onOpenItem: (id: string) => void;
   onBrowse: (filter?: ItemsFilter) => void;
+  /** Where every nudge sends you — each one is answered in Settings. */
+  onSettings: () => void;
 }) {
+  const [hidden, setHidden] = useState<NudgeKind[]>([]);
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
   const docs = useLiveQuery(() => db.docs.toArray(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
@@ -45,6 +52,15 @@ export function Home({
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
 
   const m = metricsFor(items, docs);
+
+  // The reminders, such as they are. No push notification exists to deliver
+  // these — see src/lib/nudges.ts — so the next time the app is opened is the
+  // only moment there is to say anything.
+  const nudges = dueNudges({
+    settings,
+    itemCount: items.length,
+    endingSoon: m.endingSoon,
+  }).filter((n) => !hidden.includes(n.kind));
 
   return (
     <>
@@ -56,6 +72,12 @@ export function Home({
           <h1>{greeting(prefsFrom(settings).displayName)}</h1>
         </div>
       </header>
+
+      <NudgeBar
+        nudges={nudges}
+        onAct={(n) => (n.kind === 'warranty' ? onBrowse('ending') : onSettings())}
+        onDismiss={(n) => setHidden((h) => [...h, n.kind])}
+      />
 
       {m.endingSoon > 0 && (
         <button type="button" className="alert" onClick={() => onBrowse('ending')}>

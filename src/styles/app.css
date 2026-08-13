@@ -2818,6 +2818,88 @@ button.countpill.tappill:active {
   margin-top: 12px;
 }
 
+/* ---------------------------------------------------------- the nudges */
+
+/*
+  Reminders, such as this app can have them. No push notification exists to
+  deliver these, so they're cards at the top of the dashboard — see
+  src/lib/nudges.ts. Amber-edged rather than red: none of them is an error,
+  and two of the three are entirely ignorable.
+*/
+.nudges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.nudge {
+  border: 1px solid var(--wash-gold-line);
+  background: var(--wash-gold-soft);
+  border-radius: var(--r-lg);
+  padding: 13px 14px;
+}
+
+.nudge-txt strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.nudge-txt p {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.nudge-acts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* The tip is the one nudge that asks rather than warns, so it drops the
+   gold and sits quietly. */
+.nudge.tip {
+  border-color: var(--slate-600);
+  background: var(--slate-700);
+}
+
+/* ---------------------------------------------------------- the version */
+
+.versioncard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 18px 16px;
+}
+
+.versioncard .tappill {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+
+.versioncard .tappill span {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.versioncard p {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
 /* ------------------------------------------------- the cover list, read */
 
 .cov {

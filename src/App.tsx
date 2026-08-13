@@ -21,7 +21,9 @@ import {
   verifyBiometrics,
   type LockVerdict,
 } from '@/lib/lock';
+import { endingSoonDays } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
+import { setEndingSoonDays } from '@/lib/warranty';
 import { nextTab } from '@/lib/swipe';
 import { remindLater, tourDue } from '@/lib/tour';
 import { shareToDraft, type ShareDraft } from '@/lib/shareDraft';
@@ -321,6 +323,14 @@ function Shell() {
     configureFeedback({ sounds: prefs.sounds, haptics: prefs.haptics });
   }, [prefs.sounds, prefs.haptics]);
 
+  // "Warn me before a warranty ends" was writing to the database and being
+  // read by nothing: the amber threshold was a hard-coded 30 days. Published
+  // here, once, so every screen agrees — see setEndingSoonDays.
+  const warnDays = endingSoonDays(settings);
+  useEffect(() => {
+    setEndingSoonDays(warnDays);
+  }, [warnDays]);
+
   // One delegated listener for the whole app; the cue is chosen from what was
   // clicked. Silent unless the sounds preference is on.
   useEffect(() => installClickSounds(), []);
@@ -396,6 +406,7 @@ function Shell() {
           onAdd={() => go({ kind: 'add', from: 'home' })}
           onOpenItem={(id) => go({ kind: 'detail', id, from: 'home' })}
           onBrowse={(filter) => go({ kind: 'items', filter })}
+          onSettings={() => go({ kind: 'settings' })}
         />
       )}
 
