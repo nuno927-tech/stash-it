@@ -2819,6 +2819,17 @@ button.countpill.tappill:active {
   margin-bottom: 10px;
 }
 
+/* Something is filled in behind a collapsed section. */
+.filleddot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  vertical-align: middle;
+}
+
 /* The heading of its own block, and now a label rather than a field: the
    name comes from the buttons underneath. */
 .covwhat {
@@ -2836,12 +2847,6 @@ button.countpill.tappill:active {
 .covwhat.unset {
   color: var(--muted);
   font-weight: 400;
-}
-
-.covcovers {
-  font-size: 13px !important;
-  padding: 10px 12px !important;
-  margin-bottom: 12px;
 }
 
 /* --------------------------------------------------------- doc attaching */

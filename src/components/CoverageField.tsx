@@ -101,6 +101,10 @@ function CoverageRow({
 
   const ends = coverEnds(purchaseDate, draft.unit, draft.amount);
 
+  const hasDetails = [draft.covers, draft.provider, draft.policyNumber, draft.phone, draft.url].some(
+    (v) => v.trim(),
+  );
+
   return (
     <div className={`covrow${index > 0 ? ' extra' : ''}`}>
       {index > 0 && <div className="covrule" />}
@@ -185,15 +189,6 @@ function CoverageRow({
         />
       )}
 
-      <input
-        type="text"
-        className="covcovers"
-        value={draft.covers}
-        onChange={(e) => onPatch({ covers: e.target.value })}
-        placeholder={COVERS_PLACEHOLDER}
-        aria-label="What this policy covers"
-      />
-
       <div className="seg">
         {(Object.keys(UNIT_LABEL) as CoverageUnit[]).map((u) => (
           <button
@@ -274,11 +269,32 @@ function CoverageRow({
         aria-expanded={more}
         onClick={() => setMore((m) => !m)}
       >
-        {more ? 'Hide who to call' : 'Who to call, policy number'}
+        {more ? 'Fewer details' : 'Additional details'}
+        {/* Collapsed, there is nothing to say whether anything is in there.
+            A dot is enough: it means "you filled something in here", which is
+            the only question a closed section raises. */}
+        {!more && hasDetails && <i className="filleddot" aria-label="has details" />}
       </button>
 
       {more && (
         <>
+          {/*
+            What the policy actually pays for, and the first thing behind the
+            toggle because it's the one a claim turns on. It used to sit out on
+            the row, which put a wide free-text box between the policy's name
+            and its term on every single coverage — including the four out of
+            five where nobody fills it in.
+          */}
+          <label className="field">
+            <span className="fieldlabel">What it covers</span>
+            <textarea
+              rows={2}
+              value={draft.covers}
+              onChange={(e) => onPatch({ covers: e.target.value })}
+              placeholder={COVERS_PLACEHOLDER}
+            />
+          </label>
+
           <label className="field">
             <span className="fieldlabel">Provider</span>
             <input
