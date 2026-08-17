@@ -14,7 +14,15 @@ process.env.TZ = 'America/New_York';
 
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
-import { activePapers, createPaper, deletePaper, updatePaper, canAddItem, activeItemCount } from '@/db/repo';
+import {
+  activePapers,
+  activeItemCount,
+  canAddItem,
+  cappedCount,
+  createPaper,
+  deletePaper,
+  updatePaper,
+} from '@/db/repo';
 import { FREE_ITEM_LIMIT, SCHEMA_VERSION, type Paper, type PaperKind } from '@/db/types';
 import {
   DEFAULT_LEAD_DAYS,
@@ -294,22 +302,24 @@ async function main() {
   check('and updates', (await db.papers.get(id))!.leadDays === 300);
 
   /*
-    Papers do not count against the free cap, for the same reason subscriptions
-    don't: the cap prices storage, and a paper has no attachments at all.
+    Documents DO count against the free cap, which reverses the rule this block
+    used to assert. They were exempt because the cap prices storage and a paper
+    holds no attachment at all — sound, and it left the limit meaning "how many
+    kettles" rather than "how much of this app you are using". See cappedCount.
   */
   const settings = (await db.settings.get('singleton'))!;
-  const before = await activeItemCount(property.id);
-  check('a paper is not an item', before === 0, `${before}`);
-  check('and the cap is untouched by one', canAddItem(before, settings.entitlements));
+  check('a document is not an item', (await activeItemCount(property.id)) === 0);
+  check('but it is in the total the cap reads', (await cappedCount(property.id)) === 1);
 
-  // The cap counts items and nothing else. Fifteen papers on top of a full
-  // fifteen items is still fine, and has to be — a passport is not storage.
-  for (let i = 0; i < 15; i++) {
-    await createPaper({ propertyId: property.id, kind: 'other', label: `Doc ${i}`, expiresOn: '2030-01-01' });
+  // Enough documents on their own to fill the tier, with no items at all.
+  while ((await cappedCount(property.id)) < FREE_ITEM_LIMIT) {
+    const n = await cappedCount(property.id);
+    await createPaper({ propertyId: property.id, kind: 'other', label: `Doc ${n}`, expiresOn: '2030-01-01' });
   }
-  check('sixteen papers do not fill a fifteen-item tier', canAddItem(await activeItemCount(property.id), settings.entitlements));
-  check('and they are all there', (await activePapers(property.id)).length === 16);
+  check('documents alone can fill the tier', !canAddItem(await cappedCount(property.id), settings.entitlements));
+  check('with no items involved', (await activeItemCount(property.id)) === 0);
   for (const p of (await activePapers(property.id)).filter((p) => p.id !== id)) await deletePaper(p.id);
+  check('and clearing them frees it again', canAddItem(await cappedCount(property.id), settings.entitlements));
 
   /* --------------------------------------------------------- the round trip */
 

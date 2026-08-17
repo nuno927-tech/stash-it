@@ -443,18 +443,23 @@ button.coverstat:active {
   right: 7px;
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  background: rgba(13, 15, 18, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* The ring is 28 in a 34 disc; `.ring` is inset: 0 by default, which would put
-   the outermost arc on the rim. The two numbers have to agree — see the call
-   site in RecentCard. */
+/*
+  NO DISC. There was a dark circle behind the ring, to guarantee contrast on
+  any photograph. It never quite lined up — the ring is inset 3px inside a
+  34px box and the disc was the full 34, so any error in the arc geometry read
+  as the ring sitting off-centre in its own plate, which is the kind of wrong
+  the eye catches instantly and can't stop seeing.
+
+  Dropping it costs less than it sounds. `.ring .track` already draws a full
+  circle in slate-600 under the arcs, so the shape stays legible on a busy
+  photo; what goes is a hard edge that was drawing attention to a two-pixel
+  misalignment rather than to the warranty.
+*/
 .recentring .ring {
   inset: 3px;
 }
-
 .recenttile strong {
   display: block;
   font-size: 13.5px;
@@ -3945,13 +3950,23 @@ button.countpill.tappill:active {
   color: var(--muted);
 }
 
-/* The running cost, above the timeline so it frames the renewals in it. */
+/*
+  The running cost, as three tiles rather than one sentence.
+
+  It was a hero figure with the rest trailing after it in prose, which read
+  well and made three facts into one paragraph you had to parse. Three tiles
+  make them three answers you can take at a glance — and it lets the count be
+  its own tap target, which the sentence could not.
+*/
 .runcost {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtile {
+  min-width: 0;
+  padding: 12px 11px;
   border: none;
   border-radius: var(--r-lg);
   background: var(--slate-700);
@@ -3959,35 +3974,44 @@ button.countpill.tappill:active {
   text-align: left;
 }
 
-.runcost:active {
+/* Only the first is a button — see the note at the call site. */
+button.runtile:active {
   background: var(--slate-600);
 }
 
-.runcost > strong {
-  flex: none;
+.runtile strong {
+  display: block;
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 30px;
+  font-size: 26px;
   letter-spacing: -0.035em;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.runcost > span {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 300;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.runcost b {
+.runtile span {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 11px;
   font-weight: 300;
   color: var(--muted);
-  opacity: 0.85;
+}
+
+/*
+  The third tile holds two figures in the height the others give one, so they
+  drop to the size that fits rather than the size the others use. Two numbers
+  at 26px would make that tile taller than its neighbours and turn a row of
+  three into a row of two and a bit.
+*/
+.runtile .runsmall {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.runtile .runsmall + span + .runsmall {
+  margin-top: 7px;
 }
 
 /* ------------------------------------------- subscriptions, on the dashboard */

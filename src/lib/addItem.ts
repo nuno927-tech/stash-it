@@ -5,7 +5,7 @@
  * screen only collects strings.
  */
 
-import { activeItemCount, canAddItem, createItem, updateItem } from '@/db/repo';
+import { canAddItem, cappedCount, createItem, updateItem } from '@/db/repo';
 import { db, newId } from '@/db/db';
 import {
   FREE_ITEM_LIMIT,
@@ -34,8 +34,8 @@ export class ItemLimitError extends Error {
     const over = count - FREE_ITEM_LIMIT + 1;
     super(
       count > FREE_ITEM_LIMIT
-        ? `You have ${count} items and the free tier holds ${FREE_ITEM_LIMIT}. Nothing has been removed — everything you've saved stays editable and exportable. To add more, subscribe again or remove ${over}.`
-        : `Free tier holds ${FREE_ITEM_LIMIT} items. Remove one, or subscribe — everything you've already saved stays editable and exportable either way.`,
+        ? `You have ${count} things saved and the free tier holds ${FREE_ITEM_LIMIT}. Nothing has been removed — everything you've saved stays editable and exportable. To add more, subscribe again or remove ${over}.`
+        : `Free tier holds ${FREE_ITEM_LIMIT} items, subscriptions and documents together. Remove one, or subscribe — everything you've already saved stays editable and exportable either way.`,
     );
   }
 }
@@ -360,7 +360,7 @@ export async function saveNewItem(
   const draft = draftFromForm(form, propertyId, photo);
 
   const settings = await db.settings.get('singleton');
-  const count = await activeItemCount(propertyId);
+  const count = await cappedCount(propertyId);
   if (settings && !canAddItem(count, settings.entitlements)) throw new ItemLimitError(count);
 
   return createItem(draft);

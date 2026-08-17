@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, nowISO } from '@/db/db';
 import { pushBack } from '@/lib/backstack';
-import { activeItemCount } from '@/db/repo';
+import { cappedCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
 import {
   BundleError,
@@ -1085,7 +1085,7 @@ function Developer({
   /** The preview belongs on the dashboard, so the button has to go there. */
   onHome: () => void;
 }) {
-  const count = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
+  const count = useLiveQuery(() => cappedCount(propertyId), [propertyId]) ?? 0;
 
   return (
     <Card
@@ -1098,7 +1098,7 @@ function Developer({
     >
       <Row
         label="Pro unlock"
-        note={`Lifts the ${FREE_ITEM_LIMIT}-item cap. Currently ${count} ${count === 1 ? 'item' : 'items'}.`}
+        note={`Lifts the ${FREE_ITEM_LIMIT}-record cap. Currently ${count} saved, counting items, subscriptions and documents.`}
         control={
           <Toggle
             on={settings.entitlements.proUnlock}

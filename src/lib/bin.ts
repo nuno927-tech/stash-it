@@ -60,7 +60,7 @@ export function canRestore(activeCount: number, e: Entitlements): boolean {
 }
 
 export function restoreBlockedReason(activeCount: number): string {
-  return `You're at ${activeCount} of ${FREE_ITEM_LIMIT}. Remove something, or subscribe, and this comes straight back — it stays here either way.`;
+  return `You're at ${activeCount} of ${FREE_ITEM_LIMIT} saved things. Remove something, or subscribe, and this comes straight back — it stays here either way.`;
 }
 
 /** "3 items" / "1 item", for the entry row and the heading. */

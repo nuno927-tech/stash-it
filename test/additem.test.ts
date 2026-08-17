@@ -9,7 +9,7 @@
 
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
-import { activeItemCount, canAddItem } from '@/db/repo';
+import { activeItemCount, canAddItem, cappedCount, createPaper, createSubscription } from '@/db/repo';
 import { FREE_ITEM_LIMIT, SCHEMA_VERSION } from '@/db/types';
 import {
   blankCoverage,
@@ -181,8 +181,8 @@ async function main() {
     entitlements: { proUnlock: false, reportUnlock: false },
   });
 
-  while ((await activeItemCount(property.id)) < FREE_ITEM_LIMIT) {
-    await saveNewItem(form({ name: `Filler ${await activeItemCount(property.id)}` }), property.id);
+  while ((await cappedCount(property.id)) < FREE_ITEM_LIMIT) {
+    await saveNewItem(form({ name: `Filler ${await cappedCount(property.id)}` }), property.id);
   }
 
   threw = '';
@@ -191,7 +191,7 @@ async function main() {
   } catch (e) {
     threw = (e as Error).constructor.name;
   }
-  check('the cap blocks item 16', threw === 'ItemLimitError', threw || 'nothing thrown');
+  check(`the cap blocks record ${FREE_ITEM_LIMIT + 1}`, threw === 'ItemLimitError', threw || 'nothing thrown');
   const atLimit = new ItemLimitError(FREE_ITEM_LIMIT).message;
   check('the cap message names the way out', /subscribe/.test(atLimit), atLimit);
   check('and promises nothing is lost', /editable/.test(atLimit), atLimit);
@@ -199,8 +199,14 @@ async function main() {
 
   // Over the line — the lapsed subscriber — needs different arithmetic and a
   // different reassurance. "Remove one" there would be simply untrue.
+  /*
+    Derived, not typed. This said `remove 16`, which was 30 − 15 + 1 with the
+    old cap written out by hand — so raising the limit to 25 turned a correct
+    assertion into a wrong one, and the test caught it. Anything that restates
+    a constant is a second copy of it.
+  */
   const over = new ItemLimitError(30).message;
-  check('over the line it counts properly', /remove 16/.test(over), over);
+  check('over the line it counts properly', over.includes(`remove ${30 - FREE_ITEM_LIMIT + 1}`), over);
   check('and leads with what was not taken', /Nothing has been removed/.test(over), over);
 
   // Deleting must free a slot immediately — otherwise the cap is a trap.
@@ -217,9 +223,78 @@ async function main() {
   check('Pro lifts the cap', !!proItem);
   check(
     'count is past the free limit',
-    (await activeItemCount(property.id)) > FREE_ITEM_LIMIT,
-    `${await activeItemCount(property.id)} items`,
+    (await cappedCount(property.id)) > FREE_ITEM_LIMIT,
+    `${await cappedCount(property.id)} records`,
   );
+
+  /* ------------------------------------------ the cap counts everything */
+
+  /*
+    ALL THREE KINDS, which reverses two earlier exemptions.
+
+    Subscriptions and documents were each let off on the reasoning that the cap
+    prices storage and neither holds an attachment. Sound, and it made the
+    limit unpredictable: you could keep forty subscriptions and thirty
+    documents inside the free tier but not a sixteenth kettle, so the number
+    meant "how many kettles" rather than "how much of this app you are using".
+  */
+  {
+    await db.settings.update('singleton', {
+      entitlements: { proUnlock: false, reportUnlock: false },
+    });
+    for (const i of await db.items.toArray()) await db.items.delete(i.id);
+    for (const s2 of await db.subscriptions.toArray()) await db.subscriptions.delete(s2.id);
+    for (const p2 of await db.papers.toArray()) await db.papers.delete(p2.id);
+
+    check('an empty collection counts zero', (await cappedCount(property.id)) === 0);
+
+    await saveNewItem(form({ name: 'A kettle' }), property.id);
+    check('an item counts', (await cappedCount(property.id)) === 1);
+
+    await createSubscription({
+      propertyId: property.id,
+      name: 'Netflix',
+      cadence: 'monthly',
+      anchorDate: '2026-09-01',
+      amountCents: 1549,
+      currency: 'USD',
+    });
+    check('so does a subscription', (await cappedCount(property.id)) === 2);
+
+    await createPaper({
+      propertyId: property.id,
+      kind: 'passport',
+      label: 'Passport',
+      expiresOn: '2031-01-01',
+    });
+    check('and so does a document', (await cappedCount(property.id)) === 3);
+
+    // Items alone would still read 1 — which is exactly the number the cap
+    // used to consult, and exactly why it was the wrong one.
+    check('while the item count alone still reads one', (await activeItemCount(property.id)) === 1);
+
+    // Fill the rest with documents: the cap must stop an ITEM being added.
+    while ((await cappedCount(property.id)) < FREE_ITEM_LIMIT) {
+      const n = await cappedCount(property.id);
+      await createPaper({
+        propertyId: property.id,
+        kind: 'other',
+        label: `Doc ${n}`,
+        expiresOn: '2031-01-01',
+      });
+    }
+    let blocked = '';
+    try {
+      await saveNewItem(form({ name: 'Blocked by documents' }), property.id);
+    } catch (e) {
+      blocked = (e as Error).constructor.name;
+    }
+    check('documents can fill the tier and block an item', blocked === 'ItemLimitError', blocked || 'nothing thrown');
+
+    for (const p2 of await db.papers.toArray()) await db.papers.delete(p2.id);
+    for (const s2 of await db.subscriptions.toArray()) await db.subscriptions.delete(s2.id);
+    for (const i of await db.items.toArray()) await db.items.delete(i.id);
+  }
 
   /* ------------------------------------------- lapsing back to free */
 
@@ -232,12 +307,12 @@ async function main() {
     await db.settings.update('singleton', {
       entitlements: { proUnlock: true, reportUnlock: false },
     });
-    const before = await activeItemCount(property.id);
-    for (let i = 0; i < 20; i++) {
+    const before = await cappedCount(property.id);
+    for (let i = 0; i < 30; i++) {
       await saveNewItem(form({ name: `Pro item ${i}` }), property.id);
     }
-    const full = await activeItemCount(property.id);
-    check('a subscriber can pass the cap', full === before + 20, `${full}`);
+    const full = await cappedCount(property.id);
+    check('a subscriber can pass the cap', full === before + 30, `${full}`);
 
     // The subscription lapses.
     await db.settings.update('singleton', {
@@ -248,8 +323,8 @@ async function main() {
     check('adding is refused', !canAddItem(full, lapsed.entitlements));
     check(
       'but every item is still there',
-      (await activeItemCount(property.id)) === full,
-      `${await activeItemCount(property.id)}`,
+      (await cappedCount(property.id)) === full,
+      `${await cappedCount(property.id)}`,
     );
 
     // Still fully usable: readable, editable, and it comes out in a backup.
@@ -267,7 +342,7 @@ async function main() {
       refused = (e as Error).message;
     }
     check('the save path refuses too', refused.includes('free tier holds'), refused);
-    // "Delete one" would be wrong here — they'd have to remove sixteen.
+    // "Delete one" would be wrong here — they have a good many to remove.
     check('and the message counts honestly', refused.includes(`remove ${full - FREE_ITEM_LIMIT + 1}`), refused);
     check('while promising nothing was taken', refused.includes('Nothing has been removed'), refused);
 

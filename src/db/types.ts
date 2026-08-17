@@ -438,4 +438,23 @@ export const LATER_SEED_ROOMS: { name: string; after: string }[] = [
   { name: 'Family Room', after: 'Living Room' },
 ];
 
-export const FREE_ITEM_LIMIT = 15;
+/**
+ * How many records the free tier holds, counting everything.
+ *
+ * ── It counts all three kinds now, and that is a reversal ─────────────────
+ * Subscriptions and documents were both deliberately exempt, on the argument
+ * that the cap prices storage and neither one holds an attachment. That
+ * argument is sound and it made the cap incoherent in practice: a collection
+ * of 15 items, 40 subscriptions and 30 documents sat inside the free tier
+ * while a 16th kettle did not, so the limit stopped meaning "how much of this
+ * app you are using" and started meaning "how many kettles".
+ *
+ * One number over everything is a rule people can hold in their heads. 25
+ * rather than 15 because it now has three kinds to cover — the point is to
+ * mark where a free tier ends, not to make an ordinary household hit it in a
+ * week.
+ *
+ * The cap has only ever blocked NEW records. Nothing above it is hidden,
+ * locked or degraded; everything already saved stays editable and exportable.
+ */
+export const FREE_ITEM_LIMIT = 25;

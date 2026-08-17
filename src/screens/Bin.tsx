@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import {
-  activeItemCount,
+  cappedCount,
   deletedItems,
   emptyBin,
   purgeItemNow,
@@ -40,7 +40,7 @@ import { ScoutDialog } from '@/components/ScoutDialog';
  */
 export function Bin({ propertyId, onBack }: { propertyId: string; onBack: () => void }) {
   const items = useLiveQuery(() => deletedItems(propertyId), [propertyId]);
-  const active = useLiveQuery(() => activeItemCount(propertyId), [propertyId]) ?? 0;
+  const active = useLiveQuery(() => cappedCount(propertyId), [propertyId]) ?? 0;
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
 
   const [blocked, setBlocked] = useState<string>();

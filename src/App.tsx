@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureFirstRun } from '@/db/db';
-import { activeItemCount, canAddItem, purgeExpiredDeletes } from '@/db/repo';
+import { canAddItem, cappedCount, purgeExpiredDeletes } from '@/db/repo';
 import { configureFeedback, feedback, installClickSounds } from '@/lib/feedback';
 import {
   hasNativePrompt,
@@ -388,7 +388,7 @@ function Shell() {
   }, [share]);
 
   const count =
-    useLiveQuery(async () => (property ? activeItemCount(property.id) : 0), [property]) ?? 0;
+    useLiveQuery(async () => (property ? cappedCount(property.id) : 0), [property]) ?? 0;
 
   const focusId = screen.kind === 'detail' || screen.kind === 'edit' ? screen.id : undefined;
   const origin: Origin =

@@ -82,7 +82,7 @@ export function Papers({
               </div>
               <div className="subtotal">
                 <strong>{jobs.length}</strong>
-                <small>{jobs.length === 1 ? 'needs you' : 'need you'}</small>
+                <small>{jobs.length === 1 ? 'needs action' : 'need action'}</small>
               </div>
               <div className="subtotal">
                 <strong>{expired}</strong>
@@ -99,7 +99,7 @@ export function Papers({
 
           {jobs.length > 0 && (
             <p className="hint calnote">
-              {jobs.length === 1 ? 'One document needs' : `${jobs.length} documents need`} starting
+              {jobs.length === 1 ? 'One document needs' : `${jobs.length} documents need`} action
               now. The rest are listed by when to begin, not when they run out.
             </p>
           )}

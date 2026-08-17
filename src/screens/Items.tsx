@@ -281,7 +281,13 @@ export function Items({
 
             {/* Offered only when there's something to hide. A toggle for a
                 category you don't own anything in is a control that does
-                nothing, sitting where a useful one could be. */}
+                nothing, sitting where a useful one could be.
+
+                It says what tapping it DOES, not what is currently true. As a
+                state — "Lapsed shown" — it read as a label rather than a
+                control, and you had to work out the inverse to know what
+                would happen. A button on a screen full of filter chips should
+                answer "what happens if I press this". */}
             {lapsed > 0 && (
               <button
                 type="button"
@@ -289,7 +295,7 @@ export function Items({
                 aria-pressed={showLapsed}
                 onClick={() => setShowLapsed((v) => !v)}
               >
-                {showLapsed ? `Lapsed shown · ${lapsed}` : `Lapsed hidden · ${lapsed}`}
+                {showLapsed ? `Hide Lapsed ${lapsed}` : `Show Lapsed ${lapsed}`}
               </button>
             )}
           </div>

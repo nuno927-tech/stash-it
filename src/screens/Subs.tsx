@@ -192,15 +192,6 @@ export function Subs({
             <Scout pose="calendar" height={104} motion={['breathe']} alt="" />
           </div>
 
-          {/*
-            The six-month chart. It lived on the dashboard, which was the wrong
-            tab: the dashboard answers "is anything wrong", and this answers
-            "which month should I brace for" — a question you only ask once you
-            are already here. It also sits directly above the calendar it
-            summarises, so the year and the month are one scroll apart.
-          */}
-          <SpendChart subs={subs} currency={currency} />
-
           <div className="calendar">
             <div className="calhead">
               <button
@@ -332,6 +323,20 @@ export function Subs({
               ))}
           </ul>
 
+          {/*
+            Last, and titled.
+
+            It was on the dashboard, which answers "is anything wrong" — this
+            answers "which month should I brace for", a question you only ask
+            once you are already on this tab. And it sits below the list rather
+            than above it: the pills and the calendar are about now, the list is
+            what you pay for, and the year ahead is what you look at after all
+            of that rather than before any of it.
+          */}
+          <div className="seclabel" style={{ marginTop: 26 }}>
+            <span>The year ahead</span>
+          </div>
+          <SpendChart subs={subs} currency={currency} />
         </>
       )}
 

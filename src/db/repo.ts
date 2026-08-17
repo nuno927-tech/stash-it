@@ -16,9 +16,32 @@ export async function activeItemCount(propertyId: string): Promise<number> {
   return (await activeItems(propertyId)).length;
 }
 
-/** The cap blocks new additions only. Existing items stay fully usable. */
+/** The cap blocks new additions only. Existing records stay fully usable. */
 export function canAddItem(count: number, e: Entitlements): boolean {
   return e.proUnlock || count < FREE_ITEM_LIMIT;
+}
+
+/**
+ * Everything the cap counts: items, subscriptions and documents together.
+ *
+ * All three, which reverses two earlier exemptions. The reasoning for them was
+ * that the cap prices storage and neither a subscription nor a document holds
+ * an attachment — true, and it left the limit meaning "how many kettles"
+ * rather than "how much of this app you are using". A free tier that lets you
+ * store forty subscriptions and thirty documents but not a sixteenth kettle
+ * is a rule nobody can predict.
+ *
+ * Deleted rows don't count. Deleting frees a slot immediately, which is
+ * deliberate — someone at the limit has to be able to make room — and it is
+ * why restoring from the bin has to check the cap again. See lib/bin.ts.
+ */
+export async function cappedCount(propertyId: string): Promise<number> {
+  const [items, subs, papers] = await Promise.all([
+    activeItemCount(propertyId),
+    activeSubscriptions(propertyId),
+    activePapers(propertyId),
+  ]);
+  return items + subs.length + papers.length;
 }
 
 export async function createItem(
@@ -103,10 +126,13 @@ export async function purgeExpiredDeletes(now = Date.now()): Promise<number> {
 /* ---------------------------------------------------------- subscriptions */
 
 /**
- * Recurring charges. Deliberately outside the free-tier cap: the cap exists to
- * price storage — photos, receipts, scanned warranties — and a subscription is
- * forty bytes with no attachments. Charging for them would be charging for the
- * cheapest rows in the database.
+ * Recurring charges.
+ *
+ * These used to sit outside the free-tier cap, on the reasoning that the cap
+ * prices storage and a subscription is forty bytes with no attachments. See
+ * `cappedCount` for why that stopped being the right rule — in short, a limit
+ * that exempts two of the three things you can create is a limit nobody can
+ * predict.
  */
 export async function activeSubscriptions(propertyId: string): Promise<Subscription[]> {
   const rows = await db.subscriptions.where('propertyId').equals(propertyId).toArray();
@@ -155,9 +181,8 @@ export async function deleteSubscription(id: string): Promise<void> {
 /* ---------------------------------------------------------------- papers */
 
 /**
- * Documents that expire. Outside the free-tier cap for the same reason
- * subscriptions are: the cap prices storage, and a paper holds no attachments
- * at all — by design, see the note on the Paper type.
+ * Documents that expire. Inside the free-tier cap, along with everything else
+ * — see `cappedCount`.
  *
  * Sorted by what actually needs doing rather than alphabetically. The screen
  * re-sorts by renew-by date, which this layer can't know because it depends on

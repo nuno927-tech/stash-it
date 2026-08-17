@@ -36,6 +36,7 @@ import {
   deleteSubscription,
   activeItemCount,
   canAddItem,
+  cappedCount,
 } from '@/db/repo';
 import { FREE_ITEM_LIMIT, SCHEMA_VERSION, type Cadence, type Subscription } from '@/db/types';
 import {
@@ -475,16 +476,24 @@ async function main() {
   check('and listed', (await activeSubscriptions(property.id)).length === 1);
 
   /*
-    Subscriptions do not count against the free tier. The cap prices storage —
-    photos, receipts, scans — and a subscription is forty bytes with no
-    attachments.
+    Subscriptions DO count against the free tier, which reverses the rule this
+    block used to assert. They were exempt because the cap prices storage and a
+    subscription is forty bytes with no attachments — sound, and it left the
+    limit meaning "how many kettles" rather than "how much of this app you are
+    using". See cappedCount.
   */
   const items = await activeItemCount(property.id);
+  const capped = await cappedCount(property.id);
+  check('the cap total is more than the items alone', capped > items, `${capped} vs ${items}`);
   check(
-    'they are outside the item cap',
-    canAddItem(items, { proUnlock: false, reportUnlock: false }) === items < FREE_ITEM_LIMIT,
+    'because it has added the subscriptions',
+    capped === items + (await activeSubscriptions(property.id)).length,
+    `${capped}`,
   );
-  check('and the item count ignores them', (await activeItemCount(property.id)) === items);
+  check(
+    'and the cap is judged on that total',
+    canAddItem(capped, { proUnlock: false, reportUnlock: false }) === capped < FREE_ITEM_LIMIT,
+  );
 
   /* ------------------------------------------------- through a backup */
 
