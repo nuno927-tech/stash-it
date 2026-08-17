@@ -14,7 +14,11 @@ import {
 } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import {
+  biggest,
+  dailyCents,
   daysUntilRenewal,
+  dueWithin,
+  monthlyCents,
   renewalLabel,
   totalMonthlyCents,
   totalYearlyCents,
@@ -162,14 +166,6 @@ export function Home({
 
       <NeedsCard items={items} docs={docs} onBrowse={onBrowse} />
 
-      {/*
-        What the recurring charges add up to. On the dashboard because it's the
-        one figure in the app that changes without anybody touching it — items
-        cost money once, subscriptions cost money every month whether or not
-        you open the app.
-      */}
-      <SubsSummary subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
-
       <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Recently added</span>
         <button type="button" className="linkish" onClick={() => onBrowse()}>
@@ -185,6 +181,14 @@ export function Home({
           <RecentCard key={item.id} item={item} onOpen={onOpenItem} />
         ))}
       </div>
+
+      {/*
+        Money last. Everything above is about the things you own, which is what
+        the app is for; this is the running cost underneath it, and it reads
+        better as the note the dashboard finishes on than as an interruption
+        between the collection and the recent additions.
+      */}
+      <SubsSummary subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
     </>
   );
 }
@@ -432,10 +436,21 @@ function RecentCard({ item, onOpen }: { item: Item; onOpen: (id: string) => void
 /**
  * The subscription figures, on the dashboard.
  *
- * Monthly leads because it's the number people carry in their heads, and the
- * yearly one sits beside it because twelve times a small number is the part
- * that surprises people. The next renewal is the only actionable thing here,
- * so it gets its own line rather than a third tile.
+ * ONE NUMBER, LOUDLY. Three equal tiles gave the monthly total, the yearly
+ * total and a count the same weight, which is three facts and no point. The
+ * monthly figure is the one people carry in their heads, so it gets display
+ * type and the rest becomes context beneath it.
+ *
+ * THE DAY RATE is the same money in the unit people feel. "$94 a month" is a
+ * line on a statement; "about $3.10 a day" is a coffee, and it's the framing
+ * that makes somebody actually open the list.
+ *
+ * WHAT'S ABOUT TO GO is the actionable half, and deliberately not normalised:
+ * the real charges on their real dates. A yearly plan renewing on Thursday
+ * belongs in that number at full price even though it only contributes a
+ * twelfth of itself to the monthly one. Those two figures answering different
+ * questions is the point — one is "what does this cost me", the other is
+ * "what happens this week".
  */
 function SubsSummary({
   subs,
@@ -449,10 +464,12 @@ function SubsSummary({
   if (subs.length === 0) return null;
 
   const now = new Date();
+  const soon = dueWithin(subs, 7, now);
   const soonest = [...subs].sort(
     (a, b) => (daysUntilRenewal(a, now) ?? 999) - (daysUntilRenewal(b, now) ?? 999),
   )[0]!;
-  const days = daysUntilRenewal(soonest, now);
+  const perDay = dailyCents(subs);
+  const top = biggest(subs);
 
   return (
     <>
@@ -464,33 +481,60 @@ function SubsSummary({
       </div>
 
       <button type="button" className="subsummary" onClick={onOpen}>
-        <span className="subsum-figures">
+        <span className="subsum-hero">
+          <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
           <span>
-            <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
-            <small>a month</small>
-          </span>
-          <span>
-            <strong>{formatMoney(totalYearlyCents(subs), currency)}</strong>
-            <small>a year</small>
-          </span>
-          <span>
-            <strong>{subs.length}</strong>
-            <small>{subs.length === 1 ? 'service' : 'services'}</small>
+            a month across {subs.length} {subs.length === 1 ? 'service' : 'services'}
+            <b>
+              about {formatMoney(Math.round(perDay), currency)} a day ·{' '}
+              {formatMoney(totalYearlyCents(subs), currency)} a year
+            </b>
           </span>
         </span>
 
+        {/*
+          The week ahead when there is one, the next renewal when there isn't.
+          A card that says "nothing due for 19 days" is doing its job; one that
+          shows a renewal three weeks out as if it were news is not.
+        */}
         <span className="subsum-next">
-          <ServiceMark
-            serviceId={soonest.serviceId}
-            logoBlobId={soonest.logoBlobId}
-            name={soonest.name}
-            size={26}
-          />
-          <span>
-            {soonest.name} · {renewalLabel(days).toLowerCase()}
-          </span>
-          <b>{formatMoney(soonest.amountCents, soonest.currency)}</b>
+          {soon.count > 0 ? (
+            <>
+              <i className="subsum-dot" aria-hidden="true" />
+              <span>
+                {soon.count} {soon.count === 1 ? 'renewal' : 'renewals'} in the next 7 days
+              </span>
+              <b>{formatMoney(soon.cents, currency)}</b>
+            </>
+          ) : (
+            <>
+              <ServiceMark
+                serviceId={soonest.serviceId}
+                logoBlobId={soonest.logoBlobId}
+                name={soonest.name}
+                size={24}
+              />
+              <span>
+                {soonest.name} · {renewalLabel(daysUntilRenewal(soonest, now)).toLowerCase()}
+              </span>
+              <b>{formatMoney(soonest.amountCents, soonest.currency)}</b>
+            </>
+          )}
         </span>
+
+        {/* Only once there's a list worth having a biggest thing in. */}
+        {top && subs.length >= 3 && (
+          <span className="subsum-next">
+            <ServiceMark
+              serviceId={top.serviceId}
+              logoBlobId={top.logoBlobId}
+              name={top.name}
+              size={24}
+            />
+            <span>{top.name} is your largest</span>
+            <b>{formatMoney(monthlyCents(top), currency)}/mo</b>
+          </span>
+        )}
       </button>
     </>
   );

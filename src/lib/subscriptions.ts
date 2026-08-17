@@ -150,6 +150,48 @@ export function totalYearlyCents(subs: Pick<Subscription, 'cadence' | 'amountCen
   return subs.reduce((sum, s) => sum + Math.round(s.amountCents * PER_YEAR[s.cadence]), 0);
 }
 
+/** The single largest recurring charge, normalised to a month. */
+export function biggest(subs: Subscription[]): Subscription | null {
+  if (subs.length === 0) return null;
+  return [...subs].sort((a, b) => monthlyCents(b) - monthlyCents(a))[0]!;
+}
+
+/**
+ * What actually leaves your account in the next `days`.
+ *
+ * Not a normalised figure — the real charges, on their real dates. The monthly
+ * total answers "what is this costing me", which is a question about the year;
+ * this answers "what is about to happen", which is a question about Thursday.
+ * A yearly plan renewing on the 14th belongs in this number at its full price,
+ * and contributes a twelfth of itself to the other one.
+ */
+export function dueWithin(
+  subs: Subscription[],
+  days: number,
+  now = new Date(),
+): { count: number; cents: number } {
+  let count = 0;
+  let cents = 0;
+  for (const s of subs) {
+    const left = daysUntilRenewal(s, now);
+    if (left === null || left < 0 || left > days) continue;
+    count++;
+    cents += s.amountCents;
+  }
+  return { count, cents };
+}
+
+/**
+ * The monthly total, per day.
+ *
+ * The same money said in the unit people actually feel. "$94 a month" is a
+ * line on a statement; "about $3 a day" is a coffee, and it is the framing
+ * that makes somebody look at the list.
+ */
+export function dailyCents(subs: Pick<Subscription, 'cadence' | 'amountCents'>[]): number {
+  return Math.round((totalYearlyCents(subs) / 365.25) * 100) / 100;
+}
+
 /* --------------------------------------------------------------- reminders */
 
 /** Days before renewal a reminder can be set for. `0` means none. */

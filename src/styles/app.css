@@ -3616,22 +3616,39 @@ button.countpill.tappill:active {
   margin: 0;
 }
 
-/* Scout on the settings page, not in a box. Beside the sentence that explains
-   the screen, both sitting on the page's own colour. */
-.settingsmark {
+/*
+  A title, its explanation, and Scout — one masthead rather than three stacked
+  announcements that the screen is called Settings.
+
+  He's at 132 rather than 104 because at the smaller size he was a decoration
+  next to two lines of text; at this size the block reads as a heading with a
+  figure in it, which is what the rest of the app does with him.
+*/
+.masthead {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
-.settingsmark p {
+.masthead-txt {
   flex: 1;
   min-width: 0;
+}
+
+.masthead-txt p {
   font-size: 12.5px;
   font-weight: 300;
   line-height: 1.55;
   color: var(--muted);
+  margin-top: 6px;
+}
+
+/* He gives the words room back on a narrow phone rather than squeezing them
+   into a column too thin to read. */
+.masthead .rig img {
+  max-width: 38vw;
+  height: auto;
 }
 
 /* ------------------------------------------------------ swipe a row aside */
@@ -3706,37 +3723,49 @@ button.countpill.tappill:active {
   background: var(--slate-600);
 }
 
-.subsum-figures {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.subsum-figures > span {
+/*
+  One number, loudly. Three equal tiles gave the month, the year and a count
+  the same weight — three facts and no point. The monthly figure is the one
+  people carry in their heads, so it takes display type and everything else
+  becomes the sentence underneath it.
+*/
+.subsum-hero {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
 }
 
-.subsum-figures strong {
+.subsum-hero > strong {
+  flex: none;
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 21px;
-  letter-spacing: -0.03em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 34px;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
-.subsum-figures small {
-  font-size: 11px;
+.subsum-hero > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
   font-weight: 300;
+  line-height: 1.4;
   color: var(--muted);
 }
 
-/* The only thing here you can act on, so it gets its own line under a rule
-   rather than becoming a fourth number nobody reads. */
+/* The day rate, and the year. Same money, two framings people react to
+   differently — one is a coffee, the other is a holiday. */
+.subsum-hero b {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+/* The things you can act on, under a rule each rather than becoming more
+   numbers in the row above. */
 .subsum-next {
   display: flex;
   align-items: center;
@@ -3747,6 +3776,16 @@ button.countpill.tappill:active {
   font-size: 12px;
   font-weight: 300;
   color: var(--muted);
+}
+
+/* Stands in for a logo when the line is about several subscriptions at once. */
+.subsum-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin: 0 8px;
+  border-radius: 50%;
+  background: var(--gold);
 }
 
 .subsum-next > span {

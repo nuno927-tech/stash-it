@@ -25,7 +25,10 @@ import {
 import { FREE_ITEM_LIMIT, SCHEMA_VERSION, type Cadence, type Subscription } from '@/db/types';
 import {
   addMonthsClamped,
+  biggest,
+  dailyCents,
   daysUntilRenewal,
+  dueWithin,
   dueReminders,
   monthlyCents,
   nextRenewal,
@@ -175,6 +178,44 @@ async function main() {
   ];
   check('the monthly total adds up', totalMonthlyCents(basket) === 1299 + 1158 + 2174);
   check('and the yearly one', totalYearlyCents(basket) === 1299 * 12 + 13900 + Math.round(500 * (365.25 / 7)));
+
+  /* ------------------------------------------------- the dashboard figures */
+
+  /*
+    The two totals answer different questions and must not be conflated. The
+    monthly figure normalises — a yearly plan is a twelfth of itself. "Due this
+    week" does not: the real charge, on its real date, at full price. Averaging
+    a £139 annual renewal down to £11.58 on the Thursday it actually leaves
+    would be the app telling you the wrong number on the one day it matters.
+  */
+  const week = [
+    sub({ id: 'a', anchorDate: '2026-01-14', amountCents: 1299 }),
+    sub({ id: 'b', cadence: 'yearly', anchorDate: '2026-01-16', amountCents: 13900 }),
+    sub({ id: 'c', anchorDate: '2026-02-20', amountCents: 999 }),
+  ];
+  const soon = dueWithin(week, 7, new Date(2026, 0, 12));
+  check('it counts only what lands this week', soon.count === 2, `${soon.count}`);
+  check('at full price, not normalised', soon.cents === 1299 + 13900, `${soon.cents}`);
+  check(
+    'and the monthly total still averages the same plans',
+    totalMonthlyCents(week) === 1299 + 1158 + 999,
+  );
+
+  check('a quiet week is empty', dueWithin(week, 1, new Date(2026, 0, 1)).count === 0);
+  check('today counts as due', dueWithin(week, 0, new Date(2026, 0, 14)).count === 1);
+
+  // The same money in the unit people feel.
+  const perDay = dailyCents([sub({ amountCents: 3000 })]);
+  check('a day rate comes off the year', Math.round(perDay) === Math.round(3000 * 12 / 365.25), `${perDay}`);
+  check('nothing subscribed is nothing a day', dailyCents([]) === 0);
+
+  // Compared by monthly cost, so a yearly plan doesn't win on sticker price.
+  const top = biggest([
+    sub({ id: 'small', cadence: 'yearly', amountCents: 6000 }),
+    sub({ id: 'big', cadence: 'monthly', amountCents: 2000 }),
+  ]);
+  check('the largest is judged per month', top?.id === 'big', top?.id);
+  check('and nothing has no largest', biggest([]) === null);
 
   /* -------------------------------------------------------- reminders */
 

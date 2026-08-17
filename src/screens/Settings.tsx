@@ -97,41 +97,44 @@ export function Settings({
 
   return (
     <>
-      <header className="apphead">
-        {/*
-          Twenty-five taps opens Scout's album. It looks and reads as the
-          heading it is — an easter egg that announces itself is a feature
-          with a silly name.
-        */}
-        <button
-          type="button"
-          className="apptitle titletap"
-          data-cue="none"
-          onClick={() => {
-            const next = tap(eggTaps, Date.now());
-            setEggTaps(next);
-            if (next.count >= EGG_TAPS) {
-              setEggTaps(NO_TAPS);
-              setAlbum(true);
-            }
-          }}
-        >
-          Settings
-        </button>
-      </header>
+      {/*
+        Title and its explanation as one block, with Scout beside them.
+
+        The subtitle used to sit under a full-width header with the mascot in
+        its own row below — three stacked things saying "this is Settings"
+        before the first control. As a masthead it's one thing: the words on
+        the left in reading order, Scout on the right at a size that earns the
+        space he takes.
+      */}
+      <div className="masthead">
+        <div className="masthead-txt">
+          {/*
+            Ten taps opens Scout's album. It looks and reads as the heading it
+            is — an easter egg that announces itself is a feature with a silly
+            name.
+          */}
+          <button
+            type="button"
+            className="apptitle titletap"
+            data-cue="none"
+            onClick={() => {
+              const next = tap(eggTaps, Date.now());
+              setEggTaps(next);
+              if (next.count >= EGG_TAPS) {
+                setEggTaps(NO_TAPS);
+                setAlbum(true);
+              }
+            }}
+          >
+            Settings
+          </button>
+          <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
+        </div>
+
+        <Scout pose="settings" height={132} motion={['breathe']} alt="" />
+      </div>
 
       {album && <ScoutGallery onClose={() => setAlbum(false)} />}
-
-      {/*
-        On the page rather than in a card. The card gave a mascot the same
-        frame as a group of controls, which put a decoration and a section of
-        settings at the same weight — and cost a whole card's height before
-        the first thing you can actually change.
-      */}
-      <div className="settingsmark">
-        <Scout pose="settings" height={104} motion={['breathe']} alt="" />
-        <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
-      </div>
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}
 
