@@ -14,3 +14,6 @@ Thumbs.db
 design/mascot-originals/
 design/preview/
 out/
+
+# Python bytecode from scripts/matte.py — regenerated on every run.
+__pycache__/

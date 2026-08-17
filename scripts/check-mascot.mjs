@@ -20,7 +20,7 @@
  * files and Node has no idea what to do with those.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const SCOUT = 'src/components/Scout.tsx';
 const EXPORTS = 'scripts/mascot.mjs';
@@ -76,6 +76,49 @@ for (const pose of declared) {
 
 check('every pose is re-exported for the app', missing(app).length === 0, missing(app).join(', '));
 check('and for the site', missing(web).length === 0, missing(web).join(', '));
+
+/*
+  Whether the set could actually be regenerated.
+
+  The committed webp files are what the app ships, so a pose whose renders
+  have gone missing keeps working indefinitely — right up until someone runs
+  mascot.mjs, at which point it silently doesn't come back. That happened:
+  `lounge` lost its pair during a tidy-up and nothing noticed, because nothing
+  was looking at the source folder.
+
+  Only checked when the folder is populated. It's gitignored, so on a fresh
+  clone there are no renders at all and demanding them would fail for
+  everyone. This is a check for the machine that holds the art.
+*/
+const ORIGINALS = 'design/mascot-originals';
+const EXTS = ['png', 'jpg', 'jpeg'];
+
+if (existsSync(ORIGINALS) && readdirSync(ORIGINALS).some((f) => /^scout-/i.test(f))) {
+  // mascot.mjs may point a pose at a differently-named pair.
+  const alias = Object.fromEntries(
+    [...exports_.matchAll(/name:\s*'([a-z]+)',\s*from:\s*'([a-z]+)'/g)].map((m) => [m[1], m[2]]),
+  );
+  const pair = (pose) => {
+    const src = alias[pose] ?? pose;
+    return ['white', 'black'].every((bg) =>
+      EXTS.some((e) => existsSync(`${ORIGINALS}/scout-${src}-${bg}.${e}`)),
+    );
+  };
+  const orphans = declared.filter((p) => !pair(p));
+  if (orphans.length === 0) {
+    check('every pose can be re-exported from its renders', true, `${declared.length} pairs`);
+  } else {
+    /*
+      A warning, not a failure. Nothing in the app is broken — the committed
+      cut-out is right there and still correct — and no change to the code can
+      fix it, because what's missing is a file on somebody's disk. A red suite
+      that can't be turned green by working on the repo is a red suite people
+      learn to ignore, which costs more than this is worth.
+    */
+    console.log(`WARN  no renders on this machine for: ${orphans.join(', ')}`);
+    console.log('      The committed cut-outs still work. They just cannot be regenerated.');
+  }
+}
 
 // The site's images are committed like the app's, so a pose the site draws
 // without a file behind it is a broken image on the marketing page.

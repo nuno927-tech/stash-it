@@ -41,6 +41,8 @@ subject. Anything that needs a shadow can draw its own, which is what the app
 already does.
 """
 
+import os
+
 import numpy as np
 from PIL import Image
 
@@ -172,12 +174,37 @@ def keep_subject(alpha: np.ndarray) -> np.ndarray:
     return np.clip((out - FLOOR) / (1 - FLOOR), 0, 1)
 
 
+def find_render(source_dir: str, name: str, background: str) -> str:
+    """
+    One render, whatever it was saved as.
+
+    The pairs arrive as PNG or JPEG depending on where they were exported from,
+    and JPEG turns out to be fine here: the compression noise it leaves in a
+    flat backdrop peaks around 0.07 alpha, which is below FLOOR, so none of it
+    survives to the cut-out. What would not be fine is a pair saved in two
+    different formats, or one of them re-encoded after a crop — the subtraction
+    assumes the two frames are the same picture.
+    """
+    for ext in ('png', 'jpg', 'jpeg'):
+        path = f'{source_dir}/scout-{name}-{background}.{ext}'
+        if os.path.exists(path):
+            return path
+    raise FileNotFoundError(
+        f'No {background} render for "{name}" in {source_dir} — looked for .png, .jpg and .jpeg.'
+    )
+
+
 def cutout(name: str, source_dir: str) -> Image.Image:
     """A clean RGBA image of one pose, cropped to the subject."""
-    alpha, colour = alpha_and_colour(
-        f'{source_dir}/scout-{name}-white.png',
-        f'{source_dir}/scout-{name}-black.png',
-    )
+    white = find_render(source_dir, name, 'white')
+    black = find_render(source_dir, name, 'black')
+    if os.path.splitext(white)[1] != os.path.splitext(black)[1]:
+        raise ValueError(
+            f'{name}: the pair is {os.path.basename(white)} and {os.path.basename(black)}. '
+            f'Two formats means two different encoders rounded the same pixels differently, '
+            f'and the alpha is the difference between them.'
+        )
+    alpha, colour = alpha_and_colour(white, black)
     alpha = keep_subject(drop_watermark(alpha, name))
 
     rgba = np.concatenate([colour, alpha[..., None]], axis=2)

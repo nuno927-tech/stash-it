@@ -24,10 +24,16 @@ const SITE = 'site/img';
  * by the service worker, so idle resolution on a 48px mascot is paid for on
  * every install.
  */
+/*
+ * `from` names the render pair on disk when it differs from the pose the app
+ * knows. The bin pose was drawn as "pail" and the app calls it what the screen
+ * calls it; renaming the source would only move the mismatch.
+ */
 const APP = [
   { name: 'acorn', size: 400 }, // 200 on the empty dashboard
   { name: 'alert', size: 300 }, // 130 beside what needs doing
-  { name: 'bin', size: 300 }, // 130 at the top of Recently deleted
+  { name: 'bin', from: 'pail', size: 300 }, // 130 at the top of Recently deleted
+  { name: 'clipboard', size: 200 }, // 64 on the item form's first section
   { name: 'folder', size: 260 }, // 92 after a save, 130 in the tour
   { name: 'receipt', size: 360 }, // 180 on the empty items list
   { name: 'report', size: 320 }, // 150 beside the ring
@@ -46,7 +52,8 @@ const WEB = [
   { name: 'acorn', size: 660 },
   { name: 'waving', size: 560 },
   { name: 'alert', size: 520 },
-  { name: 'bin', size: 480 },
+  { name: 'bin', from: 'pail', size: 480 },
+  { name: 'clipboard', size: 460 },
   { name: 'folder', size: 520 },
   { name: 'receipt', size: 460 },
   { name: 'settings', size: 460 },
@@ -68,8 +75,16 @@ sys.path.insert(0, 'scripts')
 from matte import cutout
 from PIL import Image
 
-for name, size in ${JSON.stringify(poses.map((p) => [p.name, p.size]))}:
-    img = cutout(name, '${FROM}')
+for name, source, size in ${JSON.stringify(poses.map((p) => [p.name, p.from ?? p.name, p.size]))}:
+    # A pose whose renders aren't on this machine is skipped, not fatal. The
+    # originals are gitignored and get shuffled about; one missing pair should
+    # not stop the other ten being re-exported, and the committed webp for it
+    # is still there and still correct. \`npm run test:mascot\` reports the gap.
+    try:
+        img = cutout(source, '${FROM}')
+    except FileNotFoundError:
+        print(f'{name:9s} skipped — no source pair')
+        continue
     before = img.size
     img.thumbnail((size, size), Image.LANCZOS)
     img.save(f'${dir}/scout-{name}.webp', 'WEBP', quality=${quality}, method=6)

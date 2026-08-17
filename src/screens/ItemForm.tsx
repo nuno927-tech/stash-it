@@ -18,6 +18,7 @@ import { feedback } from '@/lib/feedback';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
+import { Scout } from '@/components/Scout';
 import { CoverageField } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
 
@@ -228,6 +229,11 @@ export function ItemForm({
       <section className="card formcard">
         <div className="cardhead">
           <h3>Product information</h3>
+          {/* Glasses on, pencil out. He's doing the same job the section is,
+              and he sits in the heading rather than taking a row of his own —
+              the screen was just decluttered and a mascot with its own card
+              would be the first thing to put back. */}
+          <Scout pose="clipboard" height={62} motion={['breathe']} alt="" />
         </div>
 
         {/* The photo sits beside the name rather than above it: a full-width
