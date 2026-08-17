@@ -146,6 +146,51 @@ function badTouchAction() {
   return out;
 }
 
+/**
+ * Nothing may set `height` on Scout.
+ *
+ * `<Scout height={104} />` becomes the `height` attribute on the img, which is
+ * a *presentational hint* — the weakest thing in the cascade. Any stylesheet
+ * rule touching height beats it, including `height: auto`.
+ *
+ * `.masthead .rig img { height: auto }` was written to let him shrink on a
+ * narrow phone. What it actually did was discard the prop: he was sized from
+ * the width cap instead, so 132 and 104 rendered identically and the change
+ * looked like it hadn't been saved. Two commits went by.
+ *
+ * The failure is silent in the worst way — the number in the JSX is right
+ * there, plainly wrong, and nothing anywhere disagrees with it.
+ *
+ * `max-height` and `min-height` are fine: those clamp a height rather than
+ * replacing it, which is the honest way to say "not on a small screen".
+ */
+function scoutHeight() {
+  const out = [];
+  for (const sheet of SHEETS) {
+    let css;
+    try {
+      css = readFileSync(sheet, 'utf8');
+    } catch {
+      continue;
+    }
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    // Selector, then its block. Only rules that reach the img itself: `.rig`
+    // alone is a wrapper and sizing that is a different, legitimate thing.
+    for (const m of code.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!/\.rig\b[^,{]*\bimg\b/.test(m[1])) continue;
+      const decl = m[2].match(/(^|[;\s])height\s*:\s*([^;}]+)/);
+      if (!decl) continue;
+      // The selector capture starts at the previous rule's `}`, so it carries
+      // the blank lines and stripped comment between them. Skip that lead, or
+      // the reported line points at whitespace.
+      const at = m.index + (m[1].length - m[1].trimStart().length);
+      const line = code.slice(0, at).split('\n').length;
+      out.push(`${sheet}:${line}  ${m[1].trim()} { height: ${decl[2].trim()} }`);
+    }
+  }
+  return out;
+}
+
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -244,6 +289,7 @@ for (const file of walk(SRC)) {
 
 const doubled = duplicateRules();
 const stuck = badTouchAction();
+const resized = scoutHeight();
 
 if (missing.size === 0) {
   console.log(`PASS  every class in src has a rule  — ${defined.size} defined`);
@@ -271,6 +317,16 @@ if (stuck.length === 0) {
   }
 }
 
-const failures = missing.size + doubled.length + stuck.length;
+if (resized.length === 0) {
+  console.log("PASS  nothing overrides Scout's height");
+} else {
+  for (const where of resized) {
+    console.log(`FAIL  a stylesheet rule sets Scout's height  — ${where}`);
+    console.log('      The height prop is an attribute; this beats it silently.');
+    console.log('      Use max-height to clamp him instead.');
+  }
+}
+
+const failures = missing.size + doubled.length + stuck.length + resized.length;
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

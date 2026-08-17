@@ -3671,11 +3671,20 @@ button.countpill.tappill:active {
   margin-top: 6px;
 }
 
-/* He gives the words room back on a narrow phone rather than squeezing them
-   into a column too thin to read. */
+/*
+  He gives the words room back on a narrow phone rather than squeezing them
+  into a column too thin to read.
+
+  `max-width` and NOT `height: auto`. Scout's size arrives as the `height`
+  attribute on the img, which is a presentational hint — the weakest thing in
+  the cascade, beaten by any stylesheet rule at all. `height: auto` here threw
+  it away and sized him from the width cap instead, so the prop did nothing and
+  changing it did nothing either. A width cap plus `object-fit` clamps him on a
+  narrow screen without taking the height away.
+*/
 .masthead .rig img {
   max-width: 38vw;
-  height: auto;
+  object-fit: contain;
 }
 
 /* ------------------------------------------------------ swipe a row aside */
