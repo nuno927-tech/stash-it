@@ -40,7 +40,7 @@ const APP = [
   { name: 'receipt', size: 360 }, // 180 on the empty items list
   { name: 'report', size: 320 }, // 150 beside the ring
   { name: 'resting', size: 240 }, // 110 when there's nothing to do
-  { name: 'settings', size: 240 }, // 110 on its own card
+  { name: 'settings', size: 240 }, // 104 in the settings masthead
   { name: 'waving', size: 320 }, // 150 on the welcome sheet
   { name: 'lounge', size: 400 }, // 190 on the support card
 ];
