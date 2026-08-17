@@ -10,7 +10,7 @@
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
 import { emptyForm, saveNewItem } from '@/lib/addItem';
-import { attachStaged, docsWithFiles, DocError, stageDoc } from '@/lib/docs';
+import { attachStaged, docsWithFiles, DocError, stageDoc, stageLink } from '@/lib/docs';
 
 let failures = 0;
 
@@ -88,6 +88,58 @@ async function main() {
     `${blobsNow} → ${await db.blobs.count()}`,
   );
   check('but the second item gets its own document', (await docsWithFiles(second)).length === 1);
+
+  /* --------------------------------------------------- staged links */
+
+  /*
+    A link was the one attachment you couldn't make while adding an item: the
+    dialog wrote straight to the database and there was no row yet, so the
+    control was simply missing from the add form and present on the item page.
+    It stages now, like a file.
+  */
+  const staged = stageLink('manual', 'bosch-home.com/manuals/SHXM4AY55N');
+  check('a staged link holds no file', staged.file === undefined);
+  check('and carries a normalised url', staged.url === 'https://bosch-home.com/manuals/SHXM4AY55N', staged.url);
+  check('titled by hostname when nobody writes one', staged.title === 'bosch-home.com', staged.title);
+  check('www is not part of a name', stageLink('manual', 'www.ikea.com/x').title === 'ikea.com');
+
+  // Refused here rather than on save. Being told "that doesn't look like a web
+  // address" two screens after typing it is not a useful place to find out.
+  let bad = '';
+  try {
+    stageLink('manual', 'not a url');
+  } catch (e) {
+    bad = (e as Error).message;
+  }
+  check('rubbish is refused at the dialog', /web address/.test(bad), bad);
+  check('and so is nothing at all', (() => {
+    try { stageLink('manual', '   '); return ''; } catch (e) { return (e as Error).message; }
+  })().includes('Paste a link'));
+
+  const withLink = await saveNewItem(
+    { ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Dishwasher' },
+    property.id,
+  );
+  const blobsAtLink = await db.blobs.count();
+  check('one link written', (await attachStaged(withLink, [staged])) === 1);
+
+  const linked = (await docsWithFiles(withLink))[0]!;
+  check('it lands as a linked document', linked.storageMode === 'linked', linked.storageMode);
+  check('with the url intact', linked.url === 'https://bosch-home.com/manuals/SHXM4AY55N', linked.url);
+  check('and no blob behind it', (await db.blobs.count()) === blobsAtLink);
+
+  // A file and a link in the same batch, which is the realistic case.
+  const mixed = await saveNewItem(
+    { ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Mixed' },
+    property.id,
+  );
+  const bothWritten = await attachStaged(mixed, [
+    stageDoc('receipt', file('till.pdf', [9, 9, 9])),
+    stageLink('manual', 'example.com/manual.pdf'),
+  ]);
+  check('both kinds attach together', bothWritten === 2, `${bothWritten}`);
+  const both = await docsWithFiles(mixed);
+  check('one stored, one linked', both.filter((d) => d.storageMode === 'linked').length === 1);
 
   /* ------------------------------------------- nothing staged is fine */
 

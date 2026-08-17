@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DocKind } from '@/db/types';
 import { pushBack } from '@/lib/backstack';
-import { attachLink, DOC_KIND_LABEL, DocError } from '@/lib/docs';
+import { attachLink, DOC_KIND_LABEL, DocError, stageLink, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { DOC_KIND_ORDER } from './DocTiles';
 
@@ -17,13 +17,23 @@ import { DOC_KIND_ORDER } from './DocTiles';
  * Portalled for the same reason every other dialog here is — `position: fixed`
  * is only fixed to the viewport when no ancestor has a transform, and this one
  * opens from a screen that animates in.
+ *
+ * Works before the item exists. Given an `itemId` it writes the link straight
+ * away; given `onStage` it hands back a staged link for the form to write
+ * after saving. Same dialog and the same validation either way — the URL is
+ * checked here, not on save, because "that doesn't look like a web address"
+ * two screens later is not a useful place to be told.
  */
 export function LinkDoc({
   itemId,
+  onStage,
   onDone,
   onCancel,
 }: {
-  itemId: string;
+  /** Present when the item already exists. */
+  itemId?: string;
+  /** Present when it doesn't. Exactly one of the two is given. */
+  onStage?: (doc: StagedDoc) => void;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -38,7 +48,8 @@ export function LinkDoc({
     setBusy(true);
     setError(undefined);
     try {
-      await attachLink(itemId, kind, url);
+      if (itemId) await attachLink(itemId, kind, url);
+      else onStage?.(stageLink(kind, url));
       feedback('attach');
       onDone();
     } catch (e) {

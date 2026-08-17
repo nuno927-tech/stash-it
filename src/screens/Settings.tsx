@@ -58,8 +58,13 @@ type Notice = { tone: 'ok' | 'bad'; text: string } | null;
  * Enough taps that nobody arrives by accident, few enough that someone who
  * suspects there's something there will keep going. The gap rule in `tap`
  * means they have to be deliberate and continuous.
+ *
+ * Twenty-five was too many — long enough that anyone who hadn't been told it
+ * was there would give up before finding it, which makes it not an easter egg
+ * but a secret. Ten is the same count the version pill uses for the developer
+ * tools; different target, so nothing collides.
  */
-const EGG_TAPS = 25;
+const EGG_TAPS = 10;
 
 /**
  * Settings, grouped by whose question it answers.

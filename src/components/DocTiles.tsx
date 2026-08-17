@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { DocKind } from '@/db/types';
 import { DOC_ACCEPT, DOC_KIND_LABEL } from '@/lib/docs';
 
@@ -23,10 +23,14 @@ import { DOC_ACCEPT, DOC_KIND_LABEL } from '@/lib/docs';
  * others, which loses the camera entirely. `capture` is the only guarantee.
  */
 
-const PRIMARY: DocKind[] = ['receipt', 'warranty', 'manual'];
-const SECONDARY: DocKind[] = ['photo', 'other'];
-
-export const DOC_KIND_ORDER: DocKind[] = [...PRIMARY, ...SECONDARY];
+/*
+ * All five, always. Two of them used to hide behind a "Something else" link,
+ * on the theory that receipts, warranties and manuals are what people attach
+ * and the rest is clutter. In a card narrow enough to matter that link was
+ * being clipped, and the fix is not a shorter label: a row of five tiles is
+ * one glance, and a row of three plus a disclosure is two.
+ */
+export const DOC_KIND_ORDER: DocKind[] = ['receipt', 'warranty', 'manual', 'photo', 'other'];
 
 export function DocTiles({
   onFiles,
@@ -37,7 +41,6 @@ export function DocTiles({
       the default fill is the page's own colour and would vanish. */
   raised?: boolean;
 }) {
-  const [showMore, setShowMore] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   // Which tile was pressed, read back when the picker returns.
@@ -56,27 +59,10 @@ export function DocTiles({
   return (
     <>
       <div className={`doctiles${raised ? ' raised' : ''}`}>
-        {PRIMARY.map((k) => (
+        {DOC_KIND_ORDER.map((k) => (
           <Tile key={k} kind={k} onOpen={open} />
         ))}
       </div>
-
-      {showMore ? (
-        <div className={`doctiles two${raised ? ' raised' : ''}`}>
-          {SECONDARY.map((k) => (
-            <Tile key={k} kind={k} onOpen={open} />
-          ))}
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="linkish morelink"
-          aria-expanded={false}
-          onClick={() => setShowMore(true)}
-        >
-          Something else
-        </button>
-      )}
 
       {/* Two inputs: one for files, one that forces the camera. Both accept
           multiple, because a warranty is routinely several pages. */}

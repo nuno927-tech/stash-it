@@ -122,13 +122,56 @@ export async function attachFile(
  * the database until then, which means abandoning the form leaves no orphaned
  * blobs behind.
  */
+/**
+ * An attachment chosen before the item exists.
+ *
+ * Either a file or a link, never both. Links used to be the one attachment you
+ * couldn't make while adding an item — the dialog wrote straight to the
+ * database and there was no row to write against yet — so the control was
+ * simply absent from the add form and present on the item page, which read as
+ * a bug because it is one.
+ */
 export interface StagedDoc {
   /** Local id for list keys and removal, not persisted. */
   key: string;
   kind: DocKind;
-  file: File;
-  /** Set when one selection produced several files. */
+  file?: File;
+  /** Already normalised and validated — see stageLink. */
+  url?: string;
+  /** Set when one selection produced several files, or by a link's hostname. */
   title?: string;
+}
+
+/**
+ * What people paste, turned into something storable — or refused.
+ *
+ * Shared by the two callers so a link staged on the add form is held to
+ * exactly the same standard as one attached to an item that already exists.
+ * A bare domain is a URL to everyone except `URL()`.
+ */
+export function parseDocUrl(url: string): URL {
+  const trimmed = url.trim();
+  if (!trimmed) throw new DocError('Paste a link first.');
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    throw new DocError("That doesn't look like a web address.");
+  }
+  if (!parsed.hostname.includes('.')) throw new DocError("That doesn't look like a web address.");
+  return parsed;
+}
+
+/** The title a link gets when nobody writes one. */
+export function linkTitle(parsed: URL): string {
+  return parsed.hostname.replace(/^www\./, '');
+}
+
+/** A link held until the item it belongs to has been saved. */
+export function stageLink(kind: DocKind, url: string, title?: string): StagedDoc {
+  const parsed = parseDocUrl(url);
+  return { key: newId(), kind, url: parsed.toString(), title: title?.trim() || linkTitle(parsed) };
 }
 
 export function stageDoc(kind: DocKind, file: File, title?: string): StagedDoc {
@@ -156,7 +199,9 @@ export function stageDocs(kind: DocKind, files: File[], alreadyStaged = 0): Stag
 export async function attachStaged(itemId: string, staged: StagedDoc[]): Promise<number> {
   let written = 0;
   for (const s of staged) {
-    await attachFile(itemId, s.kind, s.file, s.title);
+    if (s.url) await attachLink(itemId, s.kind, s.url, s.title);
+    else if (s.file) await attachFile(itemId, s.kind, s.file, s.title);
+    else continue;
     written++;
   }
   return written;
@@ -168,23 +213,12 @@ export async function attachLink(
   url: string,
   title?: string,
 ): Promise<string> {
-  const trimmed = url.trim();
-  if (!trimmed) throw new DocError('Paste a link first.');
-
-  // Accept what people paste. A bare domain is a URL to everyone except URL().
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  let parsed: URL;
-  try {
-    parsed = new URL(withScheme);
-  } catch {
-    throw new DocError("That doesn't look like a web address.");
-  }
-  if (!parsed.hostname.includes('.')) throw new DocError("That doesn't look like a web address.");
+  const parsed = parseDocUrl(url);
 
   return createDoc({
     itemId,
     kind,
-    title: title?.trim() || parsed.hostname.replace(/^www\./, ''),
+    title: title?.trim() || linkTitle(parsed),
     storageMode: 'linked',
     url: parsed.toString(),
     linkStatus: 'unchecked',

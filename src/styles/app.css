@@ -1476,10 +1476,47 @@ select.compact {
   margin-bottom: 7px;
 }
 
+/*
+  Two fields side by side, with their inputs on the same line.
+
+  They weren't: "Serial number" wraps to two lines where "Model" doesn't, and
+  a two-line label pushed its input down while the one beside it stayed put.
+  Same for Price/Brand and Policy number/Claims phone. Nudging font sizes or
+  shortening labels only moves which pair breaks at which width.
+
+  Subgrid fixes it properly. Each field contributes its label and its control
+  to the *pair's* rows rather than its own, so both labels share the taller
+  one's height and both inputs start at the same y — at any width, in any
+  language, however the words happen to wrap.
+*/
 .fieldpair {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 12px;
+  align-items: start;
+}
+
+.fieldpair > .field {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  margin-bottom: 0;
+}
+
+/* Without subgrid the two rows fall back to the field's own box, which is
+   where this started — but the labels still align at the top, so the damage is
+   one input sitting a line lower rather than the layout collapsing. */
+@supports not (grid-template-rows: subgrid) {
+  .fieldpair > .field {
+    display: block;
+  }
+}
+
+/* The money field is a wrapper, not an input, so it has to be told to fill the
+   row it was given or it sits at its content height and misses the line. */
+.fieldpair .moneyfield {
+  align-self: stretch;
 }
 
 input[type='text'],
@@ -2719,17 +2756,6 @@ button.countpill.tappill:active {
   margin-top: 13px;
 }
 
-/* The note that carries what a placeholder can't. Only the date needs it: a
-   native date input ignores `placeholder` and always draws dd/mm/yyyy, so
-   there is nowhere inside the control to say anything at all. */
-.fieldlabel small {
-  display: block;
-  font-size: 11px;
-  font-weight: 300;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
 /* Why the save button is grey. A disabled control with no explanation is a
    dead end — you can see it won't work and not why. */
 .savewhy {
@@ -3098,15 +3124,13 @@ button.countpill.tappill:active {
 
 /* --------------------------------------------------------- doc attaching */
 
+/* All five in one grid. Three-plus-a-"Something else"-link was two glances
+   and, in a card this narrow, a clipped label. Five columns is tight but the
+   glyph carries it — the words underneath are confirmation, not the control. */
 .doctiles {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.doctiles.two {
-  grid-template-columns: repeat(2, 1fr);
-  margin-top: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
 }
 
 /* On the item page there's no card behind them, and the default fill is the

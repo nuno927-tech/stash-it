@@ -45,9 +45,8 @@ import { DocsField } from '@/components/DocsField';
  *   date      the countdown is arithmetic on this date; without it a warranty
  *             length is a number with nothing to subtract from
  *
- * The date can't carry the word inside itself in any case — a native date
- * input ignores `placeholder` and always renders dd/mm/yyyy — so its status
- * has to be said in the label regardless.
+ * The date can't carry the word inside itself in any case: a native date input
+ * ignores `placeholder` entirely and draws its own mm/dd/yyyy from `lang`.
  *
  * Save is a sticky bar rather than a button at each end. On a screen this long
  * a top-right Save is out of thumb reach, and two of them is one too many.
@@ -345,12 +344,15 @@ export function ItemForm({
           }}
         />
 
-        {/* Not marked optional, because the countdown is arithmetic on it. A
-            native date input ignores `placeholder`, so the only place this can
-            be said is the label. */}
-        <Field label="When did you buy it?" note="Needed to work out when cover ends">
+        {/* Not marked optional, because the countdown is arithmetic on it.
+            `lang` is what decides the order the browser draws the boxes in and
+            what it writes in the empty ones — without it the control follows
+            the device locale and shows dd/mm/yyyy on half of them. The value
+            itself is always ISO either way; this is display only. */}
+        <Field label="When did you buy it?">
           <input
             type="date"
+            lang="en-US"
             value={form.purchaseDate}
             onChange={(e) => set('purchaseDate', e.target.value)}
           />
@@ -511,22 +513,10 @@ export function ItemForm({
   );
 }
 
-function Field({
-  label,
-  note,
-  children,
-}: {
-  label: string;
-  /** For the one field that can't say "Optional" inside itself. */
-  note?: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="field">
-      <span className="fieldlabel">
-        {label}
-        {note && <small>{note}</small>}
-      </span>
+      <span className="fieldlabel">{label}</span>
       {children}
     </label>
   );

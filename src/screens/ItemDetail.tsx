@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { activeRooms, softDeleteItem } from '@/db/repo';
-import type { DocKind, Item } from '@/db/types';
+import type { Item } from '@/db/types';
 import { feedback } from '@/lib/feedback';
-import { attachFile, docsWithFiles, DocError } from '@/lib/docs';
+import { docsWithFiles } from '@/lib/docs';
 import {
   coverageLabel,
   coveragesOf,
@@ -20,9 +20,7 @@ import {
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { CoverList } from '@/components/CoverList';
 import { DocRow } from '@/components/DocRow';
-import { DocTiles } from '@/components/DocTiles';
 import { ItemIcon } from '@/components/ItemIcon';
-import { LinkDoc } from '@/components/LinkDoc';
 import { PhotoViewer } from '@/components/PhotoViewer';
 import { StashThePaper } from '@/components/StashThePaper';
 import { useItemPhotos } from '@/components/useItemPhotos';
@@ -61,8 +59,6 @@ export function ItemDetail({
   const [paperOpen, setPaperOpen] = useState(justSaved);
 
   const [confirming, setConfirming] = useState(false);
-  const [linking, setLinking] = useState(false);
-  const [docError, setDocError] = useState<string>();
   const [viewing, setViewing] = useState<number | null>(null);
   const shots = useItemPhotos(item);
 
@@ -190,39 +186,18 @@ export function ItemDetail({
         <DocRow key={d.id} doc={d} />
       ))}
 
-      {/* The same tiles as the add form: one tap says what it is and opens the
-          picker, and the file's own name becomes the title. Nothing to fill
-          in — the sheet that used to be here asked for the kind you'd already
-          chosen, then a source, then a title, before it would take the file. */}
-      <DocTiles
-        raised
-        onFiles={(kind, files) => {
-          setDocError(undefined);
-          void attachAll(item.id, kind, files).catch((e: unknown) => {
-            feedback('error');
-            setDocError(e instanceof DocError ? e.message : (e as Error).message);
-          });
-        }}
-      />
-
-      {docError && <div className="notice bad">{docError}</div>}
-
+      {/*
+        No attach controls here. This is a page for reading an item, and five
+        upload tiles plus a link button sat on it permanently — a row of empty
+        actions under a list of documents, offered whether or not you came here
+        to add anything. Attaching lives on the form, behind Edit, which is
+        also the only place it can be undone before it's written.
+      */}
       {docs.length === 0 && (
         <p className="hint">
-          Nothing attached yet. The receipt and the warranty are the two a claim will ask for.
+          Nothing attached yet. Edit the item to add a receipt or a warranty — the two a claim
+          will ask for.
         </p>
-      )}
-
-      <button type="button" className="linkish morelink" onClick={() => setLinking(true)}>
-        Link to one on the web
-      </button>
-
-      {linking && (
-        <LinkDoc
-          itemId={item.id}
-          onDone={() => setLinking(false)}
-          onCancel={() => setLinking(false)}
-        />
       )}
 
       <button
@@ -250,18 +225,6 @@ export function ItemDetail({
   );
 }
 
-/**
- * Writes a whole selection. Several files from one tap are pages of one
- * document — a three-page warranty photographed page by page — so they're
- * numbered in the order they were picked. A single file keeps whatever
- * `attachFile` makes of its filename.
- */
-async function attachAll(itemId: string, kind: DocKind, files: File[]): Promise<void> {
-  for (const [i, file] of files.entries()) {
-    await attachFile(itemId, kind, file, files.length > 1 ? `Page ${i + 1}` : undefined);
-  }
-  feedback('attach');
-}
 
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (

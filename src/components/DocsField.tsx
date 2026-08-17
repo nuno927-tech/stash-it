@@ -13,6 +13,7 @@ import {
 } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { DocGlyph, DocTiles, DOC_KIND_ORDER } from './DocTiles';
+import { LinkDoc } from './LinkDoc';
 
 /**
  * Documents on the add and edit form. The tiles are shared with the item page
@@ -36,6 +37,7 @@ export function DocsField({
 }) {
   const existing = useLiveQuery(async () => (itemId ? docsWithFiles(itemId) : []), [itemId]) ?? [];
   const [error, setError] = useState<string>();
+  const [linking, setLinking] = useState(false);
 
   const take = (kind: DocKind, files: File[]) => {
     try {
@@ -59,6 +61,22 @@ export function DocsField({
       </div>
 
       <DocTiles onFiles={take} />
+
+      {/* The one attachment a file picker can't make. It was only ever on the
+          item page, so a manual you had the URL for while adding something had
+          to wait until after saving. */}
+      <button type="button" className="linkish morelink" onClick={() => setLinking(true)}>
+        Link to one on the web
+      </button>
+
+      {linking && (
+        <LinkDoc
+          itemId={itemId}
+          onStage={onStage}
+          onDone={() => setLinking(false)}
+          onCancel={() => setLinking(false)}
+        />
+      )}
 
       {error && <div className="notice bad">{error}</div>}
 
@@ -111,8 +129,8 @@ export function DocsField({
                 ))}
               </select>
               <span className="chipmeta">
-                {s.title ? `${s.title} · ` : ''}
-                {formatBytes(s.file.size)}
+                {s.title ? `${s.title}${s.file ? ' · ' : ''}` : ''}
+                {s.file ? formatBytes(s.file.size) : 'Link'}
               </span>
               <button
                 type="button"
