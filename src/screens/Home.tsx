@@ -14,14 +14,16 @@ import {
 } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import {
-  biggest,
   dailyCents,
   daysUntilRenewal,
-  dueWithin,
-  monthlyCents,
-  renewalLabel,
+  heaviest,
+  nextRenewal,
+  spendByMonth,
+  spread,
+  subGaps,
   totalMonthlyCents,
   totalYearlyCents,
+  type MonthSpend,
 } from '@/lib/subscriptions';
 import {
   effectiveExpiry,
@@ -188,7 +190,7 @@ export function Home({
         better as the note the dashboard finishes on than as an interruption
         between the collection and the recent additions.
       */}
-      <SubsSummary subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
+      <SubsBlock subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
     </>
   );
 }
@@ -434,25 +436,16 @@ function RecentCard({ item, onOpen }: { item: Item; onOpen: (id: string) => void
 }
 
 /**
- * The subscription figures, on the dashboard.
+ * The subscription half of the dashboard, built to the same plan as the item
+ * half above it: a picture, then the two numbers, then the one thing next, then
+ * the jobs.
  *
- * ONE NUMBER, LOUDLY. Three equal tiles gave the monthly total, the yearly
- * total and a count the same weight, which is three facts and no point. The
- * monthly figure is the one people carry in their heads, so it gets display
- * type and the rest becomes context beneath it.
- *
- * THE DAY RATE is the same money in the unit people feel. "$94 a month" is a
- * line on a statement; "about $3.10 a day" is a coffee, and it's the framing
- * that makes somebody actually open the list.
- *
- * WHAT'S ABOUT TO GO is the actionable half, and deliberately not normalised:
- * the real charges on their real dates. A yearly plan renewing on Thursday
- * belongs in that number at full price even though it only contributes a
- * twelfth of itself to the monthly one. Those two figures answering different
- * questions is the point — one is "what does this cost me", the other is
- * "what happens this week".
+ * It used to be a single card with a big number and two rows of context. That
+ * gave the running cost of your life the same weight as a "recently added"
+ * strip, and it answered exactly one question — how much — which is the
+ * question you already know the answer to within about twenty percent.
  */
-function SubsSummary({
+function SubsBlock({
   subs,
   currency,
   onOpen,
@@ -464,12 +457,11 @@ function SubsSummary({
   if (subs.length === 0) return null;
 
   const now = new Date();
-  const soon = dueWithin(subs, 7, now);
   const soonest = [...subs].sort(
     (a, b) => (daysUntilRenewal(a, now) ?? 999) - (daysUntilRenewal(b, now) ?? 999),
   )[0]!;
-  const perDay = dailyCents(subs);
-  const top = biggest(subs);
+  const left = daysUntilRenewal(soonest, now);
+  const jobs = subGaps(subs, now);
 
   return (
     <>
@@ -480,64 +472,171 @@ function SubsSummary({
         </button>
       </div>
 
-      <button type="button" className="subsummary" onClick={onOpen}>
-        <span className="subsum-hero">
-          <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
-          <span>
-            a month across {subs.length} {subs.length === 1 ? 'service' : 'services'}
-            <b>
-              about {formatMoney(Math.round(perDay), currency)} a day ·{' '}
-              {formatMoney(totalYearlyCents(subs), currency)} a year
-            </b>
-          </span>
-        </span>
+      <SpendCard subs={subs} currency={currency} onOpen={onOpen} />
 
-        {/*
-          The week ahead when there is one, the next renewal when there isn't.
-          A card that says "nothing due for 19 days" is doing its job; one that
-          shows a renewal three weeks out as if it were news is not.
-        */}
-        <span className="subsum-next">
-          {soon.count > 0 ? (
-            <>
-              <i className="subsum-dot" aria-hidden="true" />
-              <span>
-                {soon.count} {soon.count === 1 ? 'renewal' : 'renewals'} in the next 7 days
-              </span>
-              <b>{formatMoney(soon.cents, currency)}</b>
-            </>
-          ) : (
-            <>
-              <ServiceMark
-                serviceId={soonest.serviceId}
-                logoBlobId={soonest.logoBlobId}
-                name={soonest.name}
-                size={24}
-              />
-              <span>
-                {soonest.name} · {renewalLabel(daysUntilRenewal(soonest, now)).toLowerCase()}
-              </span>
-              <b>{formatMoney(soonest.amountCents, soonest.currency)}</b>
-            </>
-          )}
-        </span>
+      {/* The same two tiles as the items above, in the same type. */}
+      <div className="bigmetrics">
+        <div className="bigmetric">
+          <strong>{shortMoney({ currency, cents: totalYearlyCents(subs) })}</strong>
+          <span>a year</span>
+        </div>
+        <div className="bigmetric">
+          <strong>{formatMoney(Math.round(dailyCents(subs)), currency)}</strong>
+          <span>a day, on average</span>
+        </div>
+      </div>
 
-        {/* Only once there's a list worth having a biggest thing in. */}
-        {top && subs.length >= 3 && (
-          <span className="subsum-next">
-            <ServiceMark
-              serviceId={top.serviceId}
-              logoBlobId={top.logoBlobId}
-              name={top.name}
-              size={24}
-            />
-            <span>{top.name} is your largest</span>
-            <b>{formatMoney(monthlyCents(top), currency)}/mo</b>
-          </span>
-        )}
+      {/* "Next to expire" has a twin. Same row, same countdown on the right. */}
+      <button type="button" className="nextup" onClick={onOpen}>
+        <ServiceMark
+          serviceId={soonest.serviceId}
+          logoBlobId={soonest.logoBlobId}
+          name={soonest.name}
+          size={40}
+        />
+        <span className="nextup-txt">
+          <span className="fieldlabel">Next to renew</span>
+          <strong>{soonest.name}</strong>
+          <small>
+            {renewsOn(soonest)} · {formatMoney(soonest.amountCents, soonest.currency)}
+          </small>
+        </span>
+        <span className={`renewin${left !== null && left <= 7 ? ' close' : ''}`}>
+          <strong>{left ?? '—'}</strong>
+          <small>{left === 1 ? 'day' : 'days'}</small>
+        </span>
       </button>
+
+      {jobs.length > 0 && (
+        <div className="card needscard subneeds">
+          <div className="needsbody">
+            {/*
+              Not "Needs a minute" — that heading already belongs to the item
+              gaps a few hundred pixels up, and two identical headings meaning
+              two different things is worse than either name being imperfect.
+              This one is about money leaving, so it says so.
+            */}
+            <div className="cardhead">
+              <h3>Money about to move</h3>
+              <span className="countpill">
+                {formatMoney(
+                  jobs.reduce((n, g) => n + g.cents, 0),
+                  currency,
+                )}
+              </span>
+            </div>
+
+            {jobs.map((gap) => (
+              <button key={gap.kind} type="button" className="needrow" onClick={onOpen}>
+                <span className="needcount">{gap.count}</span>
+                <span className="needtxt">
+                  <strong>{gap.label}</strong>
+                  <small>{gap.why}</small>
+                </span>
+                <Chevron />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
+}
+
+/**
+ * Six months of real charges, as bars.
+ *
+ * THE POINT OF DRAWING THIS. Every other figure on the screen is an average,
+ * and an average hides the only thing about subscription spending that ever
+ * catches anyone out: it isn't level. Three annual plans that happen to renew
+ * in the same month make that month cost four times its neighbours, and no
+ * amount of looking at "$94 a month" will tell you which month to brace for.
+ *
+ * THE DASHED LINE is the monthly average, drawn across the actual bars. It's
+ * there to be disagreed with. The gap between the line and the tall bar is the
+ * difference between the two numbers this app keeps carefully apart — what
+ * subscriptions cost you, and what actually leaves in March — and one glance
+ * at it explains that better than the sentence you're reading.
+ */
+function SpendCard({
+  subs,
+  currency,
+  onOpen,
+}: {
+  subs: Subscription[];
+  currency: string;
+  onOpen: () => void;
+}) {
+  const now = new Date();
+  const spend = spendByMonth(subs, 6, now);
+  const monthly = totalMonthlyCents(subs);
+  const peak = Math.max(monthly, ...spend.map((m) => m.cents));
+
+  // Everything is drawn against the taller of the peak month and the average
+  // line, so the line can never fall off the top of its own chart.
+  const height = (cents: number) => (peak === 0 ? 0 : (cents / peak) * 100);
+
+  return (
+    <button type="button" className="spendcard" onClick={onOpen}>
+      <span className="spendhero">
+        <strong>{formatMoney(monthly, currency)}</strong>
+        <span>
+          a month across {subs.length} {subs.length === 1 ? 'service' : 'services'}
+        </span>
+      </span>
+
+      <span className="spendchart">
+        <i className="spendavg" style={{ bottom: `${height(monthly)}%` }} aria-hidden="true" />
+        {spend.map((m, i) => (
+          <span
+            key={`${m.year}-${m.month}`}
+            className={`spendcol${i === 0 ? ' now' : ''}`}
+            title={`${monthName(m, 'long')} — ${formatMoney(m.cents, currency)}, ${m.count} ${
+              m.count === 1 ? 'charge' : 'charges'
+            }`}
+          >
+            <i style={{ height: `${height(m.cents)}%` }} />
+            <em>{monthName(m, 'short')}</em>
+          </span>
+        ))}
+      </span>
+
+      <span className="spendnote">{spendNote(spend, currency)}</span>
+    </button>
+  );
+}
+
+/**
+ * One sentence about the chart, and only when there's a sentence to write.
+ *
+ * The threshold matters more than the wording. Naming a "heaviest month" that
+ * costs four percent more than its neighbours is the dashboard inventing a
+ * finding, and a reader who checks one of those and finds nothing there stops
+ * reading all of them.
+ */
+function spendNote(spend: MonthSpend[], currency: string): string {
+  const top = heaviest(spend);
+  const last = spend[spend.length - 1];
+  if (!top || !last) return 'Nothing due in the next six months.';
+
+  if (spread(spend) < 1.4) {
+    return `Level from here to ${monthName(last, 'long')} — no month stands out.`;
+  }
+
+  return `${monthName(top, 'long')} is the heavy one: ${formatMoney(top.cents, currency)} across ${
+    top.count
+  } ${top.count === 1 ? 'charge' : 'charges'}.`;
+}
+
+function monthName(m: MonthSpend, length: 'short' | 'long'): string {
+  return new Date(m.year, m.month, 1).toLocaleDateString(undefined, { month: length });
+}
+
+/** "Renews 20 Feb" — the date the countdown on the right doesn't carry. */
+function renewsOn(sub: Subscription): string {
+  const at = nextRenewal(sub);
+  if (!at) return 'No renewal date';
+  return `Renews ${at.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
 }
 
 function Chevron() {

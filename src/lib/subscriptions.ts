@@ -61,6 +61,29 @@ export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+/**
+ * Add days by the calendar, never by milliseconds.
+ *
+ * A day is not 86,400,000 ms. Twice a year it is one hour more or less, and
+ * `date.getTime() + DAY` on the morning the clocks go back lands at 23:00 the
+ * SAME day. Every consequence of that is silent: a weekly subscription
+ * anchored on a Monday started renewing on Sundays after 1 November, and a
+ * loop that stepped a cursor forward a day at a time stopped moving
+ * altogether and ran until its guard.
+ *
+ * The Date constructor normalises overflow — day 32 of January is 1 February —
+ * and always resolves to real local midnight, whatever the clocks did.
+ */
+export function addDays(from: Date, days: number): Date {
+  return new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+}
+
+/** Whole days between two local midnights. Rounded, because the DST hour makes
+    the raw division 23/24 or 25/24 of a day rather than a whole one. */
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / DAY);
+}
+
 export function parseAnchor(iso: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
   if (!m) return null;
@@ -101,8 +124,11 @@ export function nextRenewal(sub: Pick<Subscription, 'cadence' | 'anchorDate'>, n
   if (anchor >= today) return anchor;
 
   if (sub.cadence === 'weekly') {
-    const weeks = Math.ceil((today.getTime() - anchor.getTime()) / (7 * DAY));
-    return new Date(anchor.getTime() + weeks * 7 * DAY);
+    // Counted in days and stepped by the calendar. Done in milliseconds this
+    // silently moved every weekly renewal one day earlier for the winter half
+    // of the year — see addDays.
+    const weeks = Math.ceil(daysBetween(anchor, today) / 7);
+    return addDays(anchor, weeks * 7);
   }
 
   const step = MONTHS_PER[sub.cadence];
@@ -190,6 +216,164 @@ export function dueWithin(
  */
 export function dailyCents(subs: Pick<Subscription, 'cadence' | 'amountCents'>[]): number {
   return Math.round((totalYearlyCents(subs) / 365.25) * 100) / 100;
+}
+
+/* ------------------------------------------------------------ the shape of it */
+
+/**
+ * Every renewal this subscription has between two dates, inclusive.
+ *
+ * Steps by asking `nextRenewal` again from the day after each hit rather than
+ * doing its own arithmetic, so the end-of-month clamping is applied in exactly
+ * one place. A weekly plan returns four or five dates in a month; a yearly one
+ * returns nothing at all in eleven months of twelve, which is the entire point
+ * of drawing this.
+ */
+export function renewalsBetween(sub: Subscription, from: Date, to: Date): Date[] {
+  const out: Date[] = [];
+  const last = startOfDay(to);
+  let cursor = startOfDay(from);
+
+  // 400 is a year and a half of weekly renewals — far past any window this is
+  // called with, and a hard stop if a cadence ever fails to advance.
+  for (let guard = 0; guard < 400; guard++) {
+    const at = nextRenewal(sub, cursor);
+    if (!at || at > last) break;
+    out.push(at);
+    cursor = addDays(at, 1);
+  }
+  return out;
+}
+
+export interface MonthSpend {
+  year: number;
+  /** 0-11. */
+  month: number;
+  /** Real money, at real prices, on the days it actually leaves. */
+  cents: number;
+  count: number;
+}
+
+/**
+ * What each of the next `months` calendar months actually costs.
+ *
+ * THE REASON THIS EXISTS. A monthly total is an average, and an average hides
+ * the only thing about subscription spending that ever surprises anybody: it
+ * isn't level. Three annual plans that happen to renew in January make January
+ * cost four times what October does, and no amount of staring at "$94 a month"
+ * will tell you that. The bars do, immediately.
+ *
+ * Whole months, including the part of this one already spent. A first bar
+ * showing only what's left would be a different measurement from the five
+ * beside it, which is the one thing a bar chart must never do.
+ */
+export function spendByMonth(subs: Subscription[], months: number, now = new Date()): MonthSpend[] {
+  const out: MonthSpend[] = [];
+
+  for (let i = 0; i < months; i++) {
+    const first = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    let cents = 0;
+    let count = 0;
+
+    for (const s of subs) {
+      const hits = renewalsBetween(s, first, last);
+      count += hits.length;
+      cents += hits.length * s.amountCents;
+    }
+
+    out.push({ year: first.getFullYear(), month: first.getMonth(), cents, count });
+  }
+
+  return out;
+}
+
+/** The most expensive month in a run, or null if they're all empty. */
+export function heaviest(spend: MonthSpend[]): MonthSpend | null {
+  let top: MonthSpend | null = null;
+  for (const m of spend) if (m.cents > 0 && (!top || m.cents > top.cents)) top = m;
+  return top;
+}
+
+/**
+ * How lumpy the run is: the heaviest month over the mean.
+ *
+ * 1 is perfectly level. The caller uses it to decide whether the chart is
+ * worth a sentence — pointing at a "heaviest month" that costs 4% more than
+ * the others is a caption that invents a finding.
+ */
+export function spread(spend: MonthSpend[]): number {
+  if (spend.length === 0) return 1;
+  const total = spend.reduce((sum, m) => sum + m.cents, 0);
+  if (total === 0) return 1;
+  const mean = total / spend.length;
+  const top = heaviest(spend)!;
+  return top.cents / mean;
+}
+
+/* ------------------------------------------------------------ what needs you */
+
+export type SubGapKind = 'soon' | 'bigsoon';
+
+export interface SubGap {
+  kind: SubGapKind;
+  count: number;
+  cents: number;
+  label: string;
+  why: string;
+}
+
+/** Cadences where one charge is a meaningful lump rather than a monthly bill. */
+const LUMPY: Cadence[] = ['quarterly', 'yearly'];
+
+/**
+ * The subscription jobs, in the sense the dashboard means it: not missing
+ * data, but money about to move while you can still do something about it.
+ *
+ * Deliberately NOT "you haven't set a reminder" or "you haven't filled in the
+ * start date". Both are things the app would like to have; neither is a thing
+ * the user needs. A dashboard that asks you to feed it is a dashboard people
+ * learn to scroll past, and the reminder default is off on purpose — see
+ * `reminderDue`.
+ *
+ * The two windows don't overlap. A yearly plan renewing on Friday is this
+ * week's problem and appears once, in the first line.
+ */
+export function subGaps(subs: Subscription[], now = new Date()): SubGap[] {
+  const out: SubGap[] = [];
+
+  const week = subs.filter((s) => {
+    const d = daysUntilRenewal(s, now);
+    return d !== null && d >= 0 && d <= 7;
+  });
+
+  const lump = subs.filter((s) => {
+    if (!LUMPY.includes(s.cadence)) return false;
+    const d = daysUntilRenewal(s, now);
+    return d !== null && d > 7 && d <= 30;
+  });
+
+  if (week.length) {
+    out.push({
+      kind: 'soon',
+      count: week.length,
+      cents: week.reduce((n, s) => n + s.amountCents, 0),
+      label: week.length === 1 ? 'renews this week' : 'renew this week',
+      why: 'The last week you can cancel before the money goes.',
+    });
+  }
+
+  if (lump.length) {
+    out.push({
+      kind: 'bigsoon',
+      count: lump.length,
+      cents: lump.reduce((n, s) => n + s.amountCents, 0),
+      label: lump.length === 1 ? 'large charge this month' : 'large charges this month',
+      why: 'A quarter or a year at once, with time left to decide.',
+    });
+  }
+
+  return out;
 }
 
 /* --------------------------------------------------------------- reminders */

@@ -642,14 +642,21 @@ button.coverstat:active {
 /* The countdown on a list row. It was a 10px pill, the same weight as the
    model number — but it's the reason the row is worth looking at, so it gets
    the largest type on the line. Colour carries the state; no pill needed. */
-.timeleft {
+/* Shared with `.renewin`, the subscription countdown on the dashboard, rather
+   than copied to it. The two sit in the same slot of the same row on the same
+   screen — "next to expire" and "next to renew" — and a countdown that is 27px
+   in one and 26px in the other is the kind of difference you can only see once
+   somebody points at it, and then can't stop seeing. */
+.timeleft,
+.renewin {
   flex: none;
   min-width: 62px;
   text-align: right;
   line-height: 1.05;
 }
 
-.timeleft strong {
+.timeleft strong,
+.renewin strong {
   display: block;
   font-family: var(--font-display);
   font-weight: 200;
@@ -658,7 +665,8 @@ button.coverstat:active {
   font-variant-numeric: tabular-nums;
 }
 
-.timeleft small {
+.timeleft small,
+.renewin small {
   display: block;
   margin-top: 3px;
   font-size: 10.5px;
@@ -3740,34 +3748,34 @@ button.countpill.tappill:active {
 
 /* ------------------------------------------- subscriptions, on the dashboard */
 
-.subsummary {
+/*
+  The counterpart to .covercard: a picture at the top of the block, with the
+  headline number living inside it rather than in a tile of its own — the same
+  arrangement as the percentage sitting in the hole of the ring.
+*/
+.spendcard {
   display: block;
   width: 100%;
-  padding: 12px 14px;
+  padding: 16px 16px 13px;
   border: none;
   border-radius: var(--r-lg);
   background: var(--slate-700);
   color: inherit;
   text-align: left;
+  margin-bottom: 12px;
 }
 
-.subsummary:active {
+.spendcard:active {
   background: var(--slate-600);
 }
 
-/*
-  One number, loudly. Three equal tiles gave the month, the year and a count
-  the same weight — three facts and no point. The monthly figure is the one
-  people carry in their heads, so it takes display type and everything else
-  becomes the sentence underneath it.
-*/
-.subsum-hero {
+.spendhero {
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
 
-.subsum-hero > strong {
+.spendhero > strong {
   flex: none;
   font-family: var(--font-display);
   font-weight: 200;
@@ -3776,7 +3784,7 @@ button.countpill.tappill:active {
   line-height: 1;
 }
 
-.subsum-hero > span {
+.spendhero > span {
   flex: 1;
   min-width: 0;
   font-size: 12px;
@@ -3785,54 +3793,112 @@ button.countpill.tappill:active {
   color: var(--muted);
 }
 
-/* The day rate, and the year. Same money, two framings people react to
-   differently — one is a coffee, the other is a holiday. */
-.subsum-hero b {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  font-weight: 300;
-  color: var(--muted);
-  opacity: 0.85;
-}
-
-/* The things you can act on, under a rule each rather than becoming more
-   numbers in the row above. */
-.subsum-next {
+/*
+  Six months of real charges. Tall enough to be a chart rather than a sparkline
+  — the whole reason it's here is that one month is several times another, and
+  a 30px strip can't show a 4:1 ratio and still leave the short months visible.
+*/
+.spendchart {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 11px;
-  padding-top: 10px;
-  border-top: 1px solid var(--slate-600);
-  font-size: 12px;
-  font-weight: 300;
-  color: var(--muted);
+  align-items: flex-end;
+  gap: 6px;
+  height: 104px;
+  margin: 18px 0 9px;
+  border-bottom: 1px solid var(--slate-600);
 }
 
-/* Stands in for a logo when the line is about several subscriptions at once. */
-.subsum-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin: 0 8px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-
-.subsum-next > span {
+.spendcol {
+  position: relative;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-.subsum-next b {
-  flex: none;
-  font-weight: 500;
+/* The bar. Everything but this month is held back, so the chart has a "you
+   are here" without needing a second colour to mean something else. */
+.spendcol i {
+  display: block;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--gold);
+  opacity: 0.45;
+  transition: height 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.spendcol.now i {
+  opacity: 1;
+}
+
+.spendcol em {
+  position: absolute;
+  bottom: -19px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.spendcol.now em {
   color: var(--text);
-  font-variant-numeric: tabular-nums;
+}
+
+/*
+  The monthly average, drawn across the actual months.
+
+  It's here to be disagreed with: the gap between this line and a tall bar is
+  the difference between what subscriptions cost you and what actually leaves
+  in March, which is the distinction the whole tab is built on. Labelled,
+  because an unexplained line across a chart is furniture.
+*/
+.spendavg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--line);
+  pointer-events: none;
+}
+
+.spendavg::after {
+  content: 'average';
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font-size: 9px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* The finding, if there is one. See spendNote — it says "level" rather than
+   inventing a heaviest month when the months are all much of a muchness. */
+.spendnote {
+  display: block;
+  margin-top: 22px;
+  font-size: 11.5px;
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* The renewal countdown, in the same type as the warranty one — see the
+   grouped rules up at .timeleft. Gold once it's inside the week you could
+   still cancel in. */
+.renewin.close strong {
+  color: var(--gold);
+}
+
+/* Same card as the item gaps, without the mascot down the side: Scout is
+   already on two cards above this one, and a third is a parade. */
+.subneeds {
+  padding: 14px 4px 6px 14px;
 }
 
 /* ------------------------------------------------- renewals, on the home tab */

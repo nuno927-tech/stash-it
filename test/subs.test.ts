@@ -13,6 +13,21 @@
  * and "a month".
  */
 
+/*
+  Pinned to a timezone that observes DST, and pinned before anything else runs.
+
+  Every assertion below is written in local time, so on a UTC machine the whole
+  file quietly stops testing the hardest thing about this module. A weekly
+  subscription anchored on a Monday renewed on Sundays from November onwards
+  for one release, and no test here noticed, because the tests ran where a day
+  is always 24 hours long. It only turned up when a realistic dataset was run
+  through the dashboard on a laptop set to New York.
+
+  A bug that reproduces for half the world and no CI machine is worse than one
+  that reproduces for everybody.
+*/
+process.env.TZ = 'America/New_York';
+
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
 import {
@@ -30,12 +45,17 @@ import {
   daysUntilRenewal,
   dueWithin,
   dueReminders,
+  heaviest,
   monthlyCents,
   nextRenewal,
   ordinal,
   parseAnchor,
   renewalLabel,
+  renewalsBetween,
   renewalsInMonth,
+  spendByMonth,
+  spread,
+  subGaps,
   totalMonthlyCents,
   totalYearlyCents,
 } from '@/lib/subscriptions';
@@ -216,6 +236,144 @@ async function main() {
   ]);
   check('the largest is judged per month', top?.id === 'big', top?.id);
   check('and nothing has no largest', biggest([]) === null);
+
+  /* ------------------------------------------------- the six-month chart */
+
+  /*
+    The chart exists to show what an average hides: that the months are not
+    level. Everything below is a way of getting that wrong.
+  */
+
+  // A weekly plan is four or five charges a month, not "about four".
+  const wk = sub({ cadence: 'weekly', anchorDate: '2026-01-01' });
+  const jan = renewalsBetween(wk, new Date(2026, 0, 1), new Date(2026, 0, 31));
+  check('January holds five weekly renewals', jan.length === 5, `${jan.length}`);
+  check('and they are the 1st through the 29th', iso(jan[0]!) === '2026-01-01' && iso(jan[4]!) === '2026-01-29');
+  const feb = renewalsBetween(wk, new Date(2026, 1, 1), new Date(2026, 1, 28));
+  check('February holds four', feb.length === 4, `${feb.length}`);
+
+  // A yearly plan is absent from eleven months out of twelve. If it leaked one
+  // twelfth into every month the chart would be a flat line, which is exactly
+  // the picture it was built to contradict.
+  const annual = sub({ cadence: 'yearly', anchorDate: '2026-03-02', amountCents: 13900 });
+  check('a yearly plan appears in March', renewalsBetween(annual, new Date(2026, 2, 1), new Date(2026, 2, 31)).length === 1);
+  check('and in no other month', renewalsBetween(annual, new Date(2026, 3, 1), new Date(2026, 3, 30)).length === 0);
+  check('and once a year, not twice', renewalsBetween(annual, new Date(2026, 0, 1), new Date(2026, 11, 31)).length === 1);
+
+  // A 31st anchor must appear exactly once in a 30-day month, on the 30th —
+  // not twice, and not skipped.
+  const eom = sub({ anchorDate: '2026-01-31' });
+  const apr = renewalsBetween(eom, new Date(2026, 3, 1), new Date(2026, 3, 30));
+  check('a 31st anchor lands once in April', apr.length === 1, `${apr.length}`);
+  check('on the 30th', iso(apr[0]!) === '2026-04-30');
+
+  /*
+    The whole point, as one assertion. Netflix every month and one annual plan
+    in March: the monthly average says every month is the same, and the chart
+    says March is nearly twelve times the others.
+  */
+  const lumpy = [sub({ id: 'n', amountCents: 1299 }), annual];
+  const spend = spendByMonth(lumpy, 6, new Date(2026, 0, 15));
+  check('six months come back', spend.length === 6);
+  check('it starts at the current month', spend[0]!.month === 0 && spend[0]!.year === 2026);
+  check('it crosses the year end', spendByMonth(lumpy, 6, new Date(2026, 9, 1))[3]!.year === 2027);
+  check('an ordinary month is just Netflix', spend[0]!.cents === 1299, `${spend[0]!.cents}`);
+  check('March carries the annual too', spend[2]!.cents === 1299 + 13900, `${spend[2]!.cents}`);
+  check('and counts two charges', spend[2]!.count === 2);
+
+  /*
+    The current month is whole, including the part already spent. A first bar
+    measuring "what's left" against five measuring "what it costs" is a chart
+    that lies by construction — and on the 28th it would show almost nothing.
+  */
+  const late = spendByMonth([sub({ anchorDate: '2026-01-05', amountCents: 1299 })], 2, new Date(2026, 0, 28));
+  check('a charge already taken still counts this month', late[0]!.cents === 1299, `${late[0]!.cents}`);
+
+  check('the heaviest month is found', heaviest(spend)!.month === 2);
+  check('and nothing has no heaviest', heaviest(spendByMonth([], 6, new Date(2026, 0, 1))) === null);
+
+  // The caption is only written when there's something to say.
+  check('a lumpy run reads as lumpy', spread(spend) > 1.4, `${spread(spend).toFixed(2)}`);
+  const level = spendByMonth([sub({ amountCents: 1299 })], 6, new Date(2026, 0, 15));
+  check('a level one does not', spread(level) === 1, `${spread(level)}`);
+  check('and an empty one is level by definition', spread([]) === 1);
+
+  /* --------------------------------------------------- when the clocks change */
+
+  /*
+    1 November 2026 is 25 hours long in New York. Everything here failed before
+    `addDays` existed, and every failure was silent.
+  */
+
+  // A weekly plan anchored on a Monday renews on Mondays. Forever. Stepping by
+  // 7 * 86,400,000 ms moved it to Sunday for the whole winter — the renewal
+  // date on the card was simply wrong, one day early, from November to March.
+  const monday = sub({ cadence: 'weekly', anchorDate: '2026-08-03' });
+  check('the anchor is a Monday', new Date(2026, 7, 3).getDay() === 1);
+  let allMonday = true;
+  for (let w = 0; w < 40; w++) {
+    const at = nextRenewal(monday, new Date(2026, 7, 4 + w * 7));
+    if (!at || at.getDay() !== 1) allMonday = false;
+  }
+  check('and every renewal for forty weeks is too', allMonday);
+  check(
+    'the one straight after the clocks go back',
+    iso(nextRenewal(monday, new Date(2026, 10, 2))) === '2026-11-02',
+  );
+
+  /*
+    The loop that draws the chart. `cursor = at + 86,400,000` on the morning
+    the clocks go back lands at 23:00 the SAME day, so the cursor never
+    advanced, the same date came back four hundred times, and one month of the
+    chart read $18,324 against a $135 average. The bar was so tall the other
+    five months rendered as 1% and looked empty.
+  */
+  const nov = renewalsBetween(sub({ anchorDate: '2026-09-01' }), new Date(2026, 10, 1), new Date(2026, 10, 30));
+  check('a monthly charge on the 1st of November happens once', nov.length === 1, `${nov.length}`);
+
+  // The invariant behind it, which no timezone can break: a list of renewal
+  // dates has no duplicates and never goes backwards.
+  // 103 weeks after the anchor, inclusive of the anchor itself, is 104
+  // renewals — no more from a 25-hour day, no fewer from a 23-hour one. The
+  // window crosses four clock changes.
+  const long = renewalsBetween(monday, new Date(2026, 7, 3), new Date(2026, 7, 3 + 103 * 7));
+  check('104 renewals in 103 weeks', long.length === 104, `${long.length}`);
+  check('strictly increasing, never repeating', long.every((d, i) => i === 0 || d > long[i - 1]!));
+  check('and all of them Mondays', long.every((d) => d.getDay() === 1));
+
+  // Spring forward, too — 8 March 2026 is 23 hours long.
+  const spring = renewalsBetween(sub({ cadence: 'weekly', anchorDate: '2026-03-02' }), new Date(2026, 2, 1), new Date(2026, 2, 31));
+  check('a 23-hour day loses no renewals either', spring.length === 5, `${spring.length}`);
+  check('and they stay on Mondays', spring.every((d) => d.getDay() === 1));
+
+  /* --------------------------------------------------------- what needs you */
+
+  const jobs = subGaps(
+    [
+      sub({ id: 'w', anchorDate: '2026-01-14', amountCents: 1299 }),
+      sub({ id: 'y', cadence: 'yearly', anchorDate: '2026-02-01', amountCents: 13900 }),
+      sub({ id: 'q', cadence: 'quarterly', anchorDate: '2026-03-20', amountCents: 3000 }),
+      sub({ id: 'm', anchorDate: '2026-02-25', amountCents: 999 }),
+    ],
+    new Date(2026, 0, 12),
+  );
+  check('this week is a job', jobs[0]?.kind === 'soon' && jobs[0].count === 1);
+  check('priced at what actually leaves', jobs[0]?.cents === 1299);
+  // The yearly plan is 20 days out; the quarterly is 67 and doesn't qualify,
+  // and the ordinary monthly one is never a "large charge" whenever it lands.
+  check('a lump with lead time is the other', jobs[1]?.kind === 'bigsoon' && jobs[1].count === 1, `${jobs[1]?.count}`);
+  check('and it is the annual one', jobs[1]?.cents === 13900);
+
+  /*
+    The windows must not overlap. A yearly plan renewing on Friday is this
+    week's problem and belongs in one line, not both — a dashboard that counts
+    the same charge twice is a dashboard whose numbers can't be added up.
+  */
+  const both = subGaps([sub({ cadence: 'yearly', anchorDate: '2026-01-15', amountCents: 13900 })], new Date(2026, 0, 12));
+  check('a lump due this week is counted once', both.length === 1 && both[0]!.kind === 'soon');
+
+  check('a quiet fortnight has no jobs', subGaps([sub({ anchorDate: '2026-02-20' })], new Date(2026, 0, 12)).length === 0);
+  check('and nothing subscribed has none either', subGaps([], new Date(2026, 0, 12)).length === 0);
 
   /* -------------------------------------------------------- reminders */
 

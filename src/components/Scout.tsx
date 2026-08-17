@@ -91,7 +91,7 @@ export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
   /* Drawn, cut out and ready. Listed here rather than held back, because the
      album is the only written-down record of the cast and a pose that exists
      but isn't in it is a pose everyone forgets they have. */
-  { pose: 'calendar', name: 'Minding the month', where: 'Not on a screen yet' },
+  { pose: 'calendar', name: 'Minding the month', where: 'Beside the calendar on the subscriptions tab' },
   { pose: 'dancing', name: 'Very pleased', where: 'Not on a screen yet' },
   { pose: 'settings', name: 'At the desk', where: 'This screen' },
   { pose: 'alert', name: 'Ears up', where: 'When something needs a minute, or needs confirming' },
