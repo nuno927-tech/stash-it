@@ -13,7 +13,7 @@
  * from the item's own words, which left category with no job worth a decision
  * during add. See db.ts for the migration.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type WarrantyUnit = 'days' | 'months' | 'years';
 
@@ -254,6 +254,98 @@ export interface Subscription {
   shared?: boolean;
   payTo?: string;
   payHow?: string;
+
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export const PAPER_KINDS = [
+  'passport',
+  'id',
+  'licence',
+  'visa',
+  'vehicle',
+  'insurance',
+  'certification',
+  'membership',
+  'other',
+] as const;
+
+export type PaperKind = (typeof PAPER_KINDS)[number];
+
+/**
+ * A document that expires — a passport, a licence, a residence permit.
+ *
+ * ── Why this is a table and not an Item ───────────────────────────────────
+ * The same reasoning as Subscription. A passport has no room, no photo, no
+ * brand, no purchase price and no warranty; an item has no issuing authority
+ * and never needs renewing eight months before it stops working. Folded into
+ * `items` it would count against the free cap, appear under "what's in the
+ * garage", and pollute every dashboard figure that means "things you own".
+ *
+ * ── What is deliberately NOT here ─────────────────────────────────────────
+ * No scan, and no document number.
+ *
+ * The database is unencrypted by design and says so (see lib/lock.ts), and
+ * backups are plaintext zips that drive.ts will put in the user's Drive on a
+ * schedule. A receipt for a kettle in that file is fine. A passport scan is
+ * not, and a passport number sitting next to a name is a better identity-theft
+ * package than the scan would be. Storing a partial number behind a warning
+ * would be a half-measure, and half-measures with warnings attached are how
+ * people leak things.
+ *
+ * Both wait for real at-rest encryption — the PRF extension can derive a key
+ * from the passkey the lock already creates — which needs a passcode fallback
+ * and a backup format change. Until then this app promises "nothing to leak"
+ * and keeps the promise.
+ *
+ * What's left is the useful part anyway. Nobody needs a passport scan in an
+ * app; they need to know it expires in March and renewals take two months.
+ */
+export interface Paper {
+  id: string;
+  schemaVersion: number;
+  propertyId: string;
+
+  kind: PaperKind;
+  /** What the user calls it: "Nuno's passport", "Van MOT". */
+  label: string;
+  /**
+   * Whose it is. A household has four passports and they do not expire
+   * together, so the list is unreadable without this.
+   */
+  holder?: string;
+
+  /** ISO yyyy-mm-dd. The only required date, and the one printed on it. */
+  expiresOn: string;
+  issuedOn?: string;
+
+  /**
+   * How long before expiry this actually needs dealing with, in days.
+   *
+   * THE REASON THIS FEATURE IS WORTH BUILDING. A warranty's useful date is its
+   * expiry. A passport's is not: renewals routinely take weeks, and many
+   * countries refuse entry without three to six months left on it. A passport
+   * "valid until March" stops being usable for travel around the previous
+   * summer, and an app that counts down to March is telling you something
+   * true and useless.
+   *
+   * A field rather than a rule, because the right answer depends on the
+   * document, the country and where you're going — and an app that states a
+   * confident wrong lead time is worse than one that asks. Defaults per kind
+   * live in lib/papers.ts.
+   */
+  leadDays?: number;
+
+  /** Who issues it, for the renewal: "HM Passport Office", "DVLA". */
+  authority?: string;
+  /** Where the physical one is. "Fireproof box", "Mum's house". */
+  storedAt?: string;
+
+  /** 0, 1, 3 or 7 days before the renew-by date. Zero means none. */
+  remindDays?: number;
 
   notes?: string;
   createdAt: string;

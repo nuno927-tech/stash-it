@@ -1852,24 +1852,34 @@ a.pick {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/*
+  Fluid, not 62px fixed. Four tabs at a fixed width fitted anything; five of
+  them need 310px of a 320px phone before padding, so the last one falls off
+  the smallest screens still in use. Sharing the row out and capping the width
+  keeps the roomy spacing on a normal phone and simply tightens on a narrow one.
+*/
 .navitem {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  width: 62px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 68px;
   color: var(--muted);
   font-size: 10.5px;
   font-weight: 600;
   background: none;
   border: none;
+  white-space: nowrap;
 }
 
 /* Grown with the icons inside it. At 30px a 26px mark had two pixels of air
    and the gold wash on the active tab read as a border round the glyph rather
    than as a background behind it. 34 keeps the four it had at 21. */
 .navpill {
-  width: 56px;
+  width: 100%;
+  max-width: 56px;
   height: 34px;
   border-radius: var(--r-pill);
   display: grid;
@@ -3882,6 +3892,80 @@ button.countpill.tappill:active {
    already on two cards above this one, and a third is a parade. */
 .subneeds {
   padding: 14px 4px 6px 14px;
+}
+
+/* ------------------------------------------------------------------ papers */
+
+/*
+  The mark on a paper row. A tinted disc rather than a bare glyph, so the state
+  is legible down a scanned column before any word is read — and so the row has
+  the same visual weight as a subscription row, which carries a service logo in
+  the same slot.
+*/
+.papermark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--slate-700);
+  color: var(--muted);
+}
+
+.papermark.ok {
+  background: var(--wash-moss);
+  color: var(--moss);
+}
+
+.papermark.warn {
+  background: var(--wash-honey);
+  color: var(--honey);
+}
+
+.papermark.dead {
+  background: var(--wash-ember);
+  color: var(--ember);
+}
+
+/* The printed date, on the right. Quieter than the money in the same slot on
+   a subscription row, because it is the fact you came to look up rather than
+   the thing you have to act on — that sentence is on the left. */
+.papervalid {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Three across, not five. Nine kinds with names as long as "Driving licence"
+   need the width; the service picker gets away with five because a brand name
+   is one word and there are fifty of them to fit. */
+.kindgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+
+/*
+  The lead time, turned back into the thing it means.
+
+  Nobody has an opinion about "240 days". Everybody has one about "Scout will
+  start asking in October 2026", and it updates as you move the control — so
+  the number is chosen by looking at its consequence rather than by arithmetic.
+*/
+.leadsays {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.leadsays b {
+  font-weight: 500;
+  color: var(--gold);
 }
 
 /* ------------------------------------------------- renewals, on the home tab */

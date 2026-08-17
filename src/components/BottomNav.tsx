@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { pushBack } from '@/lib/backstack';
 import { feedback } from '@/lib/feedback';
 
-export type Tab = 'home' | 'items' | 'subs' | 'settings';
+export type Tab = 'home' | 'items' | 'subs' | 'papers' | 'settings';
 
-/** What the + can create. Adding a third later means one entry here. */
-export type AddKind = 'item' | 'subscription';
+/** What the + can create. Adding a fourth later means one entry here. */
+export type AddKind = 'item' | 'subscription' | 'paper';
 
 /*
  * Scout's world, at 26px.
@@ -61,6 +61,22 @@ const ICONS: Record<Tab, ReactNode> = {
       <path d="M9.4 10.4h5.2M10.3 10.4c0 2.4.8 4.1 1.7 4.1s1.7-1.7 1.7-4.1" />
     </>
   ),
+  /*
+    A leaf, veined.
+
+    The one place the squirrel theme and the subject matter meet on their own:
+    a leaf IS a page, in the oldest sense of the word, and it belongs on a tree
+    with the acorns. A document glyph would have been clearer for two seconds
+    and generic forever — and a folded sheet at 26px next to two acorns and a
+    tree reads as the icon somebody forgot to theme.
+  */
+  papers: (
+    <>
+      <path d="M5.2 18.8c-2.4-4.6-.6-11 4.2-13.4 2.6-1.3 6-1.4 9.4-.6.5 3.4.2 6.8-1.2 9.4-2.6 4.8-9 6.6-12.4 4.6z" />
+      <path d="M4 20.4c1.6-3.4 4.6-6.6 8.4-8.8" />
+      <path d="M11 9.6c1.1.5 2 1.4 2.6 2.6M8.2 13.4c1 .5 1.8 1.3 2.3 2.3" />
+    </>
+  ),
   // A nut, in both senses. The pun is free and the hexagon is the most robust
   // shape in the set — it was legible at 21px and it is legible at 12.
   settings: (
@@ -75,10 +91,11 @@ const LABELS: Record<Tab, string> = {
   home: 'Home',
   items: 'Items',
   subs: 'Subs',
+  papers: 'Papers',
   settings: 'Settings',
 };
 
-const TABS: Tab[] = ['home', 'items', 'subs', 'settings'];
+const TABS: Tab[] = ['home', 'items', 'subs', 'papers', 'settings'];
 
 /**
  * What the + offers, in the order it offers them.
@@ -108,6 +125,17 @@ const ADD_KINDS: { kind: AddKind; label: string; note: string; glyph: ReactNode 
       <>
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M3 10h18M8 3v4M16 3v4" />
+      </>
+    ),
+  },
+  {
+    kind: 'paper',
+    label: 'Paper',
+    note: 'Something that expires',
+    glyph: (
+      <>
+        <path d="M6 3h9l4 4v14H6z" />
+        <path d="M15 3v4h4M9.5 12h6M9.5 16h4" />
       </>
     ),
   },

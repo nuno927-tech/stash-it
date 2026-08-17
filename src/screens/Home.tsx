@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeItems, activeSubscriptions } from '@/db/repo';
-import type { Doc, Item, Subscription } from '@/db/types';
+import { activeItems, activePapers, activeSubscriptions } from '@/db/repo';
+import type { Doc, Item, Paper, Subscription } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
 import {
@@ -12,6 +12,14 @@ import {
   sampleNudges,
   type NudgeKind,
 } from '@/lib/nudges';
+import {
+  daysUntilRenewBy,
+  expiryLabel,
+  needsRenewing,
+  nextUp,
+  paperLabel,
+  paperState,
+} from '@/lib/papers';
 import { prefsFrom } from '@/lib/prefs';
 import {
   dailyCents,
@@ -29,6 +37,7 @@ import { coverageArcs, effectiveExpiry, formatMoney, warrantyDateLabel } from '@
 import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { NudgeBar } from '@/components/NudgeBar';
+import { PaperIcon } from '@/components/PaperIcon';
 import { RenewalNudges } from '@/components/RenewalNudges';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Scout } from '@/components/Scout';
@@ -51,6 +60,7 @@ export function Home({
   onBrowse,
   onSettings,
   onSubs,
+  onPapers,
 }: {
   propertyId: string;
   onAdd: () => void;
@@ -59,6 +69,7 @@ export function Home({
   /** Where every nudge sends you — each one is answered in Settings. */
   onSettings: () => void;
   onSubs: () => void;
+  onPapers: () => void;
 }) {
   const [hidden, setHidden] = useState<NudgeKind[]>([]);
 
@@ -74,6 +85,7 @@ export function Home({
   const docs = useLiveQuery(() => db.docs.toArray(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const subs = useLiveQuery(() => activeSubscriptions(propertyId), [propertyId]) ?? [];
+  const papers = useLiveQuery(() => activePapers(propertyId), [propertyId]) ?? [];
 
   if (!items || !docs) return null;
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
@@ -114,6 +126,15 @@ export function Home({
         subscription form says exactly that rather than promising an alert.
       */}
       <RenewalNudges subs={subs} onOpen={onSubs} />
+
+      {/*
+        Papers first, above the warranty alert, and the order is a judgement
+        rather than an accident: a lapsed warranty costs money, a lapsed
+        passport cancels a holiday. This is also the whole reason the feature
+        is worth having — the Papers tab is where you look something up, and
+        this row is where the app tells you before you thought to ask.
+      */}
+      <PaperAlert papers={papers} onOpen={onPapers} />
 
       {m.endingSoon > 0 && (
         <button type="button" className="alert" onClick={() => onBrowse('ending')}>
@@ -186,6 +207,8 @@ export function Home({
         between the collection and the recent additions.
       */}
       <SubsBlock subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
+
+      <PapersBlock papers={papers} onOpen={onPapers} />
     </>
   );
 }
@@ -649,6 +672,120 @@ function renewsOn(sub: Subscription): string {
   const at = nextRenewal(sub);
   if (!at) return 'No renewal date';
   return `Renews ${at.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+}
+
+/**
+ * Papers that have gone past the point where you should have started.
+ *
+ * Above the warranty alert, and that ranking is deliberate: a lapsed warranty
+ * costs money, a lapsed passport cancels a holiday.
+ *
+ * Only ever the overdue ones. A row that also listed the six documents in fine
+ * order would be a list, and this is an alert — the difference is that an
+ * alert is empty most of the time, and one that never empties gets scrolled
+ * past within a week.
+ */
+function PaperAlert({ papers, onOpen }: { papers: Paper[]; onOpen: () => void }) {
+  const now = new Date();
+  const jobs = needsRenewing(papers, now);
+  if (jobs.length === 0) return null;
+
+  const worst = jobs[0]!;
+  const expired = jobs.filter((p) => paperState(p, now) === 'expired').length;
+
+  return (
+    <button type="button" className="alert" onClick={onOpen}>
+      <Scout pose="alert" height={54} motion={['alert']} />
+      <span className="alert-txt">
+        <h4>
+          {jobs.length === 1
+            ? `${worst.label} needs renewing`
+            : `${jobs.length} documents need renewing`}
+        </h4>
+        {/*
+          The expired ones are named separately because they are a different
+          problem. "Start soon" and "this is not currently valid" should never
+          be rolled into one count.
+        */}
+        <p>
+          {expired > 0
+            ? `${expired} ${expired === 1 ? 'has' : 'have'} already run out.`
+            : paperLabel(worst, now).replace(/^Renew now — e/, 'E')}
+        </p>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The papers section, further down: what's coming, and when.
+ *
+ * Small on purpose. A household has about ten of these, not two hundred, so
+ * this is three lines and a way in rather than a block the size of the
+ * subscriptions one above it.
+ */
+function PapersBlock({ papers, onOpen }: { papers: Paper[]; onOpen: () => void }) {
+  if (papers.length === 0) return null;
+
+  const now = new Date();
+  const next = nextUp(papers, now);
+  const soonest = next ? daysUntilRenewBy(next, now) : null;
+
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Papers</span>
+        <button type="button" className="linkish" onClick={onOpen}>
+          See all
+        </button>
+      </div>
+
+      <button type="button" className="nextup" onClick={onOpen}>
+        {next ? (
+          <>
+            <PaperIcon kind={next.kind} state={paperState(next, now)} size={40} />
+            <span className="nextup-txt">
+              <span className="fieldlabel">Next to renew</span>
+              <strong>{next.label}</strong>
+              <small>
+                {next.holder ? `${next.holder} · ` : ''}
+                {expiryLabel(next)}
+              </small>
+            </span>
+            {/*
+              Months at range, days up close.
+
+              Months because a countdown in days to something 240 days away is
+              a number nobody reads. Days inside about six weeks because
+              rounding stops working there: 18 days is "1 month", and 10 days
+              rounds to "0 months", which is a countdown that has visibly
+              stopped counting on the row that matters most.
+            */}
+            <span className="renewin">
+              <strong>{soonest === null ? '—' : runway(soonest).value}</strong>
+              <small>{soonest === null ? 'unknown' : runway(soonest).unit}</small>
+            </span>
+          </>
+        ) : (
+          <span className="nextup-txt">
+            <span className="fieldlabel">Papers</span>
+            <strong>Everything is in hand</strong>
+            <small>
+              {papers.length} tracked, nothing to start yet
+            </small>
+          </span>
+        )}
+      </button>
+    </>
+  );
+}
+
+/** How long until a paper needs starting, in a unit that survives rounding. */
+function runway(days: number): { value: number; unit: string } {
+  const d = Math.max(0, days);
+  if (d < 45) return { value: d, unit: d === 1 ? 'day' : 'days' };
+  const months = Math.round(d / 30.44);
+  return { value: months, unit: months === 1 ? 'month' : 'months' };
 }
 
 function Chevron() {

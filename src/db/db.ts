@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import {
   LATER_SEED_ROOMS, SCHEMA_VERSION, SEED_ROOMS,
   type Item, type Doc, type BlobRecord, type Property,
-  type Room, type MaintenanceEntry, type Settings, type Subscription,
+  type Room, type MaintenanceEntry, type Settings, type Subscription, type Paper,
 } from './types';
 
 export class StashDB extends Dexie {
@@ -14,6 +14,7 @@ export class StashDB extends Dexie {
   rooms!: Table<Room, string>;
   maintenance!: Table<MaintenanceEntry, string>;
   subscriptions!: Table<Subscription, string>;
+  papers!: Table<Paper, string>;
   settings!: Table<Settings, string>;
 
   constructor() {
@@ -124,6 +125,30 @@ export class StashDB extends Dexie {
       })
       .upgrade(async (tx) => {
         for (const name of ['items', 'docs', 'maintenance', 'settings']) {
+          await tx
+            .table(name)
+            .toCollection()
+            .modify((row: Record<string, unknown>) => {
+              row.schemaVersion = SCHEMA_VERSION;
+            });
+        }
+      });
+
+    /**
+     * v5: papers — documents that expire.
+     *
+     * Another new table and no existing record changes shape, so the upgrade
+     * is the same restamp to the current SCHEMA_VERSION, for the same reason
+     * given at v4. Indexed on `expiresOn` rather than on the renew-by date:
+     * the renew-by is derived from a lead time that can be edited, and an
+     * index on a computed value is an index that goes stale.
+     */
+    this.version(5)
+      .stores({
+        papers: 'id, propertyId, deletedAt, expiresOn, [propertyId+deletedAt]',
+      })
+      .upgrade(async (tx) => {
+        for (const name of ['items', 'docs', 'maintenance', 'subscriptions', 'settings']) {
           await tx
             .table(name)
             .toCollection()

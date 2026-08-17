@@ -45,6 +45,8 @@ import { Placeholder } from '@/screens/Placeholder';
 import { Bin } from '@/screens/Bin';
 import { Subs } from '@/screens/Subs';
 import { SubForm } from '@/screens/SubForm';
+import { Papers } from '@/screens/Papers';
+import { PaperForm } from '@/screens/PaperForm';
 import { Rooms } from '@/screens/Rooms';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
@@ -72,6 +74,9 @@ type Screen =
   | { kind: 'subs' }
   | { kind: 'addsub' }
   | { kind: 'editsub'; id: string }
+  | { kind: 'papers' }
+  | { kind: 'addpaper' }
+  | { kind: 'editpaper'; id: string }
   /*
     `saved` marks the one arrival that came from creating this item, so the
     detail screen can tell you to file the paper copy. It lives on the screen
@@ -94,6 +99,9 @@ const TAB_FOR: Record<Screen['kind'], Tab> = {
   subs: 'subs',
   addsub: 'subs',
   editsub: 'subs',
+  papers: 'papers',
+  addpaper: 'papers',
+  editpaper: 'papers',
 };
 
 export default function App() {
@@ -289,6 +297,9 @@ const PUSHED: Record<Screen['kind'], boolean> = {
   subs: false,
   addsub: true,
   editsub: true,
+  papers: false,
+  addpaper: true,
+  editpaper: true,
 };
 
 function Shell() {
@@ -402,6 +413,7 @@ function Shell() {
     if (s.kind === 'rooms') return { kind: 'settings' };
     if (s.kind === 'bin') return { kind: 'items' };
     if (s.kind === 'editsub') return { kind: 'subs' };
+    if (s.kind === 'editpaper') return { kind: 'papers' };
     return null;
   };
 
@@ -428,9 +440,14 @@ function Shell() {
   };
   const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
   const subId = screen.kind === 'editsub' ? screen.id : undefined;
+  const paperId = screen.kind === 'editpaper' ? screen.id : undefined;
   const focusedSub = useLiveQuery(
     async () => (subId ? db.subscriptions.get(subId) : undefined),
     [subId],
+  );
+  const focusedPaper = useLiveQuery(
+    async () => (paperId ? db.papers.get(paperId) : undefined),
+    [paperId],
   );
 
   if (!property || !settings) return <Frame>{null}</Frame>;
@@ -467,10 +484,11 @@ function Shell() {
           onAdd={
             !onTab || tab === 'settings'
               ? undefined
-              : (kind) =>
-                  kind === 'subscription'
-                    ? go({ kind: 'addsub' })
-                    : go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })
+              : (kind) => {
+                  if (kind === 'subscription') return go({ kind: 'addsub' });
+                  if (kind === 'paper') return go({ kind: 'addpaper' });
+                  return go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' });
+                }
           }
           addDisabled={!mayAdd}
         />
@@ -484,6 +502,7 @@ function Shell() {
           onBrowse={(filter) => go({ kind: 'items', filter })}
           onSettings={() => go({ kind: 'settings' })}
           onSubs={() => go({ kind: 'subs' })}
+          onPapers={() => go({ kind: 'papers' })}
         />
       )}
 
@@ -573,6 +592,27 @@ function Shell() {
           existing={focusedSub}
           onSaved={() => pop({ kind: 'subs' })}
           onCancel={() => pop({ kind: 'subs' })}
+        />
+      )}
+
+      {screen.kind === 'papers' && (
+        <Papers propertyId={property.id} onOpen={(id) => go({ kind: 'editpaper', id })} />
+      )}
+
+      {screen.kind === 'addpaper' && (
+        <PaperForm
+          propertyId={property.id}
+          onSaved={() => pop({ kind: 'papers' })}
+          onCancel={() => pop({ kind: 'papers' })}
+        />
+      )}
+
+      {screen.kind === 'editpaper' && focusedPaper && (
+        <PaperForm
+          propertyId={property.id}
+          existing={focusedPaper}
+          onSaved={() => pop({ kind: 'papers' })}
+          onCancel={() => pop({ kind: 'papers' })}
         />
       )}
 

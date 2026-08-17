@@ -2,6 +2,7 @@ import { db, newId, nowISO, seedRoomsForProperty } from './db';
 import {
   SCHEMA_VERSION, FREE_ITEM_LIMIT,
   type Item, type Doc, type Room, type Entitlements, type BlobRecord, type Subscription,
+  type Paper,
 } from './types';
 
 /* ------------------------------------------------------------------ items */
@@ -149,6 +150,47 @@ export async function deleteSubscription(id: string): Promise<void> {
     if (shared === 0) await db.blobs.delete(row.logoBlobId);
   }
   await db.subscriptions.delete(id);
+}
+
+/* ---------------------------------------------------------------- papers */
+
+/**
+ * Documents that expire. Outside the free-tier cap for the same reason
+ * subscriptions are: the cap prices storage, and a paper holds no attachments
+ * at all — by design, see the note on the Paper type.
+ *
+ * Sorted by what actually needs doing rather than alphabetically. The screen
+ * re-sorts by renew-by date, which this layer can't know because it depends on
+ * a per-kind default; this order is only so two callers never disagree.
+ */
+export async function activePapers(propertyId: string): Promise<Paper[]> {
+  const rows = await db.papers.where('propertyId').equals(propertyId).toArray();
+  return rows.filter((p) => !p.deletedAt).sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
+}
+
+export async function createPaper(
+  input: Omit<Paper, 'id' | 'schemaVersion' | 'createdAt' | 'updatedAt'>,
+): Promise<string> {
+  const ts = nowISO();
+  const row: Paper = {
+    ...input,
+    id: newId(),
+    schemaVersion: SCHEMA_VERSION,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+  await db.papers.add(row);
+  return row.id;
+}
+
+export async function updatePaper(id: string, patch: Partial<Paper>): Promise<void> {
+  await db.papers.update(id, { ...patch, updatedAt: nowISO() });
+}
+
+/** Hard delete, as with subscriptions: a handful of fields, no attachments,
+    nothing a claim could ever turn on. */
+export async function deletePaper(id: string): Promise<void> {
+  await db.papers.delete(id);
 }
 
 /* ------------------------------------------------------------------- docs */

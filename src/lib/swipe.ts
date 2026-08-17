@@ -15,7 +15,7 @@ import type { Tab } from '@/components/BottomNav';
   list, so swiping left from Items landed on Settings — it skipped the tab
   sitting between them and there was nothing on screen to explain why.
 */
-export const TAB_ORDER: Tab[] = ['home', 'items', 'subs', 'settings'];
+export const TAB_ORDER: Tab[] = ['home', 'items', 'subs', 'papers', 'settings'];
 
 export type Direction = 'left' | 'right';
 

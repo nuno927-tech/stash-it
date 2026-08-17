@@ -65,13 +65,17 @@ function main() {
   /*
     Every tab in the bar, in the bar's order. Subscriptions was added to the
     bar and not to this list, so swiping left from Items skipped straight to
-    Settings — past a tab that was right there on screen.
+    Settings — past a tab that was right there on screen. Papers was added
+    later and this caught the identical mistake before it shipped, which is
+    the entire reason the list is asserted whole rather than pair by pair.
   */
-  check('four tabs, in bar order', TAB_ORDER.join() === 'home,items,subs,settings');
+  check('five tabs, in bar order', TAB_ORDER.join() === 'home,items,subs,papers,settings');
   check('swiping left goes forward', nextTab('home', 'left') === 'items');
   check('and again', nextTab('items', 'left') === 'subs');
-  check('and again', nextTab('subs', 'left') === 'settings');
-  check('swiping right goes back', nextTab('settings', 'right') === 'subs');
+  check('and again', nextTab('subs', 'left') === 'papers');
+  check('and again', nextTab('papers', 'left') === 'settings');
+  check('swiping right goes back', nextTab('settings', 'right') === 'papers');
+  check('and back again', nextTab('papers', 'right') === 'subs');
 
   // No wrapping. Settings → left → Home would answer "next" by jumping to the
   // far end of the app, and the bottom bar already shows there is no next.

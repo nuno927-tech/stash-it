@@ -24,6 +24,7 @@ import {
   type Room,
   type Settings,
   type Subscription,
+  type Paper,
 } from '@/db/types';
 
 export const BACKUP_FORMAT = 'stash-it-backup';
@@ -59,6 +60,7 @@ export interface BundleData {
   rooms: Room[];
   maintenance: MaintenanceEntry[];
   subscriptions: Subscription[];
+  papers: Paper[];
   settings: PortableSettings | null;
 }
 
@@ -85,6 +87,7 @@ const TABLE_ORDER = [
   'maintenance',
   'settings',
   'subscriptions',
+  'papers',
 ] as const;
 
 const MIME_EXT: Record<string, string> = {
@@ -141,7 +144,7 @@ export function backupFilename(date = new Date()): string {
 /* ------------------------------------------------------------------ export */
 
 export async function exportBundle(): Promise<{ blob: Blob; filename: string }> {
-  const [items, docs, properties, rooms, maintenance, subscriptions, settings, blobs] =
+  const [items, docs, properties, rooms, maintenance, subscriptions, papers, settings, blobs] =
     await Promise.all([
       db.items.toArray(),
       db.docs.toArray(),
@@ -149,6 +152,7 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
       db.rooms.toArray(),
       db.maintenance.toArray(),
       db.subscriptions.toArray(),
+      db.papers.toArray(),
       db.settings.get('singleton'),
       db.blobs.toArray(),
     ]);
@@ -171,6 +175,7 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
     rooms,
     maintenance,
     subscriptions,
+    papers,
     settings: portableSettings,
   };
 
@@ -271,6 +276,7 @@ export async function parseBundle(file: Blob): Promise<ParsedBundle> {
     rooms: (read('rooms.json') as Room[]) ?? [],
     maintenance: (read('maintenance.json') as MaintenanceEntry[]) ?? [],
     subscriptions: (read('subscriptions.json') as Subscription[]) ?? [],
+    papers: (read('papers.json') as Paper[]) ?? [],
     settings: read('settings.json') as PortableSettings | null,
   };
 
@@ -314,6 +320,19 @@ const BUNDLE_MIGRATIONS: Record<number, (data: BundleData) => BundleData> = {
     maintenance: data.maintenance.map((m) => ({ ...m, schemaVersion: 3 })),
     subscriptions: data.subscriptions ?? [],
     settings: data.settings ? { ...data.settings, schemaVersion: 3 } : null,
+  }),
+
+  /* v3 → v4: papers arrived. Same shape of step as v2 → v3, and the `?? []`
+     matters — a bundle written before the table existed has no papers.json,
+     and every consumer downstream indexes into the array unconditionally. */
+  3: (data) => ({
+    ...data,
+    items: data.items.map((i) => ({ ...i, schemaVersion: 4 })),
+    docs: data.docs.map((d) => ({ ...d, schemaVersion: 4 })),
+    maintenance: data.maintenance.map((m) => ({ ...m, schemaVersion: 4 })),
+    subscriptions: (data.subscriptions ?? []).map((s) => ({ ...s, schemaVersion: 4 })),
+    papers: data.papers ?? [],
+    settings: data.settings ? { ...data.settings, schemaVersion: 4 } : null,
   }),
 };
 
@@ -373,6 +392,7 @@ export async function restoreBundle(
       db.rooms,
       db.maintenance,
       db.subscriptions,
+      db.papers,
       db.settings,
     ],
     async () => {
@@ -387,6 +407,7 @@ export async function restoreBundle(
           db.rooms.clear(),
           db.maintenance.clear(),
           db.subscriptions.clear(),
+          db.papers.clear(),
         ]);
       }
 
@@ -437,6 +458,7 @@ export async function restoreBundle(
       await mergeTable(db.docs, data.docs, result, mode);
       await mergeTable(db.maintenance, data.maintenance, result, mode);
       await mergeTable(db.subscriptions, data.subscriptions, result, mode);
+      await mergeTable(db.papers, data.papers, result, mode);
 
       // --- settings: take the bundle's preferences, keep this device's
       // entitlements. A restored file can never grant a paid unlock, and it
