@@ -184,11 +184,15 @@ def find_render(source_dir: str, name: str, background: str) -> str:
     survives to the cut-out. What would not be fine is a pair saved in two
     different formats, or one of them re-encoded after a crop — the subtraction
     assumes the two frames are the same picture.
+
+    Matched without regard to case, because the renders are named by hand and
+    one of them arrived as `Scout-calendar-white.png`. A capital letter is not
+    a reason to tell somebody their file isn't there.
     """
-    for ext in ('png', 'jpg', 'jpeg'):
-        path = f'{source_dir}/scout-{name}-{background}.{ext}'
-        if os.path.exists(path):
-            return path
+    wanted = {f'scout-{name}-{background}.{ext}' for ext in ('png', 'jpg', 'jpeg')}
+    for entry in sorted(os.listdir(source_dir)):
+        if entry.lower() in wanted:
+            return f'{source_dir}/{entry}'
     raise FileNotFoundError(
         f'No {background} render for "{name}" in {source_dir} — looked for .png, .jpg and .jpeg.'
     )

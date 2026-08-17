@@ -1,7 +1,9 @@
 import acorn from '@/assets/mascot/scout-acorn.webp';
 import alert from '@/assets/mascot/scout-alert.webp';
 import bin from '@/assets/mascot/scout-bin.webp';
+import calendar from '@/assets/mascot/scout-calendar.webp';
 import clipboard from '@/assets/mascot/scout-clipboard.webp';
+import dancing from '@/assets/mascot/scout-dancing.webp';
 import folder from '@/assets/mascot/scout-folder.webp';
 import lounge from '@/assets/mascot/scout-lounge.webp';
 import receipt from '@/assets/mascot/scout-receipt.webp';
@@ -14,7 +16,7 @@ import waving from '@/assets/mascot/scout-waving.webp';
  * Scout, the mascot. Poses are imported rather than referenced from /public so
  * the single-file build can inline them — see `npm run build:single`.
  *
- * Each pose means something, and the meaning is the point of having eleven of
+ * Each pose means something, and the meaning is the point of having thirteen of
  * them rather than one. Scout asleep on a card with nothing left to do says
  * "you're finished" more plainly than the sentence next to it does.
  *
@@ -25,6 +27,8 @@ import waving from '@/assets/mascot/scout-waving.webp';
  *   folder    filing the paper original — after a save, and in the tour
  *   bin       fishing receipts back out — recently deleted
  *   clipboard glasses on, taking it down — the item form
+ *   calendar  holding up the month — not placed yet
+ *   dancing   both arms up — not placed yet
  *   settings  at a control desk — settings
  *   alert     ears up, something needs you
  *   resting   curled up, nothing does
@@ -46,6 +50,8 @@ export type ScoutPose =
   | 'folder'
   | 'bin'
   | 'clipboard'
+  | 'calendar'
+  | 'dancing'
   | 'settings'
   | 'alert'
   | 'resting'
@@ -61,6 +67,8 @@ const SRC: Record<ScoutPose, string> = {
   folder,
   bin,
   clipboard,
+  calendar,
+  dancing,
   settings,
   alert,
   resting,
@@ -80,6 +88,11 @@ export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
   { pose: 'folder', name: 'Filing day', where: 'After you save something, and in the tour' },
   { pose: 'bin', name: 'Second thoughts', where: 'Recently deleted, getting something back out' },
   { pose: 'clipboard', name: 'Taking it down', where: 'Adding or editing an item' },
+  /* Drawn, cut out and ready. Listed here rather than held back, because the
+     album is the only written-down record of the cast and a pose that exists
+     but isn't in it is a pose everyone forgets they have. */
+  { pose: 'calendar', name: 'Minding the month', where: 'Not on a screen yet' },
+  { pose: 'dancing', name: 'Very pleased', where: 'Not on a screen yet' },
   { pose: 'settings', name: 'At the desk', where: 'This screen' },
   { pose: 'alert', name: 'Ears up', where: 'When something needs a minute, or needs confirming' },
   { pose: 'resting', name: 'Off duty', where: 'When nothing does' },

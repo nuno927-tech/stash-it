@@ -33,6 +33,8 @@ const APP = [
   { name: 'acorn', size: 400 }, // 200 on the empty dashboard
   { name: 'alert', size: 300 }, // 130 beside what needs doing
   { name: 'bin', from: 'pail', size: 300 }, // 130 at the top of Recently deleted
+  { name: 'calendar', size: 240 }, // not placed yet
+  { name: 'dancing', size: 240 }, // not placed yet
   { name: 'clipboard', size: 200 }, // 64 on the item form's first section
   { name: 'folder', size: 260 }, // 92 after a save, 130 in the tour
   { name: 'receipt', size: 360 }, // 180 on the empty items list
@@ -53,7 +55,9 @@ const WEB = [
   { name: 'waving', size: 560 },
   { name: 'alert', size: 520 },
   { name: 'bin', from: 'pail', size: 480 },
+  { name: 'calendar', size: 460 },
   { name: 'clipboard', size: 460 },
+  { name: 'dancing', size: 460 },
   { name: 'folder', size: 520 },
   { name: 'receipt', size: 460 },
   { name: 'settings', size: 460 },
