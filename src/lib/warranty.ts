@@ -305,6 +305,54 @@ export function warrantyLabel(item: Item, now = new Date()): string {
 }
 
 /**
+ * The same fact as a date rather than a countdown: "Covered to Mar 2029".
+ *
+ * WHY A SECOND PHRASING EXISTS. `warrantyLabel` is built to be short — "2y 4m"
+ * fits in a chip, and it is unreadable anywhere the type is small or the
+ * background is a photograph, because four characters of jargon give the eye
+ * nothing to recover from. A date needs no decoding and no arithmetic. On the
+ * dashboard tiles, where the state is already carried by a ring, that trade is
+ * the right way round; in the items list, where the countdown is the reason
+ * you opened the screen, it isn't. Both exist, and each is used once.
+ *
+ * THE VERB CARRIES THE STATE, so the sentence still works in mono: "Covered
+ * to" and "Ends" and "Ended" are three different pieces of news before any
+ * colour is involved.
+ *
+ * PRECISION FOLLOWS THE VERB. "Ends Aug 2026" on the 17th of August could mean
+ * tomorrow or a fortnight, so anything close enough to say "Ends" about names
+ * the day instead: "Ends 24 Aug". Anything still comfortably covered gets the
+ * month and the year, because the day is noise at that range and dropping the
+ * year to make room for it — "Covered to Jan 16" — is worse than either.
+ */
+export function warrantyDateLabel(item: Item, now = new Date()): string {
+  const next = nextToLapse(item, now);
+
+  if (next) {
+    const end = next.end!;
+    if (next.daysLeft! <= endingSoon) return `Ends ${dayMonth(end)}`;
+    return `Covered to ${monthYear(end)}`;
+  }
+
+  if (hasLifetime(item)) return 'Covered for life';
+
+  const last = lastLapsed(item, now);
+  if (last) return `Ended ${monthYear(last.end!)}`;
+
+  // A term with nothing to run it from. Saying "no warranty" here would be
+  // wrong — one was entered, the purchase date to start it from wasn't.
+  return coveragesOf(item).length ? 'No purchase date' : 'No warranty';
+}
+
+function monthYear(d: Date): string {
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
+function dayMonth(d: Date): string {
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+/**
  * The same answer, split so a list row can set the number in large type and
  * the unit underneath it. One string at 26px would wrap; "2y 4m" over "left"
  * puts the weight on the part that changes.

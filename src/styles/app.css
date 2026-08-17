@@ -420,41 +420,39 @@ button.coverstat:active {
 }
 
 /*
-  The countdown, over whatever photograph happens to be behind it.
+  The state, over whatever photograph happens to be behind it.
 
-  It was a 10px chip on a translucent wash, which is legible on a card and not
-  legible at all on a picture of a fridge — the wash takes the colour of what's
-  under it, so the contrast was whatever the photo felt like giving. Opaque
-  base, bigger type, and the state colour carried by the text rather than by a
-  tint that a photo can wash out.
+  No words. Two attempts at a legible chip failed here — a 10px one on a
+  translucent wash, then a 12px one on an opaque base — and the second fixed
+  the contrast without fixing the problem, because the string it was setting
+  was "2y 4m". Four characters of abbreviation on top of a picture of a fridge
+  give the eye nothing to recover from at any contrast at all.
+
+  So the photo carries a ring and nothing else, and the words moved down to the
+  card where the background is solid and known. The ring is the same component
+  the items list uses, so there is nothing new to learn: arcs, one per policy,
+  outermost expiring first.
+
+  The disc is opaque for the reason the chip's wash wasn't: a translucent plate
+  takes the colour of whatever is under it, and a green arc on a green photo is
+  no arc at all.
 */
-.recentart .chip {
+.recentring {
   position: absolute;
-  left: 7px;
-  bottom: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  padding: 5px 10px;
-  background: rgba(13, 15, 18, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(6px);
+  top: 7px;
+  right: 7px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(13, 15, 18, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.recentart .chip.ok {
-  color: var(--moss);
-}
-
-.recentart .chip.warn {
-  color: var(--honey);
-}
-
-.recentart .chip.dead {
-  color: var(--ember);
-}
-
-.recentart .chip.none {
-  color: var(--text);
+/* The ring is 28 in a 34 disc; `.ring` is inset: 0 by default, which would put
+   the outermost arc on the rim. The two numbers have to agree — see the call
+   site in RecentCard. */
+.recentring .ring {
+  inset: 3px;
 }
 
 .recenttile strong {
@@ -467,11 +465,15 @@ button.coverstat:active {
   white-space: nowrap;
 }
 
+/* Full text colour, not muted. This line is the one thing on the tile that was
+   hard to read, and greying it to sit politely under the name is how it got
+   that way. The name is bolder and larger; that's enough hierarchy. */
 .recenttile small {
   display: block;
   margin: 0 2px;
-  font-size: 11.5px;
-  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 300;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -611,33 +613,14 @@ button.coverstat:active {
   text-overflow: ellipsis;
 }
 
-.chip {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 9px;
-  border-radius: var(--r-pill);
-  white-space: nowrap;
-}
-
-.chip.ok {
-  background: var(--wash-moss);
-  color: var(--moss);
-}
-
-.chip.warn {
-  background: var(--wash-honey);
-  color: var(--honey);
-}
-
-.chip.dead {
-  background: var(--wash-ember);
-  color: var(--ember);
-}
-
-.chip.none {
-  background: var(--slate-600);
-  color: var(--muted);
-}
+/*
+  `.chip` and its four states used to live here — a 10px pill carrying the
+  warranty state as a tinted background. Its last caller was the dashboard
+  tile, which now draws a ring instead, and both places that once used it had
+  independently concluded the pill was the least legible thing on the screen.
+  Deleted rather than left for the next person to find and wonder about.
+  `.chiprow`, `.chipkind` and `.docchip` are unrelated and still in use.
+*/
 
 /* The countdown on a list row. It was a 10px pill, the same weight as the
    model number — but it's the reason the row is worth looking at, so it gets

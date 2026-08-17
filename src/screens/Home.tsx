@@ -25,13 +25,7 @@ import {
   totalYearlyCents,
   type MonthSpend,
 } from '@/lib/subscriptions';
-import {
-  effectiveExpiry,
-  formatMoney,
-  warrantyLabel,
-  warrantyState,
-  type WarrantyState,
-} from '@/lib/warranty';
+import { coverageArcs, effectiveExpiry, formatMoney, warrantyDateLabel } from '@/lib/warranty';
 import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { NudgeBar } from '@/components/NudgeBar';
@@ -39,6 +33,7 @@ import { RenewalNudges } from '@/components/RenewalNudges';
 import { ServiceMark } from '@/components/ServiceMark';
 import { Scout } from '@/components/Scout';
 import { TimeLeft } from '@/components/TimeLeft';
+import { WarrantyRing } from '@/components/WarrantyRing';
 import { useThumbUrl } from '@/components/useThumbUrl';
 
 /**
@@ -194,13 +189,6 @@ export function Home({
     </>
   );
 }
-
-const CHIP: Record<WarrantyState, string> = {
-  covered: 'ok',
-  'ending-soon': 'warn',
-  expired: 'dead',
-  unknown: 'none',
-};
 
 /**
  * The headline. A ring rather than a bar: it holds a number in the middle,
@@ -419,18 +407,42 @@ function Stat({
   );
 }
 
+/**
+ * A recently-added item: the ring says how it's doing, the line underneath
+ * says until when.
+ *
+ * THE PROBLEM THIS SOLVES, on its third attempt. The countdown was a chip
+ * lying on the photograph — first a 10px one on a translucent wash, then a
+ * 12px one on an opaque base — and neither was legible. The second attempt
+ * fixed the contrast and missed the rest of it: the string it was rendering
+ * was "2y 4m", an abbreviation that exists purely because the chip was small.
+ * Four characters of jargon over a picture of a fridge give the eye nothing to
+ * recover from, at any contrast.
+ *
+ * So nothing on the photo is words any more. The ring carries the state — the
+ * same ring, drawn by the same component, as every row of the items list, so
+ * it needs no learning — and the sentence moved down onto the solid card
+ * where nothing can wash it out. On a dark disc, because a ring on a
+ * translucent wash has the same problem the chip had.
+ *
+ * The brand and the year went to make room. You can generally see the brand in
+ * the photograph, and the year of purchase was never why anyone tapped a tile.
+ */
 function RecentCard({ item, onOpen }: { item: Item; onOpen: (id: string) => void }) {
   const thumb = useThumbUrl(item.thumbBlobId);
-  const state = warrantyState(item);
 
   return (
     <button type="button" className="recenttile" onClick={() => onOpen(item.id)}>
       <span className="recentart">
         {thumb ? <img src={thumb} alt="" /> : <ItemIcon item={item} size={34} />}
-        <span className={`chip ${CHIP[state]}`}>{warrantyLabel(item)}</span>
+        <span className="recentring">
+          {/* 28 inside a 34 disc — see .recentring, which insets it so the
+              outermost arc doesn't graze the rim. */}
+          <WarrantyRing size={28} stroke={3} arcs={coverageArcs(item)} />
+        </span>
       </span>
       <strong>{item.name}</strong>
-      <small>{[item.brand, item.purchaseDate?.slice(0, 4)].filter(Boolean).join(' · ') || ' '}</small>
+      <small>{warrantyDateLabel(item)}</small>
     </button>
   );
 }

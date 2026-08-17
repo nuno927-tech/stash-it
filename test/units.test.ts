@@ -19,6 +19,7 @@ import {
   termOf,
   termToMonths,
   toISODate,
+  warrantyDateLabel,
   warrantyLabel,
   warrantyParts,
   warrantyState,
@@ -161,6 +162,63 @@ async function main() {
 
   const none = warrantyParts({ ...withTerm('months', 12), warranty: undefined });
   check('no warranty, no number', none.value === '—' && none.unit === 'no warranty');
+
+  /* ------------------------------------------------- the same fact, as a date */
+
+  /*
+    The dashboard tiles say "Covered to Mar 2029" instead of "2y 4m", because
+    an abbreviation on top of a photograph is unreadable however much contrast
+    you give it. Same data, different question: warrantyLabel answers "how
+    long", this answers "until when".
+
+    THE VERB IS THE STATE. Three phrasings, and each has to be the right one —
+    a lapsed item that reads "Covered to Mar 2024" is the app cheerfully
+    reporting cover that ran out two years ago.
+  */
+  /*
+    Asserted on the year rather than on word order. The date is formatted by
+    the platform, so "Mar 2029" here is "mars 2029" in French and "2029年3月"
+    in Japanese — pinning the arrangement would be pinning the test machine's
+    locale, which is not the thing being tested.
+  */
+  const far = warrantyDateLabel(withTerm('years', 5));
+  check('a long term is covered until a month and a year', far.startsWith('Covered to ') && /\d{4}/.test(far), far);
+
+  const near = warrantyDateLabel(withTerm('months', 12, 350));
+  check('an ending one says it ends', near.startsWith('Ends '), near);
+
+  /*
+    Inside six months a month and a year stop being enough. "Ends Aug 2026" on
+    the 17th of August could be tomorrow or a fortnight away, and that is the
+    exact stretch where the difference is the whole point — so it gains a day
+    and drops the year, which is what having no four-digit number proves.
+  */
+  check('and swaps the year for a day when it is close', !/\d{4}/.test(near), near);
+
+  const ended = warrantyDateLabel(withTerm('months', 12, 400));
+  check('a lapsed one is in the past tense', ended.startsWith('Ended ') && /\d{4}/.test(ended), ended);
+
+  check(
+    'nothing recorded says so plainly',
+    warrantyDateLabel({ ...withTerm('months', 12), warranty: undefined }) === 'No warranty',
+  );
+
+  /*
+    A term with nothing to run it from. "No warranty" would be wrong — one was
+    entered; the purchase date to start it from wasn't.
+  */
+  check(
+    'a term with no start date is a different answer',
+    warrantyDateLabel({ ...withTerm('months', 12), purchaseDate: undefined }) === 'No purchase date',
+    warrantyDateLabel({ ...withTerm('months', 12), purchaseDate: undefined }),
+  );
+
+  const forever: Item = {
+    ...withTerm('months', 12),
+    warranty: undefined,
+    coverages: [{ id: 'c', label: 'Frame', unit: 'lifetime', amount: 0 }],
+  };
+  check('a lifetime policy has no date to give', warrantyDateLabel(forever) === 'Covered for life', warrantyDateLabel(forever));
 
   check('term label reads naturally', termLabel(withTerm('days', 90).warranty) === '90 days');
   check('and singularises', termLabel(withTerm('years', 1).warranty) === '1 year');
