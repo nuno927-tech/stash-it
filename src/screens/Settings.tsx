@@ -122,12 +122,15 @@ export function Settings({
 
       {album && <ScoutGallery onClose={() => setAlbum(false)} />}
 
-      {/* His own card rather than a decoration in the header. It's the one
-          screen that's entirely about adjusting things, and he's at a control
-          desk doing exactly that. */}
-      <div className="card scoutcard">
+      {/*
+        On the page rather than in a card. The card gave a mascot the same
+        frame as a group of controls, which put a decoration and a section of
+        settings at the same weight — and cost a whole card's height before
+        the first thing you can actually change.
+      */}
+      <div className="settingsmark">
+        <Scout pose="settings" height={104} motion={['breathe']} alt="" />
         <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
-        <Scout pose="settings" height={110} motion={['breathe']} alt="" />
       </div>
 
       {notice && <div className={`notice ${notice.tone}`}>{notice.text}</div>}

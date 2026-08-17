@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { feedback } from '@/lib/feedback';
-import { ROW_REVEAL, rowOffset, rowOpens } from '@/lib/swipe';
+import { OWNS_SWIPE, ROW_REVEAL, rowOffset, rowOpens } from '@/lib/swipe';
 
 /**
  * A list row you can push aside to reveal a delete button.
@@ -104,7 +104,7 @@ export function SwipeRow({
   const offset = open ? ROW_REVEAL : 0;
 
   return (
-    <div className="swiperow">
+    <div className="swiperow" {...{ [OWNS_SWIPE]: '' }}>
       {/*
         Behind the row rather than beside it, so the row slides over the top
         and the button is revealed rather than pushed into place.

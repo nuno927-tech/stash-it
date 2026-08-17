@@ -10,7 +10,12 @@
 
 import type { Tab } from '@/components/BottomNav';
 
-export const TAB_ORDER: Tab[] = ['home', 'items', 'settings'];
+/*
+  Every tab, in bar order. Subscriptions was added to the bar and not to this
+  list, so swiping left from Items landed on Settings — it skipped the tab
+  sitting between them and there was nothing on screen to explain why.
+*/
+export const TAB_ORDER: Tab[] = ['home', 'items', 'subs', 'settings'];
 
 export type Direction = 'left' | 'right';
 
@@ -161,6 +166,25 @@ export const EDGE_GUARD = 26;
 
 export function startedAtEdge(x: number, width: number): boolean {
   return x <= EDGE_GUARD || x >= width - EDGE_GUARD;
+}
+
+/**
+ * Marks an element whose horizontal drags belong to it, not to the shell.
+ *
+ * A list row that slides aside to show a delete button is doing the same thing
+ * the tab swipe does, at the same time, with the same finger — so one of them
+ * has to stand down, and it has to be the one that isn't under the thumb. The
+ * row opts out by carrying this attribute; nothing else has to know.
+ */
+export const OWNS_SWIPE = 'data-owns-swipe';
+
+export function ownsItsSwipe(target: Element | null, root: Element): boolean {
+  let node: Element | null = target;
+  while (node && node !== root) {
+    if (node.hasAttribute(OWNS_SWIPE)) return true;
+    node = node.parentElement;
+  }
+  return false;
 }
 
 /**

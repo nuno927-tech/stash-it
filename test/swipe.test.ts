@@ -12,6 +12,8 @@
 import {
   BACK_DIRECTION,
   dismissedByDrag,
+  OWNS_SWIPE,
+  ownsItsSwipe,
   ROW_OPEN_AT,
   ROW_REVEAL,
   rowOffset,
@@ -36,6 +38,19 @@ function check(label: string, ok: boolean, detail = '') {
 }
 
 const W = 390; // a common phone width
+
+/*
+  Enough of an element tree for ownsItsSwipe, which only ever asks two things:
+  does this carry the attribute, and what is its parent. Building it by hand
+  keeps this file free of a DOM implementation for one function.
+*/
+type Node = { hasAttribute: (n: string) => boolean; parentElement: Node | null };
+const fakeRoot = (): Node => ({ hasAttribute: () => false, parentElement: null });
+const fakeNode = (owns: boolean): Node => {
+  const root = fakeRoot();
+  const row = { hasAttribute: (n: string) => owns && n === OWNS_SWIPE, parentElement: root };
+  return { hasAttribute: () => false, parentElement: row };
+};
 const g = (over: Partial<Gesture> = {}): Gesture => ({
   dx: 0,
   dy: 0,
@@ -47,10 +62,16 @@ const g = (over: Partial<Gesture> = {}): Gesture => ({
 function main() {
   /* ---------------------------------------------------------- the order */
 
-  check('three tabs, in bar order', TAB_ORDER.join() === 'home,items,settings');
+  /*
+    Every tab in the bar, in the bar's order. Subscriptions was added to the
+    bar and not to this list, so swiping left from Items skipped straight to
+    Settings — past a tab that was right there on screen.
+  */
+  check('four tabs, in bar order', TAB_ORDER.join() === 'home,items,subs,settings');
   check('swiping left goes forward', nextTab('home', 'left') === 'items');
-  check('and again', nextTab('items', 'left') === 'settings');
-  check('swiping right goes back', nextTab('settings', 'right') === 'items');
+  check('and again', nextTab('items', 'left') === 'subs');
+  check('and again', nextTab('subs', 'left') === 'settings');
+  check('swiping right goes back', nextTab('settings', 'right') === 'subs');
 
   // No wrapping. Settings → left → Home would answer "next" by jumping to the
   // far end of the app, and the bottom bar already shows there is no next.
@@ -166,6 +187,16 @@ function main() {
 
   // Opening is cheaper to undo than changing tabs, so it asks for less.
   check('it takes less than a tab swipe', ROW_OPEN_AT < MIN_PIXELS, `${ROW_OPEN_AT} vs ${MIN_PIXELS}`);
+
+  /*
+    The row and the shell were both reading the same drag: the row slid open
+    and the app changed tab underneath it. A row marked as owning its swipe is
+    skipped by the tab gesture entirely.
+  */
+  check(
+    'a row that owns its swipe is left alone',
+    ownsItsSwipe(fakeNode(true), fakeRoot()) && !ownsItsSwipe(fakeNode(false), fakeRoot()),
+  );
 
   check('the row never travels past the button', rowOffset(-400, false) === -ROW_REVEAL);
   check('nor right of where it started', rowOffset(200, false) === 0);

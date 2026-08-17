@@ -6,20 +6,21 @@
  * A logo API would be one line of code and would also send a list of every
  * service you pay for to a third party, from an app whose entire promise is
  * that nothing leaves the device. "No server. Nothing to leak." is on the
- * marketing page. Fifty logos fetched on demand is fifty requests saying what
- * you watch, what you listen to and which gym you go to.
+ * marketing page. Logos fetched on demand are requests saying what you watch,
+ * what you listen to and which gym you go to.
  *
- * So the common fifty are here, as path data. They come from Simple Icons,
+ * So the common ones are here, as path data. They come from Simple Icons,
  * which publishes the glyphs under CC0 — the shapes are free to redistribute.
  * The trademarks themselves belong to their owners and are used here only to
  * identify the service the user chose, which is what a logo is for.
  *
- * Anything not on this list can still have a real logo: the form fetches one
- * at the moment you add it and stores it as a blob, so it is fetched once
- * rather than on every render, and only for a service you explicitly typed.
- * See `logoUrlFor`. That single request is the one place this app talks to
- * anybody, and it is worth being deliberate about — hence `LOGO_FETCH_NOTE`,
- * which the form shows before it happens.
+ * There was briefly a way to fetch a logo for anything outside the list, from
+ * that company's own site, once, on a button press. It is gone. It worked
+ * badly — most sites refuse a cross-origin favicon, so the usual outcome was
+ * an error message — and the small print it needed ("this is the only time
+ * Stash it talks to anyone") was a poor trade for a picture. Nothing in this
+ * app makes a network request now, which is a sentence worth being able to
+ * say without a footnote. Anything unlisted gets its initials.
  *
  * Each entry is a 24×24 viewBox path and the brand's own colour. Monochrome
  * marks on a brand-coloured tile, rather than full-colour artwork: it is a
@@ -34,7 +35,7 @@ export interface ServiceDef {
   colour: string;
   /** 24×24 path data. */
   path: string;
-  /** For fetching a favicon if we ever lose the bundled mark. */
+  /** Kept for reference; nothing fetches from it. */
   domain: string;
 }
 
@@ -63,6 +64,13 @@ export const SERVICES: ServiceDef[] = [
   { id: 'playstationplus', name: 'PlayStation Plus', colour: '#0070D1', domain: 'playstation.com', path: 'M8.985 2.596v17.548l3.918 1.243V6.688c0-.63.284-1.06.734-.915.599.183.717.774.717 1.404v5.85c2.457 1.185 4.397-.006 4.397-3.147 0-3.246-1.14-4.688-4.493-5.833-1.324-.452-3.78-1.203-5.273-1.451zm4.678 16.633l6.28-2.239c.713-.257.822-.621.242-.809-.58-.189-1.63-.135-2.343.123l-4.179 1.475v-2.363l.24-.083s1.208-.427 2.906-.615c1.699-.188 3.778.026 5.411.646 1.838.582 2.045 1.438 1.576 2.026-.469.588-1.615 1.007-1.615 1.007l-8.518 3.062v-2.23zM2.63 18.667c-1.884-.53-2.198-1.634-1.339-2.27.795-.589 2.147-1.031 2.147-1.031l5.588-1.987v2.264l-4.024 1.44c-.71.257-.82.621-.24.81.58.188 1.63.134 2.34-.124l1.925-.695v2.026c-.122.02-.257.04-.384.06-1.925.315-3.977.183-6.013-.493z' },
   { id: 'xboxgamepass', name: 'Xbox Game Pass', colour: '#107C10', domain: 'xbox.com', path: 'M4.102 21.033A11.947 11.947 0 0 0 12 24a11.96 11.96 0 0 0 7.902-2.967c1.877-1.912-4.316-8.709-7.902-11.417-3.582 2.708-9.779 9.505-7.898 11.417zm11.16-14.406c2.5 2.961 7.484 10.313 6.076 12.912A11.942 11.942 0 0 0 24 12.004a11.95 11.95 0 0 0-3.57-8.536s-.027-.022-.082-.042a.824.824 0 0 0-.281-.052c-.408 0-1.144.213-2.192.9-.976.64-2.01 1.634-2.61 2.353zm-8.144 0c-.6-.719-1.633-1.712-2.61-2.352-1.047-.687-1.784-.9-2.191-.9a.813.813 0 0 0-.281.052c-.055.02-.082.042-.082.042A11.95 11.95 0 0 0 0 12.004c0 3.156 1.222 6.023 3.219 8.157-1.406-2.598 3.578-9.95 6.078-12.911zM12 3.647s-2.153-1.331-3.844-1.728A11.928 11.928 0 0 1 12 0c1.363 0 2.673.227 3.895.646-1.692.397-3.845 1.728-3.845 1.728z' },
   { id: 'nintendo', name: 'Nintendo Switch Online', colour: '#E60012', domain: 'nintendo.com', path: 'M2.5 1h7.2c.8 0 1.4.6 1.4 1.4v19.2c0 .8-.6 1.4-1.4 1.4H2.5c-.8 0-1.4-.6-1.4-1.4V2.4C1.1 1.6 1.7 1 2.5 1zm1 2.4v17.2h5.2V3.4zm3 1.6c1 0 1.8.8 1.8 1.8S7.5 8.6 6.5 8.6 4.7 7.8 4.7 6.8 5.5 5 6.5 5zM14.3 1h7.2c.8 0 1.4.6 1.4 1.4v19.2c0 .8-.6 1.4-1.4 1.4h-7.2c-.8 0-1.4-.6-1.4-1.4V2.4c0-.8.6-1.4 1.4-1.4zm3.2 14c1 0 1.8.8 1.8 1.8s-.8 1.8-1.8 1.8-1.8-.8-1.8-1.8.8-1.8 1.8-1.8z' },
+
+  { id: 'googlehome', name: 'Google Home Premium', colour: '#4285F4', domain: 'home.google.com', path: 'M12 2 2 11h3v9h6v-6h2v6h6v-9h3zm0 2.8 5 4.5V18h-2v-6H9v6H7V9.3z' },
+  { id: 'googletv', name: 'YouTube TV', colour: '#FF0000', domain: 'tv.youtube.com', path: 'M2 5h20a1 1 0 011 1v10a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1zm8 3v6l5-3zM7 20h10v1.5H7z' },
+  { id: 'ring', name: 'Ring Protect', colour: '#1D6EF6', domain: 'ring.com', path: 'M12 2a7 7 0 00-7 7v4.6l-2 3.4h18l-2-3.4V9a7 7 0 00-7-7zm0 20a3 3 0 002.8-2H9.2A3 3 0 0012 22z' },
+  { id: 'nest', name: 'Nest Aware', colour: '#00A0A0', domain: 'nest.com', path: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 3.5A6.5 6.5 0 1112 18.5 6.5 6.5 0 0112 5.5zm0 3A3.5 3.5 0 1012 15.5 3.5 3.5 0 0012 8.5z' },
+  { id: 'kindle', name: 'Kindle Unlimited', colour: '#FF9900', domain: 'amazon.com', path: 'M4 3.5h7a2 2 0 012 2V21a2.5 2.5 0 00-2-1H4zm16 0h-7a2 2 0 00-2 2V21a2.5 2.5 0 012-1h7z' },
+  { id: 'water', name: 'Water delivery', colour: '#6AA9FF', domain: '', path: 'M12 2.5S5.5 10 5.5 14.5a6.5 6.5 0 0013 0C18.5 10 12 2.5 12 2.5zm0 3.9c1.6 2.1 4.5 6.3 4.5 8.1a4.5 4.5 0 01-9 0c0-1.8 2.9-6 4.5-8.1z' },
 
   { id: 'appleone', name: 'Apple One', colour: '#333333', domain: 'apple.com', path: 'M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701' },
   { id: 'appleicloud', name: 'Apple Arcade', colour: '#FF2D55', domain: 'apple.com', path: 'M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm1.5 4v2h-2v2h2v2h2v-2h2v-2h-2V8zm8 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm2.5 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z' },
@@ -132,31 +140,4 @@ export function monogram(name: string): string {
   if (words.length === 0) return '?';
   if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
   return (words[0]![0]! + words[1]![0]!).toUpperCase();
-}
-
-/* ------------------------------------------------------- fetching a logo */
-
-/**
- * Shown before the app makes its only outbound request.
- *
- * The privacy page says "No server. Nothing to leak." That stays true for
- * everything else and would stop being true silently here, so the user is told
- * and has to choose. One request, one service, at the moment they add it —
- * never a background sweep and never for anything in the bundled fifty.
- */
-export const LOGO_FETCH_NOTE =
-  'Fetching a logo asks that company’s website for its icon, which is the only time Stash it talks to anyone. Skip it and you get initials instead — everything else works the same.';
-
-/**
- * Where to ask for an unknown service's icon.
- *
- * The site's own favicon, from the site itself: no logo service in the middle,
- * so the request goes to the company whose subscription you're recording and
- * nowhere else. A third-party API would be a better picture and would also be
- * a list of your subscriptions arriving at a company you've never heard of.
- */
-export function logoUrlFor(domain: string): string | null {
-  const clean = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  if (!clean.includes('.') || /\s/.test(clean)) return null;
-  return `https://${clean}/favicon.ico`;
 }

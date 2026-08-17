@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import {
   inHorizontalScroller,
+  ownsItsSwipe,
   startedAtEdge,
   swipeVerdict,
   type Direction,
@@ -61,6 +62,9 @@ export function useSwipeNav(
       }
       if (startedAtEdge(e.clientX, width())) return;
       if (inHorizontalScroller(e.target as Element | null, node)) return;
+      // A row that slides aside to reveal a delete button owns this gesture.
+      // Without this both fired: the row opened and the app changed tab.
+      if (ownsItsSwipe(e.target as Element | null, node)) return;
 
       pointer = e.pointerId;
       x0 = lastX = e.clientX;

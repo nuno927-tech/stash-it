@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { createSubscription, deleteSubscription, putBlob, updateSubscription } from '@/db/repo';
+import { createSubscription, deleteSubscription, updateSubscription } from '@/db/repo';
 import type { Cadence, Subscription } from '@/db/types';
 import { parseMoneyToCents } from '@/lib/addItem';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
@@ -12,14 +12,7 @@ import {
   REMIND_CHOICES,
   parseAnchor,
 } from '@/lib/subscriptions';
-import {
-  CATALOGUE,
-  findService,
-  LOGO_FETCH_NOTE,
-  logoUrlFor,
-  searchServices,
-  type ServiceDef,
-} from '@/lib/services';
+import { CATALOGUE, searchServices, type ServiceDef } from '@/lib/services';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { ServiceMark } from '@/components/ServiceMark';
 import { useAutoAdvance } from '@/components/useAutoAdvance';
@@ -52,9 +45,15 @@ export function SubForm({
   const editing = !!existing;
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
 
+  /*
+    One field, not two. There was a search box and a Name box, which meant
+    typing the name of something the catalogue didn't have, watching nothing
+    match, and then typing it again underneath. What you type here *is* the
+    name; picking a tile just replaces it with the official spelling and
+    attaches the logo.
+  */
   const [serviceId, setServiceId] = useState(existing?.serviceId ?? '');
-  const [name, setName] = useState(existing?.name ?? '');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(existing?.name ?? '');
   const [cadence, setCadence] = useState<Cadence>(existing?.cadence ?? 'monthly');
   const [anchor, setAnchor] = useState(existing?.anchorDate ?? '');
   const [price, setPrice] = useState(
@@ -66,15 +65,19 @@ export function SubForm({
   const [payTo, setPayTo] = useState(existing?.payTo ?? '');
   const [payHow, setPayHow] = useState(existing?.payHow ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
-  const [domain, setDomain] = useState('');
-  const [logoBlobId, setLogoBlobId] = useState(existing?.logoBlobId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [confirming, setConfirming] = useState(false);
 
   const cur = existing?.currency ?? settings?.currency ?? currency;
-  const custom = !serviceId;
   const results = searchServices(query);
+
+  /*
+    A chosen service wins, because its spelling is the official one and the
+    search box may still hold the half-typed thing that found it. Otherwise
+    the typed text is the name — no match is not a failure, it's a gym.
+  */
+  const name = serviceId ? (CATALOGUE.find((s) => s.id === serviceId)?.name ?? query) : query;
 
   const canSave = !!name.trim() && !!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0;
 
@@ -90,43 +93,12 @@ export function SubForm({
   useAutoAdvance(!!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0, remindRef);
 
   const choose = (s: ServiceDef) => {
-    setServiceId(s.id);
-    setName(s.name);
-    setLogoBlobId(undefined);
+    // Tapping the chosen one again lets go of it, so a mis-tap doesn't have to
+    // be undone by deleting the text it wrote.
+    const same = serviceId === s.id;
+    setServiceId(same ? '' : s.id);
+    if (!same) setQuery(s.name);
     feedback('tap');
-  };
-
-  /**
-   * The one outbound request in the app.
-   *
-   * Asks the company's own site for its favicon — no logo service in the
-   * middle, so the request reveals one subscription to the company you already
-   * subscribe to. Stored as a blob straight away, so it happens once rather
-   * than on every render, and never again for this service.
-   */
-  const fetchLogo = async () => {
-    const url = logoUrlFor(domain);
-    if (!url) {
-      setError('That doesn’t look like a web address — try netflix.com.');
-      return;
-    }
-    setBusy(true);
-    setError(undefined);
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error(String(res.status));
-      const blob = await res.blob();
-      if (!blob.type.startsWith('image/') || blob.size === 0) throw new Error('not an image');
-      if (blob.size > 200_000) throw new Error('too big');
-      setLogoBlobId(await putBlob(blob));
-      feedback('attach');
-    } catch {
-      feedback('error');
-      // Not an error worth stopping for: initials are a fine outcome.
-      setError('Couldn’t get a logo from there. Initials will be used instead.');
-    } finally {
-      setBusy(false);
-    }
   };
 
   const save = async () => {
@@ -138,7 +110,6 @@ export function SubForm({
         propertyId,
         name: name.trim(),
         serviceId: serviceId || undefined,
-        logoBlobId,
         cadence,
         anchorDate: anchor,
         amountCents: cents,
@@ -183,21 +154,24 @@ export function SubForm({
       <section className="card formcard">
         <div className="cardhead">
           <h3>Service</h3>
-          {name && (
-            <ServiceMark serviceId={serviceId} logoBlobId={logoBlobId} name={name} size={30} />
-          )}
+          {!!name.trim() && <ServiceMark serviceId={serviceId} name={name} size={30} />}
         </div>
 
+        {/* The name and the search, in one box. */}
         <input
           type="text"
           value={query}
-          placeholder="Search Netflix, Spotify, the gym…"
-          aria-label="Search services"
-          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Netflix, Spotify, the gym…"
+          aria-label="What are you paying for?"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            // Typing away from a chosen service unpicks it.
+            if (serviceId) setServiceId('');
+          }}
         />
 
         <div className="servicegrid">
-          {results.slice(0, 24).map((s) => (
+          {results.slice(0, 30).map((s) => (
             <button
               key={s.id}
               type="button"
@@ -211,53 +185,12 @@ export function SubForm({
         </div>
 
         {results.length === 0 && (
-          <p className="hint">Nothing matches. Type the name below and it'll be saved as it is.</p>
+          <p className="hint">
+            Nothing matches, which is fine — it'll be saved as <b>{query.trim()}</b> with its
+            initials for a mark.
+          </p>
         )}
 
-        <label className="field">
-          <span className="fieldlabel">Name</span>
-          <input
-            type="text"
-            value={name}
-            placeholder="What are you paying for?"
-            onChange={(e) => {
-              setName(e.target.value);
-              // Typing over a chosen service makes it a custom one again.
-              if (serviceId && e.target.value !== findService(serviceId)?.name) setServiceId('');
-            }}
-          />
-        </label>
-
-        {/* Only offered for services with no bundled mark, and never
-            automatic — see LOGO_FETCH_NOTE. */}
-        {custom && !!name.trim() && (
-          <>
-            <div className="fieldpair">
-              <label className="field">
-                <span className="fieldlabel">Website</span>
-                <input
-                  type="text"
-                  value={domain}
-                  placeholder="Optional"
-                  inputMode="url"
-                  onChange={(e) => setDomain(e.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span className="fieldlabel">Logo</span>
-                <button
-                  type="button"
-                  className="minibtn"
-                  disabled={busy || !domain.trim()}
-                  onClick={() => void fetchLogo()}
-                >
-                  {logoBlobId ? 'Got it' : 'Fetch logo'}
-                </button>
-              </label>
-            </div>
-            <p className="hint">{LOGO_FETCH_NOTE}</p>
-          </>
-        )}
       </section>
 
       {/* ----------------------------------------------------- what it costs */}

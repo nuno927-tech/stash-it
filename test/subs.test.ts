@@ -36,7 +36,7 @@ import {
   totalMonthlyCents,
   totalYearlyCents,
 } from '@/lib/subscriptions';
-import { CATALOGUE, monogram, monogramColour, logoUrlFor, searchServices } from '@/lib/services';
+import { CATALOGUE, monogram, monogramColour, searchServices } from '@/lib/services';
 import { exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
 
 let failures = 0;
@@ -227,7 +227,10 @@ async function main() {
 
   /* --------------------------------------------------------- catalogue */
 
-  check('fifty services are bundled', CATALOGUE.length === 50, `${CATALOGUE.length}`);
+  check('the catalogue is stocked', CATALOGUE.length === 56, `${CATALOGUE.length}`);
+  // The form shows thirty tiles, so the catalogue has to have at least that
+  // many before anyone types a letter.
+  check('and covers the grid without searching', CATALOGUE.length >= 30);
   check('every one has a mark and a colour', CATALOGUE.every((s) => s.path && /^#[0-9A-Fa-f]{6}$/.test(s.colour)));
   check('ids are unique', new Set(CATALOGUE.map((s) => s.id)).size === CATALOGUE.length);
   check('search finds by prefix', searchServices('net').some((s) => s.id === 'netflix'));
@@ -240,9 +243,12 @@ async function main() {
   // appearance for no reason the user can see.
   check('the fallback colour is stable', monogramColour('Bob’s Gym') === monogramColour('Bob’s Gym'));
 
-  check('a bare domain becomes a url', logoUrlFor('netflix.com') === 'https://netflix.com/favicon.ico');
-  check('a pasted url is tolerated', logoUrlFor('https://netflix.com/browse') === 'https://netflix.com/favicon.ico');
-  check('nonsense is refused', logoUrlFor('my gym') === null);
+  /*
+    Nothing fetches a logo any more — the app makes no network requests at all,
+    which is the claim the privacy page makes and now the whole truth. Anything
+    outside the catalogue gets initials.
+  */
+  check('an unknown service still gets a mark', monogram('Bob’s Gym').length === 2);
 
   /* ------------------------------------------------ the record and the cap */
 

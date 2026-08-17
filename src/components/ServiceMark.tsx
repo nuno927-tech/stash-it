@@ -6,12 +6,14 @@ import { findService, monogram, monogramColour } from '@/lib/services';
 /**
  * A service's logo, at whatever size the list needs.
  *
- * Three sources, in order of preference: a bundled mark for one of the fifty
- * known services, a logo fetched once when the subscription was added, or the
- * service's initials on a colour derived from its name. The third is not a
- * failure state — plenty of subscriptions are a gym or a window cleaner, and
- * initials on a coloured tile are a perfectly good way to tell one row from
- * another at 34px.
+ * Two sources: a bundled mark for one of the known services, or the service's
+ * initials on a colour derived from its name. `logoBlobId` is still read for
+ * records saved while logo fetching briefly existed, but nothing writes one
+ * any more — see lib/services.ts for why that went.
+ *
+ * Initials are not a failure state. Plenty of subscriptions are a gym or a
+ * window cleaner, and two letters on a coloured tile tell one row from another
+ * at 34px perfectly well.
  *
  * The colour is derived rather than random so the same service is the same
  * colour on every device and after every restore.

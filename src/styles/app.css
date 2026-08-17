@@ -3568,6 +3568,24 @@ button.countpill.tappill:active {
   margin: 0;
 }
 
+/* Scout on the settings page, not in a box. Beside the sentence that explains
+   the screen, both sitting on the page's own colour. */
+.settingsmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.settingsmark p {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
 /* ------------------------------------------------------ swipe a row aside */
 
 /*
@@ -3576,15 +3594,27 @@ button.countpill.tappill:active {
   make by accident while scrolling with a thumb, and the thing behind it is a
   record of something you own.
 */
+/*
+  The row's own bottom margin moves up here, so the red button ends where the
+  card ends. Left on `.item` it made the button taller than the thing covering
+  it, and a strip of red showed in the gap between every pair of rows.
+*/
 .swiperow {
   position: relative;
   overflow: hidden;
+  margin-bottom: 9px;
+  border-radius: var(--r-md);
+}
+
+.swiperow .item {
+  margin-bottom: 0;
 }
 
 .swipedel {
   position: absolute;
   inset: 0 0 0 auto;
   width: 96px;
+  border-radius: var(--r-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3737,13 +3767,12 @@ button.countpill.tappill:active {
    joke only lands if the calendar he's holding is next to the real one. */
 .calwrap {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
 .calmark {
   flex: none;
-  padding-top: 22px;
 }
 
 /* Below 380px the grid needs every pixel, so he stands down. */
@@ -3892,12 +3921,12 @@ button.countpill.tappill:active {
   font-variant-numeric: tabular-nums;
 }
 
-/* The picker on the form. Four across, so the twenty most common are two
-   thumb-scrolls rather than a search. */
+/* The picker on the form. Five across and thirty shown, so six rows cover the
+   services most people have without anyone needing to type. */
 .servicegrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
   margin: 12px 0;
 }
 
@@ -3905,8 +3934,8 @@ button.countpill.tappill:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 9px 4px;
+  gap: 4px;
+  padding: 8px 2px;
   border-radius: var(--r-md);
   border: 1px solid transparent;
   background: var(--slate-800);
@@ -3920,7 +3949,7 @@ button.countpill.tappill:active {
 }
 
 .servicetile small {
-  font-size: 9.5px;
+  font-size: 9px;
   line-height: 1.2;
   text-align: center;
   overflow: hidden;
