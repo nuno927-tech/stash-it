@@ -23,6 +23,7 @@ import {
   type Property,
   type Room,
   type Settings,
+  type Subscription,
 } from '@/db/types';
 
 export const BACKUP_FORMAT = 'stash-it-backup';
@@ -57,6 +58,7 @@ export interface BundleData {
   properties: Property[];
   rooms: Room[];
   maintenance: MaintenanceEntry[];
+  subscriptions: Subscription[];
   settings: PortableSettings | null;
 }
 
@@ -66,8 +68,24 @@ export interface ParsedBundle {
   blobs: Map<string, { bytes: Uint8Array; mime: string }>;
 }
 
-/** Fixed order — the checksum depends on it. */
-const TABLE_ORDER = ['items', 'docs', 'properties', 'rooms', 'maintenance', 'settings'] as const;
+/**
+ * Fixed order — the checksum depends on it.
+ *
+ * New tables go on the end, never in the middle. A bundle written before a
+ * table existed simply has no file for it, and a missing entry contributes
+ * zero bytes to the concatenation — so appending leaves every older backup's
+ * checksum exactly as it was. Inserting one anywhere else would invalidate
+ * every backup ever written.
+ */
+const TABLE_ORDER = [
+  'items',
+  'docs',
+  'properties',
+  'rooms',
+  'maintenance',
+  'settings',
+  'subscriptions',
+] as const;
 
 const MIME_EXT: Record<string, string> = {
   'image/webp': 'webp',
@@ -123,15 +141,17 @@ export function backupFilename(date = new Date()): string {
 /* ------------------------------------------------------------------ export */
 
 export async function exportBundle(): Promise<{ blob: Blob; filename: string }> {
-  const [items, docs, properties, rooms, maintenance, settings, blobs] = await Promise.all([
-    db.items.toArray(),
-    db.docs.toArray(),
-    db.properties.toArray(),
-    db.rooms.toArray(),
-    db.maintenance.toArray(),
-    db.settings.get('singleton'),
-    db.blobs.toArray(),
-  ]);
+  const [items, docs, properties, rooms, maintenance, subscriptions, settings, blobs] =
+    await Promise.all([
+      db.items.toArray(),
+      db.docs.toArray(),
+      db.properties.toArray(),
+      db.rooms.toArray(),
+      db.maintenance.toArray(),
+      db.subscriptions.toArray(),
+      db.settings.get('singleton'),
+      db.blobs.toArray(),
+    ]);
 
   let portableSettings: PortableSettings | null = null;
   if (settings) {
@@ -150,6 +170,7 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
     properties,
     rooms,
     maintenance,
+    subscriptions,
     settings: portableSettings,
   };
 
@@ -249,6 +270,7 @@ export async function parseBundle(file: Blob): Promise<ParsedBundle> {
     properties: (read('properties.json') as Property[]) ?? [],
     rooms: (read('rooms.json') as Room[]) ?? [],
     maintenance: (read('maintenance.json') as MaintenanceEntry[]) ?? [],
+    subscriptions: (read('subscriptions.json') as Subscription[]) ?? [],
     settings: read('settings.json') as PortableSettings | null,
   };
 
@@ -273,6 +295,25 @@ const BUNDLE_MIGRATIONS: Record<number, (data: BundleData) => BundleData> = {
     docs: data.docs.map((d) => ({ ...d, schemaVersion: 2 })),
     maintenance: data.maintenance.map((m) => ({ ...m, schemaVersion: 2 })),
     settings: data.settings ? { ...data.settings, schemaVersion: 2 } : null,
+  }),
+
+  /*
+    v2 → v3: subscriptions arrived.
+
+    No existing record changes shape — v3 added a table, not a field — but
+    every record is still restamped, because `schemaVersion` answers "does this
+    match the current shape", not "which migration last touched it". An item
+    left at 2 is indistinguishable from one that genuinely needs upgrading, and
+    `record.schemaVersion === SCHEMA_VERSION` stops being a usable question the
+    moment some current records answer no.
+  */
+  2: (data) => ({
+    ...data,
+    items: data.items.map((i) => ({ ...i, schemaVersion: 3 })),
+    docs: data.docs.map((d) => ({ ...d, schemaVersion: 3 })),
+    maintenance: data.maintenance.map((m) => ({ ...m, schemaVersion: 3 })),
+    subscriptions: data.subscriptions ?? [],
+    settings: data.settings ? { ...data.settings, schemaVersion: 3 } : null,
   }),
 };
 
@@ -324,7 +365,16 @@ export async function restoreBundle(
 
   await db.transaction(
     'rw',
-    [db.items, db.docs, db.blobs, db.properties, db.rooms, db.maintenance, db.settings],
+    [
+      db.items,
+      db.docs,
+      db.blobs,
+      db.properties,
+      db.rooms,
+      db.maintenance,
+      db.subscriptions,
+      db.settings,
+    ],
     async () => {
       const localSettings = await db.settings.get('singleton');
 
@@ -336,6 +386,7 @@ export async function restoreBundle(
           db.properties.clear(),
           db.rooms.clear(),
           db.maintenance.clear(),
+          db.subscriptions.clear(),
         ]);
       }
 
@@ -385,6 +436,7 @@ export async function restoreBundle(
       await mergeTable(db.items, data.items, result, mode);
       await mergeTable(db.docs, data.docs, result, mode);
       await mergeTable(db.maintenance, data.maintenance, result, mode);
+      await mergeTable(db.subscriptions, data.subscriptions, result, mode);
 
       // --- settings: take the bundle's preferences, keep this device's
       // entitlements. A restored file can never grant a paid unlock, and it

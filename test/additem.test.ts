@@ -10,7 +10,7 @@
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
 import { activeItemCount, canAddItem } from '@/db/repo';
-import { FREE_ITEM_LIMIT } from '@/db/types';
+import { FREE_ITEM_LIMIT, SCHEMA_VERSION } from '@/db/types';
 import {
   blankCoverage,
   draftFromForm,
@@ -152,7 +152,7 @@ async function main() {
   );
   check('saved item is covered today', warrantyState(saved) === 'covered', warrantyLabel(saved));
   check('id is a uuidv7', /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/.test(id), id);
-  check('schema version is stamped', saved.schemaVersion === 2, String(saved.schemaVersion));
+  check('schema version is stamped', saved.schemaVersion === SCHEMA_VERSION, String(saved.schemaVersion));
   check('createdAt and updatedAt are set', !!saved.createdAt && !!saved.updatedAt);
 
   /* -------------------------------------------------------------- cap */

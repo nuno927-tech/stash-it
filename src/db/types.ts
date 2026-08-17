@@ -13,7 +13,7 @@
  * from the item's own words, which left category with no job worth a decision
  * during add. See db.ts for the migration.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type WarrantyUnit = 'days' | 'months' | 'years';
 
@@ -197,6 +197,51 @@ export interface MaintenanceEntry {
   costCents?: number;
   provider?: string;
   docIds?: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export type Cadence = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+
+/**
+ * A recurring charge — Netflix, Spotify, the gym.
+ *
+ * Its own table rather than a flag on Item, because it shares almost nothing
+ * with one. An item has a room, a photo, coverage policies and documents; a
+ * subscription has none of those and has a cadence, which no item has. Folded
+ * into `items` it would mean every query, the search index, the gap-finder and
+ * the warranty ring all learning to skip a kind of row they can't render.
+ *
+ * WHEN IT RENEWS is a cadence plus an anchor — one real renewal date — rather
+ * than a day of the month. See lib/subscriptions.ts for why.
+ *
+ * WHAT IT COSTS is integer minor units, like an item's price. Never a float.
+ */
+export interface Subscription {
+  id: string;
+  schemaVersion: number;
+  propertyId: string;
+  /** What it's called. Taken from the catalogue, or typed. */
+  name: string;
+  /** Catalogue key when it's one of the known services — see lib/services.ts. */
+  serviceId?: string;
+  /** A logo fetched at entry for a service not in the catalogue. */
+  logoBlobId?: string;
+
+  cadence: Cadence;
+  /** One real renewal date, ISO yyyy-mm-dd. Every other date derives from it. */
+  anchorDate: string;
+  amountCents: number;
+  currency: string;
+
+  /** Optional: when the user first subscribed. Never used for arithmetic. */
+  startedDate?: string;
+
+  /** 0, 1, 3 or 7. Zero means no reminder, and is the default. */
+  remindDays?: number;
+
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

@@ -1,7 +1,7 @@
 import { db, newId, nowISO, seedRoomsForProperty } from './db';
 import {
   SCHEMA_VERSION, FREE_ITEM_LIMIT,
-  type Item, type Doc, type Room, type Entitlements, type BlobRecord,
+  type Item, type Doc, type Room, type Entitlements, type BlobRecord, type Subscription,
 } from './types';
 
 /* ------------------------------------------------------------------ items */
@@ -97,6 +97,58 @@ export async function purgeExpiredDeletes(now = Date.now()): Promise<number> {
   );
   for (const item of stale) await erase(item);
   return stale.length;
+}
+
+/* ---------------------------------------------------------- subscriptions */
+
+/**
+ * Recurring charges. Deliberately outside the free-tier cap: the cap exists to
+ * price storage — photos, receipts, scanned warranties — and a subscription is
+ * forty bytes with no attachments. Charging for them would be charging for the
+ * cheapest rows in the database.
+ */
+export async function activeSubscriptions(propertyId: string): Promise<Subscription[]> {
+  const rows = await db.subscriptions.where('propertyId').equals(propertyId).toArray();
+  return rows.filter((s) => !s.deletedAt).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createSubscription(
+  input: Omit<Subscription, 'id' | 'schemaVersion' | 'createdAt' | 'updatedAt'>,
+): Promise<string> {
+  const ts = nowISO();
+  const row: Subscription = {
+    ...input,
+    id: newId(),
+    schemaVersion: SCHEMA_VERSION,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+  await db.subscriptions.add(row);
+  return row.id;
+}
+
+export async function updateSubscription(id: string, patch: Partial<Subscription>): Promise<void> {
+  await db.subscriptions.update(id, { ...patch, updatedAt: nowISO() });
+}
+
+/**
+ * Hard delete, and the asymmetry with items is on purpose.
+ *
+ * An item is a record of something you own, often the only one, and can carry
+ * the receipt a claim depends on — losing it by a mis-tap is unrecoverable, so
+ * it goes to the bin for thirty days. A subscription is five fields you can
+ * retype in fifteen seconds, and a bin full of cancelled services is a list of
+ * things you have deliberately finished with.
+ */
+export async function deleteSubscription(id: string): Promise<void> {
+  const row = await db.subscriptions.get(id);
+  if (row?.logoBlobId) {
+    const shared = await db.subscriptions
+      .filter((s) => s.id !== id && s.logoBlobId === row.logoBlobId)
+      .count();
+    if (shared === 0) await db.blobs.delete(row.logoBlobId);
+  }
+  await db.subscriptions.delete(id);
 }
 
 /* ------------------------------------------------------------------- docs */

@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import {
   LATER_SEED_ROOMS, SCHEMA_VERSION, SEED_ROOMS,
   type Item, type Doc, type BlobRecord, type Property,
-  type Room, type MaintenanceEntry, type Settings,
+  type Room, type MaintenanceEntry, type Settings, type Subscription,
 } from './types';
 
 export class StashDB extends Dexie {
@@ -13,6 +13,7 @@ export class StashDB extends Dexie {
   properties!: Table<Property, string>;
   rooms!: Table<Room, string>;
   maintenance!: Table<MaintenanceEntry, string>;
+  subscriptions!: Table<Subscription, string>;
   settings!: Table<Settings, string>;
 
   constructor() {
@@ -105,6 +106,32 @@ export class StashDB extends Dexie {
         }
       }
     });
+
+    /**
+     * v4: subscriptions.
+     *
+     * A new table, and no existing record changes shape. They are restamped to
+     * SCHEMA_VERSION 3 anyway, because that field answers "does this match the
+     * current shape" rather than "which migration last touched it" — leaving
+     * items at 2 while newly created ones say 3 would make
+     * `record.schemaVersion === SCHEMA_VERSION` a question with no useful
+     * answer. Writing the same constant to every row is idempotent, so an
+     * interrupted upgrade simply runs again.
+     */
+    this.version(4)
+      .stores({
+        subscriptions: 'id, propertyId, deletedAt, anchorDate, [propertyId+deletedAt]',
+      })
+      .upgrade(async (tx) => {
+        for (const name of ['items', 'docs', 'maintenance', 'settings']) {
+          await tx
+            .table(name)
+            .toCollection()
+            .modify((row: Record<string, unknown>) => {
+              row.schemaVersion = SCHEMA_VERSION;
+            });
+        }
+      });
   }
 }
 
