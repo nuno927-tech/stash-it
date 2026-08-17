@@ -83,7 +83,7 @@ export interface AddItemForm {
    * a single warranty — looks exactly like the single field it replaced.
    */
   coverages: CoverageDraft[];
-  /** Behind "More details". */
+  /** All optional, and each says so in its own placeholder. */
   brand: string;
   model: string;
   serial: string;
@@ -233,9 +233,29 @@ export function draftFromForm(
   form: AddItemForm,
   propertyId: string,
   photo?: PhotoRefs,
+  /**
+   * Whether a purchase date must be present. True when creating; on an edit,
+   * true only if the record already had one — see the note below.
+   */
+  needDate = true,
 ): Omit<Item, 'id' | 'schemaVersion' | 'createdAt' | 'updatedAt'> {
   const name = form.name.trim();
   if (!name) throw new ValidationError('Give the item a name.');
+
+  /*
+    A new item needs a purchase date. Every countdown in the app is arithmetic
+    on it — a warranty length with no start is a number with nothing to
+    subtract from, and the item lands in the collection permanently reading
+    "no warranty recorded" no matter how much cover was typed in.
+
+    Edits are not held to it. Records saved before this rule exist, and so do
+    items whose date is honestly unknown; blocking those would either strand
+    them or push someone into inventing a date, and an invented date is worse
+    than an absent one. It counts down to a day that means nothing, silently.
+  */
+  if (needDate && !form.purchaseDate.trim()) {
+    throw new ValidationError('Add the purchase date — the warranty countdown is measured from it.');
+  }
 
   const coverages = form.coverages.map(toCoverage).filter((c): c is Coverage => c !== null);
 
@@ -362,7 +382,8 @@ export async function saveEditedItem(
   photo?: PhotoEdit,
 ): Promise<string> {
   const previous = await db.items.get(id);
-  const draft = draftFromForm(form, propertyId, photo ?? undefined);
+  // Can't clear a date that was there; not made to invent one that never was.
+  const draft = draftFromForm(form, propertyId, photo ?? undefined, !!previous?.purchaseDate);
   const patch: Partial<Item> = { ...draft };
 
   if (photo === undefined) {

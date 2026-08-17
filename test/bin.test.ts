@@ -51,7 +51,7 @@ const pro: Entitlements = { proUnlock: true, reportUnlock: false };
 async function main() {
   await ensureFirstRun();
   const property = (await db.properties.toArray())[0]!;
-  const form = (name: string) => ({ ...emptyForm('USD'), name });
+  const form = (name: string) => ({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name });
 
   /* --------------------------------------------------------- the countdown */
 

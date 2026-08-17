@@ -26,7 +26,6 @@ export function DocsField({
   onStage,
   onUnstage,
   onRetype,
-  bare = false,
 }: {
   /** Present only when editing. */
   itemId?: string;
@@ -34,12 +33,6 @@ export function DocsField({
   onStage: (doc: StagedDoc) => void;
   onUnstage: (key: string) => void;
   onRetype: (key: string, kind: DocKind) => void;
-  /**
-   * Drop the card, keep the heading. Behind the item form's details door
-   * everything else is boxless, and one bordered section in a run of plain
-   * ones reads as a mistake rather than as emphasis.
-   */
-  bare?: boolean;
 }) {
   const existing = useLiveQuery(async () => (itemId ? docsWithFiles(itemId) : []), [itemId]) ?? [];
   const [error, setError] = useState<string>();
@@ -58,12 +51,10 @@ export function DocsField({
 
   const count = existing.length + staged.length;
 
-  const Wrap = bare ? 'div' : 'section';
-
   return (
-    <Wrap className={bare ? 'askblock' : 'card'}>
-      <div className={bare ? 'asklabel row' : 'cardhead'}>
-        {bare ? <span>Documents</span> : <h3>Documents</h3>}
+    <section className="card formcard">
+      <div className="cardhead">
+        <h3>Documents</h3>
         {count > 0 && <span className="countpill">{count}</span>}
       </div>
 
@@ -142,7 +133,7 @@ export function DocsField({
           the camera to photograph it.
         </p>
       )}
-    </Wrap>
+    </section>
   );
 }
 

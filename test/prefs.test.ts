@@ -62,7 +62,7 @@ async function main() {
   const photoBlob = await putBlob(new Blob([new Uint8Array([9, 9, 9])], { type: 'image/webp' }));
   const thumbBlob = await putBlob(new Blob([new Uint8Array([1, 1, 1])], { type: 'image/webp' }));
 
-  const id = await saveNewItem({ ...emptyForm('USD'), name: 'Photographed Kettle' }, property.id, {
+  const id = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Photographed Kettle' }, property.id, {
     blobId: photoBlob,
     thumbBlobId: thumbBlob,
   });
@@ -103,7 +103,7 @@ async function main() {
   /* ------------------- a shared file survives one of its owners leaving */
 
   const shared = await putBlob(new Blob([new Uint8Array([7, 7, 7])], { type: 'image/webp' }));
-  const itemA = await saveNewItem({ ...emptyForm('USD'), name: 'Item A' }, property.id, {
+  const itemA = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Item A' }, property.id, {
     blobId: shared,
     thumbBlobId: shared,
   });
@@ -123,7 +123,7 @@ async function main() {
 
   const first = await putBlob(new Blob([new Uint8Array([2, 2])], { type: 'image/webp' }));
   const second = await putBlob(new Blob([new Uint8Array([3, 3])], { type: 'image/webp' }));
-  const swap = await saveNewItem({ ...emptyForm('USD'), name: 'Swappable' }, property.id, {
+  const swap = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Swappable' }, property.id, {
     blobId: first,
     thumbBlobId: first,
   });

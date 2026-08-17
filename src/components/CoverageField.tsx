@@ -39,32 +39,29 @@ export function CoverageField({
   purchaseDate,
   coverages,
   onChange,
-  bare = false,
+  title = 'Coverage',
 }: {
   purchaseDate: string;
   coverages: CoverageDraft[];
   onChange: (next: CoverageDraft[]) => void;
   /**
-   * Drop the card and its heading. The item form asks "how long is it
-   * covered?" immediately above, and a boxed section titled "Coverage" under
-   * that question is the same word twice inside two frames.
+   * What the section is called. The item form says "Warranty information",
+   * matching the other three section headings on that screen; the word
+   * "Coverage" is the model's word and stays the default.
    */
-  bare?: boolean;
+  title?: string;
 }) {
   const patch = (key: string, changes: Partial<CoverageDraft>) =>
     onChange(coverages.map((c) => (c.key === key ? { ...c, ...changes } : c)));
 
   const real = countCoverages(coverages);
-  const Wrap = bare ? 'div' : 'section';
 
   return (
-    <Wrap className={bare ? 'covbare' : 'card'}>
-      {!bare && (
-        <div className="cardhead">
-          <h3>Coverage</h3>
-          {real > 1 && <span className="countpill">{real}</span>}
-        </div>
-      )}
+    <section className="card formcard">
+      <div className="cardhead">
+        <h3>{title}</h3>
+        {real > 1 && <span className="countpill">{real}</span>}
+      </div>
 
       {coverages.map((c, i) => (
         <CoverageRow
@@ -85,7 +82,7 @@ export function CoverageField({
       >
         + Add another policy
       </button>
-    </Wrap>
+    </section>
   );
 }
 

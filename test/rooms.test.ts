@@ -153,11 +153,11 @@ async function main() {
 
   const garage = (await activeRooms(pid)).find((r) => r.name === 'Garage')!;
   const saw = await saveNewItem(
-    { ...emptyForm('USD'), name: 'Table Saw', roomId: garage.id },
+    { ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Table Saw', roomId: garage.id },
     pid,
   );
-  await saveNewItem({ ...emptyForm('USD'), name: 'Drill', roomId: garage.id }, pid);
-  await saveNewItem({ ...emptyForm('USD'), name: 'Homeless Lamp' }, pid);
+  await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Drill', roomId: garage.id }, pid);
+  await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Homeless Lamp' }, pid);
 
   check('per-room count is right', (await itemCountForRoom(garage.id)) === 2);
   const counts = await itemCountsByRoom(pid);
@@ -169,7 +169,7 @@ async function main() {
   // pointing at a room that isn't in the list — a stale id from a restore, a
   // delete that didn't clear it — used to be counted under a key nothing on
   // screen reads, so it appeared in neither column.
-  const orphan = await saveNewItem({ ...emptyForm('USD'), name: 'Ghost Lamp' }, pid);
+  const orphan = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Ghost Lamp' }, pid);
   await db.items.update(orphan, { roomId: 'a-room-that-does-not-exist' });
 
   const withOrphan = await itemCountsByRoom(pid);

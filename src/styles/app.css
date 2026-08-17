@@ -2693,101 +2693,63 @@ button.countpill.tappill:active {
   background: var(--slate-800);
 }
 
-/* ------------------------------------------------------ asking, not filling */
+/* --------------------------------------------------------- the item form */
 
 /*
-  The item form, rebuilt as questions rather than cards. Five bordered boxes
-  became four blocks separated by space — a heading, a field label and a
-  border around one dropdown is three frames on a single control, and the
-  cumulative effect was a screen that looked like paperwork.
+  Four named sections: product information, room, warranty information,
+  documents. They're cards, and the previous attempt at this screen took the
+  cards away entirely — which did reduce the chrome and also removed the only
+  thing telling you where one subject ended and the next began.
 
-  Nothing here has a box. The rhythm does the grouping.
+  What actually fixes "crowded" is on the fields, not the boxes: every
+  optional input says "Optional" in it. Nine visible fields where seven are
+  visibly skippable reads lighter than five hidden behind a door, because
+  nothing has to be opened to find out what's in it.
 */
-.askblock {
-  margin-bottom: 26px;
+.formcard {
+  margin-bottom: 14px;
 }
 
-.askblock:last-of-type {
-  margin-bottom: 18px;
+/* Sections run long — nine fields in the first one — so they get more room
+   between fields than a settings card needs. */
+.formcard .field + .field,
+.formcard .field + .fieldpair,
+.formcard .fieldpair + .field,
+.formcard .fieldpair + .fieldpair {
+  margin-top: 13px;
 }
 
-/* The question itself. Full weight rather than a muted field label: these are
-   the structure of the screen now, not annotations on it. */
-.asklabel {
+/* The note that carries what a placeholder can't. Only the date needs it: a
+   native date input ignores `placeholder` and always draws dd/mm/yyyy, so
+   there is nowhere inside the control to say anything at all. */
+.fieldlabel small {
   display: block;
-  font-size: 14.5px;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 10px;
-}
-
-.asklabel.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-/* Coverage without its own card — the question above it is the heading. */
-.covbare > .covrow:first-child {
-  padding-top: 0;
-}
-
-/*
-  The one row everything optional lives behind. A labelled door rather than a
-  disclosure triangle: it says what's inside, so skipping it is a decision
-  rather than a guess.
-*/
-.detailsdoor {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 13px 15px;
-  margin-bottom: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: none;
-  color: var(--text);
-  text-align: left;
-}
-
-.detailsdoor:active {
-  background: var(--slate-700);
-}
-
-.detailsdoor-txt {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.detailsdoor-txt strong {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.detailsdoor-txt small {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 300;
   color: var(--muted);
+  margin-top: 2px;
 }
 
-/* Indented behind its own hairline, so an open door reads as contents of the
-   row above rather than as the screen starting again. */
-.detailsopen {
-  padding-left: 14px;
-  margin-bottom: 18px;
-  border-left: 2px solid var(--slate-600);
-  border-radius: 0;
+/* Why the save button is grey. A disabled control with no explanation is a
+   dead end — you can see it won't work and not why. */
+.savewhy {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 9px;
 }
 
 .identity {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+/* The name field, taking whatever the photo leaves. */
+.field.grow {
+  flex: 1;
+  min-width: 0;
 }
 
 .photoslot {

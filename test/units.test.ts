@@ -175,7 +175,7 @@ async function main() {
 
   const draft = draftFromForm(
     {
-      ...emptyForm('USD'),
+      ...emptyForm('USD'), purchaseDate: '2026-03-01',
       name: 'Kettle',
       coverages: [blankCoverage({ unit: 'days', amount: '90' })],
     },

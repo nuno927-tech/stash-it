@@ -56,7 +56,7 @@ async function main() {
 
   /* ------------------------------------------ flushing against an item */
 
-  const id = await saveNewItem({ ...emptyForm('USD'), name: 'Bosch Dishwasher' }, property.id);
+  const id = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Bosch Dishwasher' }, property.id);
   const written = await attachStaged(id, [receipt, warranty, manual]);
   check('all three are written', written === 3, `${written}`);
 
@@ -79,7 +79,7 @@ async function main() {
 
   /* ------------------------------------------------------------ dedupe */
 
-  const second = await saveNewItem({ ...emptyForm('USD'), name: 'Second item' }, property.id);
+  const second = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'Second item' }, property.id);
   const blobsNow = await db.blobs.count();
   await attachStaged(second, [stageDoc('receipt', file('cover.pdf', [4, 5, 6]))]);
   check(
@@ -91,7 +91,7 @@ async function main() {
 
   /* ------------------------------------------- nothing staged is fine */
 
-  const bare = await saveNewItem({ ...emptyForm('USD'), name: 'No paperwork' }, property.id);
+  const bare = await saveNewItem({ ...emptyForm('USD'), purchaseDate: '2026-03-01', name: 'No paperwork' }, property.id);
   check('attaching nothing writes nothing', (await attachStaged(bare, [])) === 0);
   check('and the item is still fine', (await docsWithFiles(bare)).length === 0);
 

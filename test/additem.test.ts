@@ -32,8 +32,13 @@ function check(label: string, ok: boolean, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `  — ${detail}` : ''}`);
 }
 
+/*
+  A purchase date by default. It became required for new items when the form
+  was rebuilt into sections — the countdown is arithmetic on it — so a helper
+  without one would now be testing the refusal on every single case.
+*/
 function form(over: Partial<AddItemForm> = {}): AddItemForm {
-  return { ...emptyForm('USD'), name: 'Test item', ...over };
+  return { ...emptyForm('USD'), name: 'Test item', purchaseDate: '2026-03-01', ...over };
 }
 
 /** One plain warranty, the way the form holds it. */
@@ -74,6 +79,29 @@ async function main() {
   }
   check('a blank name is refused', threw === 'ValidationError', threw);
   check('ValidationError carries a usable message', new ValidationError('x').message === 'x');
+
+  /*
+    The purchase date. Required on a new item because every countdown in the
+    app subtracts from it: a warranty length with no start date produces an
+    item that permanently reads "no warranty recorded", however much cover was
+    typed in.
+  */
+  let dateMsg = '';
+  try {
+    draftFromForm(form({ purchaseDate: '' }), property.id);
+  } catch (e) {
+    dateMsg = (e as Error).message;
+  }
+  check('a new item without a date is refused', /purchase date/i.test(dateMsg), dateMsg);
+  check('and the message says why', /countdown/i.test(dateMsg), dateMsg);
+
+  // Edits opt out — see the note in draftFromForm. Records predate the rule,
+  // and some purchase dates are honestly unknown; an invented one counts down
+  // to a day that means nothing, which is worse than none at all.
+  check(
+    'an edit of a dateless record is allowed through',
+    draftFromForm(form({ purchaseDate: '' }), property.id, undefined, false).name === 'Test item',
+  );
 
   /* -------------------------------------------------------------- shape */
 

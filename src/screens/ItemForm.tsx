@@ -18,39 +18,43 @@ import { feedback } from '@/lib/feedback';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
-import { CoverageField, countCoverages } from '@/components/CoverageField';
+import { CoverageField } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
 
 /**
  * One form, two modes: pass an `item` to edit it, omit one to create.
  *
- * THREE QUESTIONS, THEN A DOOR.
+ * FOUR SECTIONS, AND THE WORD "OPTIONAL".
  *
- * This was five bordered cards — identity, room, purchase, coverage, documents
- * — plus an expander, each with its own heading, each at the same visual
- * weight. Twelve fields presented as twelve equally important questions, when
- * exactly one of them is required. It read as a form to be completed rather
- * than a few things to be told, and the complaint about it was "crowded",
- * which is really a complaint about emphasis: nothing on the screen said what
- * could be skipped.
+ * The screen has been through three shapes. It was cards grouped by nothing in
+ * particular — identity, room, purchase, coverage, documents — which read as
+ * paperwork. Then it was three questions with everything else behind a door,
+ * which was less crowded but hid fields people wanted to fill in at the time.
  *
- * So what's above the fold is what the app is actually for — what it is, when
- * you bought it, how long it's covered. Those three answers produce the
- * countdown, which is the entire product. Everything else is real and worth
- * keeping and now lives behind one row.
+ * This is the third and it solves the original complaint differently. The
+ * problem was never how many fields there are; it was that twelve fields at
+ * one visual weight give no clue which ones matter. Hiding them answered that
+ * by concealment. Saying "Optional" in the field answers it by telling the
+ * truth, and costs nothing — you can see the whole shape of the record and
+ * still know, at a glance, that seven of the nine boxes can be left alone.
  *
- * The door is deliberately not a disclosure triangle at the bottom of a list.
- * It's a labelled row that says what's inside and shows a dot when something
- * is, because a collapsed section raises exactly one question — did I put
- * anything in there — and that should be answerable without opening it.
+ * Two things are therefore not marked optional, and both are load-bearing:
  *
- * The cards are gone. Questions are separated by space, not by boxes: a
- * heading, a field label and a border around one dropdown is three frames on
- * one control.
+ *   name      an item with no name can't be found again
+ *   date      the countdown is arithmetic on this date; without it a warranty
+ *             length is a number with nothing to subtract from
+ *
+ * The date can't carry the word inside itself in any case — a native date
+ * input ignores `placeholder` and always renders dd/mm/yyyy — so its status
+ * has to be said in the label regardless.
  *
  * Save is a sticky bar rather than a button at each end. On a screen this long
  * a top-right Save is out of thumb reach, and two of them is one too many.
  */
+
+/** What goes in an optional text field, so the label doesn't have to say it. */
+const OPTIONAL = 'Optional';
+
 export function ItemForm({
   propertyId,
   currency,
@@ -85,7 +89,6 @@ export function ItemForm({
   const [removed, setRemoved] = useState(false);
   const [staged, setStaged] = useState<StagedDoc[]>(() => prestaged ?? []);
   const [newRoom, setNewRoom] = useState<string | null>(null);
-  const [more, setMore] = useState(false);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -111,17 +114,19 @@ export function ItemForm({
   const set = <K extends keyof AddItemForm>(key: K, value: AddItemForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const covers = countCoverages(form.coverages);
-
   /*
-    How much is behind the door. Only used to decide whether to show a dot —
-    a closed section raises one question, "did I put anything in there", and
-    counting is a cheaper answer than making someone open it and look.
+    The date is required — but requiring it of an item that never had one
+    would strand every record saved before this rule, and every record whose
+    date is genuinely unknown. Forcing a guess is worse than an empty field:
+    an absent date makes the app say "no warranty recorded", while an invented
+    one makes it count down to a day that means nothing.
+
+    So: always on a new item, and on an edit only if there was a date to begin
+    with. You can't clear one, you're not made to invent one.
   */
-  const extras =
-    [form.roomId, form.price, form.brand, form.model, form.serial, form.retailer, form.notes].filter(
-      (v) => v.trim(),
-    ).length + staged.length;
+  const dateRequired = !editing || !!item?.purchaseDate;
+  const missingDate = dateRequired && !form.purchaseDate.trim();
+  const canSave = !!form.name.trim() && !missingDate;
 
   const addRoom = async () => {
     const name = (newRoom ?? '').trim();
@@ -219,9 +224,14 @@ export function ItemForm({
       {error && <div className="notice bad">{error}</div>}
       {banner && !error && <div className="notice ok">{banner}</div>}
 
-      {/* What it is. The photo sits beside the name rather than above it: a
-          full-width dropzone pushed the first real question below the fold. */}
-      <div className="askblock">
+      {/* ---------------------------------------------- product information */}
+      <section className="card formcard">
+        <div className="cardhead">
+          <h3>Product information</h3>
+        </div>
+
+        {/* The photo sits beside the name rather than above it: a full-width
+            dropzone pushed the first real question below the fold. */}
         <div className="identity">
           {/* The square says what it is for. A separate button underneath
               repeated a control the user was already looking at — the slot is
@@ -244,19 +254,20 @@ export function ItemForm({
             )}
           </button>
 
-          {/* Brand has moved behind the door. It was sitting in the second
-              most prominent slot on the screen while being optional, and
-              "Bosch" is recoverable from the name of the thing far more often
-              than it's typed in separately. */}
-          <input
-            type="text"
-            className="bigname"
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
-            placeholder="What is it?"
-            aria-label="Name"
-            autoFocus={!editing}
-          />
+          {/* No "optional" here, and that absence is the whole signal: it
+              only reads as "required" because every other text field on the
+              screen says otherwise. */}
+          <label className="field grow">
+            <span className="fieldlabel">Product name</span>
+            <input
+              type="text"
+              className="bigname"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              placeholder="What is it?"
+              autoFocus={!editing}
+            />
+          </label>
         </div>
 
         {preview && (
@@ -327,205 +338,164 @@ export function ItemForm({
             e.target.value = '';
           }}
         />
-      </div>
 
-      {/* When. Second because the countdown can't exist without it — and
-          because it's the one fact that gets harder to recover the longer you
-          leave it. */}
-      <div className="askblock">
-        <label className="asklabel" htmlFor="buydate">
-          When did you buy it?
-        </label>
-        <input
-          id="buydate"
-          type="date"
-          value={form.purchaseDate}
-          onChange={(e) => set('purchaseDate', e.target.value)}
-        />
-      </div>
+        {/* Not marked optional, because the countdown is arithmetic on it. A
+            native date input ignores `placeholder`, so the only place this can
+            be said is the label. */}
+        <Field label="When did you buy it?" note="Needed to work out when cover ends">
+          <input
+            type="date"
+            value={form.purchaseDate}
+            onChange={(e) => set('purchaseDate', e.target.value)}
+          />
+        </Field>
 
-      {/* How long it's covered — one row per policy. */}
-      <div className="askblock">
-        <div className="asklabel row">
-          <span>How long is it covered?</span>
-          {covers > 1 && <span className="countpill">{covers}</span>}
-        </div>
-        <CoverageField
-          bare
-          purchaseDate={form.purchaseDate}
-          coverages={form.coverages}
-          onChange={(next) => set('coverages', next)}
-        />
-      </div>
-
-      {/*
-        Everything else, behind one row. Named rather than titled "More", so
-        it's a decision you can make without opening it, and dotted when
-        there's something inside for the same reason.
-      */}
-      <button
-        type="button"
-        className="detailsdoor"
-        aria-expanded={more}
-        onClick={() => setMore((m) => !m)}
-      >
-        <span className="detailsdoor-txt">
-          <strong>
-            Additional details
-            {!more && extras > 0 && <i className="filleddot" aria-label={`${extras} filled in`} />}
-          </strong>
-          <small>Room, price, brand, receipts and the rest</small>
-        </span>
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          aria-hidden="true"
-          style={more ? { transform: 'rotate(180deg)' } : undefined}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-
-      {more && (
-        <div className="detailsopen">
-          <div className="askblock">
-            <div className="asklabel row">
-              <span>Room</span>
-              <button
-                type="button"
-                className="linkish"
-                aria-expanded={newRoom !== null}
-                onClick={() => setNewRoom(newRoom === null ? '' : null)}
-              >
-                {newRoom === null ? 'New room' : 'Cancel'}
-              </button>
-            </div>
-
-            <select
-              value={form.roomId}
-              aria-label="Room"
-              onChange={(e) => set('roomId', e.target.value)}
-            >
-              <option value="">Not assigned</option>
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-
-            {newRoom !== null && (
-              <div className="newroom">
-                <input
-                  type="text"
-                  value={newRoom}
-                  autoFocus
-                  placeholder="Nursery"
-                  aria-label="New room name"
-                  onChange={(e) => setNewRoom(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void addRoom();
-                    }
-                    if (e.key === 'Escape') setNewRoom(null);
-                  }}
-                />
-                <button
-                  type="button"
-                  className="minibtn"
-                  disabled={!newRoom.trim()}
-                  onClick={addRoom}
-                >
-                  Add
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="askblock">
-            <div className="fieldpair">
-              <Field label="Price">
-                <div className="moneyfield">
-                  <span aria-hidden="true">{currencySymbol(form.currency)}</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={form.price}
-                    onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
-                    onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
-                    placeholder="849.00"
-                  />
-                </div>
-              </Field>
-              <Field label="Brand">
-                <input
-                  type="text"
-                  value={form.brand}
-                  onChange={(e) => set('brand', e.target.value)}
-                  placeholder="Bosch"
-                />
-              </Field>
-            </div>
-
-            <div className="fieldpair">
-              <Field label="Model">
-                <input
-                  type="text"
-                  value={form.model}
-                  onChange={(e) => set('model', e.target.value)}
-                />
-              </Field>
-              <Field label="Serial number">
-                <input
-                  type="text"
-                  value={form.serial}
-                  onChange={(e) => set('serial', e.target.value)}
-                />
-              </Field>
-            </div>
-
-            <Field label="Retailer">
+        <div className="fieldpair">
+          {/* Keeps the worked example rather than saying "Optional": it's the
+              only thing on the screen telling you decimals are accepted. */}
+          <Field label="Price">
+            <div className="moneyfield">
+              <span aria-hidden="true">{currencySymbol(form.currency)}</span>
               <input
                 type="text"
-                value={form.retailer}
-                onChange={(e) => set('retailer', e.target.value)}
+                inputMode="decimal"
+                value={form.price}
+                onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
+                onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
+                placeholder="849.00"
               />
-            </Field>
-
-            <Field label="Notes">
-              <textarea
-                rows={3}
-                value={form.notes}
-                onChange={(e) => set('notes', e.target.value)}
-                placeholder="Installed by Kelly Plumbing, filter behind the kickplate"
-              />
-            </Field>
-          </div>
-
-          <DocsField
-            bare
-            itemId={item?.id}
-            staged={staged}
-            onStage={(d) => setStaged((list) => [...list, d])}
-            onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
-            onRetype={(key, kind) =>
-              setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
-            }
-          />
+            </div>
+          </Field>
+          <Field label="Brand">
+            <input
+              type="text"
+              value={form.brand}
+              onChange={(e) => set('brand', e.target.value)}
+              placeholder={OPTIONAL}
+            />
+          </Field>
         </div>
-      )}
+
+        <div className="fieldpair">
+          <Field label="Model">
+            <input
+              type="text"
+              value={form.model}
+              onChange={(e) => set('model', e.target.value)}
+              placeholder={OPTIONAL}
+            />
+          </Field>
+          <Field label="Serial number">
+            <input
+              type="text"
+              value={form.serial}
+              onChange={(e) => set('serial', e.target.value)}
+              placeholder={OPTIONAL}
+            />
+          </Field>
+        </div>
+
+        <Field label="Retailer">
+          <input
+            type="text"
+            value={form.retailer}
+            onChange={(e) => set('retailer', e.target.value)}
+            placeholder={OPTIONAL}
+          />
+        </Field>
+
+        <Field label="Notes">
+          <textarea
+            rows={3}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder={OPTIONAL}
+          />
+        </Field>
+      </section>
+
+      {/* ------------------------------------------------------------- room */}
+      <section className="card formcard">
+        <div className="cardhead">
+          <h3>Room</h3>
+          <button
+            type="button"
+            className="linkish"
+            aria-expanded={newRoom !== null}
+            onClick={() => setNewRoom(newRoom === null ? '' : null)}
+          >
+            {newRoom === null ? 'New room' : 'Cancel'}
+          </button>
+        </div>
+
+        <select
+          value={form.roomId}
+          aria-label="Room"
+          onChange={(e) => set('roomId', e.target.value)}
+        >
+          <option value="">Not assigned</option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+
+        {newRoom !== null && (
+          <div className="newroom">
+            <input
+              type="text"
+              value={newRoom}
+              autoFocus
+              placeholder="Nursery"
+              aria-label="New room name"
+              onChange={(e) => setNewRoom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void addRoom();
+                }
+                if (e.key === 'Escape') setNewRoom(null);
+              }}
+            />
+            <button type="button" className="minibtn" disabled={!newRoom.trim()} onClick={addRoom}>
+              Add
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* ------------------------------------------- warranty information */}
+      <CoverageField
+        title="Warranty information"
+        purchaseDate={form.purchaseDate}
+        coverages={form.coverages}
+        onChange={(next) => set('coverages', next)}
+      />
+
+      {/* -------------------------------------------------------- documents */}
+      <DocsField
+        itemId={item?.id}
+        staged={staged}
+        onStage={(d) => setStaged((list) => [...list, d])}
+        onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
+        onRetype={(key, kind) =>
+          setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
+        }
+      />
 
       <div className="savebar">
+        {/* Says which one is missing rather than sitting there greyed out with
+            no explanation — a disabled button with no reason is a dead end. */}
+        {!canSave && (
+          <p className="savewhy">
+            {!form.name.trim() ? 'Give it a name to save.' : 'Add the purchase date to save.'}
+          </p>
+        )}
         <button
           type="button"
           className="btn wide"
-          disabled={busy || !form.name.trim()}
+          disabled={busy || !canSave}
           onClick={onSave}
         >
           {busy ? 'Saving…' : editing ? 'Save changes' : 'Save item'}
@@ -535,10 +505,22 @@ export function ItemForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  note,
+  children,
+}: {
+  label: string;
+  /** For the one field that can't say "Optional" inside itself. */
+  note?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="field">
-      <span className="fieldlabel">{label}</span>
+      <span className="fieldlabel">
+        {label}
+        {note && <small>{note}</small>}
+      </span>
       {children}
     </label>
   );
