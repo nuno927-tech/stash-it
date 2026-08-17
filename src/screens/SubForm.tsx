@@ -15,7 +15,7 @@ import {
 import { CATALOGUE, searchServices, type ServiceDef } from '@/lib/services';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { ServiceMark } from '@/components/ServiceMark';
-import { useAutoAdvance } from '@/components/useAutoAdvance';
+import { cardFilled, useAutoAdvance } from '@/components/useAutoAdvance';
 
 /**
  * Adding or editing a recurring charge.
@@ -82,15 +82,21 @@ export function SubForm({
   const canSave = !!name.trim() && !!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0;
 
   /*
-    Move on when a card is done with. Each section watches the answer that
-    finishes it and points at the next — picking a service is a discrete tap,
-    so it advances; typing a name is not, so it doesn't. See useAutoAdvance
-    for everything this deliberately refuses to do.
+    Move on only when a card has nothing left in it — every field it holds,
+    optional ones included. This used to watch the one answer that mattered
+    most per card, which meant setting it scrolled away from everything beside
+    it. See useAutoAdvance.
+
+    Billing counts the split fields only when the toggle is on: a section can't
+    require an answer it isn't currently asking for.
   */
   const billingRef = useRef<HTMLElement>(null);
   const remindRef = useRef<HTMLElement>(null);
-  useAutoAdvance(!!serviceId, billingRef);
-  useAutoAdvance(!!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0, remindRef);
+  useAutoAdvance(cardFilled(query), billingRef);
+  useAutoAdvance(
+    cardFilled(anchor, price, started) && (!shared || cardFilled(payTo, payHow)),
+    remindRef,
+  );
 
   const choose = (s: ServiceDef) => {
     // Tapping the chosen one again lets go of it, so a mis-tap doesn't have to

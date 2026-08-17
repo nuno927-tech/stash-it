@@ -5,7 +5,7 @@ import { feedback } from '@/lib/feedback';
 import { DEFAULT_LEAD_DAYS, KIND_LABEL, KINDS, expiryOf, leadDaysFor, renewBy } from '@/lib/papers';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { PaperIcon } from '@/components/PaperIcon';
-import { useAutoAdvance } from '@/components/useAutoAdvance';
+import { cardFilled, useAutoAdvance } from '@/components/useAutoAdvance';
 
 /**
  * Adding or editing a document that expires.
@@ -52,10 +52,16 @@ export function PaperForm({
   const end = expiryOf({ expiresOn: expires });
   const canSave = !!label.trim() && !!end;
 
+  /*
+    Move on only when a card has nothing left in it. Every field the section
+    contains is listed, optional ones included — setting the expiry used to
+    fire this and scroll away from the three fields beside it. See
+    useAutoAdvance.
+  */
   const datesRef = useRef<HTMLElement>(null);
   const leadRef = useRef<HTMLElement>(null);
-  useAutoAdvance(!!label.trim(), datesRef);
-  useAutoAdvance(!!end, leadRef);
+  useAutoAdvance(cardFilled(label, holder), datesRef);
+  useAutoAdvance(cardFilled(expires, issued, authority, storedAt), leadRef);
 
   const effectiveLead = leadDaysFor({ kind, leadDays: lead });
   const start = end ? renewBy({ kind, leadDays: lead, expiresOn: expires }) : null;
@@ -160,8 +166,8 @@ export function PaperForm({
           one that says why reads as deliberate.
         */}
         <p className="hint">
-          No scans and no document numbers, on purpose — backups aren't encrypted yet, so Scout
-          keeps the dates and leaves the document where it is.
+          No scans or document numbers, just what's needed so Scout can remind you when the time
+          comes. Because your privacy matters.
         </p>
       </section>
 

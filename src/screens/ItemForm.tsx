@@ -21,7 +21,7 @@ import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { Scout } from '@/components/Scout';
 import { CoverageField } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
-import { useAutoAdvance } from '@/components/useAutoAdvance';
+import { cardFilled, useAutoAdvance } from '@/components/useAutoAdvance';
 
 /**
  * One form, two modes: pass an `item` to edit it, omit one to create.
@@ -130,17 +130,40 @@ export function ItemForm({
   const canSave = !!form.name.trim() && !missingDate;
 
   /*
-    Move on when a card is finished with. Watched on the answers that arrive as
-    a tap — a date picked, a warranty term chosen — never on typing, so the
-    page can't jump mid-word. See useAutoAdvance.
+    Move on only when a card has nothing left in it.
+
+    Every field the section contains is listed, optional ones included. This
+    used to watch the answer that mattered most — the name and date here, the
+    room below — so filling that one threw you past six others you hadn't
+    reached. On a card with a Notes box that means this now fires rarely, which
+    is the right trade: see useAutoAdvance.
   */
   const roomRef = useRef<HTMLElement>(null);
   const coverRef = useRef<HTMLElement>(null);
   const docsRef = useRef<HTMLElement>(null);
-  useAutoAdvance(!!form.name.trim() && !!form.purchaseDate.trim(), roomRef);
-  useAutoAdvance(!!form.roomId, coverRef);
   useAutoAdvance(
-    form.coverages.some((c) => c.unit === 'lifetime' || !!c.amount.trim()),
+    cardFilled(
+      form.name,
+      form.purchaseDate,
+      form.price,
+      form.brand,
+      form.model,
+      form.serial,
+      form.retailer,
+      form.notes,
+    ),
+    roomRef,
+  );
+  useAutoAdvance(cardFilled(form.roomId), coverRef);
+  /*
+    A row at a time rather than a field at a time. Cover is a list the user
+    grows, so "every field" means every policy on it has a term — a blank row
+    waiting to be filled is the card still being worked on, and the optional
+    provider and claims details are not answers anyone has to hand.
+  */
+  useAutoAdvance(
+    form.coverages.length > 0 &&
+      form.coverages.every((c) => c.unit === 'lifetime' || !!c.amount.trim()),
     docsRef,
   );
 

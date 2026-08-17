@@ -24,6 +24,7 @@ import {
   type AddItemForm,
 } from '@/lib/addItem';
 import { effectiveExpiry, toISODate, warrantyLabel, warrantyState } from '@/lib/warranty';
+import { cardFilled } from '@/components/useAutoAdvance';
 
 let failures = 0;
 
@@ -344,6 +345,36 @@ async function main() {
     (await db.items.get(editId))!.name === 'Edited past the cap',
     `${overCap} items`,
   );
+
+  /* ------------------------------------------------ when a card is finished */
+
+  /*
+    The rule behind auto-advance, after it got this wrong once.
+
+    Each form card used to watch the field that mattered most, so answering
+    that one scrolled the page away from the three beside it that hadn't been
+    touched. "Answering the last question in a card takes you to the next one"
+    only works if it means the LAST question — a card is not finished because
+    its most important answer arrived.
+  */
+  check('every field filled is finished', cardFilled('Passport', 'Nuno'));
+  check('one still empty is not', !cardFilled('Passport', ''));
+  check('and neither is the last one', !cardFilled('Passport', 'Nuno', ''));
+
+  // A space bar is not an answer.
+  check('whitespace does not count', !cardFilled('Passport', '   '));
+
+  // Booleans for the controls that aren't text — a room chosen, a toggle set.
+  check('a chosen control counts', cardFilled('Passport', true));
+  check('an unchosen one does not', !cardFilled('Passport', false));
+  check('and undefined is empty, not absent', !cardFilled(undefined));
+
+  /*
+    Vacuously true, and deliberately so: a section with nothing to fill in is
+    a section you are finished with. Worth pinning because `[].every()` is the
+    kind of thing that surprises people reading the call site.
+  */
+  check('a card with no fields is complete', cardFilled());
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);
