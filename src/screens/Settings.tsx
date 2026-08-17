@@ -7,6 +7,7 @@ import { cappedCount } from '@/db/repo';
 import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
 import {
   BundleError,
+  canShareBundle,
   exportBundle,
   markBackedUp,
   parseBundle,
@@ -575,7 +576,17 @@ function Backup({
 }) {
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
+  /* A finished bundle waiting for a fresh tap — see the note by the button. */
+  const [ready, setReady] = useState<{ blob: Blob; filename: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  /*
+    Probed once, with an empty file, because `canShare` reads the name and the
+    type and never the contents. Deciding this up front is what lets the copy
+    below promise the right thing instead of describing a share sheet that this
+    browser is never going to open.
+  */
+  const shareable = canShareBundle();
 
   // How much there is to lose belongs next to the thing that saves it, not in
   // a card of its own.
@@ -658,6 +669,19 @@ function Backup({
               return;
             }
 
+            /*
+              The share sheet wanted a fresh tap. Zipping a photo library takes
+              longer than transient activation lasts, so the gesture that
+              started the backup had expired by the time the file existed. Hold
+              the finished bundle and offer a button; that tap arrives with a
+              live gesture and the sheet opens with no second export.
+            */
+            if (how === 'needs-gesture') {
+              setReady({ blob, filename });
+              onNotice({ tone: 'ok', text: 'Ready. Choose where to send it.' });
+              return;
+            }
+
             await markBackedUp();
             feedback('save');
             onNotice({
@@ -665,7 +689,7 @@ function Backup({
               text:
                 how === 'shared'
                   ? `Sent ${filename}. Check it arrived where you sent it.`
-                  : `Saved ${filename}.`,
+                  : `Saved ${filename} to your downloads. Move it somewhere off this phone.`,
             });
           })
         }
@@ -677,17 +701,51 @@ function Backup({
         Back up now
         {usage && <span className="btnnote">{formatBytes(usage.usedBytes)}</span>}
       </button>
+
+      {/*
+        The second tap, when the browser asked for one. Not shown otherwise —
+        a permanently visible "send it" button next to a backup button is two
+        controls for one job.
+      */}
+      {ready && (
+        <button
+          type="button"
+          className="btn wide"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              const how = await saveBundle(ready.blob, ready.filename);
+              if (how === 'cancelled') {
+                onNotice({ tone: 'bad', text: 'Cancelled — nothing was saved.' });
+                return;
+              }
+              setReady(null);
+              await markBackedUp();
+              feedback('save');
+              onNotice({ tone: 'ok', text: `Sent ${ready.filename}.` });
+            })
+          }
+        >
+          Send it somewhere
+        </button>
+      )}
+
       <p className="hint">
         {/*
-          Says where it goes, because on a phone this opens the share sheet and
-          the destination is the user's choice — Drive, Files, Dropbox, email.
-          And it says what is in it, because the same sheet offers Messages and
-          WhatsApp one row along, and this file holds every receipt and every
-          photo you own.
+          Two different sentences, because two different things happen and
+          promising the wrong one is how this got reported.
+
+          THE SHARE SHEET IS NOT AVAILABLE ON CHROME, and no amount of code
+          changes that: Web Share screens files by extension against a list
+          that holds images, audio, video, text and pdf. A backup bundle is a
+          zip, so Chrome and Android hand it to the downloads folder instead —
+          which works, and is a different instruction to give.
         */}
-        One file holding every item, document and photo. Send it somewhere you'll still have if
-        the phone goes — a cloud drive, or your own email. Nothing syncs on its own, so this is
-        the only copy that survives.
+        One file holding every item, document and photo.{' '}
+        {shareable
+          ? "You'll choose where it goes — a cloud drive, or your own email. Pick somewhere you'll still have if the phone goes."
+          : "This browser saves it to your downloads rather than offering to send it, so move it somewhere off the phone afterwards."}{' '}
+        Nothing syncs on its own, so this is the only copy that survives.
       </p>
 
       {/* Restoring is the other half of the same job, so it gets the same

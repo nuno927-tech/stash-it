@@ -15,6 +15,7 @@ import { seedDemoItems } from '@/dev/seed';
 import { unzipSync, zipSync } from 'fflate';
 import {
   BundleError,
+  canShareBundle,
   exportBundle,
   markBackedUp,
   parseBundle,
@@ -232,8 +233,35 @@ async function main() {
     Cancel is its own outcome. It used to be folded into 'shared', which is how
     the caller came to congratulate the user on a file that was never written.
   */
-  const outcomes: SaveOutcome[] = ['shared', 'downloaded', 'cancelled'];
+  const outcomes: SaveOutcome[] = ['shared', 'downloaded', 'cancelled', 'needs-gesture'];
   check('a cancel is distinguishable from a save', outcomes.includes('cancelled'));
+
+  /*
+    THE SHARE SHEET IS NOT AVAILABLE FOR THIS FILE ON CHROMIUM, and the app has
+    to know that before it promises one.
+
+    Web Share screens files against an allowlist of EXTENSIONS — images, audio,
+    video, text, and pdf. Not zip, and certainly not `.stashit`. So Chrome and
+    Android hand the bundle to the downloads folder instead, which works and is
+    a different sentence to put on the screen. Safari does not use that list,
+    which is why this is probed rather than assumed.
+
+    In Node there is no `navigator.canShare` at all, so the probe has to answer
+    false rather than throw — the same path a desktop browser without file
+    sharing takes.
+  */
+  check('the probe answers where sharing is impossible', canShareBundle('x.stashit') === false);
+  check('and does not throw doing it', typeof canShareBundle() === 'boolean');
+
+  /*
+    And it must answer without building anything. The probe runs before the
+    export so the button can say the right thing; if it needed the real bundle
+    it would cost a full zip of somebody's photo library to find out which
+    sentence to print.
+  */
+  const beforeProbe = Date.now();
+  canShareBundle();
+  check('cheaply', Date.now() - beforeProbe < 50);
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

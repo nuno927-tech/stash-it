@@ -524,7 +524,34 @@ async function mergeTable<T extends HasIdAndUpdatedAt>(
 
 /* ------------------------------------------------------------ file plumbing */
 
-export type SaveOutcome = 'shared' | 'downloaded' | 'cancelled';
+export type SaveOutcome = 'shared' | 'downloaded' | 'cancelled' | 'needs-gesture';
+
+/**
+ * Whether this browser will put the bundle on the share sheet at all.
+ *
+ * ── Chromium will not, and that is not a bug we can fix ───────────────────
+ * Web Share is gated on an ALLOWLIST OF FILE EXTENSIONS, not on the MIME
+ * type — images, audio, video, text, and exactly one thing under
+ * "Application": pdf. A `.stashit` file is not on it, and neither is `.zip`,
+ * so `canShare` returns false on Chrome and Android and there is nothing the
+ * page can do about it. Renaming the bundle to a permitted extension would be
+ * lying to the OS about what the file is.
+ *
+ * Safari's implementation is not the Chromium one and does take arbitrary
+ * files, which is why this is a probe and not a constant.
+ *
+ * The probe uses an EMPTY file, because `canShare` inspects the name and the
+ * type and never the contents — so the answer is available before spending a
+ * second zipping somebody's photo library to find out.
+ */
+export function canShareBundle(filename = backupFilename()): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function') return false;
+  try {
+    return navigator.canShare({ files: [new File([], filename, { type: 'application/zip' })] });
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Hands the file to the OS.
@@ -553,12 +580,27 @@ export type SaveOutcome = 'shared' | 'downloaded' | 'cancelled';
 export async function saveBundle(blob: Blob, filename: string): Promise<SaveOutcome> {
   const file = new File([blob], filename, { type: 'application/zip' });
 
-  if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+  if (canShareBundle(filename)) {
     try {
       await navigator.share({ files: [file], title: 'Stash it backup' });
       return 'shared';
     } catch (e) {
-      if ((e as DOMException)?.name === 'AbortError') return 'cancelled';
+      const name = (e as DOMException)?.name;
+      if (name === 'AbortError') return 'cancelled';
+
+      /*
+        `share()` needs TRANSIENT USER ACTIVATION, and zipping a photo library
+        takes longer than the window lasts. So the tap that started the backup
+        has expired by the time the file exists, and the browser refuses —
+        with the same symptom as not supporting sharing at all.
+
+        Not a failure, and not something to answer with a silent download. The
+        caller holds the finished bundle and offers a second button; that tap
+        arrives with fresh activation and the sheet opens. See the note in the
+        Settings backup card.
+      */
+      if (name === 'NotAllowedError') return 'needs-gesture';
+
       // Anything else is the share mechanism failing rather than the person
       // declining, so there is still a job to finish. Fall through.
     }
