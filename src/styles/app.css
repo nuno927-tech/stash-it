@@ -1832,12 +1832,132 @@ a.pick {
   letter-spacing: -0.015em;
   border: none;
   box-shadow: var(--fab-shadow);
+  /* Lifts to make room for the choices — see "what the + can create" below. */
+  transition:
+    transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.18s ease;
 }
 
 .fab:disabled {
   background: var(--slate-600);
   color: var(--muted);
   box-shadow: none;
+}
+
+/* --------------------------------------------------- what the + can create */
+
+/*
+  The button lifts and the choices unfold beneath it.
+
+  A menu rather than a dialog asking "product or subscription?", because a
+  dialog is a screen you have to read and dismiss, and because more kinds are
+  coming — the list this draws from is one array in BottomNav.
+
+  The curve is the whole point. `cubic-bezier(.34,1.56,.64,1)` overshoots past
+  its target and comes back, which is what makes it read as a thing with mass
+  arriving rather than a box being switched on. Going away uses a plain ease
+  at half the duration: an overshoot on the way out reads as indecision.
+*/
+.fab.open {
+  transform: translateY(-116px);
+  background: var(--slate-600);
+  color: var(--text);
+}
+
+.fab.open svg {
+  transform: rotate(45deg);
+  transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.addstack {
+  position: absolute;
+  right: 18px;
+  bottom: 88px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.addstack.open {
+  pointer-events: auto;
+}
+
+.addchoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px 9px 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--slate-700);
+  color: var(--text);
+  text-align: left;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
+
+  /* Collapsed: tucked under the button, small, invisible. Everything springs
+     from here, which is why the origin is the corner nearest the +. */
+  transform: translateY(52px) scale(0.86);
+  opacity: 0;
+  transform-origin: 90% 100%;
+  transition:
+    transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.16s ease;
+}
+
+.addstack.open .addchoice {
+  transform: none;
+  opacity: 1;
+}
+
+.addchoice-ico {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--wash-gold);
+  color: var(--gold);
+}
+
+.addchoice-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.addchoice-txt strong {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.addchoice-txt small {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* Tapping anywhere else puts it away — the gesture's undo. */
+.addscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  border: none;
+  background: rgba(6, 8, 12, 0.5);
+  animation: scrimIn 0.18s ease both;
+}
+
+/* Everything above is decoration on a control that must still work. Someone
+   who has asked for less movement gets the menu without the spring. */
+@media (prefers-reduced-motion: reduce) {
+  .fab,
+  .fab.open svg,
+  .addchoice {
+    transition-duration: 0.01s;
+  }
 }
 
 /* --------------------------------------------------------------- mascot */
@@ -3430,6 +3550,324 @@ button.countpill.tappill:active {
 
 .dlgactions .btn {
   margin: 0;
+}
+
+/* ------------------------------------------------- renewals, on the home tab */
+
+/*
+  The only delivery mechanism reminders have. Above everything else on the
+  dashboard, because a charge landing tomorrow outranks a warranty lapsing in
+  three weeks — and because if you don't see it now there is no second chance
+  before the money goes.
+*/
+.renewbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.renewcard {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--wash-gold-line);
+  border-radius: var(--r-md);
+  background: var(--wash-gold);
+  color: inherit;
+  text-align: left;
+}
+
+.renewtxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.renewtxt strong {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renewtxt small {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* Today or tomorrow. Further out is information, not urgency. */
+.renewsoon {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ember);
+}
+
+/* ---------------------------------------------------------- subscriptions */
+
+.servicemark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* A fetched favicon is whatever the site had. Contained rather than cropped:
+   a stretched logo looks worse than a small one. */
+.servicemark.plain {
+  background: var(--slate-600);
+}
+
+/* Initials, for a service with no bundled mark and no fetched logo. Not a
+   failure state: plenty of subscriptions are a gym or a window cleaner. */
+.servicemark.mono {
+  font-family: var(--font-display);
+}
+
+.servicemark.plain img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Three figures, and the middle one is the point: what a month costs is the
+   number people actually want and the one nothing else in the app knows. */
+.subtotals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.subtotal {
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 11px 12px;
+  min-width: 0;
+}
+
+.subtotal strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtotal small {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* Scout beside the grid rather than above it: he's holding a calendar, and the
+   joke only lands if the calendar he's holding is next to the real one. */
+.calwrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.calmark {
+  flex: none;
+  padding-top: 22px;
+}
+
+/* Below 380px the grid needs every pixel, so he stands down. */
+@media (max-width: 379px) {
+  .calmark {
+    display: none;
+  }
+}
+
+.calendar {
+  flex: 1;
+  min-width: 0;
+  background: var(--slate-700);
+  border-radius: var(--r-md);
+  padding: 10px 11px 12px;
+}
+
+.calhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.calgrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.caldow {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--muted);
+  padding-bottom: 3px;
+}
+
+.calcell {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.calcell.empty {
+  visibility: hidden;
+}
+
+/* A renewal day is filled, not outlined. At this size an outline reads as a
+   selected cell and a fill reads as a day with something on it. */
+.calcell.has {
+  background: var(--wash-gold);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.calcell.today {
+  box-shadow: inset 0 0 0 1px var(--gold);
+  color: var(--gold);
+}
+
+.caldots {
+  position: absolute;
+  bottom: 3px;
+  display: flex;
+  gap: 2px;
+}
+
+.caldots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.calnote {
+  margin-top: 10px;
+}
+
+.sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.subrow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 2px;
+  border: none;
+  border-bottom: 1px solid var(--slate-700);
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.subrow:active {
+  background: var(--slate-700);
+}
+
+.subtxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subtxt strong {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtxt small,
+.subcost small {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.subcost {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.subcost strong {
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The picker on the form. Four across, so the twenty most common are two
+   thumb-scrolls rather than a search. */
+.servicegrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.servicetile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: var(--slate-800);
+  color: var(--muted);
+}
+
+.servicetile.on {
+  border-color: var(--wash-gold-line);
+  background: var(--wash-gold);
+  color: var(--text);
+}
+
+.servicetile small {
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* --------------------------------------------------------- recently deleted */

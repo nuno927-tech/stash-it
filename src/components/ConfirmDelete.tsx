@@ -17,10 +17,17 @@ import { ScoutDialog } from './ScoutDialog';
  */
 export function ConfirmDelete({
   name,
+  permanent = false,
   onConfirm,
   onCancel,
 }: {
   name: string;
+  /**
+   * No thirty-day bin behind this one. Subscriptions are hard-deleted — five
+   * fields you can retype — so the dialog must not promise a recovery window
+   * that doesn't exist for them.
+   */
+  permanent?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -35,10 +42,14 @@ export function ConfirmDelete({
       {/* Naming the place, not just the policy. This said "it goes to the bin
           for 30 days" for months while there was no bin anywhere in the app —
           a promise nobody could check and nobody could use. */}
-      <p>
-        It waits {PURGE_AFTER_DAYS} days under <b>Recently deleted</b>, at the bottom of the Items
-        list. The free-tier slot comes back straight away.
-      </p>
+      {permanent ? (
+        <p>This one goes now — there's no bin behind it. You can add it again in a moment.</p>
+      ) : (
+        <p>
+          It waits {PURGE_AFTER_DAYS} days under <b>Recently deleted</b>, at the bottom of the
+          Items list. The free-tier slot comes back straight away.
+        </p>
+      )}
 
       {/* The destructive option is the one that has to be chosen, never the
           one a thumb lands on by momentum — so it isn't the primary button,
@@ -46,7 +57,7 @@ export function ConfirmDelete({
       <div className="dlgactions">
         <button type="button" className="choice danger" onClick={onConfirm}>
           <b>Delete</b>
-          <span>Recoverable for 30 days, then gone for good.</span>
+          <span>{permanent ? 'Gone for good, right now.' : 'Recoverable for 30 days, then gone for good.'}</span>
         </button>
         <button type="button" className="btn ghost wide" onClick={onCancel}>
           Keep it

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeItems } from '@/db/repo';
+import { activeItems, activeSubscriptions } from '@/db/repo';
 import type { Doc, Item } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
@@ -23,6 +23,7 @@ import {
 import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { NudgeBar } from '@/components/NudgeBar';
+import { RenewalNudges } from '@/components/RenewalNudges';
 import { Scout } from '@/components/Scout';
 import { TimeLeft } from '@/components/TimeLeft';
 import { useThumbUrl } from '@/components/useThumbUrl';
@@ -41,6 +42,7 @@ export function Home({
   onOpenItem,
   onBrowse,
   onSettings,
+  onSubs,
 }: {
   propertyId: string;
   onAdd: () => void;
@@ -48,6 +50,7 @@ export function Home({
   onBrowse: (filter?: ItemsFilter) => void;
   /** Where every nudge sends you — each one is answered in Settings. */
   onSettings: () => void;
+  onSubs: () => void;
 }) {
   const [hidden, setHidden] = useState<NudgeKind[]>([]);
 
@@ -62,6 +65,7 @@ export function Home({
   const items = useLiveQuery(() => activeItems(propertyId), [propertyId]);
   const docs = useLiveQuery(() => db.docs.toArray(), []);
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
+  const subs = useLiveQuery(() => activeSubscriptions(propertyId), [propertyId]) ?? [];
 
   if (!items || !docs) return null;
   if (items.length === 0) return <EmptyHome onAdd={onAdd} />;
@@ -94,6 +98,14 @@ export function Home({
         onAct={(n) => (n.kind === 'warranty' ? onBrowse('ending') : onSettings())}
         onDismiss={(n) => setHidden((h) => [...h, n.kind])}
       />
+
+      {/*
+        Renewals, and the only place they can be said. There is no push
+        notification — nothing runs while the app is closed — so opening the
+        app is the entire delivery mechanism, and the wording on the
+        subscription form says exactly that rather than promising an alert.
+      */}
+      <RenewalNudges subs={subs} onOpen={onSubs} />
 
       {m.endingSoon > 0 && (
         <button type="button" className="alert" onClick={() => onBrowse('ending')}>

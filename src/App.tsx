@@ -43,6 +43,8 @@ import { ItemForm } from '@/screens/ItemForm';
 import { Items, type ItemsFilter } from '@/screens/Items';
 import { Placeholder } from '@/screens/Placeholder';
 import { Bin } from '@/screens/Bin';
+import { Subs } from '@/screens/Subs';
+import { SubForm } from '@/screens/SubForm';
 import { Rooms } from '@/screens/Rooms';
 import { Settings } from '@/screens/Settings';
 import './styles/app.css';
@@ -67,6 +69,9 @@ type Screen =
   | { kind: 'add'; from: Origin }
   | { kind: 'rooms' }
   | { kind: 'bin' }
+  | { kind: 'subs' }
+  | { kind: 'addsub' }
+  | { kind: 'editsub'; id: string }
   /*
     `saved` marks the one arrival that came from creating this item, so the
     detail screen can tell you to file the paper copy. It lives on the screen
@@ -86,6 +91,9 @@ const TAB_FOR: Record<Screen['kind'], Tab> = {
   edit: 'items',
   rooms: 'settings',
   bin: 'items',
+  subs: 'subs',
+  addsub: 'subs',
+  editsub: 'subs',
 };
 
 export default function App() {
@@ -278,6 +286,9 @@ const PUSHED: Record<Screen['kind'], boolean> = {
   edit: true,
   rooms: true,
   bin: true,
+  subs: false,
+  addsub: true,
+  editsub: true,
 };
 
 function Shell() {
@@ -390,6 +401,7 @@ function Shell() {
     if (s.kind === 'detail') return s.from === 'home' ? { kind: 'home' } : { kind: 'items' };
     if (s.kind === 'rooms') return { kind: 'settings' };
     if (s.kind === 'bin') return { kind: 'items' };
+    if (s.kind === 'editsub') return { kind: 'subs' };
     return null;
   };
 
@@ -415,6 +427,11 @@ function Shell() {
     setScreen(next);
   };
   const focused = useLiveQuery(async () => (focusId ? db.items.get(focusId) : undefined), [focusId]);
+  const subId = screen.kind === 'editsub' ? screen.id : undefined;
+  const focusedSub = useLiveQuery(
+    async () => (subId ? db.subscriptions.get(subId) : undefined),
+    [subId],
+  );
 
   if (!property || !settings) return <Frame>{null}</Frame>;
 
@@ -443,10 +460,16 @@ function Shell() {
              it floats over that item's own controls while meaning something
              else entirely. A floating action that doesn't belong to the
              screen it's floating over is just a thing in the way. */
+          /* The + offers every kind of record now, so it belongs on the
+             subscriptions tab too — but still not on Settings, where nothing
+             is about adding anything, and not on a pushed screen. */
           onAdd={
             !onTab || tab === 'settings'
               ? undefined
-              : () => go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })
+              : (kind) =>
+                  kind === 'subscription'
+                    ? go({ kind: 'addsub' })
+                    : go({ kind: 'add', from: tab === 'home' ? 'home' : 'items' })
           }
           addDisabled={!mayAdd}
         />
@@ -459,6 +482,7 @@ function Shell() {
           onOpenItem={(id) => go({ kind: 'detail', id, from: 'home' })}
           onBrowse={(filter) => go({ kind: 'items', filter })}
           onSettings={() => go({ kind: 'settings' })}
+          onSubs={() => go({ kind: 'subs' })}
         />
       )}
 
@@ -526,6 +550,33 @@ function Shell() {
 
       {screen.kind === 'bin' && (
         <Bin propertyId={property.id} onBack={() => pop({ kind: 'items' })} />
+      )}
+
+      {screen.kind === 'subs' && (
+        <Subs
+          propertyId={property.id}
+          onAdd={() => go({ kind: 'addsub' })}
+          onOpen={(id) => go({ kind: 'editsub', id })}
+        />
+      )}
+
+      {screen.kind === 'addsub' && (
+        <SubForm
+          propertyId={property.id}
+          currency={settings.currency}
+          onSaved={() => pop({ kind: 'subs' })}
+          onCancel={() => pop({ kind: 'subs' })}
+        />
+      )}
+
+      {screen.kind === 'editsub' && focusedSub && (
+        <SubForm
+          propertyId={property.id}
+          currency={settings.currency}
+          existing={focusedSub}
+          onSaved={() => pop({ kind: 'subs' })}
+          onCancel={() => pop({ kind: 'subs' })}
+        />
       )}
 
       {/*
