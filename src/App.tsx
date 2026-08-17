@@ -449,6 +449,7 @@ function Shell() {
     <Frame
       swipe={onTab ? { tab, onChange: (t) => go({ kind: t }) } : undefined}
       onSwipeBack={up ? () => pop(up) : undefined}
+      hasFab={onTab && tab !== 'settings'}
       nav={
         <BottomNav
           active={tab}
@@ -691,11 +692,14 @@ function Frame({
   nav,
   swipe,
   onSwipeBack,
+  hasFab,
 }: {
   children: ReactNode;
   nav?: ReactNode;
   swipe?: { tab: Tab; onChange: (t: Tab) => void };
   onSwipeBack?: () => void;
+  /** Pads the scroller so the floating button never covers the last row. */
+  hasFab?: boolean;
 }) {
   const body = useRef<HTMLDivElement>(null);
   const tab = swipe?.tab;
@@ -744,7 +748,7 @@ function Frame({
 
         So the container is stable and the animation moved inside it.
       */}
-      <div ref={body} className="app-body">
+      <div ref={body} className={`app-body${hasFab ? ' hasfab' : ''}`}>
         <div className="screen" key={tab ?? 'pushed'}>
           {children}
         </div>

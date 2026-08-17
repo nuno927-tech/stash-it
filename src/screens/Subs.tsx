@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeSubscriptions } from '@/db/repo';
+import { activeSubscriptions, deleteSubscription } from '@/db/repo';
 import type { Subscription } from '@/db/types';
 import { formatMoney } from '@/lib/warranty';
 import {
@@ -14,7 +14,10 @@ import {
   totalMonthlyCents,
   totalYearlyCents,
 } from '@/lib/subscriptions';
+import { feedback } from '@/lib/feedback';
+import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { Scout } from '@/components/Scout';
+import { SwipeRow } from '@/components/SwipeRow';
 import { ServiceMark } from '@/components/ServiceMark';
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -46,6 +49,9 @@ export function Subs({
   // The month being looked at, as an offset from this one. Kept as a number so
   // stepping across a year boundary is arithmetic rather than date handling.
   const [offset, setOffset] = useState(0);
+  // One row open at a time, and a confirmation before anything goes.
+  const [swiped, setSwiped] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<Subscription | null>(null);
   const now = new Date();
   const shown = new Date(now.getFullYear(), now.getMonth() + offset, 1);
 
@@ -168,35 +174,64 @@ export function Subs({
               .sort((a, b) => (daysUntilRenewal(a, now) ?? 999) - (daysUntilRenewal(b, now) ?? 999))
               .map((s) => (
                 <li key={s.id}>
-                  <button type="button" className="subrow" onClick={() => onOpen(s.id)}>
-                    <ServiceMark
-                      serviceId={s.serviceId}
-                      logoBlobId={s.logoBlobId}
-                      name={s.name}
-                      size={36}
-                    />
-                    <span className="subtxt">
-                      <strong>{s.name}</strong>
-                      <small>
-                        {/* No reminder state here. Reminders are a home-screen
-                            thing — this screen is what you pay and when, and a
-                            second place showing the same setting is a second
-                            place for it to look wrong. */}
-                        {CADENCE_LABEL[s.cadence]} · {ordinal(nextRenewal(s, now)?.getDate() ?? 1)}
-                      </small>
-                    </span>
-                    <span className="subcost">
-                      <strong>{formatMoney(s.amountCents, s.currency)}</strong>
-                      {s.cadence !== 'monthly' && (
-                        <small>{formatMoney(monthlyCents(s), s.currency)}/mo</small>
-                      )}
-                    </span>
-                  </button>
+                  {/*
+                    Same gesture as the items list, but the button asks first:
+                    a subscription is hard-deleted, so there is no bin behind a
+                    mis-tap the way there is for an item.
+                  */}
+                  <SwipeRow
+                    open={swiped === s.id}
+                    onOpenChange={(o) => setSwiped(o ? s.id : null)}
+                    deleteLabel={`Delete ${s.name}`}
+                    onDelete={() => setConfirming(s)}
+                  >
+                    <button
+                      type="button"
+                      className="subrow"
+                      onClick={() => (swiped === s.id ? setSwiped(null) : onOpen(s.id))}
+                    >
+                      <ServiceMark
+                        serviceId={s.serviceId}
+                        logoBlobId={s.logoBlobId}
+                        name={s.name}
+                        size={36}
+                      />
+                      <span className="subtxt">
+                        <strong>{s.name}</strong>
+                        <small>
+                          {/* No reminder state here. Reminders are a home-screen
+                              thing — this screen is what you pay and when, and a
+                              second place showing the same setting is a second
+                              place for it to look wrong. */}
+                          {CADENCE_LABEL[s.cadence]} · {ordinal(nextRenewal(s, now)?.getDate() ?? 1)}
+                        </small>
+                      </span>
+                      <span className="subcost">
+                        <strong>{formatMoney(s.amountCents, s.currency)}</strong>
+                        {s.cadence !== 'monthly' && (
+                          <small>{formatMoney(monthlyCents(s), s.currency)}/mo</small>
+                        )}
+                      </span>
+                    </button>
+                  </SwipeRow>
                 </li>
               ))}
           </ul>
 
         </>
+      )}
+
+      {confirming && (
+        <ConfirmDelete
+          name={confirming.name}
+          permanent
+          onConfirm={() => {
+            void deleteSubscription(confirming.id).then(() => feedback('delete'));
+            setConfirming(null);
+            setSwiped(null);
+          }}
+          onCancel={() => setConfirming(null)}
+        />
       )}
     </>
   );

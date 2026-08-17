@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeItems, activeSubscriptions } from '@/db/repo';
-import type { Doc, Item } from '@/db/types';
+import type { Doc, Item, Subscription } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind, type Metrics } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
 import {
@@ -14,6 +14,12 @@ import {
 } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
 import {
+  daysUntilRenewal,
+  renewalLabel,
+  totalMonthlyCents,
+  totalYearlyCents,
+} from '@/lib/subscriptions';
+import {
   effectiveExpiry,
   formatMoney,
   warrantyLabel,
@@ -24,6 +30,7 @@ import type { ItemsFilter } from '@/screens/Items';
 import { ItemIcon } from '@/components/ItemIcon';
 import { NudgeBar } from '@/components/NudgeBar';
 import { RenewalNudges } from '@/components/RenewalNudges';
+import { ServiceMark } from '@/components/ServiceMark';
 import { Scout } from '@/components/Scout';
 import { TimeLeft } from '@/components/TimeLeft';
 import { useThumbUrl } from '@/components/useThumbUrl';
@@ -154,6 +161,14 @@ export function Home({
       )}
 
       <NeedsCard items={items} docs={docs} onBrowse={onBrowse} />
+
+      {/*
+        What the recurring charges add up to. On the dashboard because it's the
+        one figure in the app that changes without anybody touching it — items
+        cost money once, subscriptions cost money every month whether or not
+        you open the app.
+      */}
+      <SubsSummary subs={subs} currency={settings?.currency ?? 'USD'} onOpen={onSubs} />
 
       <div className="seclabel" style={{ marginTop: 28 }}>
         <span>Recently added</span>
@@ -411,6 +426,73 @@ function RecentCard({ item, onOpen }: { item: Item; onOpen: (id: string) => void
       <strong>{item.name}</strong>
       <small>{[item.brand, item.purchaseDate?.slice(0, 4)].filter(Boolean).join(' · ') || ' '}</small>
     </button>
+  );
+}
+
+/**
+ * The subscription figures, on the dashboard.
+ *
+ * Monthly leads because it's the number people carry in their heads, and the
+ * yearly one sits beside it because twelve times a small number is the part
+ * that surprises people. The next renewal is the only actionable thing here,
+ * so it gets its own line rather than a third tile.
+ */
+function SubsSummary({
+  subs,
+  currency,
+  onOpen,
+}: {
+  subs: Subscription[];
+  currency: string;
+  onOpen: () => void;
+}) {
+  if (subs.length === 0) return null;
+
+  const now = new Date();
+  const soonest = [...subs].sort(
+    (a, b) => (daysUntilRenewal(a, now) ?? 999) - (daysUntilRenewal(b, now) ?? 999),
+  )[0]!;
+  const days = daysUntilRenewal(soonest, now);
+
+  return (
+    <>
+      <div className="seclabel" style={{ marginTop: 28 }}>
+        <span>Subscriptions</span>
+        <button type="button" className="linkish" onClick={onOpen}>
+          See all
+        </button>
+      </div>
+
+      <button type="button" className="subsummary" onClick={onOpen}>
+        <span className="subsum-figures">
+          <span>
+            <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
+            <small>a month</small>
+          </span>
+          <span>
+            <strong>{formatMoney(totalYearlyCents(subs), currency)}</strong>
+            <small>a year</small>
+          </span>
+          <span>
+            <strong>{subs.length}</strong>
+            <small>{subs.length === 1 ? 'service' : 'services'}</small>
+          </span>
+        </span>
+
+        <span className="subsum-next">
+          <ServiceMark
+            serviceId={soonest.serviceId}
+            logoBlobId={soonest.logoBlobId}
+            name={soonest.name}
+            size={26}
+          />
+          <span>
+            {soonest.name} · {renewalLabel(days).toLowerCase()}
+          </span>
+          <b>{formatMoney(soonest.amountCents, soonest.currency)}</b>
+        </span>
+      </button>
+    </>
   );
 }
 

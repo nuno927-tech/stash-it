@@ -26,10 +26,24 @@
   overflow-y: auto;
   padding: 18px 16px 24px;
   -webkit-overflow-scrolling: touch;
+  /* See `.app-body.hasfab` — the floating button sits over this. */
   /* Vertical scrolling stays the browser's; horizontal is ours to interpret.
      Without this, Chrome can claim a diagonal drag as a scroll and the swipe
      never completes. */
   touch-action: pan-y;
+}
+
+/*
+  The Stash it button floats over the bottom of the scroller: it is 52px tall
+  and sits 88px up from the bottom of a 74px nav, so it covers the last 66
+  pixels of whatever is on screen — which was always the last row in the list.
+
+  A scroller can't be told "leave room for an absolutely positioned sibling",
+  so the room is padding, and only on the screens the button appears on. On a
+  form the save bar has its own clearance and this would just be a gap.
+*/
+.app-body.hasfab {
+  padding-bottom: 96px;
 }
 
 /* Keyed by tab, so switching remounts it and this runs. The scroll container
@@ -405,11 +419,42 @@ button.coverstat:active {
   object-fit: cover;
 }
 
+/*
+  The countdown, over whatever photograph happens to be behind it.
+
+  It was a 10px chip on a translucent wash, which is legible on a card and not
+  legible at all on a picture of a fridge — the wash takes the colour of what's
+  under it, so the contrast was whatever the photo felt like giving. Opaque
+  base, bigger type, and the state colour carried by the text rather than by a
+  tint that a photo can wash out.
+*/
 .recentart .chip {
   position: absolute;
   left: 7px;
   bottom: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 5px 10px;
+  background: rgba(13, 15, 18, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(6px);
+}
+
+.recentart .chip.ok {
+  color: var(--moss);
+}
+
+.recentart .chip.warn {
+  color: var(--honey);
+}
+
+.recentart .chip.dead {
+  color: var(--ember);
+}
+
+.recentart .chip.none {
+  color: var(--text);
 }
 
 .recenttile strong {
@@ -3639,6 +3684,81 @@ button.countpill.tappill:active {
 /* Shown only when there's something to hide — see the note in Items. */
 .lapsedpick.on {
   border-color: var(--wash-gold-line);
+}
+
+/* ------------------------------------------- subscriptions, on the dashboard */
+
+.subsummary {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--slate-700);
+  color: inherit;
+  text-align: left;
+}
+
+.subsummary:active {
+  background: var(--slate-600);
+}
+
+.subsum-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.subsum-figures > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.subsum-figures strong {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subsum-figures small {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* The only thing here you can act on, so it gets its own line under a rule
+   rather than becoming a fourth number nobody reads. */
+.subsum-next {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--slate-600);
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.subsum-next > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subsum-next b {
+  flex: none;
+  font-weight: 500;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ------------------------------------------------- renewals, on the home tab */
