@@ -85,6 +85,49 @@ export function metricsFor(items: Item[], docs: Doc[]): Metrics {
   };
 }
 
+/**
+ * What the collection is worth, per currency, largest first.
+ *
+ * Never converted. An offline app has no exchange rates and inventing one
+ * would produce a total that is confidently wrong and impossible to check —
+ * so a mixed collection reports its biggest currency and says which.
+ *
+ * Split out of `metricsFor` when this moved off the dashboard and onto the
+ * items list, where it belongs: it is a fact about what you own, not about
+ * what needs you.
+ */
+export function valueByCurrency(items: Item[]): { currency: string; cents: number }[] {
+  const totals = new Map<string, number>();
+  for (const item of items) {
+    if (item.deletedAt || item.purchasePriceCents == null) continue;
+    const c = item.currency ?? 'USD';
+    totals.set(c, (totals.get(c) ?? 0) + item.purchasePriceCents);
+  }
+  return [...totals.entries()]
+    .map(([currency, cents]) => ({ currency, cents }))
+    .sort((a, b) => b.cents - a.cents);
+}
+
+/**
+ * "$12.4K" once the number gets long.
+ *
+ * The exact figure belongs in a report; a line this size is read at a glance,
+ * and Intl already knows how every locale abbreviates.
+ */
+export function shortMoney({ currency, cents }: { currency: string; cents: number }): string {
+  const units = cents / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      notation: units >= 10_000 ? 'compact' : 'standard',
+      maximumFractionDigits: units >= 10_000 ? 1 : 0,
+    }).format(units);
+  } catch {
+    return `${Math.round(units)}`;
+  }
+}
+
 /* ------------------------------------------------------------------ gaps */
 
 /**

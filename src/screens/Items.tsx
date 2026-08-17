@@ -4,6 +4,7 @@ import { db } from '@/db/db';
 import { activeItems, activeRooms, deletedItems, softDeleteItem } from '@/db/repo';
 import type { Item } from '@/db/types';
 import { binSummary } from '@/lib/bin';
+import { shortMoney, valueByCurrency } from '@/lib/dashboard';
 import { prefsFrom } from '@/lib/prefs';
 import { matchSummary, searchItems } from '@/lib/search';
 import { effectiveExpiry, warrantyState } from '@/lib/warranty';
@@ -157,6 +158,12 @@ export function Items({
   const groups = useMemo(() => groupItems(filtered, rooms, sort), [filtered, rooms, sort]);
   const lapsed = all.filter((i) => warrantyState(i) === 'expired').length;
 
+  // Totalled over everything owned, not over what the filters are showing —
+  // "recorded value" that changed when you tapped a chip would be a different
+  // number every time you looked at it.
+  const values = valueByCurrency(all);
+  const worth = values[0];
+
   if (!items) return null;
 
   if (all.length === 0) {
@@ -191,6 +198,25 @@ export function Items({
         <header className="apphead">
           <div className="apptitle">Items</div>
         </header>
+
+        {/*
+          What the collection is worth, on the screen that is the collection.
+
+          It was on the dashboard, paired with a count, and it was the wrong
+          question for that screen — the dashboard answers "is anything wrong",
+          and this is a fact about what you own rather than about what needs
+          you. Here it sits directly above the list it totals.
+
+          Never converted between currencies: an offline app has no rates, so a
+          mixed collection shows its largest currency and says which.
+        */}
+        <p className="itemsworth">
+          <strong>{worth ? shortMoney(worth) : '—'}</strong>
+          <span>
+            recorded across {all.length} {all.length === 1 ? 'item' : 'items'}
+            {values.length > 1 ? ` · ${worth!.currency}` : ''}
+          </span>
+        </p>
 
         <div className="itemsmark">
           <Scout pose="receipt" height={104} motion={['breathe']} alt="" />

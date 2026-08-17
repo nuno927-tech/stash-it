@@ -9,11 +9,14 @@ import {
   daysUntilRenewal,
   monthlyCents,
   nextRenewal,
+  heaviest,
   ordinal,
   renewalsInMonth,
   spendByMonth,
+  spread,
   totalMonthlyCents,
   totalYearlyCents,
+  type MonthSpend,
 } from '@/lib/subscriptions';
 import { feedback } from '@/lib/feedback';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
@@ -189,6 +192,15 @@ export function Subs({
             <Scout pose="calendar" height={104} motion={['breathe']} alt="" />
           </div>
 
+          {/*
+            The six-month chart. It lived on the dashboard, which was the wrong
+            tab: the dashboard answers "is anything wrong", and this answers
+            "which month should I brace for" — a question you only ask once you
+            are already here. It also sits directly above the calendar it
+            summarises, so the year and the month are one scroll apart.
+          */}
+          <SpendChart subs={subs} currency={currency} />
+
           <div className="calendar">
             <div className="calhead">
               <button
@@ -337,6 +349,84 @@ export function Subs({
       )}
     </>
   );
+}
+
+/**
+ * Six months of real charges, as bars.
+ *
+ * THE POINT OF DRAWING THIS. Every other figure on this screen is an average,
+ * and an average hides the only thing about subscription spending that ever
+ * catches anyone out: it isn't level. Three annual plans that happen to renew
+ * in the same month make that month cost four times its neighbours, and no
+ * amount of looking at "$94 a month" will tell you which month to brace for.
+ *
+ * THE DASHED LINE is the monthly average, drawn across the actual bars. It's
+ * there to be disagreed with. The gap between the line and the tall bar is the
+ * difference between the two numbers this app keeps carefully apart — what
+ * subscriptions cost you, and what actually leaves in March — and one glance
+ * at it explains that better than the sentence you're reading.
+ *
+ * No hero figure on it any more: the four pills at the top of this screen
+ * already say what a month costs, and saying it twice on one screen is worse
+ * than saying it once anywhere.
+ */
+function SpendChart({ subs, currency }: { subs: Subscription[]; currency: string }) {
+  const now = new Date();
+  const spend = spendByMonth(subs, 6, now);
+  const monthly = totalMonthlyCents(subs);
+  const peak = Math.max(monthly, ...spend.map((m) => m.cents));
+
+  // Everything is drawn against the taller of the peak month and the average
+  // line, so the line can never fall off the top of its own chart.
+  const height = (cents: number) => (peak === 0 ? 0 : (cents / peak) * 100);
+
+  return (
+    <div className="spendcard">
+      <span className="spendchart">
+        <i className="spendavg" style={{ bottom: `${height(monthly)}%` }} aria-hidden="true" />
+        {spend.map((m, i) => (
+          <span
+            key={`${m.year}-${m.month}`}
+            className={`spendcol${i === 0 ? ' now' : ''}`}
+            title={`${monthName(m, 'long')} — ${formatMoney(m.cents, currency)}, ${m.count} ${
+              m.count === 1 ? 'charge' : 'charges'
+            }`}
+          >
+            <i style={{ height: `${height(m.cents)}%` }} />
+            <em>{monthName(m, 'short')}</em>
+          </span>
+        ))}
+      </span>
+
+      <span className="spendnote">{spendNote(spend, currency)}</span>
+    </div>
+  );
+}
+
+/**
+ * One sentence about the chart, and only when there's a sentence to write.
+ *
+ * The threshold matters more than the wording. Naming a "heaviest month" that
+ * costs four percent more than its neighbours is the screen inventing a
+ * finding, and a reader who checks one of those and finds nothing there stops
+ * reading all of them.
+ */
+function spendNote(spend: MonthSpend[], currency: string): string {
+  const top = heaviest(spend);
+  const last = spend[spend.length - 1];
+  if (!top || !last) return 'Nothing due in the next six months.';
+
+  if (spread(spend) < 1.4) {
+    return `Level from here to ${monthName(last, 'long')} — no month stands out.`;
+  }
+
+  return `${monthName(top, 'long')} is the heavy one: ${formatMoney(top.cents, currency)} across ${
+    top.count
+  } ${top.count === 1 ? 'charge' : 'charges'}.`;
+}
+
+function monthName(m: MonthSpend, length: 'short' | 'long'): string {
+  return new Date(m.year, m.month, 1).toLocaleDateString(undefined, { month: length });
 }
 
 /** Leading blanks so the 1st lands under the right weekday, Monday first. */

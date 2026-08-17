@@ -502,7 +502,8 @@ function Shell() {
           onBrowse={(filter) => go({ kind: 'items', filter })}
           onSettings={() => go({ kind: 'settings' })}
           onSubs={() => go({ kind: 'subs' })}
-          onPapers={() => go({ kind: 'papers' })}
+          onOpenSub={(id) => go({ kind: 'editsub', id })}
+          onOpenPaper={(id) => go({ kind: 'editpaper', id })}
         />
       )}
 

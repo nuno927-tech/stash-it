@@ -3797,6 +3797,199 @@ button.countpill.tappill:active {
   border-color: var(--wash-gold-line);
 }
 
+/* ------------------------------------------------ coming up, on the dashboard */
+
+/* What the ring counts, said in words underneath it. Subscriptions are absent
+   on purpose — one can't lapse, so it has no state for the ring to hold. */
+.coverfoot {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--slate-600);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.coverfoot b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.duelist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+  One row per dated thing, across all three kinds. Flat rows with a hairline,
+  the same shape as the items and subscriptions lists — this is a third list of
+  records and inventing a fourth look for it would only make the app bigger.
+*/
+.duerow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 2px;
+  border: none;
+  border-bottom: 1px solid var(--slate-700);
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.duerow:active {
+  background: var(--slate-700);
+}
+
+/*
+  The border on anything overdue or inside its window.
+
+  A ring rather than a fill, and a quiet one. These rows are already first in
+  the list and already carry a coloured dot and a red countdown — a solid fill
+  on top of that is the fourth way of saying the same thing, and on a bad week
+  four filled rows in a row stop reading as urgent and start reading as the
+  background. The outline says "this one" without shouting it.
+*/
+.duerow.flagged {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 4px;
+}
+
+.duetxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.duetxt strong {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duetxt small {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Days rather than a date: the date is already on the line to the left, and
+   this column exists to be compared down the page. */
+.duewhen {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.duewhen.dead {
+  color: var(--ember);
+  font-weight: 500;
+}
+
+.duewhen.warn {
+  color: var(--honey);
+  font-weight: 500;
+}
+
+.duemore {
+  width: 100%;
+  padding: 11px 2px 2px;
+  border: none;
+  background: none;
+  color: var(--gold);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+}
+
+/* The dot carries the bucket, in the ring's own palette. */
+.dot.gold {
+  background: var(--gold);
+}
+
+/* Nothing due — the one state the old dashboard never had, because three
+   separate "next up" rows always had something in them. */
+.allclear {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 10px;
+}
+
+.allclear strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.allclear small {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The running cost, above the timeline so it frames the renewals in it. */
+.runcost {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--slate-700);
+  color: inherit;
+  text-align: left;
+}
+
+.runcost:active {
+  background: var(--slate-600);
+}
+
+.runcost > strong {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 30px;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.runcost > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.runcost b {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
 /* ------------------------------------------- subscriptions, on the dashboard */
 
 /*
@@ -4522,6 +4715,30 @@ button.calcell {
 
 .itemshead .chiprow::-webkit-scrollbar {
   display: none;
+}
+
+/* What the collection is worth, under the title and above the list it totals.
+   Off the dashboard, which answers "is anything wrong" — this is a fact about
+   what you own, not about what needs you. */
+.itemsworth {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: -2px 0 12px;
+}
+
+.itemsworth strong {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 27px;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.itemsworth span {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
 }
 
 /* Anchored to the bottom of the block so his feet land on the filter row,
