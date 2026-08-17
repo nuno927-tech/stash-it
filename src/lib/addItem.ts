@@ -60,7 +60,14 @@ export interface CoverageDraft {
 export function blankCoverage(overrides: Partial<CoverageDraft> = {}): CoverageDraft {
   return {
     key: newId(),
-    label: '',
+    /*
+      Pre-selected rather than blank. Almost every policy anyone records is
+      just "the warranty", and `toCoverage` already falls back to this name
+      when the field is left empty — so the blank row was asking a question it
+      was going to answer the same way regardless, and showing "What is this
+      one for?" over a row of unpicked buttons made it look required.
+    */
+    label: DEFAULT_COVERAGE_LABEL,
     covers: '',
     unit: 'months',
     amount: '',

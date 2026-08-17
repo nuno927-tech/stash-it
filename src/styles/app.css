@@ -1494,7 +1494,14 @@ select.compact {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
   gap: 12px;
-  align-items: start;
+  /*
+    No `align-items: start`. It was here and it silently undid the whole thing:
+    a subgrid child has to be stretched to take part in its parent's rows, and
+    `start` shrinks it to its own content instead. The rows then collapse per
+    field, which is exactly the behaviour subgrid was added to replace — pairs
+    with equal-length labels looked fine, and Model/Serial number and Policy
+    number/Claims phone did not.
+  */
 }
 
 .fieldpair > .field {
@@ -3244,13 +3251,19 @@ button.countpill.tappill:active {
 
 /* --------------------------------------------------------- doc attaching */
 
-/* All five in one grid. Three-plus-a-"Something else"-link was two glances
-   and, in a card this narrow, a clipped label. Five columns is tight but the
-   glyph carries it — the words underneath are confirmation, not the control. */
+/* Six tiles, three across, two rows. Five in a single row fitted but put the
+   labels at nine pixels; three gives each one room to say what it is, and the
+   web link joins them as a sixth rather than sitting underneath as a text
+   link nobody pressed. */
 .doctiles {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+/* Above the tiles rather than below them, so it reads as their caption. */
+.dochint {
+  margin-bottom: 11px;
 }
 
 /* On the item page there's no card behind them, and the default fill is the

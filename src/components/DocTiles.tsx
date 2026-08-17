@@ -34,9 +34,18 @@ export const DOC_KIND_ORDER: DocKind[] = ['receipt', 'warranty', 'manual', 'phot
 
 export function DocTiles({
   onFiles,
+  onLink,
   raised,
 }: {
   onFiles: (kind: DocKind, files: File[]) => void;
+  /**
+   * Linking to something on the web. A sixth tile rather than a text link
+   * underneath, because it is the same decision as the other five — what kind
+   * of thing is this — and the only difference is where the bytes come from.
+   * As a link it read as an afterthought, which is roughly how often it was
+   * used.
+   */
+  onLink?: () => void;
   /** For screens where the tiles sit on the page rather than inside a card —
       the default fill is the page's own colour and would vanish. */
   raised?: boolean;
@@ -58,10 +67,20 @@ export function DocTiles({
 
   return (
     <>
+      {/* Three across, so six fall into two even rows. Five in a row of five
+          was legible but the labels were down to nine pixels. */}
       <div className={`doctiles${raised ? ' raised' : ''}`}>
         {DOC_KIND_ORDER.map((k) => (
           <Tile key={k} kind={k} onOpen={open} />
         ))}
+        {onLink && (
+          <div className="doctile">
+            <button type="button" className="doctile-main" onClick={onLink}>
+              <LinkGlyph />
+              On the web
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Two inputs: one for files, one that forces the camera. Both accept
@@ -132,6 +151,26 @@ function Tile({
         </svg>
       </button>
     </div>
+  );
+}
+
+/** The odd one out: not a file, so not a DocKind glyph. */
+function LinkGlyph() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 13.5a3.5 3.5 0 005 0l3-3a3.5 3.5 0 00-5-5l-1 1" />
+      <path d="M14 10.5a3.5 3.5 0 00-5 0l-3 3a3.5 3.5 0 005 5l1-1" />
+    </svg>
   );
 }
 

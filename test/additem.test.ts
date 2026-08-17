@@ -103,6 +103,25 @@ async function main() {
     draftFromForm(form({ purchaseDate: '' }), property.id, undefined, false).name === 'Test item',
   );
 
+  /* ------------------------------------------------- the coverage default */
+
+  /*
+    A new policy row starts on "Warranty" rather than unpicked. `toCoverage`
+    already fell back to that name for a blank label, so the empty row was
+    asking a question it was going to answer the same way anyway — while
+    looking, with none of the six buttons lit, like something you had to
+    answer before saving.
+  */
+  check('a blank form starts on Warranty', emptyForm('USD').coverages[0]!.label === 'Warranty');
+  check('and so does a second policy', blankCoverage().label === 'Warranty');
+  check('an explicit label still wins', blankCoverage({ label: 'Fabric' }).label === 'Fabric');
+  // The fallback stays, for records and forms built before this default.
+  check(
+    'a cleared label still saves as Warranty',
+    draftFromForm(form({ coverages: cover({ label: '' }) }), property.id).coverages?.[0]?.label ===
+      'Warranty',
+  );
+
   /* -------------------------------------------------------------- shape */
 
   const draft = draftFromForm(

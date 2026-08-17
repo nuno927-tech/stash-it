@@ -60,14 +60,20 @@ export function DocsField({
         {count > 0 && <span className="countpill">{count}</span>}
       </div>
 
-      <DocTiles onFiles={take} />
+      {/* Said once, at the top, where it explains the six buttons underneath
+          rather than turning up after them as a footnote. Only while there's
+          nothing attached: once you've added a receipt, being told what a
+          claim asks for is a sentence you've already acted on. */}
+      {count === 0 && (
+        <p className="hint dochint">
+          The receipt and the warranty are the two a claim will ask for. Tap to choose a file, the
+          camera to photograph it, or the last one to link to something on the web.
+        </p>
+      )}
 
-      {/* The one attachment a file picker can't make. It was only ever on the
-          item page, so a manual you had the URL for while adding something had
-          to wait until after saving. */}
-      <button type="button" className="linkish morelink" onClick={() => setLinking(true)}>
-        Link to one on the web
-      </button>
+      {/* The web link is the sixth tile now — it's the same decision as the
+          other five, and the only difference is where the bytes come from. */}
+      <DocTiles onFiles={take} onLink={() => setLinking(true)} />
 
       {linking && (
         <LinkDoc
@@ -145,12 +151,6 @@ export function DocsField({
         </ul>
       )}
 
-      {count === 0 && (
-        <p className="hint">
-          The receipt and the warranty are the two a claim will ask for. Tap to choose a file, or
-          the camera to photograph it.
-        </p>
-      )}
     </section>
   );
 }
