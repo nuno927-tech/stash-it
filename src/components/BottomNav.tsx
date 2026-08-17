@@ -7,26 +7,66 @@ export type Tab = 'home' | 'items' | 'subs' | 'settings';
 /** What the + can create. Adding a third later means one entry here. */
 export type AddKind = 'item' | 'subscription';
 
+/*
+ * Scout's world, at 26px.
+ *
+ * The set was a generic house, drawer, calendar and cog — correct, and from a
+ * different app. These are an oak, a hoard, a season and a nut, which is the
+ * same four ideas told by a squirrel.
+ *
+ * THE SIZE AND THE STROKE GO TOGETHER. A stroke scales with its viewBox, so
+ * simply drawing an icon larger buys no detail at all — everything grows in
+ * proportion and the composition is exactly as legible as it was. What buys
+ * detail is the *ratio* of pen to picture, so these went from 21px at stroke
+ * 2.0 to 26px at 1.7. That is what makes the hollow in the tree a hollow
+ * rather than a filled dot.
+ *
+ * Three acorns were drawn and rejected: at 26px each one is nine pixels tall
+ * and the pile reads as texture. The budget for a three-object composition is
+ * around 34px, which a nav bar does not have. Two acorns still say "several".
+ */
 const ICONS: Record<Tab, ReactNode> = {
-  home: <path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" />,
+  // An oak with a hollow in it — where a squirrel actually lives, rather than
+  // a house with a chimney.
+  home: (
+    <>
+      <path d="M12 3.2c-3.1 0-5.4 2.2-5.4 4.8 0 .8.2 1.5.7 2.1-1.3.8-2 1.9-2 3.1 0 2.2 2 3.9 4.6 3.9h4.2c2.6 0 4.6-1.7 4.6-3.9 0-1.2-.7-2.3-2-3.1.5-.6.7-1.3.7-2.1 0-2.6-2.3-4.8-5.4-4.8z" />
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M12 17.1V21" />
+    </>
+  ),
+  // The hoard. Two, not three — see above.
   items: (
     <>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M3 9h18M9 20V9" />
+      <path d="M4.2 10.6c0-1.5 1.7-2.7 3.8-2.7s3.8 1.2 3.8 2.7z" />
+      <path d="M4.2 10.6h7.6" />
+      <path d="M5.4 10.6c0 3.3 1.2 5.7 2.6 5.7s2.6-2.4 2.6-5.7" />
+      <path d="M12.6 15.2c0-1.3 1.4-2.3 3.2-2.3s3.2 1 3.2 2.3z" />
+      <path d="M12.6 15.2h6.4" />
+      <path d="M13.6 15.2c0 2.8 1 4.8 2.2 4.8s2.2-2 2.2-4.8" />
     </>
   ),
+  /*
+    An acorn that comes round again. There is no squirrel-native symbol for
+    "every month", so the two-arrow cycle carries the meaning — everyone
+    already reads it — and the acorn inside makes it ours without touching the
+    part doing the work.
+  */
   subs: (
     <>
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
-      <circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="15.5" cy="17.5" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M20.4 12a8.4 8.4 0 01-13.6 6.6" />
+      <path d="M3.6 12a8.4 8.4 0 0113.6-6.6" />
+      <path d="M3.4 8.2v3.8h3.8M20.6 15.8V12h-3.8" />
+      <path d="M9.4 10.4c0-1.2 1.2-2.1 2.6-2.1s2.6.9 2.6 2.1z" />
+      <path d="M9.4 10.4h5.2M10.3 10.4c0 2.4.8 4.1 1.7 4.1s1.7-1.7 1.7-4.1" />
     </>
   ),
+  // A nut, in both senses. The pun is free and the hexagon is the most robust
+  // shape in the set — it was legible at 21px and it is legible at 12.
   settings: (
     <>
-      <circle cx="12" cy="12" r="3.2" />
-      <path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1v.3a2 2 0 11-4 0V21a1.6 1.6 0 00-2.8-1.1l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.1-2.8l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 0010 4.3V4a2 2 0 014 0v.3a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z" />
+      <path d="M12 2.8 20 7.4v9.2L12 21.2 4 16.6V7.4z" />
+      <circle cx="12" cy="12" r="3" />
     </>
   ),
 };
@@ -202,14 +242,16 @@ export function BottomNav({
           aria-current={t === active ? 'page' : undefined}
         >
           <span className="navpill">
+            {/* 26 at 1.7, not 21 at 2.0 — see the note on ICONS. */}
             <svg
-              width="21"
-              height="21"
+              width="26"
+              height="26"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.7"
               strokeLinecap="round"
+              strokeLinejoin="round"
             >
               {ICONS[t]}
             </svg>

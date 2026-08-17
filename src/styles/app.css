@@ -1847,9 +1847,12 @@ a.pick {
   border: none;
 }
 
+/* Grown with the icons inside it. At 30px a 26px mark had two pixels of air
+   and the gold wash on the active tab read as a border round the glyph rather
+   than as a background behind it. 34 keeps the four it had at 21. */
 .navpill {
   width: 56px;
-  height: 30px;
+  height: 34px;
   border-radius: var(--r-pill);
   display: grid;
   place-items: center;
