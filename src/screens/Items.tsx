@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeItems, activeRooms, deletedItems } from '@/db/repo';
+import { activeItems, activeRooms, deletedItems, softDeleteItem } from '@/db/repo';
 import type { Item } from '@/db/types';
 import { binSummary } from '@/lib/bin';
 import { prefsFrom } from '@/lib/prefs';
 import { matchSummary, searchItems } from '@/lib/search';
 import { effectiveExpiry, warrantyState } from '@/lib/warranty';
+import { feedback } from '@/lib/feedback';
 import { ItemRow } from '@/components/ItemRow';
+import { SwipeRow } from '@/components/SwipeRow';
 import { Scout } from '@/components/Scout';
 import { RoomIcon } from '@/components/RoomIcon';
 
@@ -81,6 +83,18 @@ export function Items({
   const [sort, setSort] = useState<Sort>('expiry');
   const [active, setActive] = useState<ItemsFilter | undefined>(filter);
 
+  /*
+    Lapsed items stay in the list by default. Cover ending doesn't stop you
+    owning the thing — the receipt, the serial number and the manual are all
+    still worth having, and a fridge that vanishes from your inventory the day
+    its warranty runs out is an inventory you can't trust. The toggle is for
+    the other mood: "what is still covered".
+  */
+  const [showLapsed, setShowLapsed] = useState(true);
+
+  // One row open at a time, so "tap anywhere else to close" means something.
+  const [swiped, setSwiped] = useState<string | null>(null);
+
   // Which rooms the user has toggled away from the default this session.
   // Storing the exceptions rather than the state means changing the setting
   // takes effect immediately, without fighting whatever was toggled earlier.
@@ -103,14 +117,24 @@ export function Items({
   );
 
   const filtered = useMemo(() => {
-    if (!active) return all;
+    /*
+      Hiding lapsed items must never hide the ones you asked to see. Picking
+      the "Lapsed" chip and getting an empty list because a toggle elsewhere
+      says otherwise is the sort of contradiction that reads as a broken app.
+    */
+    const lapsedOk = (list: Item[]) =>
+      showLapsed || active === 'expired'
+        ? list
+        : list.filter((i) => warrantyState(i) !== 'expired');
+
+    if (!active) return lapsedOk(all);
     const live = docs.filter((d) => !d.deletedAt);
     const withProof = new Set(
       live.filter((d) => d.kind === 'receipt' || d.kind === 'warranty').map((d) => d.itemId),
     );
     const withReceipt = new Set(live.filter((d) => d.kind === 'receipt').map((d) => d.itemId));
 
-    return all.filter((i) => {
+    return lapsedOk(all).filter((i) => {
       switch (active) {
         case 'ending':
           return warrantyState(i) === 'ending-soon';
@@ -128,9 +152,10 @@ export function Items({
           return !withProof.has(i.id);
       }
     });
-  }, [all, active, docs]);
+  }, [all, active, docs, showLapsed]);
 
   const groups = useMemo(() => groupItems(filtered, rooms, sort), [filtered, rooms, sort]);
+  const lapsed = all.filter((i) => warrantyState(i) === 'expired').length;
 
   if (!items) return null;
 
@@ -227,6 +252,20 @@ export function Items({
                 {SORT_LABEL[s]}
               </button>
             ))}
+
+            {/* Offered only when there's something to hide. A toggle for a
+                category you don't own anything in is a control that does
+                nothing, sitting where a useful one could be. */}
+            {lapsed > 0 && (
+              <button
+                type="button"
+                className={`pick lapsedpick${showLapsed ? ' on' : ''}`}
+                aria-pressed={showLapsed}
+                onClick={() => setShowLapsed((v) => !v)}
+              >
+                {showLapsed ? `Lapsed shown · ${lapsed}` : `Lapsed hidden · ${lapsed}`}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -249,7 +288,13 @@ export function Items({
               g.title === null ? (
                 <section key={g.key}>
                   {g.items.map((item) => (
-                    <ItemRow key={item.id} item={item} onOpen={onOpenItem} />
+                    <Row
+                      key={item.id}
+                      item={item}
+                      open={swiped === item.id}
+                      onOpenChange={(o) => setSwiped(o ? item.id : null)}
+                      onOpenItem={onOpenItem}
+                    />
                   ))}
                 </section>
               ) : (
@@ -293,7 +338,13 @@ export function Items({
                   {isOpen(g.key) && (
                     <div className="roomitems">
                       {g.items.map((item) => (
-                        <ItemRow key={item.id} item={item} onOpen={onOpenItem} />
+                        <Row
+                          key={item.id}
+                          item={item}
+                          open={swiped === item.id}
+                          onOpenChange={(o) => setSwiped(o ? item.id : null)}
+                          onOpenItem={onOpenItem}
+                        />
                       ))}
                     </div>
                   )}
@@ -306,6 +357,41 @@ export function Items({
 
       <BinLink binned={binned} onOpenBin={onOpenBin} />
     </>
+  );
+}
+
+/**
+ * One row, with the delete offer behind it.
+ *
+ * Soft delete, so it lands in Recently deleted with its thirty days rather
+ * than going for good — a swipe is the easiest gesture in the app to make by
+ * accident, and this is the one place in the list that can remove something.
+ */
+function Row({
+  item,
+  open,
+  onOpenChange,
+  onOpenItem,
+}: {
+  item: Item;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onOpenItem: (id: string) => void;
+}) {
+  return (
+    <SwipeRow
+      open={open}
+      onOpenChange={onOpenChange}
+      deleteLabel={`Delete ${item.name}`}
+      onDelete={() => {
+        void softDeleteItem(item.id).then(() => feedback('delete'));
+        onOpenChange(false);
+      }}
+    >
+      {/* An open row must not also be a link to the item — the tap that closes
+          it would otherwise open the thing you were about to delete. */}
+      <ItemRow item={item} onOpen={open ? () => onOpenChange(false) : onOpenItem} />
+    </SwipeRow>
   );
 }
 

@@ -40,6 +40,7 @@ export function CoverageField({
   coverages,
   onChange,
   title = 'Coverage',
+  sectionRef,
 }: {
   purchaseDate: string;
   coverages: CoverageDraft[];
@@ -50,6 +51,8 @@ export function CoverageField({
    * "Coverage" is the model's word and stays the default.
    */
   title?: string;
+  /** So the form above can scroll this section into view. */
+  sectionRef?: import('react').RefObject<HTMLElement | null>;
 }) {
   const patch = (key: string, changes: Partial<CoverageDraft>) =>
     onChange(coverages.map((c) => (c.key === key ? { ...c, ...changes } : c)));
@@ -57,7 +60,7 @@ export function CoverageField({
   const real = countCoverages(coverages);
 
   return (
-    <section className="card formcard">
+    <section className="card formcard" ref={sectionRef}>
       <div className="cardhead">
         <h3>{title}</h3>
         {real > 1 && <span className="countpill">{real}</span>}

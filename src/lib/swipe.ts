@@ -80,6 +80,44 @@ export function swipeVerdict(g: Gesture): Direction | null {
  */
 export const BACK_DIRECTION: Direction = 'right';
 
+/* ------------------------------------------------ swiping a row aside */
+
+/**
+ * How far a list row slides to show the delete button behind it.
+ *
+ * Half the row, roughly — far enough that the button is a comfortable target
+ * and that the row plainly hasn't gone anywhere. A row that slid clean off
+ * would be a delete, and this is not a delete: it is the offer of one.
+ */
+export const ROW_REVEAL = 96;
+
+/**
+ * Past this, letting go opens the row rather than springing it shut.
+ *
+ * Deliberately less than half of ROW_REVEAL. Opening costs nothing — the row
+ * comes back on the next tap anywhere — so the gesture should succeed on a
+ * hesitant drag rather than demand a confident one.
+ */
+export const ROW_OPEN_AT = 34;
+
+/**
+ * Only leftwards, and only when it's clearly not a scroll.
+ *
+ * Strictly past the threshold, not at it — "past this" in the constant's own
+ * description, and a boundary that reads one way in prose and another in code
+ * is a boundary somebody will get wrong later.
+ */
+export function rowOpens(dx: number, dy: number): boolean {
+  if (dx >= -ROW_OPEN_AT) return false;
+  return Math.abs(dx) >= Math.abs(dy) * DOMINANCE;
+}
+
+/** Where the row sits mid-drag: never right of home, never past the button. */
+export function rowOffset(dx: number, open: boolean): number {
+  const from = open ? -ROW_REVEAL : 0;
+  return Math.max(-ROW_REVEAL, Math.min(0, from + dx));
+}
+
 /* ------------------------------------------------- throwing a card away */
 
 /**

@@ -130,9 +130,16 @@ export function BottomNav({
                 key={k.kind}
                 type="button"
                 className="addchoice"
-                // Each one leaves a beat after the one below it, so they read
-                // as a stack unfolding rather than as a block appearing.
-                style={{ transitionDelay: open ? `${i * 45}ms` : `${(ADD_KINDS.length - 1 - i) * 30}ms` }}
+                /*
+                  The one nearest the button moves first, so the stack unfolds
+                  upward from where you tapped rather than arriving as a block.
+                  Reversed on the way out for the same reason.
+                */
+                style={{
+                  transitionDelay: open
+                    ? `${(ADD_KINDS.length - 1 - i) * 45}ms`
+                    : `${i * 30}ms`,
+                }}
                 tabIndex={open ? 0 : -1}
                 aria-hidden={!open}
                 onClick={() => pick(k.kind)}

@@ -27,6 +27,7 @@ export function DocsField({
   onStage,
   onUnstage,
   onRetype,
+  sectionRef,
 }: {
   /** Present only when editing. */
   itemId?: string;
@@ -34,6 +35,8 @@ export function DocsField({
   onStage: (doc: StagedDoc) => void;
   onUnstage: (key: string) => void;
   onRetype: (key: string, kind: DocKind) => void;
+  /** So the form above can scroll this section into view. */
+  sectionRef?: import('react').RefObject<HTMLElement | null>;
 }) {
   const existing = useLiveQuery(async () => (itemId ? docsWithFiles(itemId) : []), [itemId]) ?? [];
   const [error, setError] = useState<string>();
@@ -54,7 +57,7 @@ export function DocsField({
   const count = existing.length + staged.length;
 
   return (
-    <section className="card formcard">
+    <section className="card formcard" ref={sectionRef}>
       <div className="cardhead">
         <h3>Documents</h3>
         {count > 0 && <span className="countpill">{count}</span>}

@@ -34,11 +34,9 @@ const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
  */
 export function Subs({
   propertyId,
-  onAdd,
   onOpen,
 }: {
   propertyId: string;
-  onAdd: () => void;
   onOpen: (id: string) => void;
 }) {
   const subs = useLiveQuery(() => activeSubscriptions(propertyId), [propertyId]);
@@ -76,12 +74,9 @@ export function Subs({
           <Scout pose="calendar" height={170} motion={['float']} shadow alt="" />
           <h3>Nothing tracked yet</h3>
           <p>
-            Netflix, the gym, the phone plan. Add what renews and Scout will tell you what it
-            costs a month and what's coming up.
+            Netflix, the gym, the phone plan. Tap <b>Stash it</b> and choose Subscription, and
+            Scout will tell you what it costs a month and what's coming up.
           </p>
-          <button type="button" className="btn" onClick={onAdd}>
-            Add a subscription
-          </button>
         </div>
       ) : (
         <>
@@ -183,8 +178,11 @@ export function Subs({
                     <span className="subtxt">
                       <strong>{s.name}</strong>
                       <small>
+                        {/* No reminder state here. Reminders are a home-screen
+                            thing — this screen is what you pay and when, and a
+                            second place showing the same setting is a second
+                            place for it to look wrong. */}
                         {CADENCE_LABEL[s.cadence]} · {ordinal(nextRenewal(s, now)?.getDate() ?? 1)}
-                        {s.remindDays ? ` · reminder ${s.remindDays}d` : ''}
                       </small>
                     </span>
                     <span className="subcost">
@@ -198,16 +196,6 @@ export function Subs({
               ))}
           </ul>
 
-          <button type="button" className="btn ghost wide" style={{ marginTop: 18 }} onClick={onAdd}>
-            Add a subscription
-          </button>
-
-          {/* The honest note. Until there's a server, nothing can reach a phone
-              that isn't looking at this app. */}
-          <p className="hint">
-            Reminders appear here and on the home screen when you open Stash it. Nothing is sent to
-            your phone while the app is closed — that needs a server, and there isn't one yet.
-          </p>
         </>
       )}
     </>

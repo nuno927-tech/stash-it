@@ -12,6 +12,10 @@
 import {
   BACK_DIRECTION,
   dismissedByDrag,
+  ROW_OPEN_AT,
+  ROW_REVEAL,
+  rowOffset,
+  rowOpens,
   DISMISS_FLICK_PIXELS,
   DISMISS_PIXELS,
   DOMINANCE,
@@ -146,6 +150,28 @@ function main() {
   // to the system, and useSwipeNav refuses to start there — which is what
   // makes it safe to put a back swipe on the same screens.
   check('a swipe from the edge is never ours', startedAtEdge(10, W) && startedAtEdge(W - 10, W));
+
+  /* ------------------------------------------------ pushing a row aside */
+
+  /*
+    Left only, and never mistakable for a scroll. The row slides to reveal a
+    delete button — it does not delete — because a horizontal drag is the
+    easiest gesture in the app to make by accident while thumbing down a list.
+  */
+  check('a decisive left drag opens it', rowOpens(-60, 4));
+  check('a small one does not', !rowOpens(-12, 0));
+  check('rightwards never opens it', !rowOpens(60, 0));
+  check('a diagonal scroll does not', !rowOpens(-40, 90));
+  check('right at the threshold', !rowOpens(-ROW_OPEN_AT, 0) && rowOpens(-ROW_OPEN_AT - 1, 0));
+
+  // Opening is cheaper to undo than changing tabs, so it asks for less.
+  check('it takes less than a tab swipe', ROW_OPEN_AT < MIN_PIXELS, `${ROW_OPEN_AT} vs ${MIN_PIXELS}`);
+
+  check('the row never travels past the button', rowOffset(-400, false) === -ROW_REVEAL);
+  check('nor right of where it started', rowOffset(200, false) === 0);
+  check('mid-drag it tracks the finger', rowOffset(-40, false) === -40);
+  check('an open row drags from where it is', rowOffset(0, true) === -ROW_REVEAL);
+  check('and can be pushed back shut', rowOffset(ROW_REVEAL, true) === 0);
 
   /* ------------------------------------------------ throwing a card away */
 

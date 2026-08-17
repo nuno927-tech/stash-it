@@ -241,6 +241,20 @@ export interface Subscription {
   /** 0, 1, 3 or 7. Zero means no reminder, and is the default. */
   remindDays?: number;
 
+  /**
+   * Split with somebody else.
+   *
+   * `amountCents` stays what *you* pay either way — every total in the app is
+   * built from it, and a figure that sometimes means the whole bill and
+   * sometimes your half would make the monthly total meaningless. These two
+   * fields only record the arrangement: who the money goes to, and how it
+   * gets there. Both free text, because "my sister", "the group account" and
+   * "Dave, first of the month" are all real answers.
+   */
+  shared?: boolean;
+  payTo?: string;
+  payHow?: string;
+
   notes?: string;
   createdAt: string;
   updatedAt: string;

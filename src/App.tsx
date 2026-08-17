@@ -553,11 +553,7 @@ function Shell() {
       )}
 
       {screen.kind === 'subs' && (
-        <Subs
-          propertyId={property.id}
-          onAdd={() => go({ kind: 'addsub' })}
-          onOpen={(id) => go({ kind: 'editsub', id })}
-        />
+        <Subs propertyId={property.id} onOpen={(id) => go({ kind: 'editsub', id })} />
       )}
 
       {screen.kind === 'addsub' && (

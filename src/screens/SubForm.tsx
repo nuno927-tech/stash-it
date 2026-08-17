@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { createSubscription, deleteSubscription, putBlob, updateSubscription } from '@/db/repo';
@@ -22,6 +22,7 @@ import {
 } from '@/lib/services';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { ServiceMark } from '@/components/ServiceMark';
+import { useAutoAdvance } from '@/components/useAutoAdvance';
 
 /**
  * Adding or editing a recurring charge.
@@ -61,6 +62,10 @@ export function SubForm({
   );
   const [started, setStarted] = useState(existing?.startedDate ?? '');
   const [remind, setRemind] = useState(existing?.remindDays ?? 0);
+  const [shared, setShared] = useState(existing?.shared ?? false);
+  const [payTo, setPayTo] = useState(existing?.payTo ?? '');
+  const [payHow, setPayHow] = useState(existing?.payHow ?? '');
+  const [notes, setNotes] = useState(existing?.notes ?? '');
   const [domain, setDomain] = useState('');
   const [logoBlobId, setLogoBlobId] = useState(existing?.logoBlobId);
   const [busy, setBusy] = useState(false);
@@ -72,6 +77,17 @@ export function SubForm({
   const results = searchServices(query);
 
   const canSave = !!name.trim() && !!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0;
+
+  /*
+    Move on when a card is done with. Each section watches the answer that
+    finishes it and points at the next — picking a service is a discrete tap,
+    so it advances; typing a name is not, so it doesn't. See useAutoAdvance
+    for everything this deliberately refuses to do.
+  */
+  const billingRef = useRef<HTMLElement>(null);
+  const remindRef = useRef<HTMLElement>(null);
+  useAutoAdvance(!!serviceId, billingRef);
+  useAutoAdvance(!!parseAnchor(anchor) && (parseMoneyToCents(price) ?? 0) > 0, remindRef);
 
   const choose = (s: ServiceDef) => {
     setServiceId(s.id);
@@ -129,6 +145,12 @@ export function SubForm({
         currency: cur,
         startedDate: started || undefined,
         remindDays: remind || undefined,
+        // Turning the toggle off clears the two fields rather than leaving
+        // them to reappear if it's ever switched back on.
+        shared: shared || undefined,
+        payTo: shared ? payTo.trim() || undefined : undefined,
+        payHow: shared ? payHow.trim() || undefined : undefined,
+        notes: notes.trim() || undefined,
       };
       if (existing) await updateSubscription(existing.id, patch);
       else await createSubscription(patch);
@@ -239,7 +261,7 @@ export function SubForm({
       </section>
 
       {/* ----------------------------------------------------- what it costs */}
-      <section className="card formcard">
+      <section className="card formcard" ref={billingRef}>
         <div className="cardhead">
           <h3>Billing</h3>
         </div>
@@ -295,10 +317,57 @@ export function SubForm({
             onChange={(e) => setStarted(e.target.value)}
           />
         </label>
+
+        {/*
+          Splitting. The amount above stays what *you* pay either way — every
+          total in the app is built from it, and a number that sometimes means
+          the whole bill and sometimes half of it makes the monthly figure
+          meaningless. These two only record the arrangement.
+        */}
+        <div className="setrow">
+          <span className="setrow-txt">
+            <strong>Split with someone</strong>
+            <small>Records who the money goes to, not what it costs</small>
+          </span>
+          {/* The same control Settings uses. A second switch that looked
+              almost the same would be a second thing to keep in step. */}
+          <button
+            type="button"
+            className={`toggle${shared ? ' on' : ''}`}
+            role="switch"
+            aria-checked={shared}
+            aria-label="Split with someone"
+            data-cue="none"
+            onClick={() => setShared((v) => !v)}
+          >
+            <span />
+          </button>
+        </div>
+
+        {shared && (
+          <div className="fieldpair">
+            <Field label="Who you pay">
+              <input
+                type="text"
+                value={payTo}
+                placeholder="Dave, my sister…"
+                onChange={(e) => setPayTo(e.target.value)}
+              />
+            </Field>
+            <Field label="How">
+              <input
+                type="text"
+                value={payHow}
+                placeholder="Venmo, cash…"
+                onChange={(e) => setPayHow(e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
       </section>
 
       {/* -------------------------------------------------------- reminders */}
-      <section className="card formcard">
+      <section className="card formcard" ref={remindRef}>
         <div className="cardhead">
           <h3>Reminder</h3>
         </div>
@@ -316,6 +385,15 @@ export function SubForm({
             ? 'No reminder. You can turn one on later.'
             : `A card appears on the home screen ${remind} day${remind === 1 ? '' : 's'} before it renews — the next time you open Stash it. Nothing reaches your phone while the app is closed; that needs a server, and there isn't one yet.`}
         </p>
+
+        <Field label="Notes">
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional"
+          />
+        </Field>
       </section>
 
       {editing && (
@@ -359,6 +437,21 @@ export function SubForm({
         </button>
       </div>
     </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: import('react').ReactNode;
+}) {
+  return (
+    <label className="field">
+      <span className="fieldlabel">{label}</span>
+      {children}
+    </label>
   );
 }
 

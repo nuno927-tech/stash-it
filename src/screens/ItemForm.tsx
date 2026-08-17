@@ -21,6 +21,7 @@ import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { Scout } from '@/components/Scout';
 import { CoverageField } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
+import { useAutoAdvance } from '@/components/useAutoAdvance';
 
 /**
  * One form, two modes: pass an `item` to edit it, omit one to create.
@@ -127,6 +128,21 @@ export function ItemForm({
   const dateRequired = !editing || !!item?.purchaseDate;
   const missingDate = dateRequired && !form.purchaseDate.trim();
   const canSave = !!form.name.trim() && !missingDate;
+
+  /*
+    Move on when a card is finished with. Watched on the answers that arrive as
+    a tap — a date picked, a warranty term chosen — never on typing, so the
+    page can't jump mid-word. See useAutoAdvance.
+  */
+  const roomRef = useRef<HTMLElement>(null);
+  const coverRef = useRef<HTMLElement>(null);
+  const docsRef = useRef<HTMLElement>(null);
+  useAutoAdvance(!!form.name.trim() && !!form.purchaseDate.trim(), roomRef);
+  useAutoAdvance(!!form.roomId, coverRef);
+  useAutoAdvance(
+    form.coverages.some((c) => c.unit === 'lifetime' || !!c.amount.trim()),
+    docsRef,
+  );
 
   const addRoom = async () => {
     const name = (newRoom ?? '').trim();
@@ -423,7 +439,7 @@ export function ItemForm({
       </section>
 
       {/* ------------------------------------------------------------- room */}
-      <section className="card formcard">
+      <section className="card formcard" ref={roomRef}>
         <div className="cardhead">
           <h3>Room</h3>
           <button
@@ -476,6 +492,7 @@ export function ItemForm({
       {/* ------------------------------------------- warranty information */}
       <CoverageField
         title="Warranty information"
+        sectionRef={coverRef}
         purchaseDate={form.purchaseDate}
         coverages={form.coverages}
         onChange={(next) => set('coverages', next)}
@@ -483,6 +500,7 @@ export function ItemForm({
 
       {/* -------------------------------------------------------- documents */}
       <DocsField
+        sectionRef={docsRef}
         itemId={item?.id}
         staged={staged}
         onStage={(d) => setStaged((list) => [...list, d])}
