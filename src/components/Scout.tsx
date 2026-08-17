@@ -27,7 +27,7 @@ import waving from '@/assets/mascot/scout-waving.webp';
  *   folder    filing the paper original — after a save, and in the tour
  *   bin       fishing receipts back out — recently deleted
  *   clipboard glasses on, taking it down — the item form
- *   calendar  holding up the month — not placed yet
+ *   calendar  holding up the month — subscriptions
  *   dancing   both arms up — not placed yet
  *   settings  at a control desk — settings
  *   alert     ears up, something needs you
@@ -91,7 +91,7 @@ export const SCOUT_POSES: { pose: ScoutPose; name: string; where: string }[] = [
   /* Drawn, cut out and ready. Listed here rather than held back, because the
      album is the only written-down record of the cast and a pose that exists
      but isn't in it is a pose everyone forgets they have. */
-  { pose: 'calendar', name: 'Minding the month', where: 'Beside the calendar on the subscriptions tab' },
+  { pose: 'calendar', name: 'Minding the month', where: 'The subscriptions tab' },
   { pose: 'dancing', name: 'Very pleased', where: 'Not on a screen yet' },
   { pose: 'settings', name: 'At the desk', where: 'This screen' },
   { pose: 'alert', name: 'Ears up', where: 'When something needs a minute, or needs confirming' },

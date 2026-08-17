@@ -33,7 +33,7 @@ const APP = [
   { name: 'acorn', size: 400 }, // 200 on the empty dashboard
   { name: 'alert', size: 300 }, // 130 beside what needs doing
   { name: 'bin', from: 'pail', size: 300 }, // 130 at the top of Recently deleted
-  { name: 'calendar', size: 240 }, // not placed yet
+  { name: 'calendar', size: 360 }, // 170 on the empty subscriptions tab
   { name: 'dancing', size: 240 }, // not placed yet
   { name: 'clipboard', size: 200 }, // 64 on the item form's first section
   { name: 'folder', size: 260 }, // 92 after a save, 130 in the tour
