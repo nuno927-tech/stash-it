@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { activeSubscriptions, deleteSubscription } from '@/db/repo';
@@ -52,7 +52,24 @@ export function Subs({
   const [offset, setOffset] = useState(0);
   // One row open at a time, and a confirmation before anything goes.
   const [swiped, setSwiped] = useState<string | null>(null);
+  /*
+    A day tapped on the calendar, as a day number in the month on screen.
+
+    The grid answers "when", and until now that was the end of it — you could
+    see the 3rd was expensive and had to go hunting for what was on it. Tapping
+    a day picks out the rows below, which is the question the dot was always
+    provoking.
+  */
+  const [picked, setPicked] = useState<number | null>(null);
   const [confirming, setConfirming] = useState<Subscription | null>(null);
+  /*
+    The first highlighted row, so a pick that lands below the fold is scrolled
+    to. `block: 'nearest'` on purpose: a row already on screen must not move,
+    because the calendar you just tapped is directly above it and shoving that
+    off the top to centre a row you can already see is the app taking the
+    screen away as a reward for using it.
+  */
+  const firstPicked = useRef<HTMLButtonElement>(null);
   const now = new Date();
   const shown = new Date(now.getFullYear(), now.getMonth() + offset, 1);
 
@@ -61,6 +78,16 @@ export function Subs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [subs, offset],
   );
+
+  // Paging the month clears the pick: day 3 of September is not the day you
+  // selected, and leaving the highlight behind would claim otherwise.
+  useEffect(() => setPicked(null), [offset]);
+
+  // Bring the first highlighted row up only if it isn't already visible.
+  useEffect(() => {
+    if (picked === null) return;
+    firstPicked.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [picked]);
 
   /*
     What the month on screen actually costs — the fourth figure.
@@ -89,6 +116,9 @@ export function Subs({
   const soonest = [...subs].sort(
     (a, b) => (daysUntilRenewal(a, now) ?? 999) - (daysUntilRenewal(b, now) ?? 999),
   )[0];
+
+  const pickedSubs = picked === null ? [] : (marks.find((m) => m.day === picked)?.subs ?? []);
+  const pickedIds = new Set(pickedSubs.map((s) => s.id));
 
   return (
     <>
@@ -196,20 +226,44 @@ export function Subs({
                     key={day}
                     day={day}
                     today={isToday(shown, day, now)}
+                    picked={picked === day}
                     subs={marks.find((m) => m.day === day)?.subs ?? []}
                     currency={currency}
+                    onPick={() => {
+                      feedback('tap');
+                      setPicked((p) => (p === day ? null : day));
+                    }}
                   />
                 ),
               )}
             </div>
           </div>
 
-          {soonest && (
+          {/*
+            The note answers whichever question is live. Tap a day and it is
+            about that day; otherwise it is the standing "what's next". Two
+            lines, one saying the same thing twice, would be worse than either.
+          */}
+          {pickedSubs.length > 0 ? (
             <p className="hint calnote">
-              Next up: <b>{soonest.name}</b> on the{' '}
-              {ordinal(nextRenewal(soonest, now)?.getDate() ?? 1)},{' '}
-              {formatMoney(soonest.amountCents, soonest.currency)}.
+              The {ordinal(picked!)}: <b>{pickedSubs.map((s) => s.name).join(', ')}</b> —{' '}
+              {formatMoney(
+                pickedSubs.reduce((n, s) => n + s.amountCents, 0),
+                currency,
+              )}
+              .{' '}
+              <button type="button" className="linkish" onClick={() => setPicked(null)}>
+                Clear
+              </button>
             </p>
+          ) : (
+            soonest && (
+              <p className="hint calnote">
+                Next up: <b>{soonest.name}</b> on the{' '}
+                {ordinal(nextRenewal(soonest, now)?.getDate() ?? 1)},{' '}
+                {formatMoney(soonest.amountCents, soonest.currency)}.
+              </p>
+            )
           )}
 
           <div className="seclabel">
@@ -234,7 +288,8 @@ export function Subs({
                   >
                     <button
                       type="button"
-                      className="subrow"
+                      className={`subrow${pickedIds.has(s.id) ? ' picked' : ''}`}
+                      ref={pickedIds.has(s.id) ? firstPicked : undefined}
                       onClick={() => (swiped === s.id ? setSwiped(null) : onOpen(s.id))}
                     >
                       <ServiceMark
@@ -300,25 +355,40 @@ function isToday(month: Date, day: number, now: Date): boolean {
   );
 }
 
+/**
+ * One day of the month.
+ *
+ * A day with something on it is a button; an empty one is not. The grid was
+ * read-only before, which made the dots a tease — you could see the 3rd was
+ * busy and then had to go and find out what was on it yourself. A day you
+ * can't act on shouldn't offer a tap target, so the two cases are genuinely
+ * different elements rather than one element with a disabled state.
+ */
 function Cell({
   day,
   today,
+  picked,
   subs,
   currency,
+  onPick,
 }: {
   day: number;
   today: boolean;
+  picked: boolean;
   subs: Subscription[];
   currency: string;
+  onPick: () => void;
 }) {
   const total = subs.reduce((sum, s) => sum + s.amountCents, 0);
-  const classes = ['calcell', subs.length ? 'has' : '', today ? 'today' : ''].filter(Boolean);
+  const classes = [
+    'calcell',
+    subs.length ? 'has' : '',
+    today ? 'today' : '',
+    picked ? 'picked' : '',
+  ].filter(Boolean);
 
-  return (
-    <span
-      className={classes.join(' ')}
-      title={subs.length ? `${subs.map((s) => s.name).join(', ')} — ${formatMoney(total, currency)}` : undefined}
-    >
+  const inside = (
+    <>
       {day}
       {subs.length > 0 && (
         <span className="caldots">
@@ -329,7 +399,22 @@ function Cell({
           ))}
         </span>
       )}
-    </span>
+    </>
+  );
+
+  if (subs.length === 0) return <span className={classes.join(' ')}>{inside}</span>;
+
+  return (
+    <button
+      type="button"
+      className={classes.join(' ')}
+      aria-pressed={picked}
+      aria-label={`${day}: ${subs.map((s) => s.name).join(', ')}`}
+      title={`${subs.map((s) => s.name).join(', ')} — ${formatMoney(total, currency)}`}
+      onClick={onPick}
+    >
+      {inside}
+    </button>
   );
 }
 

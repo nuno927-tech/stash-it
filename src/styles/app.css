@@ -2990,6 +2990,36 @@ button.countpill.tappill:active {
   margin-top: 13px;
 }
 
+/*
+  ────────────────────────────────────────────────────────────────────────────
+  THE FIELD-PAIR MISALIGNMENT. Four reports, three fixes, and this is it.
+
+  The rule immediately above says "put 13px between consecutive fields in a
+  form card". The two fields inside a `.fieldpair` are consecutive fields in a
+  form card. So the RIGHT-HAND FIELD OF EVERY PAIR was getting 13px of
+  margin-top and sitting 13px lower than its partner. Model below Serial
+  number, Expires below Issued, Call it below Whose. Every pair, every form,
+  since the spacing rule was written.
+
+  It beat the pair's own rule on specificity, not just order — `.formcard
+  .field + .field` is three classes and `.fieldpair > .field` is two — so
+  nothing over there could ever have won. Which is why the two previous fixes
+  didn't: subgrid corrected the row *sizing* and `min-width: 0` corrected the
+  column *widths*, and both were real bugs, but neither one was a stray 13px
+  of margin.
+
+  Both class names are doubled to make four, which beats the three above it
+  outright. That is deliberate and it is ugly: written the natural way it ties
+  at three and wins only by sitting lower in the file, and a fix whose
+  correctness depends on where it happens to be written is a fix waiting to be
+  moved. check-css asserts the zeroes are here.
+  ────────────────────────────────────────────────────────────────────────────
+*/
+.fieldpair.fieldpair > .field.field {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* Why the save button is grey. A disabled control with no explanation is a
    dead end — you can see it won't work and not why. */
 .savewhy {
@@ -4203,6 +4233,40 @@ button.countpill.tappill:active {
 .calcell.today {
   box-shadow: inset 0 0 0 1px var(--gold);
   color: var(--gold);
+}
+
+/* A day with renewals is a button, so it needs the button defaults undone —
+   `.calcell` already carries the layout. */
+button.calcell {
+  border: none;
+  font-family: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+/*
+  The day you tapped, and the rows it points at, wear the same solid gold.
+
+  Filled rather than outlined, and solid rather than the wash a renewal day
+  already uses, so "has something on it" and "this is the one you picked" stay
+  two different signals on the same cell.
+*/
+.calcell.picked {
+  background: var(--gold);
+  color: var(--on-gold);
+  font-weight: 600;
+}
+
+.calcell.picked .caldots i {
+  background: var(--on-gold);
+}
+
+/* The other end of the same tap. A left edge rather than a full fill: the row
+   still has to read as a row, and three highlighted rows filled solid would
+   look like a different list. */
+.subrow.picked {
+  background: var(--wash-gold);
+  box-shadow: inset 3px 0 0 var(--gold);
 }
 
 .caldots {

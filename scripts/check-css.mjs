@@ -228,6 +228,42 @@ function subgridMinWidth() {
   return out;
 }
 
+/**
+ * A field inside a pair has no vertical margin, and nothing may give it one.
+ *
+ * This is the fourth-report bug. `.formcard .field + .field { margin-top:
+ * 13px }` means "space out consecutive fields in a form card" — and the two
+ * fields inside a `.fieldpair` are consecutive fields in a form card, so the
+ * right-hand one of every pair sat 13px below its partner. In every form.
+ *
+ * It won on specificity, three classes to two, so no amount of correcting the
+ * pair's own rule could have helped. Two earlier fixes went to the subgrid and
+ * to `min-width` — both real bugs, neither one a stray margin.
+ *
+ * So the reset is written with four classes to beat it outright, and this
+ * checks the reset is still there. A sibling-margin rule anywhere in the sheet
+ * can reach into a pair; only the zeroes keep it out.
+ */
+function pairMargins() {
+  const wanted = /\.fieldpair\.fieldpair\s*>\s*\.field\.field/;
+  for (const sheet of SHEETS) {
+    let css;
+    try {
+      css = readFileSync(sheet, 'utf8');
+    } catch {
+      continue;
+    }
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    for (const m of code.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!wanted.test(m[1])) continue;
+      const top = /(^|[;\s])margin-top\s*:\s*0/.test(m[2]);
+      const bottom = /(^|[;\s])margin-bottom\s*:\s*0/.test(m[2]);
+      if (top && bottom) return [];
+    }
+  }
+  return ['the four-class reset that keeps sibling margins out of a field pair'];
+}
+
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -328,6 +364,7 @@ const doubled = duplicateRules();
 const stuck = badTouchAction();
 const resized = scoutHeight();
 const squeezed = subgridMinWidth();
+const shifted = pairMargins();
 
 if (missing.size === 0) {
   console.log(`PASS  every class in src has a rule  — ${defined.size} defined`);
@@ -375,7 +412,22 @@ if (squeezed.length === 0) {
   }
 }
 
+if (shifted.length === 0) {
+  console.log('PASS  a field pair carries no vertical margin');
+} else {
+  for (const what of shifted) {
+    console.log(`FAIL  missing ${what}`);
+    console.log('      Without it, `.formcard .field + .field` pushes the right-hand');
+    console.log('      field of every pair down 13px. Four bug reports and counting.');
+  }
+}
+
 const failures =
-  missing.size + doubled.length + stuck.length + resized.length + squeezed.length;
+  missing.size +
+  doubled.length +
+  stuck.length +
+  resized.length +
+  squeezed.length +
+  shifted.length;
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);
