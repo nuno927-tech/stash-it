@@ -5,6 +5,20 @@ import { TimeLeft } from './TimeLeft';
 import { MAX_RINGS, RING_STEP, WarrantyRing } from './WarrantyRing';
 import { useThumbUrl } from './useThumbUrl';
 
+/*
+  The ring, and how far the photo sits inside it.
+
+  Three numbers that have to agree: the ring's diameter, its stroke, and the
+  inset the thumbnail is drawn at. Named here rather than typed inline because
+  the row shrank from 50 to 44 when it stopped being a card, and a thumbnail
+  still insetting for a 50px ring would have put a photo corner over an arc.
+  INSET is the clearance from the outer edge to the photo — stroke/2 for the
+  ring itself, then a little air.
+*/
+const RING_SIZE = 44;
+const RING_STROKE = 2.8;
+const INSET = 4.4;
+
 export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) => void }) {
   const thumb = useThumbUrl(item.thumbBlobId);
 
@@ -23,7 +37,7 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) =>
   // the step the ring actually draws with — see WarrantyRing.
   const arcs = coverageArcs(item);
   const policies = coveragesOf(item).length;
-  const inset = 5 + (Math.min(arcs.length, MAX_RINGS) - 1) * RING_STEP;
+  const inset = INSET + (Math.min(arcs.length, MAX_RINGS) - 1) * RING_STEP;
 
   return (
     <button type="button" className="item" onClick={() => onOpen?.(item.id)}>
@@ -32,7 +46,7 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen?: (id: string) =>
           past four they aren't all drawn, so the ring alone would understate
           an item with six. */}
       <div className="thumbwrap">
-        <WarrantyRing size={50} stroke={3} arcs={arcs} />
+        <WarrantyRing size={RING_SIZE} stroke={RING_STROKE} arcs={arcs} />
         <div className="thumb" style={{ inset }}>
           {thumb ? <img src={thumb} alt="" /> : <ItemIcon item={item} />}
         </div>

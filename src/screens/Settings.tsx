@@ -131,7 +131,10 @@ export function Settings({
           <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
         </div>
 
-        <Scout pose="settings" height={132} motion={['breathe']} alt="" />
+        {/* 104, the same as on Items. He was 132 here and 104 there, which read
+            as two different Scouts on two tabs — the size is part of how a
+            character is recognised, and one number is one character. */}
+        <Scout pose="settings" height={104} motion={['breathe']} alt="" />
       </div>
 
       {album && <ScoutGallery onClose={() => setAlbum(false)} />}

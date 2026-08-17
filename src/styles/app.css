@@ -479,33 +479,52 @@ button.coverstat:active {
 
 /* ----------------------------------------------------------- item rows */
 
+/*
+  A line in a list, not a card.
+
+  These were filled tiles: a slate panel per item, rounded, with a gap between
+  each pair. Twenty of them down a screen is twenty boxes competing with each
+  other, and the thing that actually varies row to row — the name and the
+  number — has to shout over its own container to be seen. The subscriptions
+  list was built later as plain rows on the page colour with a hairline
+  between them, and it reads better, so the items list is now the same shape.
+
+  The card is not gone, it's just been demoted to a state: `:active` fills the
+  row, so the panel appears under your thumb, which is the only moment it was
+  ever telling you anything.
+*/
 .item {
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 11px;
-  border-radius: var(--r-md);
-  background: var(--slate-700);
-  margin-bottom: 9px;
+  gap: 11px;
+  padding: 10px 2px;
+  border: none;
+  border-bottom: 1px solid var(--slate-700);
+  background: none;
+  color: inherit;
   width: 100%;
   text-align: left;
-  border: none;
 }
 
 .item:active {
-  background: var(--slate-600);
+  background: var(--slate-700);
 }
 
+/* Down from 50. The ring lost the card's padding on either side of it, so it
+   can be smaller and still sit as far from the name as it did before — and a
+   flat row wants a shorter row. */
 .thumbwrap {
   position: relative;
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   flex: none;
 }
 
+/* ItemRow always sets `inset` inline from INSET — see the note there. This is
+   the fallback, and the two are kept the same on purpose. */
 .thumb {
   position: absolute;
-  inset: 5px;
+  inset: 4.4px;
   border-radius: var(--r-sm);
   background: var(--slate-600);
   display: grid;
@@ -543,7 +562,9 @@ button.coverstat:active {
   height: 16px;
   padding: 0 3px;
   border-radius: 8px;
-  border: 2px solid var(--slate-700);
+  /* Knocks a hole in whatever the row sits on, which is now the page rather
+     than a card. */
+  border: 2px solid var(--slate-800);
   background: var(--slate-600);
   color: var(--text);
   font-size: 10px;
@@ -569,15 +590,21 @@ button.coverstat:active {
   min-width: 0;
 }
 
+/* Same two sizes as .subtxt, deliberately. Two lists a tab apart that set the
+   same two lines of text differently look like two apps. */
 .item-txt h3 {
   font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 3px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-txt p {
   font-family: var(--font-body);
-  font-size: 11.5px;
+  font-size: 11px;
+  font-weight: 300;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -3660,19 +3687,15 @@ button.countpill.tappill:active {
   record of something you own.
 */
 /*
-  The row's own bottom margin moves up here, so the red button ends where the
-  card ends. Left on `.item` it made the button taller than the thing covering
-  it, and a strip of red showed in the gap between every pair of rows.
+  The gap between rows lives here rather than on the row inside, so the red
+  button ends exactly where the row ends. On the row it made the button taller
+  than the thing covering it, and a strip of red showed between every pair.
 */
 .swiperow {
   position: relative;
   overflow: hidden;
   margin-bottom: 9px;
   border-radius: var(--r-md);
-}
-
-.swiperow .item {
-  margin-bottom: 0;
 }
 
 .swipedel {
