@@ -8,6 +8,7 @@ import { FREE_ITEM_LIMIT, type Settings as SettingsRecord } from '@/db/types';
 import {
   BundleError,
   exportBundle,
+  markBackedUp,
   parseBundle,
   restoreBundle,
   saveBundle,
@@ -627,9 +628,16 @@ function Backup({
         ))}
       </div>
 
-      {/* The export is the most consequential button on the screen, so it gets
-          the full-width treatment rather than being a control at the end of a
-          row of explanation. */}
+      {/*
+        "Back up now", not "Export everything".
+
+        The mechanism was always a backup; the label described the file format.
+        Nobody wakes up wanting to export — they want to know their stuff is
+        safe, and the nudge above this card asks them in exactly those words,
+        so the button it sends them to should answer in the same ones.
+
+        Full width, because it is the most consequential control on the screen.
+      */}
       <button
         type="button"
         className="btn wide"
@@ -638,10 +646,26 @@ function Backup({
           run(async () => {
             const { blob, filename } = await exportBundle();
             const how = await saveBundle(blob, filename);
+
+            /*
+              A cancel stamps nothing and claims nothing. It used to do both:
+              the date was written while the zip was being built, so dismissing
+              the share sheet left the app reporting a backup that did not
+              exist and sitting quiet for the next thirty days.
+            */
+            if (how === 'cancelled') {
+              onNotice({ tone: 'bad', text: 'Cancelled — nothing was saved.' });
+              return;
+            }
+
+            await markBackedUp();
             feedback('save');
             onNotice({
               tone: 'ok',
-              text: how === 'shared' ? `Shared ${filename}.` : `Saved ${filename}.`,
+              text:
+                how === 'shared'
+                  ? `Sent ${filename}. Check it arrived where you sent it.`
+                  : `Saved ${filename}.`,
             });
           })
         }
@@ -650,12 +674,20 @@ function Backup({
             own further down. "How much am I about to write out" is a fact
             about this action, and it was being reported as if it were a
             separate setting. */}
-        Export everything
+        Back up now
         {usage && <span className="btnnote">{formatBytes(usage.usedBytes)}</span>}
       </button>
       <p className="hint">
-        One file with every item, document and photo. Nothing leaves this device on its own, so
-        this is the only copy that survives losing the phone.
+        {/*
+          Says where it goes, because on a phone this opens the share sheet and
+          the destination is the user's choice — Drive, Files, Dropbox, email.
+          And it says what is in it, because the same sheet offers Messages and
+          WhatsApp one row along, and this file holds every receipt and every
+          photo you own.
+        */}
+        One file holding every item, document and photo. Send it somewhere you'll still have if
+        the phone goes — a cloud drive, or your own email. Nothing syncs on its own, so this is
+        the only copy that survives.
       </p>
 
       {/* Restoring is the other half of the same job, so it gets the same

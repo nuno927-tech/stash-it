@@ -13,7 +13,14 @@ import { db, ensureFirstRun, newId, nowISO } from '@/db/db';
 import { SCHEMA_VERSION, type Item } from '@/db/types';
 import { seedDemoItems } from '@/dev/seed';
 import { unzipSync, zipSync } from 'fflate';
-import { BundleError, exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
+import {
+  BundleError,
+  exportBundle,
+  markBackedUp,
+  parseBundle,
+  restoreBundle,
+  type SaveOutcome,
+} from '@/lib/backup';
 
 let failures = 0;
 
@@ -185,6 +192,48 @@ async function main() {
     threw = e instanceof BundleError ? 'BundleError' : (e as Error).constructor.name;
   }
   check('a non-bundle file is refused with a readable message', threw === 'BundleError', threw);
+
+  /* ------------------------------------------- when a backup counts as done */
+
+  /*
+    THE WORST BUG THIS FILE HAS PINNED, and it was silent.
+
+    `lastBackupAt` was stamped inside `exportBundle`, on the line after the zip
+    was assembled — before the share sheet had opened, let alone before anyone
+    had chosen where to put the file. And `saveBundle` returned 'shared' when
+    the user dismissed that sheet.
+
+    So: tap Back up now, tap Cancel. The app reports the file was shared,
+    writes today onto the record, shows today on the Backup card, and then
+    stays quiet for the next thirty days because the reminder reads the date it
+    just invented. No file exists anywhere.
+
+    That is a data-loss trap living inside the feature whose only job is
+    preventing data loss, and nothing about it is visible from the outside —
+    every screen agrees you are backed up.
+  */
+  await db.settings.update('singleton', { lastBackupAt: undefined });
+
+  const built = await exportBundle();
+  check('the bundle is real', built.blob.size > 0);
+  check(
+    'but building one is not backing up',
+    (await db.settings.get('singleton'))!.lastBackupAt === undefined,
+    (await db.settings.get('singleton'))!.lastBackupAt,
+  );
+
+  // Only a caller that watched the file leave may make the claim.
+  await markBackedUp();
+  const stamped = (await db.settings.get('singleton'))!.lastBackupAt;
+  check('and marking it is', !!stamped, stamped);
+  check('with a real timestamp', !Number.isNaN(Date.parse(stamped!)), stamped);
+
+  /*
+    Cancel is its own outcome. It used to be folded into 'shared', which is how
+    the caller came to congratulate the user on a file that was never written.
+  */
+  const outcomes: SaveOutcome[] = ['shared', 'downloaded', 'cancelled'];
+  check('a cancel is distinguishable from a save', outcomes.includes('cancelled'));
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

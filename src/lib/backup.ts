@@ -207,8 +207,23 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
   }
 
   const zipped = await zipAsync(files);
-  await db.settings.update('singleton', { lastBackupAt: nowISO() });
 
+  /*
+    NO `lastBackupAt` HERE, and it used to be on the line below this one.
+
+    Building the zip is not backing up. Stamping the date at this point meant
+    the app recorded a successful backup the moment the bytes existed in
+    memory — before the share sheet had opened, let alone before anyone had
+    chosen where to put it. Cancel the sheet and the app still believed it was
+    backed up, still showed today's date on the card, and still suppressed the
+    reminder for the next thirty days. For a file that was never written
+    anywhere.
+
+    That is the worst shape a bug can take in this feature: silent, and in the
+    one place whose entire job is preventing loss. The stamp belongs to
+    `markBackedUp`, which the caller runs only once the file has actually gone
+    somewhere.
+  */
   return {
     blob: new Blob([zipped as BlobPart], { type: 'application/zip' }),
     filename: backupFilename(),
@@ -509,12 +524,33 @@ async function mergeTable<T extends HasIdAndUpdatedAt>(
 
 /* ------------------------------------------------------------ file plumbing */
 
+export type SaveOutcome = 'shared' | 'downloaded' | 'cancelled';
+
 /**
- * Hands the file to the OS. On phones the share sheet is the only route to
- * somewhere the user can actually find the file again, so prefer it; fall back
- * to a download on desktop and anywhere sharing files is unsupported.
+ * Hands the file to the OS.
+ *
+ * The share sheet first, because on a phone it is the only route to somewhere
+ * the user can find the file again — Drive, Files, Dropbox, email, whatever
+ * they have. It needs no account, no OAuth and no API access to anything: the
+ * app hands over one file and the OS does the rest, which is a stronger
+ * version of the promise this app already makes than any integration could be.
+ *
+ * Falls back to a download on desktop and anywhere file sharing is
+ * unsupported — that path is not optional, since it is most of the desktop web.
+ *
+ * ── Cancel is not success ─────────────────────────────────────────────────
+ * This returned 'shared' when the user dismissed the sheet, on the reasoning
+ * that a cancel is not an error worth reporting. True, and the wrong
+ * conclusion: the caller stamped the backup date and told the user the file
+ * had been shared. Nothing had been written anywhere. A third outcome costs
+ * one line and is the difference between a reminder that works and one that
+ * quietly switches itself off.
+ *
+ * Cancelling does NOT fall through to a download either. Somebody who dismissed
+ * the sheet has said no; answering that by silently writing the file to their
+ * downloads folder is not what they asked for.
  */
-export async function saveBundle(blob: Blob, filename: string): Promise<'shared' | 'downloaded'> {
+export async function saveBundle(blob: Blob, filename: string): Promise<SaveOutcome> {
   const file = new File([blob], filename, { type: 'application/zip' });
 
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
@@ -522,9 +558,9 @@ export async function saveBundle(blob: Blob, filename: string): Promise<'shared'
       await navigator.share({ files: [file], title: 'Stash it backup' });
       return 'shared';
     } catch (e) {
-      // A user who taps Cancel is not an error worth reporting; fall through
-      // to the download only if sharing actually failed.
-      if ((e as DOMException)?.name === 'AbortError') return 'shared';
+      if ((e as DOMException)?.name === 'AbortError') return 'cancelled';
+      // Anything else is the share mechanism failing rather than the person
+      // declining, so there is still a job to finish. Fall through.
     }
   }
 
@@ -535,4 +571,16 @@ export async function saveBundle(blob: Blob, filename: string): Promise<'shared'
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return 'downloaded';
+}
+
+/**
+ * Records that a backup actually happened.
+ *
+ * Separate from `exportBundle` on purpose — see the note there. The date on
+ * this record silences the reminder, so writing it is a claim that a file
+ * exists somewhere, and only the caller who watched it leave can make that
+ * claim honestly.
+ */
+export async function markBackedUp(): Promise<void> {
+  await db.settings.update('singleton', { lastBackupAt: nowISO() });
 }
