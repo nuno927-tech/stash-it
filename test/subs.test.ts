@@ -289,6 +289,16 @@ async function main() {
   const late = spendByMonth([sub({ anchorDate: '2026-01-05', amountCents: 1299 })], 2, new Date(2026, 0, 28));
   check('a charge already taken still counts this month', late[0]!.cents === 1299, `${late[0]!.cents}`);
 
+  /*
+    Pointed at a month before the anchor it returns zero, which is why the
+    subscriptions header refuses to draw the figure for a month already gone.
+    An anchor is one real renewal — usually the next one — and carries no claim
+    at all about what you were paying last spring. "$0.00 due in June" would be
+    the app stating a fact it has no record of.
+  */
+  const before = spendByMonth(lumpy, 1, new Date(2025, 5, 10));
+  check('a month before the anchor is empty, not history', before[0]!.cents === 0);
+
   check('the heaviest month is found', heaviest(spend)!.month === 2);
   check('and nothing has no heaviest', heaviest(spendByMonth([], 6, new Date(2026, 0, 1))) === null);
 

@@ -11,6 +11,7 @@ import {
   nextRenewal,
   ordinal,
   renewalsInMonth,
+  spendByMonth,
   totalMonthlyCents,
   totalYearlyCents,
 } from '@/lib/subscriptions';
@@ -61,6 +62,26 @@ export function Subs({
     [subs, offset],
   );
 
+  /*
+    What the month on screen actually costs — the fourth figure.
+
+    It follows the calendar rather than staying on today, so paging forward
+    answers "and what about November". `shown` is the 1st of that month and
+    spendByMonth reads whole calendar months from wherever it's pointed.
+
+    NULL FOR ANY MONTH ALREADY GONE, and this is the important part. Pointed at
+    June it returns $0.00, because an anchor date is one real renewal — usually
+    the next one — and says nothing whatever about whether you were paying for
+    Netflix in June. A confident "$0.00" there is the app claiming to know
+    something it has no record of, and the grid underneath is blank for past
+    months for exactly the same reason.
+  */
+  const thisMonth = useMemo(
+    () => (subs && offset >= 0 ? spendByMonth(subs, 1, shown)[0]!.cents : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [subs, offset],
+  );
+
   if (!subs) return null;
 
   const monthly = totalMonthlyCents(subs);
@@ -86,74 +107,100 @@ export function Subs({
         </div>
       ) : (
         <>
-          {/* What it costs, which is the question this screen mainly answers. */}
-          <div className="subtotals">
-            <div className="subtotal">
-              <strong>{formatMoney(monthly, currency)}</strong>
-              <small>a month</small>
+          {/*
+            The masthead: four figures on the left, Scout on the right — the
+            same arrangement as Items and Settings.
+
+            He stood beside the calendar before, which was the better joke (he
+            is holding one) and the worse screen. It introduced the tab halfway
+            down the page, where the other two do it at the top, and it cost
+            the calendar a third of its width on the one screen with a
+            seven-column grid to fit.
+
+            Three figures across was also narrow enough to clip a four-figure
+            total. Two by two gives each one room, and squares the block off
+            against his height.
+          */}
+          <div className="subshead">
+            <div className="subtotals">
+              <div className="subtotal">
+                <strong>{formatMoney(monthly, currency)}</strong>
+                <small>a month</small>
+              </div>
+              <div className="subtotal">
+                <strong>{formatMoney(yearly, currency)}</strong>
+                <small>a year</small>
+              </div>
+              <div className="subtotal">
+                <strong>{subs.length}</strong>
+                <small>{subs.length === 1 ? 'service' : 'services'}</small>
+              </div>
+              {/*
+                The new one, and the only figure here that isn't an average:
+                what the month on screen actually costs, at full price on the
+                real dates. It totals the calendar directly beneath it, and in
+                a month holding an annual renewal it will disagree with the
+                figure two along. That disagreement is the point — see
+                dueWithin and totalMonthlyCents.
+
+                "charges", not "due": by the 20th, most of the month's money
+                has already gone, and the number counts it either way.
+              */}
+              <div className="subtotal">
+                <strong>{thisMonth === null ? '—' : formatMoney(thisMonth, currency)}</strong>
+                <small>
+                  {thisMonth === null ? 'no record for ' : ''}
+                  {shown.toLocaleDateString(undefined, { month: 'long' })}
+                  {thisMonth === null ? '' : ' charges'}
+                </small>
+              </div>
             </div>
-            <div className="subtotal">
-              <strong>{formatMoney(yearly, currency)}</strong>
-              <small>a year</small>
-            </div>
-            <div className="subtotal">
-              <strong>{subs.length}</strong>
-              <small>{subs.length === 1 ? 'service' : 'services'}</small>
-            </div>
+
+            <Scout pose="calendar" height={104} motion={['breathe']} alt="" />
           </div>
 
-          {/*
-            Scout with the calendar, beside the calendar. He's the only thing
-            on this screen that isn't a number, which is most of why he's here.
-          */}
-          <div className="calwrap">
-            <div className="calmark">
-              <Scout pose="calendar" height={104} motion={['breathe']} alt="" />
+          <div className="calendar">
+            <div className="calhead">
+              <button
+                type="button"
+                className="iconbtn small"
+                aria-label="Previous month"
+                onClick={() => setOffset((o) => o - 1)}
+              >
+                <Chevron dir="left" />
+              </button>
+              <span>
+                {shown.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              </span>
+              <button
+                type="button"
+                className="iconbtn small"
+                aria-label="Next month"
+                onClick={() => setOffset((o) => o + 1)}
+              >
+                <Chevron dir="right" />
+              </button>
             </div>
 
-            <div className="calendar">
-              <div className="calhead">
-                <button
-                  type="button"
-                  className="iconbtn small"
-                  aria-label="Previous month"
-                  onClick={() => setOffset((o) => o - 1)}
-                >
-                  <Chevron dir="left" />
-                </button>
-                <span>
-                  {shown.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+            <div className="calgrid">
+              {WEEKDAYS.map((d, i) => (
+                <span key={i} className="caldow">
+                  {d}
                 </span>
-                <button
-                  type="button"
-                  className="iconbtn small"
-                  aria-label="Next month"
-                  onClick={() => setOffset((o) => o + 1)}
-                >
-                  <Chevron dir="right" />
-                </button>
-              </div>
-
-              <div className="calgrid">
-                {WEEKDAYS.map((d, i) => (
-                  <span key={i} className="caldow">
-                    {d}
-                  </span>
-                ))}
-                {buildMonth(shown).map((day, i) =>
-                  day === null ? (
-                    <span key={`x${i}`} className="calcell empty" />
-                  ) : (
-                    <Cell
-                      key={day}
-                      day={day}
-                      today={isToday(shown, day, now)}
-                      subs={marks.find((m) => m.day === day)?.subs ?? []}
-                      currency={currency}
-                    />
-                  ),
-                )}
-              </div>
+              ))}
+              {buildMonth(shown).map((day, i) =>
+                day === null ? (
+                  <span key={`x${i}`} className="calcell empty" />
+                ) : (
+                  <Cell
+                    key={day}
+                    day={day}
+                    today={isToday(shown, day, now)}
+                    subs={marks.find((m) => m.day === day)?.subs ?? []}
+                    currency={currency}
+                  />
+                ),
+              )}
             </div>
           </div>
 

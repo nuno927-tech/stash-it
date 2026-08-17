@@ -3992,11 +3992,36 @@ button.countpill.tappill:active {
 
 /* Three figures, and the middle one is the point: what a month costs is the
    number people actually want and the one nothing else in the app knows. */
-.subtotals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+/*
+  Figures on the left, Scout on the right — the same masthead as Items and
+  Settings, so every tab introduces itself in the same place.
+*/
+.subshead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+/* He yields rather than squeezing the figures into a column too narrow to
+   read them in. Height comes from the prop — never set it here. */
+.subshead .rig img {
+  max-width: 30vw;
+  object-fit: contain;
+}
+
+/*
+  Two by two, not three across. At a third of a phone each, a four-figure
+  yearly total had nowhere to go but the ellipsis, and a stat that reads
+  "$1,6…" is worse than no stat. Two rows also stack to roughly Scout's
+  height, so the block squares off against him instead of leaving a gap.
+*/
+.subtotals {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .subtotal {
@@ -4023,28 +4048,10 @@ button.countpill.tappill:active {
   color: var(--muted);
 }
 
-/* Scout beside the grid rather than above it: he's holding a calendar, and the
-   joke only lands if the calendar he's holding is next to the real one. */
-.calwrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.calmark {
-  flex: none;
-}
-
-/* Below 380px the grid needs every pixel, so he stands down. */
-@media (max-width: 379px) {
-  .calmark {
-    display: none;
-  }
-}
-
+/* Full width now that Scout has moved up to the masthead. Seven columns and
+   up to six rows of them: this is the one grid on the phone that genuinely
+   wants every pixel across. */
 .calendar {
-  flex: 1;
-  min-width: 0;
   background: var(--slate-700);
   border-radius: var(--r-md);
   padding: 10px 11px 12px;
