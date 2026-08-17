@@ -67,6 +67,33 @@ export const DEFAULT_LEAD_DAYS: Record<PaperKind, number> = {
 
 export const KINDS = PAPER_KINDS;
 
+/**
+ * What the name field should say after the user taps a kind.
+ *
+ * Picking "Passport" fills the box with "Passport", because that is what
+ * nearly everybody would have typed and asking them to type it is asking them
+ * to agree with the tile they just pressed.
+ *
+ * TWO RULES, and the second is the one that matters:
+ *
+ *  - "Other" fills nothing. It is the one tile that carries no name, so it is
+ *    the one case where the user genuinely has to say what this is.
+ *
+ *  - ANYTHING THEY TYPED THEMSELVES SURVIVES. A household has four passports
+ *    and they get called "Nuno's passport" and "Leo's passport". Someone who
+ *    typed that and then corrected the tile must not have their words thrown
+ *    away by the correction. The test is whether the box still holds the
+ *    previous tile's name — if it does, nobody has an opinion yet and it is
+ *    ours to overwrite. Same principle as the lead time, which also follows
+ *    the kind until you touch it.
+ */
+export function renameForKind(next: PaperKind, current: string, was: PaperKind): string {
+  const typed = current.trim();
+  const untouched = typed === '' || typed === KIND_LABEL[was];
+  if (!untouched) return current;
+  return next === 'other' ? '' : KIND_LABEL[next];
+}
+
 export function leadDaysFor(paper: Pick<Paper, 'kind' | 'leadDays'>): number {
   // Zero is a real answer — "tell me on the day" — so only undefined falls
   // back to the default. `||` would silently overwrite it.

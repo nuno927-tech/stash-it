@@ -27,6 +27,7 @@ import {
   nextUp,
   paperLabel,
   paperState,
+  renameForKind,
   renewBy,
   sortPapers,
 } from '@/lib/papers';
@@ -74,6 +75,43 @@ async function main() {
     obvious `paper.leadDays || DEFAULT` would silently replace it with 240.
   */
   check('zero is a lead time, not a missing one', leadDaysFor(paper({ leadDays: 0 })) === 0);
+
+  /* ------------------------------------------------- naming it from the tile */
+
+  /*
+    Tapping a tile fills the name box, so nobody has to type the word they
+    just pressed. The interesting half is what it refuses to overwrite.
+  */
+  check('a tile names itself', renameForKind('licence', '', 'passport') === 'Driving licence');
+  check(
+    'and replaces the previous tile’s name',
+    renameForKind('visa', 'Passport', 'passport') === 'Visa or permit',
+  );
+
+  /*
+    "Other" is the one tile that cannot name the thing for you, so it clears
+    the box rather than writing the useless word "Other" into it — which would
+    also satisfy the save button and let a document called "Other" through.
+  */
+  check('Other names nothing', renameForKind('other', 'Passport', 'passport') === '');
+  check('even from a blank box', renameForKind('other', '', 'id') === '');
+
+  /*
+    THE RULE THAT MATTERS. A household has four passports and they get called
+    "Nuno's passport" and "Leo's passport". Someone who typed that and then
+    corrected the tile must not lose their words to the correction.
+  */
+  check(
+    'typed words survive a change of tile',
+    renameForKind('id', "Nuno's passport", 'passport') === "Nuno's passport",
+  );
+  check(
+    'and survive Other too',
+    renameForKind('other', 'Season ticket', 'membership') === 'Season ticket',
+  );
+
+  // Whitespace is not an opinion, so it gets filled like an empty box.
+  check('a box of spaces is still empty', renameForKind('vehicle', '   ', 'passport') === 'Vehicle');
 
   /* -------------------------------------------------------- the renew-by */
 

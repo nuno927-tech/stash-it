@@ -2,7 +2,15 @@ import { useRef, useState, type ReactNode } from 'react';
 import { createPaper, deletePaper, updatePaper } from '@/db/repo';
 import type { Paper, PaperKind } from '@/db/types';
 import { feedback } from '@/lib/feedback';
-import { DEFAULT_LEAD_DAYS, KIND_LABEL, KINDS, expiryOf, leadDaysFor, renewBy } from '@/lib/papers';
+import {
+  DEFAULT_LEAD_DAYS,
+  KIND_LABEL,
+  KINDS,
+  expiryOf,
+  leadDaysFor,
+  renameForKind,
+  renewBy,
+} from '@/lib/papers';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { PaperIcon } from '@/components/PaperIcon';
 import { cardFilled, useAutoAdvance } from '@/components/useAutoAdvance';
@@ -36,8 +44,13 @@ export function PaperForm({
 }) {
   const editing = !!existing;
 
-  const [kind, setKind] = useState<PaperKind>(existing?.kind ?? 'passport');
-  const [label, setLabel] = useState(existing?.label ?? '');
+  const [kind, setKind] = useState<PaperKind>(existing?.kind ?? FIRST_KIND);
+  /*
+    A new document opens on Passport with the name already filled in, because
+    the tile is already selected and an empty required field under a chosen
+    tile is a question the form has just answered for itself.
+  */
+  const [label, setLabel] = useState(existing?.label ?? KIND_LABEL[FIRST_KIND]);
   const [holder, setHolder] = useState(existing?.holder ?? '');
   const [expires, setExpires] = useState(existing?.expiresOn ?? '');
   const [issued, setIssued] = useState(existing?.issuedOn ?? '');
@@ -67,11 +80,14 @@ export function PaperForm({
   const start = end ? renewBy({ kind, leadDays: lead, expiresOn: expires }) : null;
 
   const pick = (k: PaperKind) => {
+    // The name follows the tile — "Passport" for Passport — unless the user
+    // has written their own, in which case it is theirs. "Other" clears it,
+    // because it is the one tile that can't name the thing for you.
+    setLabel(renameForKind(k, label, kind));
     setKind(k);
     feedback('tap');
-    // A lead time the user hasn't touched should follow the kind they pick.
-    // One they *have* touched is an opinion, and picking a different kind
-    // afterwards shouldn't quietly overwrite it.
+    // Same rule for the lead time: it follows the kind until you touch it,
+    // and once touched it is an opinion that a later tile must not overwrite.
     if (lead !== undefined && lead === DEFAULT_LEAD_DAYS[kind]) setLead(undefined);
   };
 
@@ -146,7 +162,7 @@ export function PaperForm({
             <input
               type="text"
               value={label}
-              placeholder={`${KIND_LABEL[kind]}`}
+              placeholder={kind === 'other' ? 'Library card, TV licence…' : KIND_LABEL[kind]}
               onChange={(e) => setLabel(e.target.value)}
             />
           </Field>
@@ -300,6 +316,9 @@ export function PaperForm({
     </div>
   );
 }
+
+/** What a new document starts as. The tile is pre-selected, so the name is too. */
+const FIRST_KIND: PaperKind = 'passport';
 
 /** "8 months" / "1 month" — the lead time, said back in the sentence. */
 function monthsBefore(days: number): string {
