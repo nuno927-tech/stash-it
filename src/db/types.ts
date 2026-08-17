@@ -344,8 +344,16 @@ export interface Paper {
   /** Where the physical one is. "Fireproof box", "Mum's house". */
   storedAt?: string;
 
-  /** 0, 1, 3 or 7 days before the renew-by date. Zero means none. */
-  remindDays?: number;
+  /*
+    NO `remindDays`, unlike Subscription, and the difference is the point.
+
+    There was one, copied across, and it was the same control twice: the lead
+    time already decides the day this document starts asking, so a reminder
+    some days before that day is a slightly longer lead time wearing a second
+    switch. A subscription earns its reminder because a charge lands on one
+    day with nothing else warning you; here the lead time IS the warning, it
+    never turns itself off, and it drives the sorting and the colour too.
+  */
 
   notes?: string;
   createdAt: string;

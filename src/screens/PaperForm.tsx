@@ -2,16 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { createPaper, deletePaper, updatePaper } from '@/db/repo';
 import type { Paper, PaperKind } from '@/db/types';
 import { feedback } from '@/lib/feedback';
-import {
-  DEFAULT_LEAD_DAYS,
-  KIND_LABEL,
-  KINDS,
-  LEAD_REASON,
-  REMIND_CHOICES,
-  expiryOf,
-  leadDaysFor,
-  renewBy,
-} from '@/lib/papers';
+import { DEFAULT_LEAD_DAYS, KIND_LABEL, KINDS, expiryOf, leadDaysFor, renewBy } from '@/lib/papers';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { PaperIcon } from '@/components/PaperIcon';
 import { useAutoAdvance } from '@/components/useAutoAdvance';
@@ -20,14 +11,17 @@ import { useAutoAdvance } from '@/components/useAutoAdvance';
  * Adding or editing a document that expires.
  *
  * Three questions are required — what kind, what it's called, when it runs out
- * — and everything else is optional. The fourth card is the one that matters
- * and the one nobody would think to ask for: how much warning this particular
+ * — and everything else is optional. The third card is the one that matters and
+ * the one nobody would think to ask for: how much warning this particular
  * document needs.
  *
  * THE LEAD TIME IS SHOWN AS A CONSEQUENCE, not as a number. Nobody has an
- * opinion about "240 days"; everybody has an opinion about "start in October
- * 2026". So the card sets the number and then says the date it produces, live,
- * and the reason that default exists sits underneath it.
+ * opinion about "240 days"; everybody has one about "October 2026". So the
+ * sentence sits directly under the heading, above the control, and each tap
+ * rewrites the line you are already reading.
+ *
+ * THERE IS NO SEPARATE REMINDER. It was there, copied from the subscription
+ * form, and it was the same control twice — see the note on the Paper type.
  */
 export function PaperForm({
   propertyId,
@@ -50,7 +44,6 @@ export function PaperForm({
   const [lead, setLead] = useState<number | undefined>(existing?.leadDays);
   const [authority, setAuthority] = useState(existing?.authority ?? '');
   const [storedAt, setStoredAt] = useState(existing?.storedAt ?? '');
-  const [remind, setRemind] = useState(existing?.remindDays ?? 0);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -92,7 +85,6 @@ export function PaperForm({
         leadDays: lead === undefined || lead === DEFAULT_LEAD_DAYS[kind] ? undefined : lead,
         authority: authority.trim() || undefined,
         storedAt: storedAt.trim() || undefined,
-        remindDays: remind || undefined,
         notes: notes.trim() || undefined,
       };
       if (existing) await updatePaper(existing.id, patch);
@@ -214,6 +206,27 @@ export function PaperForm({
           <h3>How much warning</h3>
         </div>
 
+        {/*
+          The answer sits above the control, not below it.
+
+          It reads as the subtitle of the heading that way — you see what the
+          current setting means before you touch anything, and each tap
+          rewrites the line you are already looking at. Underneath the buttons
+          it was a footnote about a decision you had already made.
+
+          And it is the number turned into the thing it means: nobody has a
+          view on "240 days", everybody has one on "October 2026". There is no
+          placeholder for the dateless case, because a line explaining that it
+          can't say anything yet is still a line to read.
+        */}
+        {start && (
+          <p className="leadsays">
+            Scout will start asking in{' '}
+            <b>{start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</b>
+            {effectiveLead > 0 && <>, {monthsBefore(effectiveLead)} before it runs out</>}.
+          </p>
+        )}
+
         <div className="seg">
           {LEAD_CHOICES.map((c) => (
             <button
@@ -228,50 +241,20 @@ export function PaperForm({
         </div>
 
         {/*
-          The number turned into the thing it means. "240 days" is not
-          something anyone has a view on; "start in October 2026" is.
+          THERE IS NO SEPARATE REMINDER, and that is a deletion rather than an
+          omission. There was one — 0/1/3/7 days, copied across from the
+          subscription form — and it was the same control twice.
+          "How much warning" already decides the day this document starts
+          asking; a reminder some days before that day is just a slightly
+          longer lead time, expressed in a second unit, with its own switch to
+          leave in the wrong position.
+
+          The subscription version earns its place because a charge lands on
+          one day and there is nothing else warning you. Here the lead time IS
+          the warning, it never turns itself off, and it drives the sorting and
+          the colour as well. Two overlapping thresholds on one record is how a
+          settings screen starts.
         */}
-        <p className="leadsays">
-          {start ? (
-            <>
-              Scout will start asking in{' '}
-              <b>{start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</b>
-              {end && (
-                <>
-                  , {effectiveLead === 0 ? 'the day' : `${Math.round(effectiveLead / 30)} months before`} it
-                  runs out
-                </>
-              )}
-              .
-            </>
-          ) : (
-            'Add an expiry date and Scout will work out when to start asking.'
-          )}
-        </p>
-
-        <p className="hint">{LEAD_REASON[kind]}</p>
-      </section>
-
-      {/* -------------------------------------------------------- reminders */}
-      <section className="card formcard">
-        <div className="cardhead">
-          <h3>Reminder</h3>
-        </div>
-
-        <div className="seg">
-          {REMIND_CHOICES.map((d) => (
-            <button key={d} type="button" className={remind === d ? 'on' : ''} onClick={() => setRemind(d)}>
-              {d === 0 ? 'None' : `${d} day${d === 1 ? '' : 's'}`}
-            </button>
-          ))}
-        </div>
-
-        <p className="hint">
-          {remind === 0
-            ? "No reminder. It'll still appear on the home screen once it needs starting."
-            : `A card appears on the home screen ${remind} day${remind === 1 ? '' : 's'} before it needs starting — the next time you open Stash it. Nothing reaches your phone while the app is closed; that needs a server, and there isn't one yet.`}
-        </p>
-
         <Field label="Notes">
           <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
         </Field>
@@ -310,6 +293,13 @@ export function PaperForm({
       </div>
     </div>
   );
+}
+
+/** "8 months" / "1 month" — the lead time, said back in the sentence. */
+function monthsBefore(days: number): string {
+  if (days < 45) return `${days} days`;
+  const m = Math.round(days / 30.44);
+  return `${m} ${m === 1 ? 'month' : 'months'}`;
 }
 
 /**

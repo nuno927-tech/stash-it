@@ -1567,11 +1567,29 @@ select.compact {
   */
 }
 
+/*
+  `min-width: 0` is the other half of this, and it was missing for three
+  reports running.
+
+  Subgrid fixed the vertical half — labels and inputs sharing rows. The
+  horizontal half was never touched, and it is a different bug with the same
+  symptom. A grid item's automatic minimum size is its MIN-CONTENT, not zero,
+  and an <input> with no `size` attribute reports a min-content width of about
+  twenty characters — call it 198px with our padding at 15px. Two of those plus
+  the gap is 408px, and a card's interior on a phone is nearer 311.
+
+  `1fr 1fr` cannot go below those minimums, so the columns stayed 198px each
+  and the pair quietly overflowed its card: the left field looked perfect, the
+  right one started past the middle and ran off the edge. Which is exactly what
+  "Model and Serial number aren't aligned" looks like, and why shortening the
+  labels never fixed it — the labels were never the ones setting the width.
+*/
 .fieldpair > .field {
   display: grid;
   grid-template-rows: subgrid;
   grid-row: span 2;
   margin-bottom: 0;
+  min-width: 0;
 }
 
 /* Without subgrid the two rows fall back to the field's own box, which is
@@ -1587,6 +1605,16 @@ select.compact {
    row it was given or it sits at its content height and misses the line. */
 .fieldpair .moneyfield {
   align-self: stretch;
+  min-width: 0;
+}
+
+/* And the controls themselves, for the same reason one level down: `width:
+   100%` sizes against the column, but min-content is what decides how wide the
+   column was allowed to get. */
+.fieldpair input,
+.fieldpair select,
+.fieldpair textarea {
+  min-width: 0;
 }
 
 input[type='text'],

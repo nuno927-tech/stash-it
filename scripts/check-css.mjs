@@ -191,6 +191,43 @@ function scoutHeight() {
   return out;
 }
 
+/**
+ * A subgrid child in a fractional column must set `min-width: 0`.
+ *
+ * Reported three times as "these two fields aren't aligned", fixed twice, and
+ * the second half of it was never the labels at all.
+ *
+ * A grid item's automatic minimum size is its min-content, and an <input> with
+ * no `size` attribute claims about twenty characters — near 200px here. Two of
+ * those in `1fr 1fr` cannot fit a phone-width card, so the columns hold their
+ * minimums and the whole pair overflows: left field flush, right field off the
+ * edge. `width: 100%` does nothing about it, because 100% of an over-wide
+ * column is still over-wide.
+ *
+ * Any rule opting into `grid-template-rows: subgrid` is a field pair by
+ * definition here, so it needs the escape hatch. Nothing throws without it and
+ * it only shows up at narrow widths, which is why it survived two fixes.
+ */
+function subgridMinWidth() {
+  const out = [];
+  for (const sheet of SHEETS) {
+    let css;
+    try {
+      css = readFileSync(sheet, 'utf8');
+    } catch {
+      continue;
+    }
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    for (const m of code.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!/grid-template-rows\s*:\s*subgrid/.test(m[2])) continue;
+      if (/(^|[;\s])min-width\s*:\s*0/.test(m[2])) continue;
+      const at = m.index + (m[1].length - m[1].trimStart().length);
+      out.push(`${sheet}:${code.slice(0, at).split('\n').length}  ${m[1].trim()}`);
+    }
+  }
+  return out;
+}
+
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -290,6 +327,7 @@ for (const file of walk(SRC)) {
 const doubled = duplicateRules();
 const stuck = badTouchAction();
 const resized = scoutHeight();
+const squeezed = subgridMinWidth();
 
 if (missing.size === 0) {
   console.log(`PASS  every class in src has a rule  — ${defined.size} defined`);
@@ -327,6 +365,17 @@ if (resized.length === 0) {
   }
 }
 
-const failures = missing.size + doubled.length + stuck.length + resized.length;
+if (squeezed.length === 0) {
+  console.log('PASS  field pairs can shrink to their column');
+} else {
+  for (const where of squeezed) {
+    console.log(`FAIL  a subgrid field pair is missing min-width: 0  — ${where}`);
+    console.log("      An input's min-content is ~20 characters; two won't fit a phone.");
+    console.log('      The pair overflows its card and the right-hand field runs off.');
+  }
+}
+
+const failures =
+  missing.size + doubled.length + stuck.length + resized.length + squeezed.length;
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

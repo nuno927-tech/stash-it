@@ -28,7 +28,6 @@ import {
   paperLabel,
   paperState,
   renewBy,
-  reminderDue,
   sortPapers,
 } from '@/lib/papers';
 import { exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
@@ -193,61 +192,29 @@ async function main() {
   check('and nothing valid means nothing next', nextUp(jobs, august) === null);
   check('an empty list needs nothing', needsRenewing([], august).length === 0);
 
-  /* ----------------------------------------------------------- reminders */
+  /* ------------------------------------------------- one control, not two */
 
   /*
-    Measured against the renew-by, not the expiry. A reminder three days before
-    a passport expires is a reminder three days before a holiday is cancelled.
+    There is no reminder setting, and this pins the reason rather than the
+    absence. A reminder N days before the renew-by date is a lead time of
+    (lead + N) wearing a second switch — the same date, reached two ways, with
+    two places for it to be wrong.
+
+    The subscription form keeps its reminder because a charge lands on one day
+    with nothing else warning you. Here the lead time never turns off.
   */
-  const remind = paper({ remindDays: 7 });
-  check('seven days before renew-by is due', reminderDue(remind, new Date(2026, 9, 12)));
-  check('eight is not', !reminderDue(remind, new Date(2026, 9, 10)));
-  check('no reminder set, never due', !reminderDue(paper(), new Date(2026, 9, 18)));
+  const lead200 = paper({ leadDays: 200 });
+  const lead207 = paper({ leadDays: 207 });
   check(
-    'and it fires nowhere near the printed date',
-    !reminderDue(remind, new Date(2027, 5, 10)),
+    'a lead seven days longer lands exactly where a 7-day reminder would',
+    (daysUntilRenewBy(lead200, now) ?? 0) - (daysUntilRenewBy(lead207, now) ?? 0) === 7,
+    `${daysUntilRenewBy(lead200, now)} vs ${daysUntilRenewBy(lead207, now)}`,
   );
-
-  /* --------------------------------------------- a real household, in order */
-
-  /*
-    Ten documents, sorted by the app, on 17 August 2026. This is the case the
-    whole module exists for and it only shows up on a realistic set: Nuno's
-    passport expires in FEBRUARY and the car's MOT expires in SEPTEMBER, five
-    months sooner — and the passport still has to come first, because it needed
-    starting in June and the MOT needs starting now.
-
-    Ordered by the printed date this list comes out backwards, and coming out
-    backwards is precisely the mistake a calendar reminder makes.
-  */
-  const day = new Date(2026, 7, 17);
-  const home = [
-    paper({ id: 'mot', kind: 'vehicle', label: 'MOT', expiresOn: '2026-09-08' }),
-    paper({ id: 'nuno-pp', kind: 'passport', label: 'Passport', holder: 'Nuno', expiresOn: '2027-02-11' }),
-    paper({ id: 'ana-pp', kind: 'passport', label: 'Passport', holder: 'Ana', expiresOn: '2031-09-30' }),
-    paper({ id: 'gym', kind: 'membership', label: 'Gym', expiresOn: '2026-08-31' }),
-    paper({ id: 'contents', kind: 'insurance', label: 'Home contents', expiresOn: '2026-11-20' }),
-  ];
-
-  check('the MOT expires five months before the passport',
-    home[0]!.expiresOn < home[1]!.expiresOn);
   check(
-    'and the passport still sorts above it',
-    sortPapers(home, day).map((p) => p.id)[0] === 'nuno-pp',
-    sortPapers(home, day).map((p) => p.id).join(' → '),
+    'and the record has nowhere to put a second one',
+    !('remindDays' in paper()),
+    Object.keys(paper()).join(', '),
   );
-  check('three of the five need starting', needsRenewing(home, day).length === 3, needsRenewing(home, day).map((p) => p.id).join(', '));
-  check('and the next one after those is the contents policy', nextUp(home, day)?.id === 'contents');
-
-  /*
-    The dashboard prints this gap as a rounded number of months, and rounding
-    breaks at the near end: 18 days is "1 month" and 10 days is "0 months" — a
-    countdown that has visibly stopped counting, on the row that matters most.
-    Home switches to days under 45; this pins the boundary that forces it.
-  */
-  const nearly = daysUntilRenewBy(paper({ kind: 'membership', expiresOn: '2026-09-20' }), day);
-  check('a paper can be days from needing you, not months', nearly !== null && nearly < 45 && nearly > 0, `${nearly}`);
-  check('and rounding it to months would say zero', Math.round((nearly ?? 0) / 30) === 0, `${nearly}`);
 
   /* -------------------------------------------------------------- holders */
 

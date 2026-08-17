@@ -16,7 +16,20 @@ import { DocGlyph, DocTiles, DOC_KIND_ORDER } from './DocTiles';
 import { LinkDoc } from './LinkDoc';
 
 /**
- * Documents on the add and edit form. The tiles are shared with the item page
+ * Attachments on the add and edit form — receipts, manuals, photos of the
+ * warranty card.
+ *
+ * NAMED "ATTACHMENTS", NOT "DOCUMENTS". These hang off an item and only exist
+ * because it does. The Documents tab is a different thing entirely: passports
+ * and licences, which belong to a person and expire on their own. Two features
+ * called Documents on one phone is one too many, and this is the one that was
+ * always really "the paperwork for this kettle".
+ *
+ * The internal names are the other way round and cannot be swapped without a
+ * database migration for no gain: these are `Doc`/`docs`, and the tab's records
+ * are `Paper`/`papers`. Read the type, not the word.
+ *
+ * The tiles are shared with the item page. The tiles are shared with the item page
  * — see DocTiles — and the only difference here is that a file chosen before
  * the item exists has nowhere to be written yet, so it's held in memory until
  * the form saves.
@@ -59,7 +72,7 @@ export function DocsField({
   return (
     <section className="card formcard" ref={sectionRef}>
       <div className="cardhead">
-        <h3>Documents</h3>
+        <h3>Attachments</h3>
         {count > 0 && <span className="countpill">{count}</span>}
       </div>
 

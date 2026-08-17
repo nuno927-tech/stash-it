@@ -62,19 +62,30 @@ const ICONS: Record<Tab, ReactNode> = {
     </>
   ),
   /*
-    A leaf, veined.
+    Scout himself, face on.
 
-    The one place the squirrel theme and the subject matter meet on their own:
-    a leaf IS a page, in the oldest sense of the word, and it belongs on a tree
-    with the acorns. A document glyph would have been clearer for two seconds
-    and generic forever — and a folded sheet at 26px next to two acorns and a
-    tree reads as the icon somebody forgot to theme.
+    An ID card with a squirrel in the photo box was drawn first and thrown
+    away on arithmetic. The card needs eighteen of the twenty-four units, the
+    photo box gets a third of that, and the squirrel inside it lands at about
+    five pixels on screen — a grey smudge in a rectangle. Anything drawn inside
+    something else at 26px is drawn at nothing.
+
+    So the face takes the whole frame instead, which is the only way it gets
+    enough pixels to be a face. The eyes and nose are filled rather than
+    stroked: a 2px circle outlined with a 1.7px pen is a solid dot anyway, and
+    filling it makes that a decision instead of an accident.
+
+    It carries the mascot rather than the subject — a squirrel's head does not
+    say "passport". That's the trade, and the label underneath says Documents.
   */
   papers: (
     <>
-      <path d="M5.2 18.8c-2.4-4.6-.6-11 4.2-13.4 2.6-1.3 6-1.4 9.4-.6.5 3.4.2 6.8-1.2 9.4-2.6 4.8-9 6.6-12.4 4.6z" />
-      <path d="M4 20.4c1.6-3.4 4.6-6.6 8.4-8.8" />
-      <path d="M11 9.6c1.1.5 2 1.4 2.6 2.6M8.2 13.4c1 .5 1.8 1.3 2.3 2.3" />
+      <path d="M8.7 7.1C7.5 5.4 7.1 3.7 7.8 3.1c.8-.6 2.3.3 3.3 1.9" />
+      <path d="M15.3 7.1c1.2-1.7 1.6-3.4.9-4-.8-.6-2.3.3-3.3 1.9" />
+      <path d="M12 4.6c-4 0-7.1 3-7.1 7 0 4.3 3.2 7.7 7.1 7.7s7.1-3.4 7.1-7.7c0-4-3.1-7-7.1-7z" />
+      <circle cx="9.4" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="14.6" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="14.4" r=".9" fill="currentColor" stroke="none" />
     </>
   ),
   // A nut, in both senses. The pun is free and the hexagon is the most robust
@@ -91,7 +102,7 @@ const LABELS: Record<Tab, string> = {
   home: 'Home',
   items: 'Items',
   subs: 'Subs',
-  papers: 'Papers',
+  papers: 'Documents',
   settings: 'Settings',
 };
 
@@ -130,7 +141,7 @@ const ADD_KINDS: { kind: AddKind; label: string; note: string; glyph: ReactNode 
   },
   {
     kind: 'paper',
-    label: 'Paper',
+    label: 'Document',
     note: 'Something that expires',
     glyph: (
       <>

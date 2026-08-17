@@ -65,19 +65,6 @@ export const DEFAULT_LEAD_DAYS: Record<PaperKind, number> = {
   other: 30,
 };
 
-/** What the default is there for, said in the form rather than assumed. */
-export const LEAD_REASON: Record<PaperKind, string> = {
-  passport: 'Many countries want six months left on it, and renewals take weeks.',
-  id: 'Long enough to book an appointment and wait for the card.',
-  licence: 'Renewal is quick, but driving on a lapsed one is not a small thing.',
-  visa: 'Applications are slow and often need the passport posted off.',
-  vehicle: 'Enough to book the test and fix whatever it fails on.',
-  insurance: 'Time to shop around before it auto-renews at a worse price.',
-  certification: 'Courses and assessments need booking well ahead.',
-  membership: 'Enough notice to decide whether you still want it.',
-  other: 'A month, unless you know better.',
-};
-
 export const KINDS = PAPER_KINDS;
 
 export function leadDaysFor(paper: Pick<Paper, 'kind' | 'leadDays'>): number {
@@ -211,23 +198,6 @@ export function needsRenewing(papers: Paper[], now = new Date()): Paper[] {
 /** The next one that will need starting, ignoring those already overdue. */
 export function nextUp(papers: Paper[], now = new Date()): Paper | null {
   return sortPapers(papers, now).find((p) => paperState(p, now) === 'valid') ?? null;
-}
-
-/**
- * Whether this wants mentioning on the dashboard now.
- *
- * Measured against the renew-by date, not the expiry — a reminder three days
- * before a passport expires is a reminder three days before a holiday is
- * cancelled. Same honesty caveat as subscriptions: there is no push, so the
- * next time the app is opened is the only moment it can say anything.
- */
-export const REMIND_CHOICES = [0, 1, 3, 7] as const;
-
-export function reminderDue(paper: Paper, now = new Date()): boolean {
-  if (!paper.remindDays) return false;
-  const left = daysUntilRenewBy(paper, now);
-  if (left === null) return false;
-  return left >= 0 && left <= paper.remindDays;
 }
 
 /** Papers with a holder, grouped for a household list. Empty when nobody

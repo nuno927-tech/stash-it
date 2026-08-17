@@ -58,7 +58,7 @@ export function Papers({
   return (
     <>
       <header className="apphead">
-        <div className="apptitle">Papers</div>
+        <div className="apptitle">Documents</div>
       </header>
 
       {papers.length === 0 ? (
@@ -66,13 +66,10 @@ export function Papers({
           <Scout pose="clipboard" height={170} motion={['float']} shadow alt="" />
           <h3>Nothing tracked yet</h3>
           <p>
-            Passports, licences, the MOT. Tap <b>Stash it</b> and choose Paper, and Scout will
-            tell you when to start renewing — not when it's already too late.
+            Passports, IDs, licences. Scout will tell you when to start renewing, not when it's
+            already too late.
           </p>
-          <p className="hint">
-            Dates only. Scout doesn't keep scans or document numbers, because backups aren't
-            encrypted yet and a copy of your passport isn't something to leave lying in one.
-          </p>
+          <p>General info and dates only, because your privacy matters.</p>
         </div>
       ) : (
         <>

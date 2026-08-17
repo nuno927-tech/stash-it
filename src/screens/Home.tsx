@@ -734,7 +734,7 @@ function PapersBlock({ papers, onOpen }: { papers: Paper[]; onOpen: () => void }
   return (
     <>
       <div className="seclabel" style={{ marginTop: 28 }}>
-        <span>Papers</span>
+        <span>Documents</span>
         <button type="button" className="linkish" onClick={onOpen}>
           See all
         </button>
@@ -768,7 +768,7 @@ function PapersBlock({ papers, onOpen }: { papers: Paper[]; onOpen: () => void }
           </>
         ) : (
           <span className="nextup-txt">
-            <span className="fieldlabel">Papers</span>
+            <span className="fieldlabel">Documents</span>
             <strong>Everything is in hand</strong>
             <small>
               {papers.length} tracked, nothing to start yet

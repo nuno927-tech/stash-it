@@ -178,7 +178,7 @@ export function ItemDetail({
       {item.notes && <p className="notes-body">{item.notes}</p>}
 
       <div className="seclabel">
-        <span>Documents</span>
+        <span>Attachments</span>
         <span>{docs.length}</span>
       </div>
 
