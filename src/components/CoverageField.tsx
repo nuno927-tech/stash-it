@@ -30,26 +30,41 @@ import { addDays, addMonths, parseDate, toISODate } from '@/lib/warranty';
  * The form opens as a single blank row, so an item with one plain warranty is
  * the same three taps it always was.
  */
+/** Policies with an answer in them, as opposed to blank rows waiting for one. */
+export function countCoverages(drafts: CoverageDraft[]): number {
+  return drafts.filter((c) => c.unit === 'lifetime' || c.amount.trim()).length;
+}
+
 export function CoverageField({
   purchaseDate,
   coverages,
   onChange,
+  bare = false,
 }: {
   purchaseDate: string;
   coverages: CoverageDraft[];
   onChange: (next: CoverageDraft[]) => void;
+  /**
+   * Drop the card and its heading. The item form asks "how long is it
+   * covered?" immediately above, and a boxed section titled "Coverage" under
+   * that question is the same word twice inside two frames.
+   */
+  bare?: boolean;
 }) {
   const patch = (key: string, changes: Partial<CoverageDraft>) =>
     onChange(coverages.map((c) => (c.key === key ? { ...c, ...changes } : c)));
 
-  const real = coverages.filter((c) => c.unit === 'lifetime' || c.amount.trim());
+  const real = countCoverages(coverages);
+  const Wrap = bare ? 'div' : 'section';
 
   return (
-    <section className="card">
-      <div className="cardhead">
-        <h3>Coverage</h3>
-        {real.length > 1 && <span className="countpill">{real.length}</span>}
-      </div>
+    <Wrap className={bare ? 'covbare' : 'card'}>
+      {!bare && (
+        <div className="cardhead">
+          <h3>Coverage</h3>
+          {real > 1 && <span className="countpill">{real}</span>}
+        </div>
+      )}
 
       {coverages.map((c, i) => (
         <CoverageRow
@@ -70,7 +85,7 @@ export function CoverageField({
       >
         + Add another policy
       </button>
-    </section>
+    </Wrap>
   );
 }
 

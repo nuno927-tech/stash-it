@@ -1577,21 +1577,9 @@ a.pick {
 
 
 
-.expander {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  background: none;
-  border: none;
-  border-top: 1px solid var(--slate-700);
-  color: var(--gold);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 16px 0;
-  margin: 6px 0 14px;
-}
+/* `.expander` lived here — the item form's "More details" toggle, a centred
+   gold link with a chevron. Replaced by `.detailsdoor`, which says what's
+   behind it instead of how much of it there is. Nothing else used it. */
 
 .btn.wide {
   width: 100%;
@@ -2705,12 +2693,102 @@ button.countpill.tappill:active {
   background: var(--slate-800);
 }
 
+/* ------------------------------------------------------ asking, not filling */
+
+/*
+  The item form, rebuilt as questions rather than cards. Five bordered boxes
+  became four blocks separated by space — a heading, a field label and a
+  border around one dropdown is three frames on a single control, and the
+  cumulative effect was a screen that looked like paperwork.
+
+  Nothing here has a box. The rhythm does the grouping.
+*/
+.askblock {
+  margin-bottom: 26px;
+}
+
+.askblock:last-of-type {
+  margin-bottom: 18px;
+}
+
+/* The question itself. Full weight rather than a muted field label: these are
+   the structure of the screen now, not annotations on it. */
+.asklabel {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.asklabel.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Coverage without its own card — the question above it is the heading. */
+.covbare > .covrow:first-child {
+  padding-top: 0;
+}
+
+/*
+  The one row everything optional lives behind. A labelled door rather than a
+  disclosure triangle: it says what's inside, so skipping it is a decision
+  rather than a guess.
+*/
+.detailsdoor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 15px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.detailsdoor:active {
+  background: var(--slate-700);
+}
+
+.detailsdoor-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.detailsdoor-txt strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.detailsdoor-txt small {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+/* Indented behind its own hairline, so an open door reads as contents of the
+   row above rather than as the screen starting again. */
+.detailsopen {
+  padding-left: 14px;
+  margin-bottom: 18px;
+  border-left: 2px solid var(--slate-600);
+  border-radius: 0;
+}
+
 .identity {
   display: flex;
   gap: 12px;
-  align-items: stretch;
+  align-items: center;
 }
-
 
 .photoslot {
   flex: none;
@@ -2745,18 +2823,14 @@ button.countpill.tappill:active {
   object-fit: cover;
 }
 
-.identity-fields {
+/* The name is the only thing beside the photo now — brand went behind the
+   door — so it takes the whole column and can be read at a size that matches
+   its importance. */
+.bigname {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  justify-content: center;
-}
-
-.bigname {
-  font-size: 17px !important;
-  font-weight: 600;
+  font-size: 19px !important;
+  font-weight: 500;
 }
 
 /* Every error and confirmation in the app — six components' worth — and it

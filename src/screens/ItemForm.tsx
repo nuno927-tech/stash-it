@@ -18,16 +18,35 @@ import { feedback } from '@/lib/feedback';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
-import { CoverageField } from '@/components/CoverageField';
+import { CoverageField, countCoverages } from '@/components/CoverageField';
 import { DocsField } from '@/components/DocsField';
 
 /**
  * One form, two modes: pass an `item` to edit it, omit one to create.
  *
- * Organised as cards in the order someone actually knows the answers — what it
- * is, where it lives, what it cost, how long it's covered, then the paperwork.
- * The previous single column of fields asked for all of it at one visual
- * weight, which is what made it feel like a form rather than a few questions.
+ * THREE QUESTIONS, THEN A DOOR.
+ *
+ * This was five bordered cards — identity, room, purchase, coverage, documents
+ * — plus an expander, each with its own heading, each at the same visual
+ * weight. Twelve fields presented as twelve equally important questions, when
+ * exactly one of them is required. It read as a form to be completed rather
+ * than a few things to be told, and the complaint about it was "crowded",
+ * which is really a complaint about emphasis: nothing on the screen said what
+ * could be skipped.
+ *
+ * So what's above the fold is what the app is actually for — what it is, when
+ * you bought it, how long it's covered. Those three answers produce the
+ * countdown, which is the entire product. Everything else is real and worth
+ * keeping and now lives behind one row.
+ *
+ * The door is deliberately not a disclosure triangle at the bottom of a list.
+ * It's a labelled row that says what's inside and shows a dot when something
+ * is, because a collapsed section raises exactly one question — did I put
+ * anything in there — and that should be answerable without opening it.
+ *
+ * The cards are gone. Questions are separated by space, not by boxes: a
+ * heading, a field label and a border around one dropdown is three frames on
+ * one control.
  *
  * Save is a sticky bar rather than a button at each end. On a screen this long
  * a top-right Save is out of thumb reach, and two of them is one too many.
@@ -91,6 +110,18 @@ export function ItemForm({
 
   const set = <K extends keyof AddItemForm>(key: K, value: AddItemForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const covers = countCoverages(form.coverages);
+
+  /*
+    How much is behind the door. Only used to decide whether to show a dot —
+    a closed section raises one question, "did I put anything in there", and
+    counting is a cheaper answer than making someone open it and look.
+  */
+  const extras =
+    [form.roomId, form.price, form.brand, form.model, form.serial, form.retailer, form.notes].filter(
+      (v) => v.trim(),
+    ).length + staged.length;
 
   const addRoom = async () => {
     const name = (newRoom ?? '').trim();
@@ -190,7 +221,7 @@ export function ItemForm({
 
       {/* What it is. The photo sits beside the name rather than above it: a
           full-width dropzone pushed the first real question below the fold. */}
-      <section className="card">
+      <div className="askblock">
         <div className="identity">
           {/* The square says what it is for. A separate button underneath
               repeated a control the user was already looking at — the slot is
@@ -213,24 +244,19 @@ export function ItemForm({
             )}
           </button>
 
-          <div className="identity-fields">
-            <input
-              type="text"
-              className="bigname"
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="What is it?"
-              aria-label="Name"
-              autoFocus={!editing}
-            />
-            <input
-              type="text"
-              value={form.brand}
-              onChange={(e) => set('brand', e.target.value)}
-              placeholder="Brand (optional)"
-              aria-label="Brand"
-            />
-          </div>
+          {/* Brand has moved behind the door. It was sitting in the second
+              most prominent slot on the screen while being optional, and
+              "Bosch" is recoverable from the name of the thing far more often
+              than it's typed in separately. */}
+          <input
+            type="text"
+            className="bigname"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="What is it?"
+            aria-label="Name"
+            autoFocus={!editing}
+          />
         </div>
 
         {preview && (
@@ -301,122 +327,64 @@ export function ItemForm({
             e.target.value = '';
           }}
         />
-      </section>
+      </div>
 
-      {/* Where it lives. */}
-      <section className="card">
-        <div className="cardhead">
-          <h3>Room</h3>
-          <button
-            type="button"
-            className="linkish"
-            aria-expanded={newRoom !== null}
-            onClick={() => setNewRoom(newRoom === null ? '' : null)}
-          >
-            {newRoom === null ? 'New room' : 'Cancel'}
-          </button>
-        </div>
-
-        <select
-          value={form.roomId}
-          aria-label="Room"
-          onChange={(e) => set('roomId', e.target.value)}
-        >
-          <option value="">Not assigned</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-
-        {newRoom !== null && (
-          <div className="newroom">
-            <input
-              type="text"
-              value={newRoom}
-              autoFocus
-              placeholder="Nursery"
-              aria-label="New room name"
-              onChange={(e) => setNewRoom(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  void addRoom();
-                }
-                if (e.key === 'Escape') setNewRoom(null);
-              }}
-            />
-            <button type="button" className="minibtn" disabled={!newRoom.trim()} onClick={addRoom}>
-              Add
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* What it cost. */}
-      <section className="card">
-        <div className="cardhead">
-          <h3>Purchase</h3>
-        </div>
-        <div className="fieldpair">
-          <label className="field">
-            <span className="fieldlabel">Date</span>
-            <input
-              type="date"
-              value={form.purchaseDate}
-              onChange={(e) => set('purchaseDate', e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span className="fieldlabel">Price</span>
-            <div className="moneyfield">
-              <span aria-hidden="true">{currencySymbol(form.currency)}</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={form.price}
-                onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
-                onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
-                placeholder="849.00"
-              />
-            </div>
-          </label>
-        </div>
-      </section>
+      {/* When. Second because the countdown can't exist without it — and
+          because it's the one fact that gets harder to recover the longer you
+          leave it. */}
+      <div className="askblock">
+        <label className="asklabel" htmlFor="buydate">
+          When did you buy it?
+        </label>
+        <input
+          id="buydate"
+          type="date"
+          value={form.purchaseDate}
+          onChange={(e) => set('purchaseDate', e.target.value)}
+        />
+      </div>
 
       {/* How long it's covered — one row per policy. */}
-      <CoverageField
-        purchaseDate={form.purchaseDate}
-        coverages={form.coverages}
-        onChange={(next) => set('coverages', next)}
-      />
+      <div className="askblock">
+        <div className="asklabel row">
+          <span>How long is it covered?</span>
+          {covers > 1 && <span className="countpill">{covers}</span>}
+        </div>
+        <CoverageField
+          bare
+          purchaseDate={form.purchaseDate}
+          coverages={form.coverages}
+          onChange={(next) => set('coverages', next)}
+        />
+      </div>
 
-      <DocsField
-        itemId={item?.id}
-        staged={staged}
-        onStage={(d) => setStaged((list) => [...list, d])}
-        onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
-        onRetype={(key, kind) =>
-          setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
-        }
-      />
-
+      {/*
+        Everything else, behind one row. Named rather than titled "More", so
+        it's a decision you can make without opening it, and dotted when
+        there's something inside for the same reason.
+      */}
       <button
         type="button"
-        className="expander"
+        className="detailsdoor"
         aria-expanded={more}
         onClick={() => setMore((m) => !m)}
       >
-        {more ? 'Fewer details' : 'More details'}
+        <span className="detailsdoor-txt">
+          <strong>
+            Additional details
+            {!more && extras > 0 && <i className="filleddot" aria-label={`${extras} filled in`} />}
+          </strong>
+          <small>Room, price, brand, receipts and the rest</small>
+        </span>
         <svg
-          width="16"
-          height="16"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.2"
           strokeLinecap="round"
+          aria-hidden="true"
           style={more ? { transform: 'rotate(180deg)' } : undefined}
         >
           <path d="M6 9l6 6 6-6" />
@@ -424,41 +392,142 @@ export function ItemForm({
       </button>
 
       {more && (
-        <section className="card">
-          <div className="fieldpair">
-            <Field label="Model">
-              <input type="text" value={form.model} onChange={(e) => set('model', e.target.value)} />
-            </Field>
-            <Field label="Serial number">
+        <div className="detailsopen">
+          <div className="askblock">
+            <div className="asklabel row">
+              <span>Room</span>
+              <button
+                type="button"
+                className="linkish"
+                aria-expanded={newRoom !== null}
+                onClick={() => setNewRoom(newRoom === null ? '' : null)}
+              >
+                {newRoom === null ? 'New room' : 'Cancel'}
+              </button>
+            </div>
+
+            <select
+              value={form.roomId}
+              aria-label="Room"
+              onChange={(e) => set('roomId', e.target.value)}
+            >
+              <option value="">Not assigned</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+
+            {newRoom !== null && (
+              <div className="newroom">
+                <input
+                  type="text"
+                  value={newRoom}
+                  autoFocus
+                  placeholder="Nursery"
+                  aria-label="New room name"
+                  onChange={(e) => setNewRoom(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void addRoom();
+                    }
+                    if (e.key === 'Escape') setNewRoom(null);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="minibtn"
+                  disabled={!newRoom.trim()}
+                  onClick={addRoom}
+                >
+                  Add
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="askblock">
+            <div className="fieldpair">
+              <Field label="Price">
+                <div className="moneyfield">
+                  <span aria-hidden="true">{currencySymbol(form.currency)}</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.price}
+                    onChange={(e) => set('price', formatMoneyInput(e.target.value, form.currency))}
+                    onBlur={() => set('price', completeMoneyInput(form.price, form.currency))}
+                    placeholder="849.00"
+                  />
+                </div>
+              </Field>
+              <Field label="Brand">
+                <input
+                  type="text"
+                  value={form.brand}
+                  onChange={(e) => set('brand', e.target.value)}
+                  placeholder="Bosch"
+                />
+              </Field>
+            </div>
+
+            <div className="fieldpair">
+              <Field label="Model">
+                <input
+                  type="text"
+                  value={form.model}
+                  onChange={(e) => set('model', e.target.value)}
+                />
+              </Field>
+              <Field label="Serial number">
+                <input
+                  type="text"
+                  value={form.serial}
+                  onChange={(e) => set('serial', e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <Field label="Retailer">
               <input
                 type="text"
-                value={form.serial}
-                onChange={(e) => set('serial', e.target.value)}
+                value={form.retailer}
+                onChange={(e) => set('retailer', e.target.value)}
+              />
+            </Field>
+
+            <Field label="Notes">
+              <textarea
+                rows={3}
+                value={form.notes}
+                onChange={(e) => set('notes', e.target.value)}
+                placeholder="Installed by Kelly Plumbing, filter behind the kickplate"
               />
             </Field>
           </div>
 
-          <Field label="Retailer">
-            <input
-              type="text"
-              value={form.retailer}
-              onChange={(e) => set('retailer', e.target.value)}
-            />
-          </Field>
-
-          <Field label="Notes">
-            <textarea
-              rows={3}
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-              placeholder="Installed by Kelly Plumbing, filter behind the kickplate"
-            />
-          </Field>
-        </section>
+          <DocsField
+            bare
+            itemId={item?.id}
+            staged={staged}
+            onStage={(d) => setStaged((list) => [...list, d])}
+            onUnstage={(key) => setStaged((list) => list.filter((s) => s.key !== key))}
+            onRetype={(key, kind) =>
+              setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
+            }
+          />
+        </div>
       )}
 
       <div className="savebar">
-        <button type="button" className="btn wide" disabled={busy} onClick={onSave}>
+        <button
+          type="button"
+          className="btn wide"
+          disabled={busy || !form.name.trim()}
+          onClick={onSave}
+        >
           {busy ? 'Saving…' : editing ? 'Save changes' : 'Save item'}
         </button>
       </div>
