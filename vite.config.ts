@@ -224,7 +224,7 @@ export default defineConfig(({ mode }) => {
                 id: base,
                 name: 'Stash it',
                 short_name: 'Stash it',
-                description: 'Warranties, receipts and manuals for everything you own.',
+                description: "Warranties, documents and subscriptions — every date you'd rather not miss.",
                 start_url: base,
                 scope,
                 display: 'standalone',

@@ -4,16 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0B0D10" />
-    <title>Stash it — warranties, before they expire</title>
+    <title>Stash it — warranties, documents and subscriptions, before they lapse</title>
     <meta
       name="description"
-      content="Receipts, warranties and manuals for everything you own, kept on your phone. Free, no account. $10 a year if you want reminders."
+      content="Warranties, passports, insurance and subscriptions — every date you'd rather not miss, kept on your phone. Free for 25 records, no account."
     />
 
-    <meta property="og:title" content="Stash it — warranties, before they expire" />
+    <meta property="og:title" content="Stash it — warranties, documents and subscriptions, before they lapse" />
     <meta
       property="og:description"
-      content="A squirrel keeps track of your receipts so you don't have to. On your phone, not on a server."
+      content="A squirrel keeps track of your warranties, documents and subscriptions so you don't have to. On your phone, not on a server."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="img/scout-acorn.webp" />
@@ -1295,14 +1295,15 @@
             Everything stays on your device
           </span>
 
-          <h1>Your warranties, <em>before</em> they expire.</h1>
+          <h1>Warranties, documents, subscriptions. <em>Before</em> they lapse.</h1>
         </div>
 
         <div class="hero-say">
           <p class="lede">
             The dishwasher dies in month 23 of a 24-month warranty and the receipt is in a drawer.
-            Somewhere. Stash it holds the paperwork for everything you own, and counts down what's
-            still covered while you can still do something about it.
+            Somewhere. The passport turns out to need six months' validity you haven't got. Stash it
+            holds the paperwork, watches the dates, and tells you while you can still do something
+            about it.
           </p>
 
           <div class="btns">
@@ -1366,7 +1367,8 @@
             <span class="eyebrow">What it does</span>
             <h2>Everything a claim asks for, in one place.</h2>
             <p class="lede">
-              Not a filing cabinet. It knows what you own and how long you're still covered.
+              Not a filing cabinet. It knows what you own, what you pay for, and how long any of it
+              is still good for.
             </p>
           </div>
           <img
@@ -1457,8 +1459,41 @@
             </div>
             <h3>Backups you actually own</h3>
             <p>
-              One file with everything in it. Keep it wherever you like, or send it to your own
-              Google Drive.
+              One file with everything in it. Back up now hands it to your share sheet — Drive,
+              Files, an email to yourself. Wherever you keep things.
+            </p>
+          </article>
+
+          <!-- Documents and subscriptions: the two things the app grew into, and
+               the two the site spent a month not mentioning. -->
+          <article class="card reveal">
+            <div class="glyph moss">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 4h8a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+                <path d="M10 3h4v2.5h-4z" />
+                <path d="M10 11h4M10 14.5h4" />
+              </svg>
+            </div>
+            <h3>Passports, licences, insurance</h3>
+            <p>
+              A passport tells you it expires in February. It doesn't tell you most countries want
+              six months on it, or that renewal takes eight weeks. Stash it counts back from that
+              and says when to <em>start</em> — and holds dates only, never a scan or a number.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M3 10h18M8 3v4M16 3v4" />
+              </svg>
+            </div>
+            <h3>What actually leaves your account</h3>
+            <p>
+              Not "$94 a month" — which month is the heavy one. Add your subscriptions and a
+              six-month curve shows where three annual plans happen to land together, and what
+              renews next.
             </p>
           </article>
         </div>
@@ -1674,6 +1709,14 @@
                 <b>One item</b>
                 <span>The photos, the paperwork, the policy number and the phone number to call.</span>
               </button>
+              <button class="shotpick" data-shot="3" role="tab" aria-selected="false">
+                <b>Documents</b>
+                <span>Sorted by when to start renewing, not when they run out. Dates only.</span>
+              </button>
+              <button class="shotpick" data-shot="4" role="tab" aria-selected="false">
+                <b>Subscriptions</b>
+                <span>What a month costs, and which month is the heavy one.</span>
+              </button>
             </div>
           </div>
 
@@ -1694,16 +1737,16 @@
                   <circle cx="75" cy="75" r="72" fill="none" stroke="#e05a44" stroke-width="5" stroke-dasharray="45 452" stroke-dashoffset="-352" stroke-linecap="round" />
                 </g>
               </svg>
-              <div class="mid"><div style="text-align: center"><b>78<span style="font-size: 14px; color: #8b949e">%</span></b><i style="display: block">still covered</i></div></div>
+              <div class="mid"><div style="text-align: center"><b>78<span style="font-size: 14px; color: #8b949e">%</span></b><i style="display: block">still in date</i></div></div>
             </div>
                     <img src="img/scout-report.webp" alt="" style="width: 92px; flex: none" loading="lazy" />
                   </div>
                   <div class="ui-card" style="margin-top: -3px; padding-top: 4px">
                     <div class="ui-stats">
-                      <div><b>14</b><span>covered</span></div>
-                      <div><b>4</b><span>ending</span></div>
+                      <div><b>14</b><span>in date</span></div>
+                      <div><b>4</b><span>action needed</span></div>
                       <div><b>3</b><span>lapsed</span></div>
-                      <div><b>2</b><span>none</span></div>
+                      <div><b>2</b><span>no date</span></div>
                     </div>
                   </div>
                   <div class="ui-card" style="display: flex; gap: 10px; align-items: stretch">
@@ -1715,7 +1758,7 @@
                     </div>
                   </div>
                   <div class="ui-fab">+ Stash it</div>
-                  <div class="ui-nav"><b>Home</b><span>Items</span><span>Settings</span></div>
+                  <div class="ui-nav"><b>Home</b><span>Items</span><span>Subs</span><span>Docs</span><span>Settings</span></div>
                 </div>
 
                 <!-- items -->
@@ -1734,7 +1777,7 @@
                   <div class="ui-row"><div class="ui-thumb">▣</div><div class="txt"><b>Sony television</b><span>XR-55A80L · 2025</span></div><div class="ui-left"><b style="color: #5fbf7e">2y 4m</b><span>left</span></div></div>
                   <div class="ui-row"><div class="ui-thumb">◍</div><div class="txt"><b>Dyson V15</b><span>SV22 · 2025</span></div><div class="ui-left"><b style="color: #5fbf7e">118</b><span>days left</span></div></div>
                   <div class="ui-row"><div class="ui-thumb">▤</div><div class="txt"><b>Kitchen mixer</b><span>Artisan · 2021</span></div><div class="ui-left"><b style="color: #e05a44; font-size: 14px">Ended</b><span>7 months ago</span></div></div>
-                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Settings</span></div>
+                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Subs</span><span>Docs</span><span>Settings</span></div>
                 </div>
 
                 <!-- detail -->
@@ -1755,7 +1798,81 @@
                   </div>
                   <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▤</div><div class="txt"><b>Receipt</b><span>PDF · 240 KB</span></div></div>
                   <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▥</div><div class="txt"><b>Warranty</b><span>PDF · 1.1 MB</span></div></div>
-                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Settings</span></div>
+                  <div class="ui-nav"><span>Home</span><b>Items</b><span>Subs</span><span>Docs</span><span>Settings</span></div>
+                </div>
+
+                <!-- documents -->
+                <div class="shot" data-shot="3">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between">
+                    <div class="ui-head" style="font-size: 19px">Documents</div>
+                    <img src="img/scout-clipboard.webp" alt="" style="width: 66px; margin-top: -12px" loading="lazy" />
+                  </div>
+                  <div class="ui-card" style="margin-top: 2px">
+                    <div class="ui-stats" style="border-top: none; margin-top: 0; padding-top: 0">
+                      <div><b>6</b><span>documents</span></div>
+                      <div><b style="color: var(--gold)">1</b><span>needs action</span></div>
+                      <div><b>0</b><span>out of date</span></div>
+                      <div><b style="font-size: 12px">Passport</b><span>up next</span></div>
+                    </div>
+                  </div>
+                  <!-- Ringed, exactly as the app rings anything that needs starting. -->
+                  <div class="ui-row" style="border: 1px solid #39414b; border-radius: 12px; padding: 8px 10px; margin-bottom: 6px">
+                    <div class="ui-thumb" style="border-radius: 10px; color: var(--gold)">▤</div>
+                    <div class="txt"><b>Passport</b><span>Nuno · start renewing now</span></div>
+                    <div class="ui-left"><b style="color: var(--gold); font-size: 12px">11 Feb</b><span>expires</span></div>
+                  </div>
+                  <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▥</div><div class="txt"><b>Driving licence</b><span>Nuno · fine for now</span></div><div class="ui-left"><b style="color: #5fbf7e; font-size: 12px">3 Aug</b><span>2031</span></div></div>
+                  <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">▦</div><div class="txt"><b>Car insurance</b><span>Golf · fine for now</span></div><div class="ui-left"><b style="color: #5fbf7e; font-size: 12px">12 Mar</b><span>2027</span></div></div>
+                  <div style="font-size: 9.5px; color: #6b7079; margin-top: 8px; line-height: 1.5">Dates and details only — no scans, no document numbers.</div>
+                  <div class="ui-nav"><span>Home</span><span>Items</span><span>Subs</span><b>Docs</b><span>Settings</span></div>
+                </div>
+
+                <!-- subscriptions -->
+                <div class="shot" data-shot="4">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between">
+                    <div class="ui-head" style="font-size: 19px">Subscriptions</div>
+                    <img src="img/scout-calendar.webp" alt="" style="width: 66px; margin-top: -12px" loading="lazy" />
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 0 10px">
+                    <div style="background: #1f242b; border: 1px solid rgba(242,179,61,0.45); border-radius: 12px; padding: 9px 10px">
+                      <b style="display: block; font-family: var(--display); font-weight: 200; font-size: 19px; color: var(--gold)">$94</b>
+                      <span style="font-size: 8px; letter-spacing: 0.07em; text-transform: uppercase; color: #8b949e">a month</span>
+                    </div>
+                    <div style="background: #1f242b; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 9px 10px">
+                      <b style="display: block; font-family: var(--display); font-weight: 200; font-size: 19px">$1,128</b>
+                      <span style="font-size: 8px; letter-spacing: 0.07em; text-transform: uppercase; color: #8b949e">a year</span>
+                    </div>
+                  </div>
+                  <!-- The six-month curve, drawn the way the app draws it. -->
+                  <div class="ui-card" style="padding: 12px 12px 8px">
+                    <svg viewBox="0 0 260 96" style="display: block; width: 100%; overflow: visible">
+                      <defs>
+                        <linearGradient id="sfade" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#f2b33d" stop-opacity="0.3" />
+                          <stop offset="100%" stop-color="#f2b33d" stop-opacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <line x1="0" y1="76" x2="260" y2="76" stroke="#39414b" stroke-width="1" />
+                      <line x1="0" y1="52" x2="260" y2="52" stroke="rgba(242,179,61,0.45)" stroke-width="1" stroke-dasharray="3 4" />
+                      <path d="M0 58 C 17 56, 35 44, 52 44 C 69 44, 87 68, 104 68 C 121 68, 139 22, 156 22 C 173 22, 191 62, 208 62 C 225 62, 243 54, 260 54 L 260 76 L 0 76 Z" fill="url(#sfade)" />
+                      <path d="M0 58 C 17 56, 35 44, 52 44 C 69 44, 87 68, 104 68 C 121 68, 139 22, 156 22 C 173 22, 191 62, 208 62 C 225 62, 243 54, 260 54" fill="none" stroke="#f2b33d" stroke-width="2" stroke-linecap="round" />
+                      <circle cx="52" cy="44" r="2" fill="#f2b33d" opacity="0.55" />
+                      <circle cx="104" cy="68" r="2" fill="#f2b33d" opacity="0.55" />
+                      <circle cx="156" cy="22" r="2" fill="#f2b33d" opacity="0.55" />
+                      <circle cx="208" cy="62" r="2" fill="#f2b33d" opacity="0.55" />
+                      <circle cx="260" cy="54" r="2" fill="#f2b33d" opacity="0.55" />
+                      <circle cx="0" cy="58" r="6" fill="#f2b33d" opacity="0.16" />
+                      <circle cx="0" cy="58" r="3" fill="#f2b33d" />
+                      <text x="2" y="46" font-size="11" fill="#f2b33d" font-family="var(--display)">$94</text>
+                      <text x="152" y="14" font-size="9" fill="#8b949e" text-anchor="middle">$286</text>
+                      <text x="0" y="90" font-size="8" fill="#f2b33d" letter-spacing="0.5">AUG</text>
+                      <text x="130" y="90" font-size="8" fill="#8b949e" text-anchor="middle" letter-spacing="0.5">NOV</text>
+                      <text x="260" y="90" font-size="8" fill="#8b949e" text-anchor="end" letter-spacing="0.5">JAN</text>
+                    </svg>
+                    <div style="font-size: 9.5px; color: #8b949e; margin-top: 10px; line-height: 1.5">November is three times a normal month — two annual plans land in it.</div>
+                  </div>
+                  <div class="ui-row"><div class="ui-thumb" style="border-radius: 10px">◍</div><div class="txt"><b>Netflix</b><span>monthly · 22nd</span></div><div class="ui-left"><b style="font-size: 12px">$15.49</b><span>in 5 days</span></div></div>
+                  <div class="ui-nav"><span>Home</span><span>Items</span><b>Subs</b><span>Docs</span><span>Settings</span></div>
                 </div>
               </div>
             </div>
@@ -1764,6 +1881,8 @@
               <button data-shot="0" class="on" aria-label="The dashboard"></button>
               <button data-shot="1" aria-label="Everything you own"></button>
               <button data-shot="2" aria-label="One item"></button>
+              <button data-shot="3" aria-label="Documents"></button>
+              <button data-shot="4" aria-label="Subscriptions"></button>
             </div>
           </div>
         </div>
@@ -1779,8 +1898,9 @@
             <span class="eyebrow">Pricing</span>
             <h2>Free for most houses. $10 a year for full ones.</h2>
             <p class="lede">
-              Fifteen items free, forever. Past that — or if you'd rather Scout tapped you on the
-              shoulder before a warranty dies — there's the paid tier.
+              Twenty-five records free, forever — items, documents and subscriptions together. Past
+              that, or if you'd rather Scout tapped you on the shoulder before something lapses,
+              there's the paid tier.
             </p>
           </div>
           <img src="img/scout-lounge.webp" alt="Scout with a cold drink" width="560" height="496" loading="lazy" />
@@ -1790,17 +1910,19 @@
           <article class="card reveal">
             <h3>Free — $0</h3>
             <p>
-              Fifteen items. Every photo, receipt and manual you want to attach to them. Backups,
-              offline, the fingerprint lock, the lot. No account, no card, no expiry.
+              <strong>Twenty-five records</strong> — items, documents and subscriptions, counted
+              together. Every photo, receipt and manual you want to attach to them. Backups,
+              offline, the fingerprint lock, the whole app. No account, no card, no expiry.
             </p>
           </article>
 
           <article class="card reveal">
             <h3>Pro — $10 a year</h3>
             <p>
-              Or $1 a month, if you prefer. <strong>Unlimited items</strong>, for anyone whose
-              garage alone runs past fifteen. And <strong>reminders</strong> — a notification
-              before a warranty ends, rather than a discovery when you next open the app.
+              Or $1 a month, if you prefer. <strong>Unlimited records</strong>, for anyone whose
+              garage alone runs past twenty-five. And <strong>notifications</strong> — told on the
+              day something needs starting, with the app shut, rather than finding out next time
+              you open it.
             </p>
           </article>
         </div>
@@ -1813,14 +1935,21 @@
               will.
             </p>
             <p>
-              Reminders are the exception, and they have to be — a notification cannot arrive from a
-              phone that's switched off. So if you turn them on, three things get sent: your email
-              address, a notification token, and the dates your warranties end. Not what the items
-              are. Not the photos. Not what you paid. Cancel and all of it is deleted.
+              Notifications are the exception, and they have to be — one cannot arrive from a phone
+              that's switched off. So if you turn them on, exactly two things get sent: a delivery
+              address your browser generates, and the days something is due. No email address, no
+              name, no account. Not what the items are, not the photos, not what you paid.
             </p>
             <p>
-              That's the whole difference, and it's why reminders cost money — they're the only part
-              of Stash it with a bill attached.
+              <strong>What the notification says never leaves your phone.</strong> The wording is
+              worked out on the device and kept in your browser's own cache; the message that
+              arrives is empty and your phone fills it in. Nobody in the middle can read a
+              notification they didn't write. Turn it off and the record is deleted.
+            </p>
+            <p>
+              That's the whole difference, and it's why notifications cost money — they're the only
+              part of Stash it with a bill attached.
+              <a href="privacy.html">The full policy</a> spells out the three honest costs.
             </p>
           </details>
         </div>
@@ -1850,7 +1979,7 @@
           </details>
           <details>
             <summary>Do you sell or share anything?</summary>
-            <p>There's nothing to sell. No analytics, no ad network, no data broker, and on the free tier no server to send anything to. If you subscribe to reminders, the app sends your email, a notification token and your warranty dates — never the items themselves. That's the complete list.</p>
+            <p>There's nothing to sell. No analytics, no ad network, no data broker, and on the free tier no server to send anything to. If you turn notifications on, the app sends a delivery address and a list of dates — never your email, never the items themselves. That's the complete list, and the <a href="privacy.html">privacy policy</a> is the long version.</p>
           </details>
           <details>
             <summary>Which devices does it work on?</summary>
@@ -1870,7 +1999,7 @@
           </details>
           <details>
             <summary>What does it cost?</summary>
-            <p>Nothing for fifteen items, which covers most people. Pro is $10 a year or $1 a month, and adds unlimited items plus reminders before warranties end. Stop paying and everything you've saved stays yours — editable, exportable, all of it. You just go back to being told inside the app instead of by a notification.</p>
+            <p>Nothing for twenty-five records — items, documents and subscriptions counted together — which covers most people. Pro is $10 a year or $1 a month, and adds unlimited records plus notifications when something needs starting. Stop paying and everything you've saved stays yours — editable, exportable, all of it. You just go back to being told inside the app instead of by a notification.</p>
           </details>
         </div>
       </div>
