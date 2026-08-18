@@ -158,3 +158,108 @@ over, and a push feature is not worth risking that again.
 The price of that choice is that the worker is plain JavaScript and cannot run
 `buildTimeline`, which is why the words are precomputed. The note is rewritten
 on every launch, so it is only ever as old as your last visit to the app.
+
+---
+
+# Phase 2 — the sender
+
+Firebase, on purpose, and with one thing done differently from the plan in
+`subscriptions-and-push.md`: **raw Web Push with our own VAPID pair, not the
+Firebase Cloud Messaging SDK.** Phase 1 subscribed through
+`pushManager.subscribe`, so the endpoints are ordinary Web Push URLs — Google's
+for Chrome, Apple's for Safari, Mozilla's for Firefox. FCM's SDK would mean a
+Google-specific token, a different path to an iPhone, and no way to move host
+later without every subscriber re-enrolling.
+
+## The honest cost of choosing Firebase
+
+Worth knowing before you commit, because it is the one thing Cloudflare would
+have done better.
+
+On Android, the delivery endpoint is already Google's (`fcm.googleapis.com`).
+Put the sender on Google too and **one company holds both halves** — the
+schedule and the delivery — joined by the endpoint URL, which appears on both
+sides. Split across two vendors, each sees half and neither can join them
+without the other's cooperation.
+
+For iPhone and Firefox users it makes no difference: those endpoints are
+Apple's and Mozilla's and Google never sees them.
+
+Whether that matters is a judgement about how much a list of dates is worth.
+It is a real weakening and a small one, and consolidating on one vendor you
+already use has its own honest value. Just don't claim the two-vendor property
+in any copy while running on Firebase.
+
+## The steps
+
+**1. Create the project.** <https://console.firebase.google.com> → Add project.
+Turn Google Analytics **off** — it is a tracker on a privacy feature.
+
+**2. Blaze plan, then cap it.** Cloud Functions cannot deploy on Spark, so a
+card is required. Set a budget alert at $1 immediately: your realistic bill for
+this is zero, and the alert is there to tell you if something is being abused.
+
+**3. Firestore.** Build → Firestore → Create database → **Production mode**.
+Rules are in `firestore.rules` and deny everything: nothing reaches this
+database from a browser, only through the functions.
+
+**4. Install and log in.**
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add          # pick the project, alias it "default"
+cd functions && npm install && cd ..
+```
+
+**5. The secrets.** The private key finally gets a home — this one, and nowhere
+else.
+
+```bash
+firebase functions:secrets:set VAPID_PUBLIC_KEY
+firebase functions:secrets:set VAPID_PRIVATE_KEY
+```
+
+**6. Tell it which origin may call it.** In `firebase.json`, or via the console
+after the first deploy, set `ALLOWED_ORIGINS` to the app's exact origin —
+`https://nuno927-tech.github.io`, and later `https://stash-it.app`. Comma
+separated, no trailing slashes. Anything else is refused at the CORS check.
+
+**7. Deploy.**
+
+```bash
+firebase deploy --only functions,firestore:rules
+```
+
+It prints the function URLs. Take the base — everything before `/register` —
+and put it in `.env.local`:
+
+```
+PUSH_ENDPOINT=https://us-central1-your-project.cloudfunctions.net
+```
+
+**8. Turn the logging down.** Cloud Logging keeps request metadata including IP
+addresses by default, which quietly undoes part of what this design is for.
+Google Cloud console → Logging → Log Router → the `_Default` sink → add an
+exclusion for these functions' request logs. The sweep logs three counts and
+nothing else; that is all you need.
+
+**9. Rebuild and try it.** `npm run build && npm run preview`, turn the switch
+on, and check Firestore: one document, containing an endpoint, two keys, and a
+list of integers. If it contains anything else, something has gone wrong in
+`clean()` and the promise on the settings card is no longer true.
+
+## What the sweep does, and the bug it nearly had
+
+Hourly, `where('nextWake', '<=', now)`.
+
+The first version asked `array-contains-any` for every hour boundary in the
+window, which only matches a wake that lands exactly on one. A wake is 9am
+wherever the user is — and India is +5:30, Nepal +5:45, South Australia +9:30.
+Measured: 9am on 4 September 2026 is epoch `1788492600` in Kolkata and
+`1788491700` in Kathmandu. Neither divides by 3600. Around a billion and a half
+people would have registered successfully, appeared correctly in Firestore, and
+never been sent anything at all.
+
+`nextWake` is the soonest of the list, kept beside it and indexed, so the sweep
+is one range query with nothing rounded and no window to miss.

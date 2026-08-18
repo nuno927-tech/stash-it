@@ -51,9 +51,12 @@ import { VERDICT_COPY, wakeDates, type Wake } from '@/lib/push';
 import {
   disablePush,
   enablePush,
+  plannedWakes,
   previewSchedule,
   pushVerdict,
   refreshNotes,
+  senderConfigured,
+  syncSchedule,
 } from '@/lib/pushClient';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
@@ -613,8 +616,18 @@ function Reminders({
         const outcome = await enablePush();
         if (outcome === 'on') {
           await refreshNotes(propertyId);
+          // Straight away on this one: the weekly rule exists to stop a sender
+          // watching you edit, and turning the switch on is not that.
+          const told = await syncSchedule(propertyId, true);
           feedback('save');
-          onNotice({ tone: 'ok', text: 'Reminders on.' });
+          onNotice({
+            tone: 'ok',
+            text: told
+              ? 'Reminders on. Your dates have been sent.'
+              : senderConfigured()
+                ? "Reminders on, but the sender couldn't be reached. It'll try again."
+                : 'Reminders on. No sender is configured, so nothing left the phone.',
+          });
         } else {
           feedback('error');
           onNotice({ tone: 'bad', text: VERDICT_COPY[outcome] });
@@ -671,10 +684,21 @@ function Reminders({
       {showing && (
         <div className="leaks">
           <p className="hint">
-            <b>Leaves this phone:</b> a delivery address your browser generates, and these dates.
-            Day granularity, nothing finer.
+            <b>Leaves this phone:</b> a delivery address your browser generates, and these
+            moments — nine in the morning, your time, on each day something needs you.
           </p>
-          <pre>{JSON.stringify({ dates: wakeDates(schedule) }, null, 2)}</pre>
+          <pre>
+            {JSON.stringify(
+              { endpoint: settings.pushEndpoint ?? '(none yet)', wakes: plannedWakes(schedule) },
+              null,
+              2,
+            )}
+          </pre>
+          <p className="hint">
+            Which is to say:{' '}
+            {wakeDates(schedule).slice(0, 4).join(', ') || 'nothing due in the next two months'}
+            {wakeDates(schedule).length > 4 ? ` and ${wakeDates(schedule).length - 4} more` : ''}.
+          </p>
           <p className="hint">
             <b>Never leaves:</b> what the reminder says. The wording is worked out here and kept
             in this browser's cache; the message that arrives on the day is empty, and your phone
@@ -683,8 +707,11 @@ function Reminders({
           </p>
           <p className="hint">
             <b>Worth knowing anyway:</b> the delivery address lives on Google's or Apple's
-            servers, so they can see that your phone was pinged and when. And a sender would see
-            your IP each time this list is refreshed.
+            servers, so they can see that your phone was pinged and when. A sender sees your IP
+            each time this list is refreshed — which is why it refreshes weekly rather than
+            whenever you change something, so it can't watch you use the app. And the times give
+            away roughly which part of the world you are in, because that is what makes a
+            reminder arrive in your morning rather than at three.
           </p>
         </div>
       )}

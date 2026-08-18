@@ -23,7 +23,7 @@ import {
 } from '@/lib/lock';
 import { endingSoonDays } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
-import { refreshNotes } from '@/lib/pushClient';
+import { refreshNotes, syncSchedule } from '@/lib/pushClient';
 import { setEndingSoonDays } from '@/lib/warranty';
 import { BACK_DIRECTION, nextTab } from '@/lib/swipe';
 import { remindLater, tourDue } from '@/lib/tour';
@@ -133,7 +133,12 @@ export default function App() {
         */
         void (async () => {
           const property = await db.properties.filter((p) => !p.deletedAt).first();
-          if (property) await refreshNotes(property.id);
+          if (!property) return;
+          await refreshNotes(property.id);
+          // And tell the sender, if a week has gone by and the dates have
+          // moved. `syncSchedule` decides both — see the note there on why it
+          // is weekly rather than on every change.
+          await syncSchedule(property.id);
         })().catch(() => {});
       } catch (e) {
         if (!cancelled) setBoot({ status: 'error', error: e as Error });

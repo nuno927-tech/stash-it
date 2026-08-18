@@ -13,7 +13,8 @@ process.env.TZ = 'America/New_York';
 
 import 'fake-indexeddb/auto';
 import { SCHEMA_VERSION, type Item, type Paper, type Subscription } from '@/db/types';
-import { compose, pushSchedule, verdict, vapidBytes, wakeDates, noteFor } from '@/lib/push';
+import { compose, pushSchedule, verdict, vapidBytes, wakeDates, wakeTimes, noteFor } from '@/lib/push';
+import { MAX_WAKES, syncDue, syncPayload, wakesChanged } from '@/lib/pushSync';
 import { setEndingSoonDays } from '@/lib/warranty';
 
 let failures = 0;
@@ -171,6 +172,63 @@ function main() {
 
   check('today’s note is found', noteFor(mixed, new Date(2026, 8, 1))?.on === '2026-09-01');
   check('and a quiet day has none', noteFor(mixed, new Date(2026, 8, 2)) === null);
+
+  /* --------------------------------------------------- what is uploaded */
+
+  /*
+    THE PAYLOAD, ASSERTED AS A WHOLE. Not "does it contain a name" — that only
+    catches the fields you thought to check. This pins the complete set of keys,
+    so ANY addition fails here and has to be argued for rather than slipped in.
+  */
+  const browserSub = {
+    endpoint: 'https://fcm.googleapis.com/wp/abc123',
+    keys: { p256dh: 'BPk...', auth: 'k9s...' },
+    expirationTime: null,
+  };
+  const payload = syncPayload(browserSub, mixed)!;
+  check('the payload has exactly three keys', Object.keys(payload).sort().join() === 'endpoint,keys,wakes', Object.keys(payload).join());
+  check('and the keys object exactly two', Object.keys(payload.keys).sort().join() === 'auth,p256dh');
+
+  const wire = JSON.stringify(payload);
+  for (const secret of ['Headphones', 'Netflix', 'Passport', 'Nuno', '1549', 'renew', 'needs']) {
+    check(`no "${secret}" on the wire`, !wire.includes(secret));
+  }
+
+  check('a subscription with no keys is refused', syncPayload({ endpoint: 'x', expirationTime: null }, mixed) === null);
+
+  /*
+    Instants, not dates, and this is a deliberate loosening of the phase 1
+    shape. The sender has to know when your morning is or it fires at a fixed
+    hour UTC, which is the middle of the night for most of the world. The cost
+    is that the hour reveals a rough offset; the alternative is a reminder
+    nobody keeps switched on.
+  */
+  check('wakes are epoch seconds', payload.wakes.every((n) => Number.isInteger(n) && n > 1_700_000_000));
+  check('sorted', payload.wakes.every((n, i, a) => i === 0 || n >= a[i - 1]!));
+
+  const nine = new Date(wakeTimes([{ on: '2026-09-04', title: 't', body: 'b' }], 9)[0]! * 1000);
+  check('and land at the hour asked for, locally', nine.getHours() === 9, `${nine.getHours()}`);
+  check('on the right day', nine.getDate() === 4 && nine.getMonth() === 8);
+
+  // The cap is a fingerprint guard as much as a size one — see MAX_WAKES.
+  const many = Array.from({ length: 80 }, (_, i) => ({ on: `2026-09-${String((i % 28) + 1).padStart(2, '0')}`, title: 't', body: 'b' }));
+  check('a long list is truncated', syncPayload(browserSub, many)!.wakes.length === MAX_WAKES, `${syncPayload(browserSub, many)!.wakes.length}`);
+
+  /* ------------------------------------------------------- when it syncs */
+
+  /*
+    Weekly, not on every change. A sender told the moment anything changes can
+    watch you use the app — the times of day, an evening spent entering
+    receipts. None of that is in the payload and all of it is in the timing.
+  */
+  check('never synced means due', syncDue(undefined));
+  check('yesterday is not', !syncDue(new Date(Date.now() - 86_400_000).toISOString()));
+  check('but eight days ago is', syncDue(new Date(Date.now() - 8 * 86_400_000).toISOString()));
+  check('and a corrupt stamp is', syncDue('not a date'));
+
+  check('an unchanged list is not worth a request', !wakesChanged([1, 2, 3], [1, 2, 3]));
+  check('a changed one is', wakesChanged([1, 2, 3], [1, 2, 4]));
+  check('so is a shorter one', wakesChanged([1, 2], [1, 2, 3]));
 
   /* ----------------------------------------------------------- the verdict */
 

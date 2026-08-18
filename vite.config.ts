@@ -83,6 +83,15 @@ export default defineConfig(({ mode }) => {
         build" rather than failing at the browser. See docs/push.md.
       */
       __VAPID_PUBLIC_KEY__: JSON.stringify(env.VAPID_PUBLIC_KEY ?? ''),
+
+      /*
+        Where the sender lives. Empty until it is deployed, and empty is a
+        working state: reminders still show on the dashboard, the switch still
+        works, and the schedule simply never leaves the phone. Nothing about
+        the app is broken by not having a backend — that is the point of having
+        built the device half first.
+      */
+      __PUSH_ENDPOINT__: JSON.stringify(env.PUSH_ENDPOINT ?? ''),
     },
 
     plugins: [

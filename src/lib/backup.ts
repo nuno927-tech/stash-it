@@ -59,7 +59,13 @@ export interface BackupManifest {
 */
 export type PortableSettings = Omit<
   Settings,
-  'entitlements' | 'biometricLock' | 'lockCredentialId' | 'pushEnabled' | 'pushEndpoint'
+  | 'entitlements'
+  | 'biometricLock'
+  | 'lockCredentialId'
+  | 'pushEnabled'
+  | 'pushEndpoint'
+  | 'pushSyncedAt'
+  | 'pushWakes'
 >;
 
 export interface BundleData {
@@ -174,6 +180,8 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
       lockCredentialId: _cred,
       pushEnabled: _push,
       pushEndpoint: _endpoint,
+      pushSyncedAt: _synced,
+      pushWakes: _wakes,
       ...rest
     } = settings;
     portableSettings = rest;
@@ -500,6 +508,8 @@ export async function restoreBundle(
           lockCredentialId: localSettings.lockCredentialId,
           pushEnabled: localSettings.pushEnabled,
           pushEndpoint: localSettings.pushEndpoint,
+          pushSyncedAt: localSettings.pushSyncedAt,
+          pushWakes: localSettings.pushWakes,
         });
       }
     },

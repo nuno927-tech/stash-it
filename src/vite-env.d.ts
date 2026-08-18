@@ -17,3 +17,9 @@ declare const __SITE_PATH__: string;
  * The private half signs sends and is never in this repo.
  */
 declare const __VAPID_PUBLIC_KEY__: string;
+
+/**
+ * Base URL of the reminder sender, or '' when there isn't one. With no sender
+ * the app still computes and shows the schedule; it just never uploads it.
+ */
+declare const __PUSH_ENDPOINT__: string;

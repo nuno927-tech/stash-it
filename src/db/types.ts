@@ -388,6 +388,9 @@ export interface Settings {
   */
   pushEnabled?: boolean;
   pushEndpoint?: string;
+  /** When the sender was last told, and what it was told. Both device state. */
+  pushSyncedAt?: string;
+  pushWakes?: number[];
   devModeEnabled: boolean;
 
   /**

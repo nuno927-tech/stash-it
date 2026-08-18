@@ -136,9 +136,45 @@ export function compose(labels: string[]): { title: string; body: string } {
   return { title: `${names.length} things need you`, body: listed };
 }
 
-/** The dates alone — the only part of a schedule that would ever be uploaded. */
+/** The dates alone, for showing someone what their schedule looks like. */
 export function wakeDates(schedule: Wake[]): string[] {
   return schedule.map((w) => w.on);
+}
+
+/** When a reminder should land, local. Nine in the morning unless asked. */
+export const DEFAULT_SEND_HOUR = 9;
+
+/**
+ * The schedule as instants, which is the only part that is ever uploaded.
+ *
+ * ── Why not the dates, which would leak less ──────────────────────────────
+ * Because the sender has to know when your morning is. A date alone means it
+ * fires at some fixed hour UTC, and a fixed hour UTC is the middle of the
+ * night for most of the planet — a reminder that arrives at 3am is a reminder
+ * you turn off.
+ *
+ * So the device converts "9am on the 4th, here" into one number and uploads
+ * that. The sender never learns a timezone name or a place. It can infer your
+ * offset by looking at the hour, which is a real cost and a small one: it
+ * narrows you to a band of the earth that holds a couple of billion people,
+ * and it is the price of the notification arriving while you are awake.
+ *
+ * Everything else stays where it was. Still no names, no amounts, no kinds —
+ * just a delivery address and a list of moments. The settings card says this
+ * in as many words, and shows the actual numbers.
+ */
+export function wakeTimes(schedule: Wake[], hour = DEFAULT_SEND_HOUR): number[] {
+  return schedule
+    .map((w) => {
+      const [y, m, d] = w.on.split('-').map(Number);
+      if (!y || !m || !d) return null;
+      // Local midnight plus the hour, then read back as epoch seconds. Built
+      // through the Date constructor so the conversion is the platform's, and
+      // right across a clock change rather than an hour out twice a year.
+      return Math.floor(new Date(y, m - 1, d, hour, 0, 0, 0).getTime() / 1000);
+    })
+    .filter((t): t is number => t !== null)
+    .sort((a, b) => a - b);
 }
 
 /* ------------------------------------------------------------ the cache */
