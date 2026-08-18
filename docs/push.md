@@ -64,6 +64,24 @@ does not contain .env files inside a Vite config and would silently build an
 empty key while the file looked perfectly filled in. A real shell variable
 still wins, so CI can pass one without a file.
 
+**`.env.local` only configures your laptop.** The deployed app is built by
+GitHub Actions from a fresh checkout, and `.env.local` is gitignored, so the
+published build has no key unless CI is given one. Repo → Settings → Secrets
+and variables → Actions → **Variables** → New repository variable:
+
+| Name | Value |
+|---|---|
+| `VAPID_PUBLIC_KEY` | the same public key as `.env.local` |
+| `PUSH_ENDPOINT` | the sender's base URL, once phase 2 is deployed |
+
+**Variables, not secrets.** Both are public — the key is handed to Google and
+Apple by the browser, the endpoint is a URL the app fetches — and both land in
+the bundle regardless. A secret would only make them unreadable to you. Set as
+secrets by mistake, `vars.VAPID_PUBLIC_KEY` resolves to empty and the build
+ships unconfigured; the *Check the reminders build* step in `deploy.yml` exists
+because that failure is otherwise invisible — green deploy, working app, switch
+that just refuses.
+
 With no key the switch in Settings stays off and says *"Reminders are not
 configured in this build"*, which is correct for a fork and for CI.
 

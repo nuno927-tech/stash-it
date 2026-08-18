@@ -39,11 +39,49 @@ jobs:
       #
       # SITE_PATH is the manifest scope: one level above the app, so the
       # website is inside it and its install button can work.
+      # VAPID_PUBLIC_KEY and PUSH_ENDPOINT are repository *variables*, not
+      # secrets. Both are public by definition — the key is handed to Google
+      # and Apple by the browser, and the endpoint is a URL the app fetches —
+      # so both end up in the bundle either way. Storing them as secrets would
+      # buy nothing and cost the ability to read them back.
+      #
+      # `.env.local` is gitignored and only exists on one laptop, so without
+      # these two lines every deployed build ships an empty key and the
+      # Reminders switch correctly reports itself unconfigured. That is a
+      # supported state for a fork, and was not the intended state here.
       - name: Build
         run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/app/
           SITE_PATH: /${{ github.event.repository.name }}/
+          VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+          PUSH_ENDPOINT: ${{ vars.PUSH_ENDPOINT }}
+
+      # An empty key is a legitimate build. A key that was configured and then
+      # silently dropped is not, and it fails quietly: the deploy is green, the
+      # app looks fine, and the switch simply refuses. That is the exact shape
+      # of the process.env/loadEnv bug this project already shipped once, so
+      # the assertion is against the built output rather than the environment.
+      - name: Check the reminders build
+        env:
+          VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+          PUSH_ENDPOINT: ${{ vars.PUSH_ENDPOINT }}
+        run: |
+          if [ -z "$VAPID_PUBLIC_KEY" ]; then
+            echo "::notice::No VAPID_PUBLIC_KEY variable — reminders will be off in this build."
+            exit 0
+          fi
+          if ! grep -rqF "$VAPID_PUBLIC_KEY" dist/assets; then
+            echo "::error::VAPID_PUBLIC_KEY is set but did not reach the bundle."
+            exit 1
+          fi
+          echo "Reminders key present in the bundle."
+          if [ -z "$PUSH_ENDPOINT" ]; then
+            echo "::notice::No PUSH_ENDPOINT — schedules stay on the device."
+          elif ! grep -rqF "$PUSH_ENDPOINT" dist/assets; then
+            echo "::error::PUSH_ENDPOINT is set but did not reach the bundle."
+            exit 1
+          fi
 
       # The site at the root, the app underneath it. site/sw.js lands at the
       # app's old address on purpose: it's a worker that unregisters itself,
