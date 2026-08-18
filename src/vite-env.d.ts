@@ -10,3 +10,10 @@ declare const __APP_VERSION__: string;
  * true by convention and a convention is not a thing to compute against.
  */
 declare const __SITE_PATH__: string;
+
+/**
+ * The VAPID public key for push subscriptions, base64url, or '' when this
+ * build has none. Public by design — the browser hands it to the push service.
+ * The private half signs sends and is never in this repo.
+ */
+declare const __VAPID_PUBLIC_KEY__: string;

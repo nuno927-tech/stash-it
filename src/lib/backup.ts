@@ -48,9 +48,18 @@ export interface BackupManifest {
  * into a restore would raise a lock screen no authenticator on the new device
  * could ever satisfy.
  */
+/*
+  What travels, and what is a fact about one handset.
+
+  Entitlements, the biometric credential and the push endpoint are all the
+  second kind. A push endpoint identifies one browser on one phone; restoring
+  it onto a new one would leave that device believing it is subscribed to a
+  channel nothing ever registered for it, and quietly waiting for reminders
+  that go to a handset in a drawer.
+*/
 export type PortableSettings = Omit<
   Settings,
-  'entitlements' | 'biometricLock' | 'lockCredentialId'
+  'entitlements' | 'biometricLock' | 'lockCredentialId' | 'pushEnabled' | 'pushEndpoint'
 >;
 
 export interface BundleData {
@@ -163,6 +172,8 @@ export async function exportBundle(): Promise<{ blob: Blob; filename: string }> 
       entitlements: _dropped,
       biometricLock: _lock,
       lockCredentialId: _cred,
+      pushEnabled: _push,
+      pushEndpoint: _endpoint,
       ...rest
     } = settings;
     portableSettings = rest;
@@ -487,6 +498,8 @@ export async function restoreBundle(
           devModeEnabled: localSettings.devModeEnabled,
           biometricLock: localSettings.biometricLock,
           lockCredentialId: localSettings.lockCredentialId,
+          pushEnabled: localSettings.pushEnabled,
+          pushEndpoint: localSettings.pushEndpoint,
         });
       }
     },

@@ -377,6 +377,17 @@ export interface Settings {
   lastBackupAt?: string;
   backupReminderDays: number;
   entitlements: Entitlements;
+
+  /*
+    Reminders that arrive while the app is closed.
+
+    Device state, like the biometric lock: an endpoint belongs to one browser
+    on one phone and means nothing anywhere else, so both are stripped from a
+    backup. Restoring onto a new handset must not leave it believing it is
+    subscribed to a push channel that was never registered for it.
+  */
+  pushEnabled?: boolean;
+  pushEndpoint?: string;
   devModeEnabled: boolean;
 
   /**

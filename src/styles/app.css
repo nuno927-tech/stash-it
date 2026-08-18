@@ -5140,3 +5140,50 @@ button.calcell {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------- reminders */
+
+/*
+  What would leave the phone, shown rather than described.
+
+  A privacy claim nobody can check is marketing. This block is the actual
+  payload — the dates, in the JSON they would be sent as — so the promise on
+  the switch above it is verifiable in two taps rather than trusted.
+*/
+.wide-link {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.leaks {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--slate-800);
+}
+
+.leaks .hint + pre,
+.leaks pre + .hint {
+  margin-top: 10px;
+}
+
+.leaks b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Monospace, small, and scrollable rather than wrapped: a list of dates that
+   soft-wraps mid-string stops looking like the data it is. */
+.leaks pre {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--slate-700);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  overflow-x: auto;
+  max-height: 180px;
+}

@@ -17,3 +17,13 @@ out/
 
 # Python bytecode from scripts/matte.py — regenerated on every run.
 __pycache__/
+
+# Local build configuration.
+#
+# The VAPID *public* key lives here and is harmless — it ends up in the bundle
+# either way. The rule exists for the key that must never be near it: a private
+# signing key pasted into the wrong line of the wrong file is committed before
+# anyone notices, and rotating one means every reminder subscription dies.
+.env
+.env.*
+!.env.example

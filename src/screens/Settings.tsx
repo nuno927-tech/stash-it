@@ -47,6 +47,14 @@ import {
   type RoomsView,
   type ThemeChoice,
 } from '@/lib/prefs';
+import { VERDICT_COPY, wakeDates, type Wake } from '@/lib/push';
+import {
+  disablePush,
+  enablePush,
+  previewSchedule,
+  pushVerdict,
+  refreshNotes,
+} from '@/lib/pushClient';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
 import { getEndingSoonDays } from '@/lib/warranty';
@@ -152,6 +160,7 @@ export function Settings({
         pending={pending}
         setPending={setPending}
       />
+      <Reminders settings={settings} propertyId={propertyId} onNotice={setNotice} />
       <AboutApp onNotice={setNotice} onTour={onTour} />
       <Support settings={settings} />
 
@@ -555,6 +564,130 @@ function YourHome({
         options={REMINDER_CHOICES.map((r) => ({ value: r.days, label: r.label }))}
         onChange={(days) => db.settings.update('singleton', { reminderOffsetsDays: [days] })}
       />
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------- reminders */
+
+/**
+ * Notifications that arrive while the app is closed.
+ *
+ * ── The card exists to make the trade legible before it is taken ──────────
+ * Everything else in this app happens on the device. This is the one feature
+ * that cannot, so the card says what a sender would learn — dates, and nothing
+ * else — beside the switch rather than in a policy nobody opens.
+ *
+ * The claim is true because of where the words are written: the notification
+ * text is composed here and left in the browser's own cache, and the push that
+ * arrives carries no payload at all. See src/lib/push.ts.
+ */
+function Reminders({
+  settings,
+  propertyId,
+  onNotice,
+}: {
+  settings: SettingsRecord;
+  propertyId: string;
+  onNotice: (n: Notice) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [schedule, setSchedule] = useState<Wake[]>([]);
+  const [showing, setShowing] = useState(false);
+  const state = pushVerdict();
+  const on = !!settings.pushEnabled;
+
+  // What would be uploaded, so the card can show it rather than describe it.
+  useEffect(() => {
+    void previewSchedule(propertyId).then(setSchedule);
+  }, [propertyId, settings.pushEnabled]);
+
+  const flip = async () => {
+    setBusy(true);
+    onNotice(null);
+    try {
+      if (on) {
+        await disablePush();
+        onNotice({ tone: 'ok', text: 'Reminders off. The subscription has been dropped.' });
+      } else {
+        const outcome = await enablePush();
+        if (outcome === 'on') {
+          await refreshNotes(propertyId);
+          feedback('save');
+          onNotice({ tone: 'ok', text: 'Reminders on.' });
+        } else {
+          feedback('error');
+          onNotice({ tone: 'bad', text: VERDICT_COPY[outcome] });
+        }
+      }
+    } catch (e) {
+      feedback('error');
+      onNotice({ tone: 'bad', text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Reminders">
+      <p className="hint remindhint">
+        A nudge on the day something needs you, even with the app closed. Everything else here
+        happens on your phone — this is the one thing that can't, so here is exactly what that
+        costs.
+      </p>
+
+      <div className="setrow">
+        <span className="setrow-txt">
+          <strong>Notify me</strong>
+          <small>
+            {state === 'ready' || on
+              ? 'Warranties running out, documents to renew, and any subscription you asked about'
+              : VERDICT_COPY[state]}
+          </small>
+        </span>
+        <button
+          type="button"
+          className={`toggle${on ? ' on' : ''}`}
+          role="switch"
+          aria-checked={on}
+          aria-label="Reminders"
+          data-cue="none"
+          disabled={busy || (state !== 'ready' && !on)}
+          onClick={() => void flip()}
+        >
+          <span />
+        </button>
+      </div>
+
+      {/*
+        Not a promise — the payload. A privacy claim nobody can check is
+        marketing, and this one is checkable in two taps: these are the dates,
+        and there is nothing else in the message.
+      */}
+      <button type="button" className="linkish wide-link" onClick={() => setShowing((v) => !v)}>
+        {showing ? 'Hide what would be sent' : 'See exactly what would be sent'}
+      </button>
+
+      {showing && (
+        <div className="leaks">
+          <p className="hint">
+            <b>Leaves this phone:</b> a delivery address your browser generates, and these dates.
+            Day granularity, nothing finer.
+          </p>
+          <pre>{JSON.stringify({ dates: wakeDates(schedule) }, null, 2)}</pre>
+          <p className="hint">
+            <b>Never leaves:</b> what the reminder says. The wording is worked out here and kept
+            in this browser's cache; the message that arrives on the day is empty, and your phone
+            fills it in. Nobody in the middle — including whoever runs the sender — can read a
+            notification they did not write.
+          </p>
+          <p className="hint">
+            <b>Worth knowing anyway:</b> the delivery address lives on Google's or Apple's
+            servers, so they can see that your phone was pinged and when. And a sender would see
+            your IP each time this list is refreshed.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

@@ -23,6 +23,7 @@ import {
 } from '@/lib/lock';
 import { endingSoonDays } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
+import { refreshNotes } from '@/lib/pushClient';
 import { setEndingSoonDays } from '@/lib/warranty';
 import { BACK_DIRECTION, nextTab } from '@/lib/swipe';
 import { remindLater, tourDue } from '@/lib/tour';
@@ -117,6 +118,23 @@ export default function App() {
         // Not awaited before first paint — a permission decision shouldn't
         // hold up the UI, and nothing on screen depends on the answer.
         void requestPersistence();
+
+        /*
+          Rewrite what a reminder would say, every launch.
+
+          This is what keeps precomputed notification text honest. The service
+          worker cannot run the timeline — it is plain JavaScript imported into
+          the Workbox bundle — so the page composes the words and leaves them
+          in Cache Storage. Doing it on every launch means the note is only
+          ever as old as your last visit, rather than as old as the last sync.
+
+          Not awaited, and failure is silent: a stale note is a slightly wrong
+          notification, and blocking the dashboard on it would be worse.
+        */
+        void (async () => {
+          const property = await db.properties.filter((p) => !p.deletedAt).first();
+          if (property) await refreshNotes(property.id);
+        })().catch(() => {});
       } catch (e) {
         if (!cancelled) setBoot({ status: 'error', error: e as Error });
       }

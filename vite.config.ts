@@ -55,6 +55,19 @@ export default defineConfig(({ mode }) => {
       // a page that explains what it is and offers to install it, not a bare
       // application they have to work out.
       __SITE_PATH__: JSON.stringify(single ? './' : scope),
+
+      /*
+        The VAPID public key, for push subscriptions.
+
+        Public by definition: the browser is handed it and forwards it to
+        Google or Apple, so it is not a secret and belongs in the build. The
+        PRIVATE half signs the sends and must never appear in this repo — it
+        lives in the sender's environment, which does not exist yet.
+
+        Empty by default, and the reminders toggle says "not configured in this
+        build" rather than failing at the browser. See docs/push.md.
+      */
+      __VAPID_PUBLIC_KEY__: JSON.stringify(process.env.VAPID_PUBLIC_KEY ?? ''),
     },
 
     plugins: [
@@ -86,10 +99,22 @@ export default defineConfig(({ mode }) => {
                 // Precaches from previous builds are dead weight the moment
                 // this one claims the page.
                 cleanupOutdatedCaches: true,
-                // Pulled in at the top of the generated worker, so its fetch
-                // listener is registered before Workbox's routing. That's what
-                // lets it answer the share POST — first respondWith wins.
-                importScripts: ['share-handler.js'],
+                /*
+                  Pulled in at the top of the generated worker, so their
+                  listeners are registered before Workbox's routing. That's
+                  what lets the share handler answer the share POST — first
+                  respondWith wins.
+
+                  The push handler is here for a different reason: it is plain
+                  JavaScript because the generated worker is, which is exactly
+                  why it does no thinking. The page works out what a reminder
+                  should say and leaves it in Cache Storage; the worker reads
+                  it. Two files rather than one bundled worker keeps the
+                  precaching and the autoUpdate behaviour above untouched —
+                  this app has already lost days to a service worker that
+                  would not hand over.
+                */
+                importScripts: ['share-handler.js', 'push-handler.js'],
                 globPatterns: ['**/*.{js,css,html,woff2,svg,webp}'],
                 // Install icons are fetched by the OS at install time and never
                 // again — precaching half a megabyte of them buys nothing.

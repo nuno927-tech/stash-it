@@ -1,7 +1,7 @@
 {
   "name": "stash-it",
   "private": true,
-  "version": "0.68.1",
+  "version": "0.69.0",
   "type": "module",
   "description": "Warranties, receipts and manuals for everything you own. Local-first PWA.",
   "scripts": {
@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "serve:single": "vite preview --outDir dist-single --port 4180",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:reorder && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev && npm run test:lock && npm run test:receipt && npm run test:greeting && npm run test:drive && npm run test:gaps && npm run test:backstack && npm run test:swipe && npm run test:tour && npm run test:donate && npm run test:coverage && npm run test:nudges && npm run test:contact && npm run test:bin && npm run test:subs && npm run test:papers && npm run test:timeline && npm run test:css && npm run test:mascot",
+    "test": "npm run test:backup && npm run test:add && npm run test:icon && npm run test:docs && npm run test:search && npm run test:rooms && npm run test:prefs && npm run test:units && npm run test:staged && npm run test:migration && npm run test:rooms2 && npm run test:reorder && npm run test:feedback && npm run test:format && npm run test:install && npm run test:share && npm run test:dev && npm run test:lock && npm run test:receipt && npm run test:greeting && npm run test:drive && npm run test:gaps && npm run test:backstack && npm run test:swipe && npm run test:tour && npm run test:donate && npm run test:coverage && npm run test:nudges && npm run test:contact && npm run test:bin && npm run test:subs && npm run test:papers && npm run test:timeline && npm run test:push && npm run test:css && npm run test:mascot",
     "test:backup": "node scripts/run-test.mjs test/backup.roundtrip.ts",
     "test:add": "node scripts/run-test.mjs test/additem.test.ts",
     "test:icon": "node scripts/run-test.mjs test/itemicon.test.ts",
@@ -27,6 +27,7 @@
     "test:subs": "node scripts/run-test.mjs test/subs.test.ts",
     "test:papers": "node scripts/run-test.mjs test/papers.test.ts",
     "test:timeline": "node scripts/run-test.mjs test/timeline.test.ts",
+    "test:push": "node scripts/run-test.mjs test/push.test.ts",
     "test:staged": "node scripts/run-test.mjs test/staged.test.ts",
     "test:migration": "node scripts/run-test.mjs test/migration.test.ts",
     "test:rooms2": "node scripts/run-test.mjs test/rooms2.test.ts",
