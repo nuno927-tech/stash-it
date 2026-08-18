@@ -223,6 +223,13 @@ export async function ensureFirstRun(): Promise<void> {
         backupReminderDays: 30,
         entitlements: { reportUnlock: false, proUnlock: false },
         devModeEnabled: false,
+        /*
+          Stated, not implied. An absent field was already falsy and the switch
+          was already off, but "off" is the kind of default that should be
+          readable in the record rather than inferred from its absence — and a
+          notification default is not one to leave to a truthiness rule.
+        */
+        pushEnabled: false,
       });
     }
   });

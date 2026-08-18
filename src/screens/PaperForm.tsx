@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { createPaper, deletePaper, updatePaper } from '@/db/repo';
 import type { Paper, PaperKind } from '@/db/types';
 import { feedback } from '@/lib/feedback';
+import { armNotifyOffer, datedSave } from '@/lib/notifyOffer';
 import {
   DEFAULT_LEAD_DAYS,
   KIND_LABEL,
@@ -112,6 +113,12 @@ export function PaperForm({
       if (existing) await updatePaper(existing.id, patch);
       else await createPaper(patch);
       feedback('save');
+
+      /* A document with an expiry is the clearest case there is: the whole
+         point of recording one is being told before it lapses. The shell
+         decides whether to ask — see lib/notifyOffer.ts. */
+      if (!existing && datedSave({ expiresOn: expires, hasCover: false })) armNotifyOffer();
+
       onSaved();
     } catch (e) {
       feedback('error');

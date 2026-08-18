@@ -23,7 +23,9 @@ import {
 } from '@/lib/lock';
 import { endingSoonDays } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
-import { refreshNotes, syncSchedule } from '@/lib/pushClient';
+import { pushVerdict, refreshNotes, syncSchedule } from '@/lib/pushClient';
+import { clearNotifyOffer, notifyOfferArmed, shouldOffer } from '@/lib/notifyOffer';
+import { NotifyOffer } from '@/components/NotifyOffer';
 import { setEndingSoonDays } from '@/lib/warranty';
 import { BACK_DIRECTION, nextTab } from '@/lib/swipe';
 import { remindLater, tourDue } from '@/lib/tour';
@@ -399,6 +401,31 @@ function Shell() {
     remindAt: settings?.tourRemindAt,
   });
 
+  /*
+    "You've saved something with a date on it — want to be told?"
+
+    Decided here rather than in the form, because the form is unmounting: it
+    navigates to the detail screen on save, and a dialog owned by a component
+    on its way out either flashes or never appears. The form raises a flag; the
+    shell reads it on the next render and applies every rule about whether the
+    question should be put at all. See lib/notifyOffer.ts.
+  */
+  const [askNotify, setAskNotify] = useState(false);
+  useEffect(() => {
+    if (!settings || !notifyOfferArmed()) return;
+    setAskNotify(
+      shouldOffer({
+        asked: !!settings.pushAskedAt,
+        enabled: !!settings.pushEnabled,
+        verdict: pushVerdict(),
+        dated: true,
+      }),
+    );
+    // Read once. Left armed, a "no" would be re-evaluated on every render for
+    // the rest of the session.
+    clearNotifyOffer();
+  }, [settings]);
+
   // A share is an instruction: the user picked this app out of the sheet to
   // put a receipt somewhere. Opening anything other than the form would be
   // asking them to say it twice.
@@ -657,6 +684,23 @@ function Shell() {
           onLater={() =>
             void db.settings.update('singleton', { tourRemindAt: remindLater() })
           }
+        />
+      ) : askNotify ? (
+        /*
+          Ahead of the install prompt, behind everything else.
+
+          It has just been earned — someone saved a thing with a date on it a
+          second ago — and it is about that thing, so it is the most relevant
+          sheet on the list. It still yields to the welcome and the tour,
+          because being asked about notifications before being told what the
+          app is, is the wrong way round.
+        */
+        <NotifyOffer
+          propertyId={property.id}
+          onClose={() => {
+            clearNotifyOffer();
+            setAskNotify(false);
+          }}
         />
       ) : (
         offer.show !== 'none' && <InstallPrompt offer={offer.show} onClose={offer.dismiss} />

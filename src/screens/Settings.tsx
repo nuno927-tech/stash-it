@@ -35,7 +35,16 @@ import {
   stageToday,
   type PushDiagnosis,
 } from '@/lib/pushDev';
-import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
+import {
+  TIP_DUE_COPY,
+  donationDue,
+  money,
+  TIERS,
+  venmoUrl,
+  YEARLY_AMOUNT,
+  type TipCadence,
+} from '@/lib/donate';
+import { RunningCosts } from '@/components/RunningCosts';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { contactUrl, platformWord, type ContactKind } from '@/lib/contact';
 import { cleanName, MAX_NAME_LENGTH } from '@/lib/greeting';
@@ -129,6 +138,10 @@ export function Settings({
   const [pending, setPending] = useState<ParsedBundle | null>(null);
   const [eggTaps, setEggTaps] = useState<TapState>(NO_TAPS);
   const [album, setAlbum] = useState(false);
+  /* The running-costs note, and whether the tip jar should be scrolled to
+     because that note is what sent them there. */
+  const [costs, setCosts] = useState(false);
+  const [toJar, setToJar] = useState(false);
 
   if (!settings) return null;
 
@@ -187,9 +200,24 @@ export function Settings({
         pending={pending}
         setPending={setPending}
       />
-      <Reminders settings={settings} propertyId={propertyId} onNotice={setNotice} />
+      <Reminders
+        settings={settings}
+        propertyId={propertyId}
+        onNotice={setNotice}
+        onEnabled={() => !settings.pushCostShownAt && setCosts(true)}
+      />
       <AboutApp onNotice={setNotice} onTour={onTour} />
-      <Support settings={settings} />
+      <Support settings={settings} focus={toJar} />
+
+      {costs && (
+        <RunningCosts
+          onSupport={() => {
+            setCosts(false);
+            setToJar(true);
+          }}
+          onClose={() => setCosts(false)}
+        />
+      )}
 
       {/* The version, last, in a card of its own. It's a fact about the build
           rather than a setting, and it was riding on the About card's header
@@ -619,21 +647,17 @@ function Reminders({
   settings,
   propertyId,
   onNotice,
+  onEnabled,
 }: {
   settings: SettingsRecord;
   propertyId: string;
   onNotice: (n: Notice) => void;
+  /** Fired once the switch is genuinely on, so the costs note can appear. */
+  onEnabled: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [schedule, setSchedule] = useState<Wake[]>([]);
-  const [showing, setShowing] = useState(false);
   const state = pushVerdict();
   const on = !!settings.pushEnabled;
-
-  // What would be uploaded, so the card can show it rather than describe it.
-  useEffect(() => {
-    void previewSchedule(propertyId).then(setSchedule);
-  }, [propertyId, settings.pushEnabled]);
 
   const flip = async () => {
     setBusy(true);
@@ -650,6 +674,7 @@ function Reminders({
           // watching you edit, and turning the switch on is not that.
           const told = await syncSchedule(propertyId, true);
           feedback('save');
+          onEnabled();
           onNotice({
             tone: 'ok',
             text: told
@@ -672,19 +697,25 @@ function Reminders({
   };
 
   return (
-    <Card title="Reminders">
-      <p className="hint remindhint">
-        A nudge on the day something needs you, even with the app closed. Everything else here
-        happens on your phone — this is the one thing that can't, so here is exactly what that
-        costs.
-      </p>
-
+    <Card title="Push Notifications">
       <div className="setrow">
         <span className="setrow-txt">
           <strong>Notify me</strong>
+          {/*
+            One sentence about the payload, in the place the decision is made.
+
+            The card used to carry a paragraph of preamble and a button that
+            printed the exact JSON. Both were honest and neither was read: the
+            paragraph explained the feature to someone already looking at its
+            switch, and the payload viewer answered a question in a format that
+            asks you to parse JSON on a phone. What people need at the moment
+            of deciding is one line — what leaves, and what doesn't. The full
+            payload still exists, verbatim, in Settings → Developer, which is
+            where a claim that needs checking properly belongs.
+          */}
           <small>
             {state === 'ready' || on
-              ? 'Warranties running out, documents to renew, and any subscription you asked about'
+              ? 'Warranties running out, documents to renew, and any subscription you asked about. Only the dates leave your phone — never what the reminder is about.'
               : VERDICT_COPY[state]}
           </small>
         </span>
@@ -702,11 +733,31 @@ function Reminders({
         </button>
       </div>
 
-      {/*
-        Not a promise — the payload. A privacy claim nobody can check is
-        marketing, and this one is checkable in two taps: these are the dates,
-        and there is nothing else in the message.
-      */}
+    </Card>
+  );
+}
+
+/**
+ * The payload, verbatim. Lives in Developer now.
+ *
+ * It was on the main card, behind "See exactly what would be sent", and the
+ * reasoning for putting it there still stands: a privacy claim nobody can check
+ * is marketing. What was wrong was the audience. Someone deciding whether to
+ * flip a switch needs one sentence; someone auditing the claim needs the actual
+ * JSON, and will find it. Keeping both on the same card meant the sentence
+ * competed with a code block and neither got read.
+ */
+function PayloadView({ propertyId }: { propertyId: string }) {
+  const [schedule, setSchedule] = useState<Wake[]>([]);
+  const [showing, setShowing] = useState(false);
+  const settings = useLiveQuery(() => db.settings.get('singleton'), []);
+
+  useEffect(() => {
+    void previewSchedule(propertyId).then(setSchedule);
+  }, [propertyId]);
+
+  return (
+    <>
       <button type="button" className="linkish wide-link" onClick={() => setShowing((v) => !v)}>
         {showing ? 'Hide what would be sent' : 'See exactly what would be sent'}
       </button>
@@ -719,7 +770,7 @@ function Reminders({
           </p>
           <pre>
             {JSON.stringify(
-              { endpoint: settings.pushEndpoint ?? '(none yet)', wakes: plannedWakes(schedule) },
+              { endpoint: settings?.pushEndpoint ?? '(none yet)', wakes: plannedWakes(schedule) },
               null,
               2,
             )}
@@ -745,7 +796,7 @@ function Reminders({
           </p>
         </div>
       )}
-    </Card>
+    </>
   );
 }
 
@@ -1072,14 +1123,34 @@ function describe(r: RestoreResult): string {
  * which is also why the monthly option is a reminder rather than a standing
  * order. See src/lib/donate.ts.
  */
-function Support({ settings }: { settings: SettingsRecord }) {
-  const [picked, setPicked] = useState(TIERS[1]!);
-  const monthly = settings.donateMonthly ?? false;
-  const due = monthlyDue(settings.donateLastAt);
+function Support({ settings, focus }: { settings: SettingsRecord; focus?: boolean }) {
+  /*
+    The old boolean, read once. Anyone who had "Make it monthly" switched on
+    before this became a three-way choice keeps their reminder rather than
+    silently losing it — a setting that vanishes in an update is worse than one
+    that was never offered.
+  */
+  const cadence: TipCadence = settings.donateCadence ?? (settings.donateMonthly ? 'monthly' : 'never');
+
+  /* Yearly is the one with a number attached to it — it is what a year of the
+     notification server costs — so choosing it picks that amount. */
+  const [picked, setPicked] = useState(
+    () => TIERS.find((t) => t.amount === YEARLY_AMOUNT && cadence === 'yearly') ?? TIERS[1]!,
+  );
+  const due = donationDue(cadence, settings.donateLastAt);
 
   const send = () => {
     feedback('save');
     void db.settings.update('singleton', { donateLastAt: nowISO() });
+  };
+
+  const setCadence = (next: TipCadence) => {
+    if (next === 'yearly') setPicked(TIERS.find((t) => t.amount === YEARLY_AMOUNT) ?? picked);
+    void db.settings.update('singleton', {
+      donateCadence: next,
+      donateMonthly: undefined,
+      donateLastAt: next === 'never' ? settings.donateLastAt : (settings.donateLastAt ?? nowISO()),
+    });
   };
 
   return (
@@ -1096,9 +1167,7 @@ function Support({ settings }: { settings: SettingsRecord }) {
         </p>
       </div>
 
-      {monthly && due && (
-        <p className="hint warnhint">It's been a month since the last one, if you still want to.</p>
-      )}
+      {due && <p className="hint warnhint">{TIP_DUE_COPY[cadence]}</p>}
 
       <div className="tiers">
         {TIERS.map((t) => (
@@ -1115,28 +1184,49 @@ function Support({ settings }: { settings: SettingsRecord }) {
         ))}
       </div>
 
-      <Row
-        label="Make it monthly"
-        note="Venmo can't schedule a payment from a link, so Stash it will remind you instead."
-        control={
-          <Toggle
-            on={monthly}
-            label="Make it monthly"
-            onChange={(next) =>
-              db.settings.update('singleton', {
-                donateMonthly: next,
-                donateLastAt: next ? (settings.donateLastAt ?? nowISO()) : undefined,
-              })
-            }
-          />
-        }
+      {/*
+        One control, not two toggles.
+
+        "Make it monthly" and "make it yearly" as separate switches have a
+        fourth state where both are on, which means nothing — and whichever way
+        that gets resolved in code becomes a rule nobody can see on the screen.
+        Three options, one of them chosen, and the state is always readable.
+
+        The note is doing real work. Venmo cannot schedule a payment from a
+        link, so this genuinely is a reminder and nothing else. An app that
+        implies a standing order it never set up is lying about money, which is
+        the worst thing on this page to be wrong about.
+      */}
+      <SegRow
+        label="Remind me again"
+        note="Venmo can't schedule a payment from a link, so nothing is charged automatically — Stash it just asks again."
+        value={cadence}
+        options={[
+          { value: 'never' as TipCadence, label: 'Never' },
+          { value: 'monthly' as TipCadence, label: 'Monthly' },
+          { value: 'yearly' as TipCadence, label: 'Yearly' },
+        ]}
+        onChange={setCadence}
       />
+
+      {cadence === 'yearly' && (
+        <p className="hint">
+          {money(YEARLY_AMOUNT)} a year covers the notification server, which is the only part of
+          Stash it that costs anything to run.
+        </p>
+      )}
 
       {/* An anchor, not a button: it leaves the app, and the long-press menu
           that gives — copy the link, open in a new tab — is worth keeping. */}
       <a
         className="btn wide"
-        href={venmoUrl({ amount: picked.amount, note: picked.note, monthly })}
+        ref={(el) => {
+          // Arrived here from the running-costs note, which promised a tip jar.
+          // Landing at the top of Settings instead is how a person concludes
+          // the button did nothing.
+          if (focus && el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }}
+        href={venmoUrl({ amount: picked.amount, note: picked.note, cadence })}
         target="_blank"
         rel="noreferrer"
         onClick={send}
@@ -1550,6 +1640,8 @@ function NotificationBench({ propertyId }: { propertyId: string }) {
       </div>
 
       {said && <p className="benchsaid">{said}</p>}
+
+      <PayloadView propertyId={propertyId} />
     </div>
   );
 }

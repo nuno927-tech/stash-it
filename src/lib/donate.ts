@@ -12,9 +12,9 @@
  * to "make it monthly" is either lying or quietly doing nothing.
  *
  * What can honestly be built is a reminder: the choice is remembered here, and
- * once a month has passed the card says so and offers the button again. The
- * copy says exactly that, because "monthly" implying an automatic charge that
- * never happens is worse than not offering it.
+ * once the interval has passed the card says so and offers the button again.
+ * The copy says exactly that, because "monthly" implying an automatic charge
+ * that never happens is worse than not offering it.
  */
 
 export const VENMO_HANDLE = 'Nuno-Bernardino';
@@ -37,14 +37,41 @@ export const TIERS: Tier[] = [
   { amount: 10, label: 'Buy me lunch', note: 'Lunch for Stash it' },
 ];
 
-/** Roughly a month. Exactness buys nothing for a reminder about a tip. */
+/** Roughly a month, roughly a year. Exactness buys nothing for a tip reminder. */
 export const MONTH_DAYS = 30;
+export const YEAR_DAYS = 365;
+
+/**
+ * How often to ask again, if at all.
+ *
+ * One choice rather than two switches. "Monthly" and "yearly" as separate
+ * toggles have a fourth state where both are on, which means nothing, and
+ * whichever way that gets resolved in code is a rule nobody can see on screen.
+ */
+export type TipCadence = 'never' | 'monthly' | 'yearly';
+
+/**
+ * What a year of this costs to run.
+ *
+ * Notifications are the only part of Stash it with a bill attached — everything
+ * else happens on the device and costs nothing to anyone. Ten dollars covers a
+ * year of the sender comfortably, and saying so is more honest than a vague
+ * ask: people give more readily to a number that means something than to a
+ * gesture.
+ */
+export const YEARLY_AMOUNT = 10;
+
+export const TIP_CADENCE_DAYS: Record<TipCadence, number> = {
+  never: 0,
+  monthly: MONTH_DAYS,
+  yearly: YEAR_DAYS,
+};
 
 export interface VenmoLink {
   handle?: string;
   amount: number;
   note: string;
-  monthly?: boolean;
+  cadence?: TipCadence;
 }
 
 /**
@@ -55,24 +82,48 @@ export interface VenmoLink {
  * rather than the venmo:// scheme, because it redirects into the app when
  * it's installed and still resolves to something usable when it isn't.
  */
-export function venmoUrl({ handle = VENMO_HANDLE, amount, note, monthly }: VenmoLink): string {
+export function venmoUrl({
+  handle = VENMO_HANDLE,
+  amount,
+  note,
+  cadence = 'never',
+}: VenmoLink): string {
   const params = new URLSearchParams({
     txn: 'pay',
     audience: 'private',
     recipients: handle,
     amount: amount.toFixed(2),
-    note: monthly ? `${note} (monthly)` : note,
+    note: cadence === 'never' ? note : `${note} (${cadence})`,
   });
   return `https://venmo.com/?${params.toString()}`;
 }
 
-/** Whether the monthly reminder has come due. */
-export function monthlyDue(lastAt: string | undefined, now = new Date()): boolean {
-  if (!lastAt) return false;
+/**
+ * Whether the reminder has come due.
+ *
+ * `never` is never due, and that is the whole reason this takes the cadence
+ * rather than reading a date and guessing. Someone who turned the reminder off
+ * still has a `donateLastAt` on their record from the time they gave, and a
+ * function that only looked at the date would start nagging them again a month
+ * later — for a setting they had explicitly switched off.
+ */
+export function donationDue(
+  cadence: TipCadence | undefined,
+  lastAt: string | undefined,
+  now = new Date(),
+): boolean {
+  if (!cadence || cadence === 'never' || !lastAt) return false;
   const at = new Date(lastAt).getTime();
   if (Number.isNaN(at)) return false;
-  return now.getTime() - at >= MONTH_DAYS * 86_400_000;
+  return now.getTime() - at >= TIP_CADENCE_DAYS[cadence] * 86_400_000;
 }
+
+/** What the reminder line says when it is due. */
+export const TIP_DUE_COPY: Record<TipCadence, string> = {
+  never: '',
+  monthly: "It's been a month since the last one, if you still want to.",
+  yearly: "It's been a year since the last one, if you still want to.",
+};
 
 /** "£3" in whatever the device calls dollars. Venmo is USD regardless. */
 export function money(amount: number): string {

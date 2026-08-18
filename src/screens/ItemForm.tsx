@@ -16,6 +16,7 @@ import {
 import { attachStaged, stageDocs, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
+import { armNotifyOffer, datedSave } from '@/lib/notifyOffer';
 import { PhotoError, storePhoto } from '@/lib/photo';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { Scout } from '@/components/Scout';
@@ -229,6 +230,18 @@ export function ItemForm({
 
       if (preview) URL.revokeObjectURL(preview);
       feedback('save');
+
+      /* A new item with a date and cover on it is the first moment a reminder
+         has anything to say. The app shell decides whether to actually ask —
+         once ever, and never when the switch is already on. See
+         lib/notifyOffer.ts. */
+      if (
+        !item &&
+        datedSave({ purchaseDate: form.purchaseDate, hasCover: form.coverages.length > 0 })
+      ) {
+        armNotifyOffer();
+      }
+
       onSaved(id);
     } catch (e) {
       feedback('error');

@@ -8,7 +8,17 @@
  * about until after they've sent money.
  */
 
-import { money, monthlyDue, MONTH_DAYS, TIERS, venmoUrl, VENMO_HANDLE } from '@/lib/donate';
+import {
+  donationDue,
+  money,
+  MONTH_DAYS,
+  TIERS,
+  TIP_DUE_COPY,
+  venmoUrl,
+  VENMO_HANDLE,
+  YEAR_DAYS,
+  YEARLY_AMOUNT,
+} from '@/lib/donate';
 
 let failures = 0;
 
@@ -48,8 +58,18 @@ function main() {
   check('the note travels', q.get('note') === 'Coffee for Stash it');
   check(
     'monthly says so in the note',
-    new URL(venmoUrl({ amount: 5, note: 'Pizza', monthly: true })).searchParams.get('note') ===
+    new URL(venmoUrl({ amount: 5, note: 'Pizza', cadence: 'monthly' })).searchParams.get('note') ===
       'Pizza (monthly)',
+  );
+  check(
+    'and so does yearly',
+    new URL(venmoUrl({ amount: 10, note: 'Lunch', cadence: 'yearly' })).searchParams.get('note') ===
+      'Lunch (yearly)',
+  );
+  check(
+    'never adds nothing',
+    new URL(venmoUrl({ amount: 1, note: 'Thanks', cadence: 'never' })).searchParams.get('note') ===
+      'Thanks',
   );
 
   // Everything is escaped by URLSearchParams rather than by hand.
@@ -62,15 +82,44 @@ function main() {
   const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000).toISOString();
 
   // Never nag someone who hasn't opted in, and never on the day they did.
-  check('no reminder without a first payment', !monthlyDue(undefined, now));
-  check('not the same day', !monthlyDue(daysAgo(0), now));
-  check('not after a fortnight', !monthlyDue(daysAgo(14), now));
-  check('due after a month', monthlyDue(daysAgo(MONTH_DAYS), now));
-  check('and stays due', monthlyDue(daysAgo(90), now));
+  check('no reminder without a first payment', !donationDue('monthly', undefined, now));
+  check('not the same day', !donationDue('monthly', daysAgo(0), now));
+  check('not after a fortnight', !donationDue('monthly', daysAgo(14), now));
+  check('due after a month', donationDue('monthly', daysAgo(MONTH_DAYS), now));
+  check('and stays due', donationDue('monthly', daysAgo(90), now));
+
+  /*
+    The one that would have been a bug. Someone who gave once and then turned
+    the reminder off still has a `donateLastAt` on their record — a check that
+    only looked at the date would start asking them again a month later, for a
+    setting they had explicitly switched off.
+  */
+  check('never means never', !donationDue('never', daysAgo(900), now));
+  check('and so does an unset cadence', !donationDue(undefined, daysAgo(900), now));
+
+  // Yearly is a year, not a long month.
+  check('a month is not a year', !donationDue('yearly', daysAgo(MONTH_DAYS), now));
+  check('half a year is not either', !donationDue('yearly', daysAgo(180), now));
+  check('a year is', donationDue('yearly', daysAgo(YEAR_DAYS), now));
+
+  check(
+    'every cadence that can be due has a line',
+    TIP_DUE_COPY.monthly.length > 0 && TIP_DUE_COPY.yearly.length > 0 && TIP_DUE_COPY.never === '',
+  );
 
   // A corrupt date must not turn into a permanent prompt — unlike a backup
   // reminder, nothing is at stake in missing this one.
-  check('a corrupt date asks for nothing', !monthlyDue('not a date', now));
+  check('a corrupt date asks for nothing', !donationDue('monthly', 'not a date', now));
+
+  /* --------------------------------------------------- the yearly amount */
+
+  // The figure the running-costs note quotes has to be one the tip jar can
+  // actually select, or "Chip in $10" lands on a screen offering something else.
+  check(
+    'the yearly amount is an offered tier',
+    TIERS.some((t) => t.amount === YEARLY_AMOUNT),
+    String(YEARLY_AMOUNT),
+  );
 
   /* ------------------------------------------------------------- money */
 

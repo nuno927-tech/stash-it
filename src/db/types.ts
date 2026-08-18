@@ -8,6 +8,8 @@
  *  - Derived values (warranty expiry) are NOT stored.
  */
 
+import type { TipCadence } from '@/lib/donate';
+
 /**
  * v2 dropped `Item.category`. Room answers "where is it" and the icon comes
  * from the item's own words, which left category with no job worth a decision
@@ -411,6 +413,15 @@ export interface Settings {
   biometricLock?: boolean;
   lockCredentialId?: string;
 
+  /**
+   * When the one-time "want these as notifications?" question was put, either
+   * way. Set on yes and on no, because a prompt that comes back is a prompt
+   * that gets dismissed by reflex. See lib/notifyOffer.ts.
+   */
+  pushAskedAt?: string;
+  /** When the running-costs note was shown, so it is shown once. */
+  pushCostShownAt?: string;
+
   /** What the greeting calls you. Empty means asked and declined. */
   displayName?: string;
   /** Set once the welcome has been answered, either way. */
@@ -421,9 +432,13 @@ export interface Settings {
   tourRemindAt?: string;
 
   /**
-   * Tipping. `donateMonthly` is a reminder, not a subscription — Venmo has no
+   * Tipping. `donateCadence` is a reminder, not a subscription — Venmo has no
    * way to schedule a payment from a link, so the app can only ask again.
+   *
+   * `donateMonthly` is the old boolean, still read once so anyone who had it
+   * switched on keeps their reminder. Nothing writes it any more.
    */
+  donateCadence?: TipCadence;
   donateMonthly?: boolean;
   donateLastAt?: string;
 }
