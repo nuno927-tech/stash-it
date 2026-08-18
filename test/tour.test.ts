@@ -31,8 +31,36 @@ function main() {
     'each says something',
     TOUR_STEPS.every((s) => s.title.length > 8 && s.body.length > 30),
   );
-  // Six screens of the same picture is a slideshow, not a tour.
+  // Screen after screen of the same picture is a slideshow, not a tour.
   check('the poses vary', new Set(TOUR_STEPS.map((s) => s.pose)).size >= 4);
+
+  /*
+    A CEILING, not just a floor.
+
+    Documents, subscriptions and reminders all arrived after this tour was
+    written, and the obvious move each time was to append a screen. Three of
+    those and the introduction to an app whose pitch is "this is quick" runs to
+    eleven taps. The count is a budget: to add one, fold two of the old ones
+    together — which is what happened to the email-receipt and missing-details
+    screens. This is the assertion that forces that conversation.
+  */
+  check('and the deck stays short', TOUR_STEPS.length <= 8, String(TOUR_STEPS.length));
+
+  // Everything the app does should be findable in it. Not an exhaustive
+  // feature list — the four things it is for.
+  const script = TOUR_STEPS.map((s) => `${s.title} ${s.body}`).join(' ').toLowerCase();
+  for (const subject of ['warrant', 'document', 'subscription', 'reminder', 'backup:back up']) {
+    const [name, needle] = subject.includes(':') ? subject.split(':') : [subject, subject];
+    check(`the tour mentions ${name}`, script.includes(needle!));
+  }
+
+  /*
+    And it must not promise something that was removed. Google Drive backup is
+    gone — the app shares one file to wherever you like now — and a tour still
+    telling people to "connect Google Drive" sends them looking for a setting
+    that no longer exists.
+  */
+  check('and promises nothing that was removed', !script.includes('google drive'));
 
   check('the last step knows it is last', isLastStep(TOUR_STEPS.length - 1));
   check('the first does not', !isLastStep(0));

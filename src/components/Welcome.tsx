@@ -47,7 +47,10 @@ export function Welcome({ onTour }: { onTour: () => void }) {
         <Scout pose="waving" height={132} motion={['float', 'breathe']} shadow alt="Scout waving" />
 
         <h2 id="welcome-title">Hello, I'm Scout</h2>
-        <p>I'll keep an eye on your warranties. What should I call you?</p>
+        {/* Not "your warranties" any more — the app watches documents and
+            subscriptions too, and the first sentence anyone reads should not
+            describe a third of it. */}
+        <p>I'll keep an eye on the dates you'd rather not miss. What should I call you?</p>
 
         <form
           className="welcomeform"

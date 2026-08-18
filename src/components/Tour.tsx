@@ -8,11 +8,13 @@ import { isLastStep, stepAt, TOUR_STEPS } from '@/lib/tour';
 import { Scout } from './Scout';
 
 /**
- * Six screens, swipeable, skippable from the first one.
+ * A short deck, swipeable, skippable from the first screen.
  *
  * A tour has to be leaveable at any point or it's a hostage situation — but
- * Skip is deliberately quieter than Next, because someone who taps through six
- * short screens learns things that otherwise take a fortnight to find.
+ * Skip is deliberately quieter than Next, because someone who taps through a
+ * handful of short screens learns things that otherwise take a fortnight to
+ * find. How many screens is decided in lib/tour.ts, which treats the count as
+ * a budget rather than as a list.
  *
  * Finishing and skipping both record `tourDoneAt`. Declining is an answer, and
  * an app that re-asks a question you've answered is an app you stop reading.

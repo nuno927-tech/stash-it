@@ -4612,11 +4612,20 @@ button.calcell {
   The divider has to go with it: a row that is both boxed and underlined reads
   as a box with a line through its bottom edge.
 */
+/*
+  NO MARGIN HERE, and the reason is written twenty lines up at `.swiperow`.
+
+  A document row sits inside a swipe wrapper with a red delete button behind
+  it, and the wrapper is exactly as tall as its contents so the button ends
+  where the row ends. Any margin on the row inside makes the button taller than
+  the thing covering it, and a strip of red shows below every flagged row. The
+  dashboard's `.duerow.flagged` carries 4px because nothing is hiding behind
+  it; this one cannot.
+*/
 .subrow.flagged {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 10px;
-  margin-bottom: 4px;
 }
 
 .subrow:active {

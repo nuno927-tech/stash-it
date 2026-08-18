@@ -1,8 +1,8 @@
 /**
  * The tour: what it says, and when it's due.
  *
- * Six screens, each answering a question someone would otherwise have to
- * discover by poking. The content lives here rather than in the component so
+ * A handful of screens, each answering a question someone would otherwise have
+ * to discover by poking. The content lives here rather than in the component so
  * it can be read as a script — a tour is writing, and writing that's scattered
  * through JSX stops being editable as prose.
  *
@@ -22,26 +22,38 @@ export interface TourStep {
 
 /**
  * Ordered as a first week with the app, not as a feature list: what it is,
- * how to put something in, what to do with the paper it came with, what it
- * tells you back, what it wants from you, and — last, because it's the one
- * that matters when things go wrong — how to make sure you don't lose it.
+ * how to put something in, what to do with the paper it came with, the two
+ * other things it tracks, what it tells you back, how it can reach you, and —
+ * last, because it's the one that matters when things go wrong — how to make
+ * sure you don't lose any of it.
  *
  * The paper step sits third, immediately after adding, because that is the
  * minute the receipt is still in your hand. Told at the end it's advice; told
  * there it's an instruction you can act on.
+ *
+ * ── Eight, and it was nearly eleven ───────────────────────────────────────
+ * Documents, subscriptions and reminders all arrived after this was written,
+ * and the obvious move — a screen each, appended — would have made a
+ * fourteen-tap introduction to an app whose whole pitch is that it is quick.
+ * So two of the originals were folded into their neighbours rather than kept:
+ * sharing a receipt from email belongs in the step about adding things, and
+ * "what's missing" belongs with the rest of what the dashboard tells you.
+ *
+ * A tour is a budget. Every screen added has to displace one, or it isn't
+ * worth the tap it costs.
  */
 export const TOUR_STEPS: TourStep[] = [
   {
     key: 'what',
     pose: 'waving',
     title: 'Everything you own, with its paperwork',
-    body: "Stash it remembers what you bought, when, and how long it's covered — so the receipt is somewhere better than a drawer when a claim needs it.",
+    body: "Warranties, documents and subscriptions in one place — so the receipt is somewhere better than a drawer when a claim needs it, and nothing lapses because you forgot it existed.",
   },
   {
     key: 'add',
     pose: 'receipt',
     title: 'Adding something takes a photo and a date',
-    body: 'Name it, photograph it, say when you bought it and how long the warranty runs. Everything else is optional and can wait.',
+    body: 'Name it, photograph it, say when you bought it and how long the warranty runs. Or share a receipt straight from your mail app and the shop, date and price arrive already filled in.',
   },
   {
     key: 'paper',
@@ -50,28 +62,40 @@ export const TOUR_STEPS: TourStep[] = [
     body: "A photo settles most claims. Some still want the original, so keep it in a folder somewhere dry — the app holds the copy, you hold the proof. Paper doesn't need charging.",
   },
   {
+    /*
+      The privacy sentence is not a footnote here. Anyone being asked to put a
+      passport into an app is entitled to know what it will actually hold
+      before they start, and the honest answer — dates, no scans, no numbers —
+      is also the reason to trust the rest of it.
+    */
+    key: 'papers',
+    pose: 'clipboard',
+    title: 'Passports, licences, insurance',
+    body: "The Documents tab watches the things that expire on you. Dates and general details only — no scans, no document numbers — and I'll tell you when to start renewing, not when it's too late.",
+  },
+  {
+    key: 'subs',
+    pose: 'calendar',
+    title: 'And what leaves your account each month',
+    body: 'Add the subscriptions you pay for and the Subscriptions tab shows what a month really costs, which months are the heavy ones, and what renews next.',
+  },
+  {
     key: 'watch',
     pose: 'report',
-    title: 'The ring is how much is still covered',
-    body: 'Green is covered, amber is ending soon, red has lapsed. Under six months, the countdown switches to days — because that’s when it starts mattering.',
+    title: 'The dashboard is the short version',
+    body: "The ring is how much is still in date, green to red. Under it, one list of everything coming up — ordered by what it costs to ignore, not by date — and a note of anything I'm missing.",
   },
   {
-    key: 'gaps',
+    key: 'notify',
     pose: 'alert',
-    title: "I'll tell you what's missing",
-    body: 'A receipt you never attached, a warranty with no length, an item with no photo. The home screen lists them in the order that would cost you most.',
-  },
-  {
-    key: 'share',
-    pose: 'receipt',
-    title: 'Receipts can come straight from email',
-    body: 'Open one in your mail app, share it to Stash it, and the shop, date and price arrive already filled in. Check them — some of it is guessed.',
+    title: 'I can nudge you with the app closed',
+    body: "Reminders are off until you turn them on. When you do, the only thing that leaves this phone is a delivery address and the days something is due — never what it's about.",
   },
   {
     key: 'safe',
     pose: 'acorn',
     title: 'It all lives on this phone',
-    body: 'Nothing is uploaded anywhere. That keeps it private and puts the backup on you: export a copy, or connect Google Drive, and do it more than once.',
+    body: 'Nothing is uploaded and there is no account. That keeps it private and puts the backup on you: Back up now in Settings makes one file you can send to Drive, Files, or yourself.',
   },
 ];
 
