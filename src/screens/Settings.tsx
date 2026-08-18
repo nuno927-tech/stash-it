@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, nowISO } from '@/db/db';
@@ -17,7 +17,24 @@ import {
   type RestoreMode,
   type RestoreResult,
 } from '@/lib/backup';
-import { NO_TAPS, tap, tapHint, unlocked, type TapState } from '@/lib/devmode';
+import {
+  NO_TAPS,
+  readUnlocked,
+  rememberUnlocked,
+  tap,
+  tapHint,
+  unlocked,
+  type TapState,
+} from '@/lib/devmode';
+import {
+  PING_COPY,
+  diagnose,
+  notifyNow,
+  pingNow,
+  restoreSchedule,
+  stageToday,
+  type PushDiagnosis,
+} from '@/lib/pushDev';
 import { money, monthlyDue, TIERS, venmoUrl } from '@/lib/donate';
 import { feedback, hapticsSupported, previewCue } from '@/lib/feedback';
 import { contactUrl, platformWord, type ContactKind } from '@/lib/contact';
@@ -60,8 +77,6 @@ import {
 } from '@/lib/pushClient';
 import { appUrl, shareApp, shareMessage } from '@/lib/share';
 import { formatBytes, storageUsage, type StorageUsage } from '@/lib/storage';
-import { getEndingSoonDays } from '@/lib/warranty';
-import { DriveCard } from '@/components/DriveCard';
 import { ScoutGallery } from '@/components/ScoutGallery';
 import { Scout } from '@/components/Scout';
 
@@ -101,7 +116,16 @@ export function Settings({
 }) {
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const [notice, setNotice] = useState<Notice>(null);
+  /*
+    Two separate things, and they were one before.
+
+    `taps` is the run of taps happening right now; `open` is whether the card
+    is showing. Keeping only the tap count meant leaving Settings — to look at
+    the dashboard, or to check whether a test notification arrived — closed the
+    card, and coming back cost ten more taps. See lib/devmode.ts.
+  */
   const [taps, setTaps] = useState<TapState>(NO_TAPS);
+  const [open, setOpen] = useState(readUnlocked);
   const [pending, setPending] = useState<ParsedBundle | null>(null);
   const [eggTaps, setEggTaps] = useState<TapState>(NO_TAPS);
   const [album, setAlbum] = useState(false);
@@ -171,23 +195,29 @@ export function Settings({
           rather than a setting, and it was riding on the About card's header
           where it read as that card's badge. Ten taps still opens the
           developer tools; nothing about it advertises that. */}
-      <VersionCard taps={taps} onTap={() => setTaps((t) => tap(t, Date.now()))} />
+      <VersionCard
+        taps={taps}
+        onTap={() => {
+          const next = tap(taps, Date.now());
+          setTaps(next);
+          if (unlocked(next)) {
+            setTaps(NO_TAPS);
+            setOpen(true);
+            rememberUnlocked(true);
+          }
+        }}
+      />
 
-      {/* Drive lives here rather than beside the file backup. It needs an OAuth
-          client ID pasted in before it does anything, which makes it a thing
-          for whoever is building the app, not a setting for whoever is using
-          it. Hidden with the rest of the developer tools until the version
-          pill has been tapped ten times. */}
-      {unlocked(taps) && (
-        <>
-          <Developer
-            settings={settings}
-            propertyId={propertyId}
-            onHide={() => setTaps(NO_TAPS)}
-            onHome={onHome}
-          />
-          <DriveCard settings={settings} onNotice={setNotice} onRestore={setPending} />
-        </>
+      {open && (
+        <Developer
+          settings={settings}
+          propertyId={propertyId}
+          onHide={() => {
+            setOpen(false);
+            rememberUnlocked(false);
+          }}
+          onHome={onHome}
+        />
       )}
     </>
   );
@@ -1364,10 +1394,181 @@ function Developer({
         }
       />
 
-      <Row
-        label="Warning threshold"
-        note={`"Ending soon" means ${getEndingSoonDays()} days or less right now — the value set by "Warn me before a warranty ends".`}
-      />
+      <NotificationBench propertyId={propertyId} />
     </Card>
+  );
+}
+
+/* ------------------------------------------------- the notification bench */
+
+/**
+ * Four buttons, in the order the chain actually runs.
+ *
+ * A reminder crosses four things that can each break on their own: this
+ * device's permission, the wording, the worker that reads it, and the trip
+ * across the internet. Testing only the whole chain tells you it doesn't work,
+ * which you already knew. So each link gets its own button, top to bottom, and
+ * the first one that fails is the one to fix.
+ *
+ * The readout above them is the part worth reading first. It shows what the
+ * browser thinks and what the database thinks as separate rows, because the
+ * interesting failure is when they disagree — a device the sender will ping
+ * every week and that cannot show a thing. Averaged into one "on" that state is
+ * invisible; side by side it is obvious.
+ */
+function NotificationBench({ propertyId }: { propertyId: string }) {
+  const [d, setD] = useState<PushDiagnosis | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [staged, setStaged] = useState(false);
+
+  const look = useCallback(() => {
+    void diagnose().then(setD);
+  }, []);
+
+  useEffect(look, [look]);
+
+  const run = async (job: () => Promise<string>) => {
+    setBusy(true);
+    try {
+      setSaid(await job());
+    } catch (e) {
+      setSaid((e as Error).message);
+    } finally {
+      setBusy(false);
+      look();
+    }
+  };
+
+  return (
+    <div className="bench">
+      <div className="benchhead">
+        <strong>Reminders</strong>
+        <button type="button" className="linkish" onClick={look}>
+          Refresh
+        </button>
+      </div>
+
+      {d && (
+        <dl className="benchgrid">
+          <Stat name="Switch" value={d.enabled ? 'on' : 'off'} ok={d.enabled} />
+          <Stat name="Permission" value={d.permission} ok={d.permission === 'granted'} />
+          <Stat name="Worker" value={d.workerReady ? 'ready' : 'none'} ok={d.workerReady} />
+          <Stat
+            name="Subscription"
+            value={d.subscribed ? 'live' : 'none'}
+            ok={d.subscribed}
+            /* The mismatch worth shouting about: registered with the sender,
+               unable to receive. */
+            warn={!d.subscribed && d.enabled}
+          />
+          <Stat
+            name="Sender"
+            value={d.senderConfigured ? 'configured' : 'none'}
+            ok={d.senderConfigured}
+          />
+          <Stat
+            name="Last sync"
+            value={d.syncedAt ? new Date(d.syncedAt).toLocaleDateString() : 'never'}
+            ok={!!d.syncedAt}
+          />
+          <Stat name="Dates uploaded" value={`${d.uploadedWakes}`} ok={d.uploadedWakes > 0} />
+          <Stat name="Days cached" value={`${d.cachedNotes}`} ok={d.cachedNotes > 0} />
+        </dl>
+      )}
+
+      {d && (
+        <p className="hint">
+          <b>Today would say:</b>{' '}
+          {d.today ? `“${d.today.title} — ${d.today.body}”` : '“Nothing needs you”'}
+          {d.verdict !== 'ready' && !d.enabled ? ` · ${VERDICT_COPY[d.verdict]}` : ''}
+        </p>
+      )}
+
+      <div className="benchrow">
+        <button
+          type="button"
+          className="minibtn ghost"
+          disabled={busy}
+          onClick={() =>
+            void run(async () => {
+              const out = await notifyNow();
+              return out === 'shown'
+                ? 'Shown. If nothing appeared, the OS is suppressing it — check Focus or Do Not Disturb.'
+                : out === 'no-permission'
+                  ? 'Permission not granted. Turn Reminders on first.'
+                  : out === 'no-worker'
+                    ? 'No service worker. Run a built copy, not the dev server.'
+                    : "The worker refused to show it.";
+            })
+          }
+        >
+          1. Show one now
+        </button>
+        <small>This device only. Proves permission, the icon and what tapping it does.</small>
+      </div>
+
+      <div className="benchrow">
+        <button
+          type="button"
+          className="minibtn ghost"
+          disabled={busy}
+          onClick={() =>
+            void run(async () => {
+              if (staged) {
+                const n = await restoreSchedule(propertyId);
+                setStaged(false);
+                return `Real schedule back — ${n} day${n === 1 ? '' : 's'} in the next two months.`;
+              }
+              const w = await stageToday(propertyId);
+              setStaged(true);
+              return `Today now reads “${w.title}”. Press 1, or send a real ping.`;
+            })
+          }
+        >
+          {staged ? '2. Put the real one back' : '2. Fake a reminder for today'}
+        </button>
+        <small>
+          Writes a sample into the note the worker reads, so there is something real-looking to
+          show. Cleared on the next launch either way.
+        </small>
+      </div>
+
+      <div className="benchrow">
+        <button
+          type="button"
+          className="minibtn ghost"
+          disabled={busy || !d?.senderConfigured}
+          onClick={() => void run(async () => PING_COPY[await pingNow()])}
+        >
+          3. Send a real push
+        </button>
+        <small>
+          The whole path: sender, then Google or Apple, then this phone. Close the app first — a
+          notification that only works in the foreground is not working.
+        </small>
+      </div>
+
+      {said && <p className="benchsaid">{said}</p>}
+    </div>
+  );
+}
+
+function Stat({
+  name,
+  value,
+  ok,
+  warn,
+}: {
+  name: string;
+  value: string;
+  ok: boolean;
+  warn?: boolean;
+}) {
+  return (
+    <div className={`stat${warn ? ' warn' : ok ? ' ok' : ''}`}>
+      <dt>{name}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }

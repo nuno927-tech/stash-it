@@ -39,3 +39,44 @@ export function tapHint(state: TapState): string | null {
   if (left === 0 || left > 3) return null;
   return left === 1 ? '1 more tap' : `${left} more taps`;
 }
+
+/* -------------------------------------------------------- staying unlocked */
+
+/**
+ * Once open, it stays open until Hide.
+ *
+ * The unlock used to live in the Settings component's state, which meant it
+ * died the moment you left the screen. That is the wrong shape for what these
+ * tools are: testing a notification means leaving Settings, closing the app,
+ * waiting for it to arrive, tapping it — and coming back to ten more taps
+ * every time turns a five-second check into a chore, which is how a test bench
+ * stops being used.
+ *
+ * `sessionStorage`, not `localStorage`: it survives navigation and reload,
+ * which is what was actually being asked for, and clears itself when the tab
+ * closes. A developer flag that outlives the browser is one that gets left on.
+ * The installed PWA counts as one long-lived tab, so on a phone this behaves
+ * like "until you hide it or force-quit".
+ *
+ * Failure is silent and means locked. Private modes and locked-down browsers
+ * throw on storage access, and a hidden developer card is the safe end of that
+ * — nothing a person needs is behind here.
+ */
+const UNLOCK_KEY = 'stash-it-dev-unlocked';
+
+export function readUnlocked(): boolean {
+  try {
+    return sessionStorage.getItem(UNLOCK_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function rememberUnlocked(on: boolean): void {
+  try {
+    if (on) sessionStorage.setItem(UNLOCK_KEY, '1');
+    else sessionStorage.removeItem(UNLOCK_KEY);
+  } catch {
+    /* Nothing to remember it with. The card still works for this screen. */
+  }
+}

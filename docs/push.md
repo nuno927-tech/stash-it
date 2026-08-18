@@ -314,6 +314,50 @@ on, and check Firestore: one document, containing an endpoint, two keys, and a
 list of integers. If it contains anything else, something has gone wrong in
 `clean()` and the promise on the settings card is no longer true.
 
+## Testing it — the bench in Settings → Developer
+
+Tap the version pill ten times. The card stays open until you press **Hide**,
+which matters here more than anywhere else: testing a notification means
+leaving Settings to see whether it arrived.
+
+A reminder crosses four things that break independently, so there is a button
+for each, in the order the chain runs.
+
+| | What it proves | Needs |
+|---|---|---|
+| The readout | Where the chain stands right now | — |
+| **1. Show one now** | Permission, the icon, and what tapping it does | A built copy, not `npm run dev` |
+| **2. Fake a reminder for today** | The wording, on a day that has one | — |
+| **3. Send a real push** | Sender → Google or Apple → this phone | A deployed `ping`, and the app closed |
+
+Read the grid before pressing anything. It shows what the **browser** thinks
+and what the **database** thinks as separate rows, because the failure worth
+catching is when they disagree: *Switch on, Subscription none* is a device the
+sender will ping every week and that cannot show a thing. It goes red rather
+than grey, because grey would look like a switch nobody turned on.
+
+Three requires the extra endpoint, which deploys with everything else:
+
+```bash
+firebase deploy --only functions
+```
+
+`ping` sends **to a device already in the database and nowhere else** — a 404
+otherwise. That is not much of a lock, and it does not need to be: holding
+someone's subscription means they turned the switch on, and the sweep can
+already ping them hourly. It adds no reach that registering did not. The
+ten-second cooldown is about a retry loop in a test build hammering a real push
+service, which is how a sender gets itself rate-limited for everyone.
+
+**It is still an empty push.** There is no test mode where the payload carries
+words — a switch like that is how the words start travelling. The same rule
+covers the whole bench: nothing there can make the app do something it cannot
+do in production, or the bench passes while the feature is broken.
+
+Press 3 with the app **closed**. Some platforms show a foreground notification
+by a different route, so a foreground test can pass on a device where the real
+thing never appears.
+
 ## What the sweep does, and the bug it nearly had
 
 Hourly, `where('nextWake', '<=', now)`.

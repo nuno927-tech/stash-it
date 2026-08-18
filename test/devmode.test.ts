@@ -9,8 +9,31 @@
  * own, which is exactly what hiding it was meant to prevent.
  */
 
+// readUnlocked/rememberUnlocked touch sessionStorage, which Node has not got.
+// A two-line stand-in is enough to assert the round trip and, more usefully,
+// that a browser which throws on storage access reports "locked" rather than
+// taking the whole settings screen down with it.
+const store = new Map<string, string>();
+let throws = false;
+(globalThis as { sessionStorage?: unknown }).sessionStorage = {
+  getItem: (k: string) => {
+    if (throws) throw new Error('denied');
+    return store.get(k) ?? null;
+  },
+  setItem: (k: string, v: string) => {
+    if (throws) throw new Error('denied');
+    store.set(k, v);
+  },
+  removeItem: (k: string) => {
+    if (throws) throw new Error('denied');
+    store.delete(k);
+  },
+};
+
 import {
   NO_TAPS,
+  readUnlocked,
+  rememberUnlocked,
   tap,
   tapHint,
   tapsLeft,
@@ -68,6 +91,34 @@ function main() {
   check('and counts down', tapHint(run(8)) === '2 more taps');
   check('the last one is singular', tapHint(run(9)) === '1 more tap');
   check('and it goes quiet once open', tapHint(run(10)) === null);
+
+  /* --------------------------------------------------- staying unlocked */
+
+  /*
+    The card used to close every time you left Settings, which is the one
+    moment a notification test requires — you have to leave to see whether the
+    thing arrived. Ten more taps to get back in is how a test bench stops being
+    used.
+  */
+  check('closed to begin with', !readUnlocked());
+  rememberUnlocked(true);
+  check('and open once remembered', readUnlocked());
+  rememberUnlocked(false);
+  check('Hide closes it again', !readUnlocked());
+
+  // A browser that refuses storage must report locked, not throw. Nothing
+  // behind the card is worth taking the settings screen down for.
+  rememberUnlocked(true);
+  throws = true;
+  check('storage that throws reads as locked', readUnlocked() === false);
+  let survived = true;
+  try {
+    rememberUnlocked(false);
+  } catch {
+    survived = false;
+  }
+  check('and writing to it does not throw', survived);
+  throws = false;
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

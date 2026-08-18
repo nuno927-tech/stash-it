@@ -16,6 +16,7 @@ import 'fake-indexeddb/auto';
 import { SCHEMA_VERSION, type Item, type Paper, type Subscription } from '@/db/types';
 import { compose, pushSchedule, verdict, vapidBytes, wakeDates, wakeTimes, noteFor } from '@/lib/push';
 import { MAX_WAKES, syncDue, syncPayload, wakesChanged } from '@/lib/pushSync';
+import { PING_COPY, pingVerdict, sampleWake } from '@/lib/pushDev';
 import { setEndingSoonDays } from '@/lib/warranty';
 
 let failures = 0;
@@ -256,6 +257,40 @@ function main() {
   const bytes = vapidBytes('BFy-abc_123');
   check('the key decodes to bytes', bytes instanceof Uint8Array && bytes.length > 0, `${bytes.length}`);
   check('over a real ArrayBuffer', bytes.buffer instanceof ArrayBuffer);
+
+  /* ------------------------------------------------------- the test bench */
+
+  /*
+    The dev tools must not be able to do anything the real feature cannot.
+    A debug push that carried words, or a sample that could outlive the
+    session, would be a test bench that passes while the feature is broken.
+  */
+  const sample = sampleWake(NOW);
+  check('a sample is dated today', sample.on === '2026-08-17', sample.on);
+  check(
+    'and reads like a real two-item day',
+    sample.title === '2 things need you' && sample.body.includes(' and '),
+    `${sample.title} / ${sample.body}`,
+  );
+  check(
+    'the composer would have written the same thing',
+    compose(['MOT — Golf', 'Passport — Nuno']).title === sample.title,
+  );
+  check('today finds it', noteFor([sample], NOW)?.title === sample.title);
+  check('and tomorrow does not', noteFor([sample], new Date(2026, 7, 18)) === null);
+
+  // The ping's answers, mapped where they can be asserted rather than inside
+  // the fetch. Every one has copy, or a tester watches a phone that will never
+  // buzz and is told nothing.
+  check('204 is a send', pingVerdict(204) === 'sent');
+  check('404 means the sender never heard of us', pingVerdict(404) === 'not-registered');
+  check('410 means the subscription is dead', pingVerdict(410) === 'expired');
+  check('429 is the cooldown', pingVerdict(429) === 'too-soon');
+  check('anything else is a failure', pingVerdict(500) === 'failed' && pingVerdict(0) === 'failed');
+  check(
+    'and every outcome has something to say',
+    Object.values(PING_COPY).every((s) => s.length > 0),
+  );
 
   /* ------------------------------------------------- the one committed .env */
 

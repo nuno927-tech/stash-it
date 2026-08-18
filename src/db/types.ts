@@ -289,8 +289,8 @@ export type PaperKind = (typeof PAPER_KINDS)[number];
  * No scan, and no document number.
  *
  * The database is unencrypted by design and says so (see lib/lock.ts), and
- * backups are plaintext zips that drive.ts will put in the user's Drive on a
- * schedule. A receipt for a kettle in that file is fine. A passport scan is
+ * backups are plaintext zips that leave the device the moment they are shared
+ * anywhere. A receipt for a kettle in that file is fine. A passport scan is
  * not, and a passport number sitting next to a name is a better identity-theft
  * package than the scan would be. Storing a partial number behind a warning
  * would be a half-measure, and half-measures with warnings attached are how
@@ -410,15 +410,6 @@ export interface Settings {
    */
   biometricLock?: boolean;
   lockCredentialId?: string;
-
-  /**
-   * Google Drive backup. The client ID is public by design — it's locked to
-   * an origin, not a secret — so unlike the lock credential it travels in a
-   * backup, which is what makes a restore onto a new phone still know where
-   * its backups live.
-   */
-  driveClientId?: string;
-  lastDriveBackupAt?: string;
 
   /** What the greeting calls you. Empty means asked and declined. */
   displayName?: string;

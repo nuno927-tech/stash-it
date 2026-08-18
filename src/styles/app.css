@@ -5157,6 +5157,111 @@ button.calcell {
   text-align: left;
 }
 
+/* ------------------------------------------- the developer reminder bench */
+
+/* Four buttons in the order the chain runs, over a readout of where it
+   currently stands. Set on the darker ground the payload viewer uses, so it
+   reads as an instrument panel rather than as more settings. */
+.bench {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--slate-800);
+}
+
+.benchhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.benchhead strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Two columns, because eight one-line facts stacked is a scroll and a grid of
+   eight is a glance. auto-fit rather than a fixed two so a narrow phone gets
+   one column instead of a squeeze. */
+.benchgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin: 0 0 12px;
+}
+
+.benchgrid .stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--slate-700);
+  /* Grid items default to min-content and a long value would push the column
+     wider than its share. Same fix as the subgrid rows — see check-css. */
+  min-width: 0;
+}
+
+.benchgrid dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.benchgrid dd {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.benchgrid .stat.ok dd {
+  color: var(--moss);
+}
+
+/* Not the same as "off". Ember is for the one state that is actively wrong —
+   registered with the sender and unable to receive — which otherwise looks
+   identical to a switch nobody turned on. */
+.benchgrid .stat.warn dd {
+  color: var(--ember);
+}
+
+.benchrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+
+.benchrow .minibtn {
+  align-self: flex-start;
+}
+
+.benchrow small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* The answer, wherever the last button left it. Gold-washed so it is obviously
+   a response to what was just pressed and not another instruction. */
+.benchsaid {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  background: var(--wash-gold);
+  border: 1px solid var(--wash-gold-line);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .leaks {
   margin-top: 10px;
   padding: 12px;

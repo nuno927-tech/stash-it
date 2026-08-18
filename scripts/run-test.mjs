@@ -29,7 +29,22 @@ await build({
   platform: 'node',
   format: 'esm',
   alias: { '@': './src' },
-  define: { __APP_VERSION__: '"0.0.0-test"' },
+  /*
+    Every build constant, not just the version.
+
+    A module that reads one of these is bundled whole even if the test only
+    calls a pure function three exports along, and esbuild leaves an undefined
+    constant as a bare identifier — so the failure is a ReferenceError thrown
+    from a line the test never meant to reach. Empty is the correct value here
+    anyway: a test run has no VAPID key and no sender, and code that behaves
+    differently without them is code worth testing in that state.
+  */
+  define: {
+    __APP_VERSION__: '"0.0.0-test"',
+    __SITE_PATH__: '"/"',
+    __VAPID_PUBLIC_KEY__: '""',
+    __PUSH_ENDPOINT__: '""',
+  },
   logLevel: 'error',
 });
 

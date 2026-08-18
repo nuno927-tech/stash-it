@@ -145,6 +145,76 @@ export const forget = onRequest({ cors: false, maxInstances: 3 }, async (req, re
   res.status(204).send('');
 });
 
+/**
+ * Send one push, now, to a device that already asked to hear from us.
+ *
+ * ── Why this exists ───────────────────────────────────────────────────────
+ * Everything else in a reminder can be checked on the device: the wording, the
+ * icon, what tapping it does. The one thing that cannot is whether a ping
+ * actually crosses from here, through Google or Apple, to a phone with the app
+ * shut. Without this you find that out on the morning a real reminder doesn't
+ * arrive.
+ *
+ * ── Why it cannot be used against anyone ──────────────────────────────────
+ * It sends only to an endpoint ALREADY IN THE DATABASE, and refuses anything
+ * else with a 404. A stranger would have to hold a subscription that a person
+ * created by turning the switch on — at which point they can already be
+ * pinged, hourly, by the sweep. So this adds no reach that registering did not.
+ *
+ * The ten-second cooldown is not really about abuse; it is about a retry loop
+ * in a test build hammering a real push service, which is how a sender ends up
+ * rate-limited by Google for everyone.
+ *
+ * It is still an empty push. There is no test mode where the payload carries
+ * words — a switch like that is exactly how the words start travelling.
+ */
+const PING_COOLDOWN_MS = 10_000;
+
+export const ping = onRequest(
+  { cors: false, maxInstances: 2, secrets: [VAPID_PUBLIC, VAPID_PRIVATE] },
+  async (req, res) => {
+    if (cors(req, res)) return;
+    if (req.method !== 'POST') return void res.status(405).send('');
+
+    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : '';
+    if (!endpoint || !allowed(endpoint)) return void res.status(400).json({ error: 'bad endpoint' });
+
+    const ref = db.collection(COLLECTION).doc(idFor(endpoint));
+    const snap = await ref.get();
+    if (!snap.exists) return void res.status(404).json({ error: 'not registered' });
+
+    const last = snap.get('lastPingAt') ?? 0;
+    if (Date.now() - last < PING_COOLDOWN_MS) {
+      return void res.status(429).json({ error: 'too soon' });
+    }
+
+    webpush.setVapidDetails(
+      'mailto:hello@stash-it.app',
+      VAPID_PUBLIC.value(),
+      VAPID_PRIVATE.value(),
+    );
+
+    try {
+      const { p256dh, auth } = snap.data();
+      // Empty, exactly as the sweep sends. Testing a different shape of push
+      // would be testing something the app never does.
+      await webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, undefined, { TTL: 60 });
+    } catch (e) {
+      // Gone means gone, here as in the sweep — and saying so is the useful
+      // answer, because it tells the tester their subscription is stale rather
+      // than leaving them watching a phone that will never buzz.
+      if (e?.statusCode === 404 || e?.statusCode === 410) {
+        await ref.delete();
+        return void res.status(410).json({ error: 'subscription expired' });
+      }
+      return void res.status(502).json({ error: 'push service refused' });
+    }
+
+    await ref.update({ lastPingAt: Date.now() });
+    res.status(204).send('');
+  },
+);
+
 /* ----------------------------------------------------------------- sweep */
 
 /**
