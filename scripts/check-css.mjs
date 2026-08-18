@@ -264,6 +264,52 @@ function pairMargins() {
   return ['the four-class reset that keeps sibling margins out of a field pair'];
 }
 
+/**
+ * A calendar day is wider than it is tall, and never below the thumb floor.
+ *
+ * Square cells made the month grid the tallest thing on the Subscriptions
+ * screen — seven columns on a phone is roughly 46px a cell, so six rows came to
+ * nearly 300px of mostly empty grid above the list. `aspect-ratio: 1` is the
+ * obvious thing to type and the thing to keep out.
+ *
+ * The floor is the other half. A renewal day is a button, and a ratio alone
+ * shrinks it with the viewport until a narrow phone has 30px targets. Flatten
+ * the cell as much as you like; leave the minimum alone.
+ */
+const TAP_FLOOR = 36;
+
+function calendarCell() {
+  const out = [];
+  for (const sheet of SHEETS) {
+    let css;
+    try {
+      css = readFileSync(sheet, 'utf8');
+    } catch {
+      continue;
+    }
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    for (const m of code.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!/^\s*\.calcell\s*$/.test(m[1])) continue;
+      const at = m.index + (m[1].length - m[1].trimStart().length);
+      const line = code.slice(0, at).split('\n').length;
+
+      const ratio = m[2].match(/(^|[;\s])aspect-ratio\s*:\s*([^;}]+)/);
+      const floor = m[2].match(/(^|[;\s])min-height\s*:\s*(\d+(?:\.\d+)?)px/);
+
+      if (!ratio) out.push(`${sheet}:${line}  no aspect-ratio, so the cell is text-height`);
+      else if (parseFloat(ratio[2]) <= 1.05) {
+        out.push(`${sheet}:${line}  aspect-ratio: ${ratio[2].trim()} — square again`);
+      }
+      if (!floor) out.push(`${sheet}:${line}  no min-height, so a narrow phone shrinks the target`);
+      else if (parseFloat(floor[2]) < TAP_FLOOR) {
+        out.push(`${sheet}:${line}  min-height: ${floor[2]}px is under the ${TAP_FLOOR}px floor`);
+      }
+      return out;
+    }
+  }
+  return out;
+}
+
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -365,6 +411,7 @@ const stuck = badTouchAction();
 const resized = scoutHeight();
 const squeezed = subgridMinWidth();
 const shifted = pairMargins();
+const tall = calendarCell();
 
 if (missing.size === 0) {
   console.log(`PASS  every class in src has a rule  — ${defined.size} defined`);
@@ -422,12 +469,23 @@ if (shifted.length === 0) {
   }
 }
 
+if (tall.length === 0) {
+  console.log('PASS  calendar days are flat, and still tappable');
+} else {
+  for (const where of tall) {
+    console.log(`FAIL  ${where}`);
+    console.log('      Square cells make six rows ~300px of mostly empty grid;');
+    console.log(`      under ${TAP_FLOOR}px a renewal day becomes a target you aim at.`);
+  }
+}
+
 const failures =
   missing.size +
   doubled.length +
   stuck.length +
   resized.length +
   squeezed.length +
-  shifted.length;
+  shifted.length +
+  tall.length;
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

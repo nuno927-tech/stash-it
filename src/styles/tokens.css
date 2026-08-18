@@ -48,6 +48,25 @@
 
   --scrim: rgba(13, 15, 18, 0.72);
   --fab-shadow: 0 10px 26px -8px rgba(242, 179, 61, 0.6);
+
+  /*
+    Two tokens for one effect: a raised surface, lit from above.
+
+    A flat fill on a dark background reads as a hole in the page. Real objects
+    catch light on their top edge, so the panel gets a barely-there gradient
+    and a hairline that is brightest where the light would land. Both are
+    deliberately almost invisible — the moment you can point at the highlight
+    it has stopped looking like a material and started looking like a bevel,
+    which is the 2009 version of this idea.
+
+    Tokens rather than literals because the two themes need opposite signs:
+    white at 6% lifts a dark panel, and on paper the same trick is a shadow.
+  */
+  --hairline: rgba(255, 255, 255, 0.07);
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 62%);
+  /* The bar fill. Solid at the top, thinning out toward the baseline, so a
+     column reads as a measured quantity rather than a painted block. */
+  --gold-fall: linear-gradient(180deg, var(--gold), rgba(242, 179, 61, 0.35));
 }
 
 /**
@@ -84,6 +103,13 @@
 
   --scrim: rgba(255, 255, 255, 0.82);
   --fab-shadow: 0 8px 20px -8px rgba(154, 107, 15, 0.55);
+
+  /* Same effect, opposite sign. Lifting a pale panel with white does nothing —
+     there is no headroom above #f1efe9 — so on paper the edge is a faint
+     shadow and the sheen falls the other way. */
+  --hairline: rgba(34, 37, 42, 0.09);
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 70%);
+  --gold-fall: linear-gradient(180deg, var(--gold), rgba(154, 107, 15, 0.4));
 }
 
 :root {

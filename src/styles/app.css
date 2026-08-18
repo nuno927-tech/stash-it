@@ -4025,9 +4025,10 @@ button.runtile:active {
   display: block;
   width: 100%;
   padding: 16px 16px 13px;
-  border: none;
+  border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
   background: var(--slate-700);
+  background-image: var(--sheen);
   color: inherit;
   text-align: left;
   margin-bottom: 12px;
@@ -4066,6 +4067,14 @@ button.runtile:active {
   — the whole reason it's here is that one month is several times another, and
   a 30px strip can't show a 4:1 ratio and still leave the short months visible.
 */
+/*
+  Four gridlines behind the bars, drawn by the background rather than by markup.
+
+  Bars floating in an empty box are a shape; bars crossing rules are a
+  measurement. `repeating-linear-gradient` puts a hairline every quarter of the
+  height with no extra elements to keep in sync, and the baseline stays a real
+  border so it holds its weight when the lines fade.
+*/
 .spendchart {
   position: relative;
   display: flex;
@@ -4073,7 +4082,12 @@ button.runtile:active {
   gap: 6px;
   height: 104px;
   margin: 18px 0 9px;
-  border-bottom: 1px solid var(--slate-600);
+  border-bottom: 1px solid var(--line);
+  background-image: repeating-linear-gradient(
+    to top,
+    transparent 0 25px,
+    var(--hairline) 25px 26px
+  );
 }
 
 .spendcol {
@@ -4086,19 +4100,30 @@ button.runtile:active {
   justify-content: flex-end;
 }
 
-/* The bar. Everything but this month is held back, so the chart has a "you
-   are here" without needing a second colour to mean something else. */
+/*
+  The bar. Everything but this month is held back, so the chart has a "you are
+  here" without needing a second colour to mean something else.
+
+  The fill falls away toward the baseline rather than sitting flat. A solid
+  block of gold six times over is a lot of gold, and the gradient lets the tops
+  — the part carrying the information — stay the most saturated thing in the
+  card while the mass below it recedes.
+*/
 .spendcol i {
   display: block;
   width: 100%;
-  border-radius: 3px 3px 0 0;
-  background: var(--gold);
-  opacity: 0.45;
-  transition: height 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 5px 5px 2px 2px;
+  background: var(--gold-fall);
+  opacity: 0.4;
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* This month, lit. The glow is doing what the opacity jump alone could not:
+   at 40% against 100% the difference reads as "faded", and with the bloom it
+   reads as "current". */
 .spendcol.now i {
   opacity: 1;
+  box-shadow: 0 0 14px -3px rgba(242, 179, 61, 0.55);
 }
 
 .spendcol em {
@@ -4108,13 +4133,18 @@ button.runtile:active {
   right: 0;
   text-align: center;
   font-style: normal;
-  font-size: 10px;
-  font-weight: 300;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
+/* The current month is named in the brand colour, matching its bar. Two
+   signals for one fact, which is the right number when the fact is "start
+   reading here". */
 .spendcol.now em {
-  color: var(--text);
+  color: var(--gold);
 }
 
 /*
@@ -4130,18 +4160,28 @@ button.runtile:active {
   left: 0;
   right: 0;
   height: 0;
-  border-top: 1px dashed var(--line);
+  /* Gold, now that the gridlines behind it are grey. Dashed grey on top of
+     dashed grey made the one line that means something indistinguishable from
+     the four that are just scaffolding. */
+  border-top: 1px dashed var(--wash-gold-line);
   pointer-events: none;
+  z-index: 1;
 }
 
 .spendavg::after {
   content: 'average';
   position: absolute;
   right: 0;
-  bottom: 2px;
-  font-size: 9px;
-  font-weight: 300;
-  letter-spacing: 0.02em;
+  bottom: 3px;
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  /* On its own chip, because at 9px over a bar the word was unreadable
+     precisely where the line was most interesting — crossing something. */
+  background: var(--slate-700);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -4366,28 +4406,75 @@ button.runtile:active {
   gap: 8px;
 }
 
+/*
+  A panel, not a rectangle of a different grey.
+
+  Three things do the work, and none of them is decoration for its own sake:
+  the sheen gives the top edge somewhere for light to land, the hairline stops
+  the chip dissolving into the page behind it, and the label sits under a
+  figure that is now the loudest thing in the block rather than a size or two
+  above the caption. What made these look cheap was that the number and the
+  word beneath it were competing at nearly the same weight.
+*/
 .subtotal {
+  position: relative;
   background: var(--slate-700);
+  background-image: var(--sheen);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-md);
-  padding: 11px 12px;
+  padding: 12px 13px 11px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .subtotal strong {
   display: block;
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 20px;
-  letter-spacing: -0.03em;
+  font-size: 23px;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  /* Money in a grid of money. Proportional digits make four figures in one
+     chip and three in the next look like different type sizes. */
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/*
+  The caption, demoted properly.
+
+  Small caps at 9.5px with real tracking reads as a label rather than as a
+  short sentence, which is what lets the figure above it carry the chip. It is
+  the one place in this app that earns letter-spacing: at this size the letters
+  need the air, and it is two words rather than a paragraph.
+*/
 .subtotal small {
-  font-size: 11px;
-  font-weight: 300;
+  display: block;
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--muted);
+}
+
+/*
+  The headline figure gets the brand colour.
+
+  Four chips of identical weight is a wall, and the eye has to read all four to
+  find out which one it wanted. What a month costs is the number this whole tab
+  is built around, so it goes gold and the other three stay quiet — a hierarchy
+  the layout was previously refusing to state.
+*/
+.subtotal.lead {
+  background-image: var(--sheen), linear-gradient(180deg, var(--wash-gold-soft), transparent);
+  border-color: var(--wash-gold-line);
+}
+
+.subtotal.lead strong {
+  color: var(--gold);
 }
 
 /* Full width now that Scout has moved up to the masthead. Seven columns and
@@ -4395,8 +4482,10 @@ button.runtile:active {
    wants every pixel across. */
 .calendar {
   background: var(--slate-700);
+  background-image: var(--sheen);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-md);
-  padding: 10px 11px 12px;
+  padding: 9px 11px 10px;
 }
 
 .calhead {
@@ -4404,7 +4493,7 @@ button.runtile:active {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
 }
@@ -4423,13 +4512,28 @@ button.runtile:active {
   padding-bottom: 3px;
 }
 
+/*
+  Wider than tall, and floored rather than free.
+
+  Square cells made this the tallest thing on the screen by a distance: seven
+  across on a phone is about 46px a cell, so six rows of squares came to nearly
+  300px of mostly empty grid before the list below it started. A month is read
+  by scanning rows, and a row does not need to be as deep as it is wide to be
+  scannable — flattening the cell takes roughly a fifth off the block and costs
+  nothing you were using.
+
+  The floor is the part worth keeping. Renewal days are buttons, and left to
+  the ratio alone a narrow phone would shrink them to something you have to aim
+  at. 36px is the shallowest a day can be and still be tapped without care.
+*/
 .calcell {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 1.42;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-sm);
+  border-radius: 9px;
   font-size: 11.5px;
   font-weight: 300;
   color: var(--muted);

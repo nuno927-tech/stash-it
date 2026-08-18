@@ -156,7 +156,9 @@ export function Subs({
           */}
           <div className="subshead">
             <div className="subtotals">
-              <div className="subtotal">
+              {/* `lead` is the gold one. What a month costs is what the tab is
+                  about; the other three are context for it. */}
+              <div className="subtotal lead">
                 <strong>{formatMoney(monthly, currency)}</strong>
                 <small>a month</small>
               </div>
