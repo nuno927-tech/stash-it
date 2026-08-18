@@ -1318,8 +1318,24 @@ function AboutApp({
 
       <Row
         label="Take the tour"
-        note="Six short screens on what the app does. Nothing changes by watching it."
+        note="A few short screens on what the app does. Nothing changes by watching it."
         onClick={onTour}
+      />
+
+      {/*
+        A real page at a real URL, not a sheet inside the app.
+
+        An app store asks for a policy address, and so does anyone deciding
+        whether to trust this before installing it — both need somewhere that
+        exists without the app. It opens outward for the same reason.
+      */}
+      <Row
+        label="Privacy policy"
+        note="What stays on this phone, and the two things that don't."
+        onClick={() => {
+          feedback('nav');
+          window.open(`${__SITE_PATH__}privacy.html`, '_blank', 'noopener');
+        }}
       />
 
       {/*

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0D10" />
+    <title>Privacy policy — Stash it</title>
+    <meta
+      name="description"
+      content="What Stash it collects, which is almost nothing, and the two exceptions where something does leave your phone."
+    />
+    <link rel="icon" href="img/icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:wght@300..700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /*
+        Deliberately its own file rather than a section of index.html.
+
+        A privacy policy needs a stable URL: the Play Console asks for one, the
+        Reminders card links to one, and "#privacy on the marketing page" is a
+        URL that breaks the day the marketing page is rewritten. It also has to
+        be readable by someone who arrived from an app store with no interest
+        in the rest of the site, which is why there is no hero and no install
+        button on it.
+
+        The palette is copied from index.html rather than shared, for the
+        reason given there: a page that needs a build step to change a sentence
+        is a page nobody updates. Two files, no toolchain.
+      */
+      :root {
+        --ink: #05070a;
+        --slate-900: #0b0d10;
+        --slate-800: #12161c;
+        --slate-700: #1b2129;
+        --line: rgba(255, 255, 255, 0.09);
+        --gold: #f2b33d;
+        --gold-soft: rgba(242, 179, 61, 0.14);
+        --moss: #5fbf7e;
+        --text: #f2f4f7;
+        --muted: #97a1ae;
+        --dim: #6b7684;
+        --display: 'Bricolage Grotesque', system-ui, sans-serif;
+        --body: 'Inter', system-ui, sans-serif;
+        --page: min(760px, 100% - 40px);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        background: var(--ink);
+        color: var(--text);
+        font-family: var(--body);
+        font-size: 16.5px;
+        font-weight: 300;
+        line-height: 1.68;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        width: var(--page);
+        margin: 0 auto;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 200;
+        letter-spacing: -0.035em;
+        line-height: 1.06;
+      }
+
+      h1 {
+        font-size: clamp(38px, 7vw, 62px);
+      }
+
+      h2 {
+        font-size: clamp(24px, 3.4vw, 32px);
+        margin: 52px 0 14px;
+      }
+
+      h3 {
+        font-size: 19px;
+        letter-spacing: -0.02em;
+        margin: 30px 0 8px;
+      }
+
+      p,
+      ul {
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      li {
+        margin-bottom: 7px;
+      }
+
+      strong {
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      a {
+        color: var(--gold);
+      }
+
+      /* ---------------------------------------------------------- chrome */
+
+      header.top {
+        border-bottom: 1px solid var(--line);
+        background: rgba(11, 13, 16, 0.86);
+        backdrop-filter: blur(14px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 0;
+      }
+
+      .mark {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--display);
+        font-size: 20px;
+        font-weight: 300;
+        letter-spacing: -0.03em;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .mark span {
+        color: var(--gold);
+      }
+
+      .mark img {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+      }
+
+      .topbar a.back {
+        font-size: 14px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      main {
+        padding: clamp(48px, 8vw, 88px) 0 40px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        font-family: var(--body);
+        font-size: 12.5px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--gold);
+        background: var(--gold-soft);
+        border: 1px solid rgba(242, 179, 61, 0.28);
+        border-radius: 99px;
+        padding: 6px 14px;
+        margin-bottom: 22px;
+      }
+
+      .lede {
+        font-size: clamp(17px, 2.2vw, 20px);
+        color: var(--muted);
+        margin: 18px 0 0;
+      }
+
+      /*
+        The summary, in a box, at the top.
+
+        Nobody reads a privacy policy, and a policy written on the assumption
+        that they will is a policy designed not to be read. The short version
+        is the honest version; everything below it is the same thing said
+        precisely enough to be held to.
+      */
+      .card {
+        background: var(--slate-800);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px 24px;
+        margin: 34px 0 8px;
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 21px;
+      }
+
+      .card ul {
+        margin-bottom: 0;
+      }
+
+      .card li strong {
+        color: var(--moss);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0 22px;
+        font-size: 15px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+      }
+
+      th {
+        color: var(--text);
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      td:first-child {
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .updated {
+        color: var(--dim);
+        font-size: 14px;
+        margin-top: 40px;
+      }
+
+      footer {
+        padding: 34px 0 60px;
+        border-top: 1px solid var(--line);
+        color: var(--dim);
+        font-size: 13.5px;
+      }
+
+      footer a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      @media (max-width: 560px) {
+        table,
+        tbody,
+        tr,
+        td,
+        th {
+          display: block;
+        }
+
+        thead {
+          display: none;
+        }
+
+        tr {
+          border-bottom: 1px solid var(--line);
+          padding: 10px 0;
+        }
+
+        td {
+          border: none;
+          padding: 2px 0;
+        }
+
+        td:first-child {
+          font-weight: 500;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="top">
+      <div class="page topbar">
+        <a class="mark" href="./">
+          <img src="img/icon.png" alt="" width="96" height="96" />
+          Stash<span>it</span>
+        </a>
+        <a class="back" href="./">Back to the site</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <span class="eyebrow">Privacy policy</span>
+      <h1>We don't have your data</h1>
+      <p class="lede">
+        Not as a promise about how carefully we look after it — as a description of the
+        architecture. There is no account, no server holding your records, and nothing for us to
+        look at even if we wanted to.
+      </p>
+
+      <div class="card">
+        <h2>The short version</h2>
+        <ul>
+          <li><strong>No account.</strong> You never give us an email address or a name we can see.</li>
+          <li><strong>Everything stays on your device.</strong> Items, photos, receipts, documents, subscriptions — all of it lives in your browser's own storage.</li>
+          <li><strong>No analytics, no trackers, no ads.</strong> None. Not a page-view counter.</li>
+          <li><strong>Two exceptions</strong>, both optional and both described in full below: reminders, and backups you choose to send somewhere.</li>
+        </ul>
+      </div>
+
+      <h2>What Stash it stores, and where</h2>
+      <p>
+        Everything you put into the app is written to your browser's local database on the device
+        you are holding. It is not uploaded, synced or mirrored. Uninstall the app or clear the
+        browser's storage and it is gone — which is why the app keeps asking you to make a backup.
+      </p>
+      <p>That includes:</p>
+      <ul>
+        <li>Items you record, their prices, dates, warranty terms, rooms and notes.</li>
+        <li>Photographs and documents you attach.</li>
+        <li>Documents you track — passports, licences, insurance and so on. <strong>Dates and general details only.</strong> The app deliberately cannot store a scan or a document number; there is no field for either.</li>
+        <li>Subscriptions and their amounts.</li>
+        <li>Your settings, and the name you gave Scout to call you.</li>
+      </ul>
+
+      <h2>The two exceptions</h2>
+
+      <h3>1. Reminders, if you turn them on</h3>
+      <p>
+        Reminders are <strong>off until you switch them on</strong>. Delivering a notification to a
+        phone with the app closed is the one thing that cannot happen on the device, so it is the
+        one place where something leaves it. What leaves is this, and nothing else:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>What</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A delivery address</td>
+            <td>A long anonymous URL your browser generates, which is how Google or Apple know which phone to wake. It is not tied to your identity and we cannot read anything from it.</td>
+          </tr>
+          <tr>
+            <td>A list of moments</td>
+            <td>The times a reminder is due — nine in the morning, your time, on each day something needs attention.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>What the reminder says never leaves your phone.</strong> The wording is worked out
+        on your device and kept in your browser's own cache. The message that arrives on the day is
+        empty; your phone fills it in. Nobody in the middle — including us — can read a notification
+        they did not write.
+      </p>
+      <p>Worth knowing anyway, because it is true and rarely said:</p>
+      <ul>
+        <li>The delivery address lives on Google's or Apple's servers, so they can see that your phone was pinged and when.</li>
+        <li>Our sender sees your IP address each time the list of dates is refreshed. That happens weekly in one batch rather than whenever you edit something, specifically so it cannot be used to watch you use the app.</li>
+        <li>The times give away roughly which part of the world you are in, because that is what makes a reminder arrive in your morning rather than at three.</li>
+      </ul>
+      <p>
+        Turn reminders off and the app tells the sender to delete its record before it drops the
+        subscription. Nothing is kept.
+      </p>
+
+      <h3>2. Backups you choose to send somewhere</h3>
+      <p>
+        "Back up now" makes one file containing everything and hands it to your phone's share
+        sheet. Where it goes — Google Drive, Files, an email to yourself — is your choice and
+        happens outside Stash it. We never receive it, and it is not encrypted, so treat it like
+        any other file with your records in it.
+      </p>
+
+      <h2>What we never do</h2>
+      <ul>
+        <li>No analytics or telemetry of any kind. We do not know how many people use this.</li>
+        <li>No advertising, and no data sold or shared with anyone.</li>
+        <li>No third-party trackers, tags or embedded scripts. The website loads a font from Google Fonts; the app loads nothing from anywhere.</li>
+        <li>No crash reporting.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>
+        Stash it is not directed at children and collects nothing from anyone, including them.
+      </p>
+
+      <h2>Payments</h2>
+      <p>
+        Stash it is free. If you choose to chip in, the app opens Venmo with an amount filled in
+        and you confirm it there — no payment details ever pass through Stash it, and we see only
+        what Venmo shows any recipient.
+      </p>
+
+      <h2>Your rights over your data</h2>
+      <p>
+        Because we hold nothing, there is nothing for us to hand over, correct or erase on your
+        behalf, and no request you need to make of us. Your copy is yours: export it from Settings
+        at any time, and delete it by removing the app or clearing its storage.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If this ever changes in a way that means something new leaves your device, it will be said
+        plainly in the app before it happens — not amended quietly here.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about any of this:
+        <a href="mailto:nuno927@gmail.com">nuno927@gmail.com</a>. The app is open source, so you do
+        not have to take our word for any of it —
+        <a href="https://github.com/nuno927-tech/stash-it">read the code</a>.
+      </p>
+
+      <p class="updated">Last updated 18 August 2026.</p>
+    </main>
+
+    <footer>
+      <div class="page">
+        <a href="./">Stash it</a> ·
+        <a href="app/">Open the app</a> ·
+        <a href="https://github.com/nuno927-tech/stash-it">Source</a>
+      </div>
+    </footer>
+  </body>
+</html>

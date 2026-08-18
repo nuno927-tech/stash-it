@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -40,6 +41,71 @@ const base = process.env.BASE_PATH ?? '/';
  * sits, not from the manifest, so the worker still only controls the app.
  */
 const scope = process.env.SITE_PATH ?? base;
+
+/**
+ * Store screenshots, read off disk rather than listed by hand.
+ *
+ * ── Why this is generated ─────────────────────────────────────────────────
+ * A manifest that names a screenshot which isn't there is worse than one with
+ * no screenshots at all: the install sheet renders a broken tile, and
+ * PWABuilder reports a 404 as a failure rather than an omission. Hand-written
+ * entries also carry hand-written dimensions, and a `sizes` that disagrees
+ * with the actual file is the kind of thing nobody notices until a store
+ * listing looks stretched.
+ *
+ * So: drop PNGs into `public/screenshots`, and they appear — in filename
+ * order, at their true dimensions, with the label taken from the name.
+ * `01-what-you-own.png` becomes "What you own". No files, no key.
+ *
+ * ── They must be real screens ─────────────────────────────────────────────
+ * Play rejects listings whose screenshots aren't the actual app, and it should.
+ * Capture them from a built copy — see docs/store.md.
+ */
+interface Shot {
+  src: string;
+  sizes: string;
+  type: string;
+  form_factor: 'narrow' | 'wide';
+  label: string;
+}
+
+function screenshots(): Shot[] {
+  const dir = fileURLToPath(new URL('./public/screenshots', import.meta.url));
+  if (!existsSync(dir)) return [];
+
+  const out: Shot[] = [];
+  for (const name of readdirSync(dir).sort()) {
+    if (!/\.png$/i.test(name)) continue;
+    const size = pngSize(`${dir}/${name}`);
+    if (!size) continue;
+    out.push({
+      src: `screenshots/${name}`,
+      sizes: `${size.w}x${size.h}`,
+      type: 'image/png',
+      // Portrait is a phone, landscape is a tablet or desktop. Getting this
+      // wrong puts a phone screenshot in the wide slot, where Chrome stretches
+      // it across the install sheet.
+      form_factor: size.w > size.h ? 'wide' : 'narrow',
+      label: name
+        .replace(/\.png$/i, '')
+        .replace(/^\d+[-_]?/, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/^./, (c) => c.toUpperCase()),
+    });
+  }
+  return out;
+}
+
+/** Width and height from a PNG's IHDR, which is always the first chunk. */
+function pngSize(path: string): { w: number; h: number } | null {
+  try {
+    const head = readFileSync(path).subarray(0, 24);
+    if (head.length < 24 || head.readUInt32BE(0) !== 0x89504e47) return null;
+    return { w: head.readUInt32BE(16), h: head.readUInt32BE(20) };
+  } catch {
+    return null;
+  }
+}
 
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
@@ -192,6 +258,9 @@ export default defineConfig(({ mode }) => {
                     ],
                   },
                 },
+                /* Omitted entirely when there are none — an empty array is a
+                   claim to have screenshots, and validators read it as one. */
+                ...(screenshots().length ? { screenshots: screenshots() } : {}),
                 icons: [
                   { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
                   { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
