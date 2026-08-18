@@ -358,8 +358,11 @@ export function Subs({
   );
 }
 
+/* The plot, in its own coordinates. Scales as one piece — see the note below. */
+const PLOT = { w: 320, top: 24, h: 76, bottom: 26 };
+
 /**
- * Six months of real charges, as bars.
+ * Six months of real charges, as a curve.
  *
  * THE POINT OF DRAWING THIS. Every other figure on this screen is an average,
  * and an average hides the only thing about subscription spending that ever
@@ -367,47 +370,144 @@ export function Subs({
  * in the same month make that month cost four times its neighbours, and no
  * amount of looking at "$94 a month" will tell you which month to brace for.
  *
- * THE DASHED LINE is the monthly average, drawn across the actual bars. It's
- * there to be disagreed with. The gap between the line and the tall bar is the
+ * THE DASHED LINE is the monthly average, drawn across the actual months. It's
+ * there to be disagreed with. The gap between the line and the peak is the
  * difference between the two numbers this app keeps carefully apart — what
- * subscriptions cost you, and what actually leaves in March — and one glance
- * at it explains that better than the sentence you're reading.
+ * subscriptions cost you, and what actually leaves in March.
  *
- * No hero figure on it any more: the four pills at the top of this screen
- * already say what a month costs, and saying it twice on one screen is worse
- * than saying it once anywhere.
+ * ── Why a curve, and what it costs ────────────────────────────────────────
+ * This was six bars, and six bars at phone width are six chunky blocks of gold
+ * competing with each other for a reading that is not really about any one of
+ * them. The question is "which month is the bad one", which is a shape
+ * question, and a line answers a shape question in a tenth of the ink.
+ *
+ * The honest cost: a curve implies continuity between totals that are
+ * discrete. Nothing happens "between" March and April, and a smooth slope
+ * suggests something does. That is bought back with a dot on every month —
+ * the values are marked, the line is only how they relate — and the curve is
+ * kept at low tension so it never bulges past a point it has to pass through.
+ *
+ * ── One SVG, scaled whole ─────────────────────────────────────────────────
+ * Fixed viewBox, `width: 100%`, uniform scale. Stretching the box to the
+ * container instead would give a 1px stroke that is 1px vertically and 2.4px
+ * horizontally, and an oval where the marker should be.
  */
 function SpendChart({ subs, currency }: { subs: Subscription[]; currency: string }) {
   const now = new Date();
   const spend = spendByMonth(subs, 6, now);
   const monthly = totalMonthlyCents(subs);
-  const peak = Math.max(monthly, ...spend.map((m) => m.cents));
 
   // Everything is drawn against the taller of the peak month and the average
   // line, so the line can never fall off the top of its own chart.
-  const height = (cents: number) => (peak === 0 ? 0 : (cents / peak) * 100);
+  const peak = Math.max(monthly, ...spend.map((m) => m.cents));
+  const base = PLOT.top + PLOT.h;
+  const y = (cents: number) => (peak === 0 ? base : base - (cents / peak) * PLOT.h);
+  const x = (i: number) => (spend.length < 2 ? PLOT.w / 2 : (i / (spend.length - 1)) * PLOT.w);
+
+  const points = spend.map((m, i) => ({ x: x(i), y: y(m.cents) }));
+  const line = smoothPath(points);
+  const area = `${line} L ${PLOT.w} ${base} L 0 ${base} Z`;
+  const mean = y(monthly);
+  const head = points[0];
 
   return (
     <div className="spendcard">
-      <span className="spendchart">
-        <i className="spendavg" style={{ bottom: `${height(monthly)}%` }} aria-hidden="true" />
-        {spend.map((m, i) => (
-          <span
-            key={`${m.year}-${m.month}`}
-            className={`spendcol${i === 0 ? ' now' : ''}`}
-            title={`${monthName(m, 'long')} — ${formatMoney(m.cents, currency)}, ${m.count} ${
-              m.count === 1 ? 'charge' : 'charges'
-            }`}
-          >
-            <i style={{ height: `${height(m.cents)}%` }} />
-            <em>{monthName(m, 'short')}</em>
-          </span>
+      <svg
+        className="spendplot"
+        viewBox={`0 0 ${PLOT.w} ${PLOT.top + PLOT.h + PLOT.bottom}`}
+        role="img"
+        aria-label={`Charges over the next six months, ${spend
+          .map((m) => `${monthName(m, 'long')} ${formatMoney(m.cents, currency)}`)
+          .join(', ')}`}
+      >
+        <defs>
+          {/* The wash under the line. Gold at the curve, nothing at the
+              baseline — it gives the line a body without becoming a second
+              solid shape competing with it. */}
+          <linearGradient id="spendfade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        <line className="spendbase" x1="0" y1={base} x2={PLOT.w} y2={base} />
+
+        {peak > 0 && (
+          <>
+            <line className="spendmean" x1="0" y1={mean} x2={PLOT.w} y2={mean} />
+            <text className="spendmeanlbl" x={PLOT.w} y={mean - 5} textAnchor="end">
+              average
+            </text>
+          </>
+        )}
+
+        <path className="spendarea" d={area} />
+        <path className="spendline" d={line} />
+
+        {points.map((p, i) => (
+          <circle key={`d${i}`} className="spenddot" cx={p.x} cy={p.y} r="2.4" />
         ))}
-      </span>
+
+        {/* This month, named and priced. The one value worth reading exactly:
+            everything to its right is a forecast, and this is the bill. */}
+        {head && (
+          <>
+            <circle className="spendhalo" cx={head.x} cy={head.y} r="7" />
+            <circle className="spendmark" cx={head.x} cy={head.y} r="3.4" />
+            <text className="spendval" x={head.x} y={head.y - 12} textAnchor="start">
+              {formatMoney(spend[0]!.cents, currency)}
+            </text>
+          </>
+        )}
+
+        {spend.map((m, i) => (
+          <text
+            key={`${m.year}-${m.month}`}
+            className={`spendmonth${i === 0 ? ' now' : ''}`}
+            x={x(i)}
+            y={base + 18}
+            textAnchor={i === 0 ? 'start' : i === spend.length - 1 ? 'end' : 'middle'}
+          >
+            {monthName(m, 'short')}
+          </text>
+        ))}
+      </svg>
 
       <span className="spendnote">{spendNote(spend, currency)}</span>
     </div>
   );
+}
+
+/**
+ * A path through every point, curved but well-behaved.
+ *
+ * Catmull-Rom at half tension, converted to cubic béziers. The tension is the
+ * whole decision: at 1 the curve billows past its own data, so a quiet month
+ * between two heavy ones dips below zero and the chart shows a spend that
+ * never happened. Halved, the line still reads as a trend and never leaves the
+ * envelope of the values it is drawn from.
+ */
+function smoothPath(p: { x: number; y: number }[]): string {
+  if (p.length === 0) return '';
+  if (p.length === 1) return `M ${p[0]!.x} ${p[0]!.y}`;
+
+  let d = `M ${round(p[0]!.x)} ${round(p[0]!.y)}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const a = p[i === 0 ? 0 : i - 1]!;
+    const b = p[i]!;
+    const c = p[i + 1]!;
+    const e = p[i + 2 < p.length ? i + 2 : p.length - 1]!;
+
+    const t = 0.5 / 3;
+    const c1 = { x: b.x + (c.x - a.x) * t, y: b.y + (c.y - a.y) * t };
+    const c2 = { x: c.x - (e.x - b.x) * t, y: c.y - (e.y - b.y) * t };
+    d += ` C ${round(c1.x)} ${round(c1.y)}, ${round(c2.x)} ${round(c2.y)}, ${round(c.x)} ${round(c.y)}`;
+  }
+  return d;
+}
+
+function round(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 /**

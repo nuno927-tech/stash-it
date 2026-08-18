@@ -260,6 +260,12 @@ function dayMonth(d: Date): string {
 
 /* --------------------------------------------------------------- the ring */
 
+/** One count, split by what it is made of. */
+export interface KindSplit {
+  items: number;
+  papers: number;
+}
+
 export interface DatedTally {
   inDate: number;
   needsStarting: number;
@@ -270,6 +276,20 @@ export interface DatedTally {
   percent: number;
   items: number;
   papers: number;
+
+  /*
+    The same two figures, split by kind — and the reason is a bug.
+
+    Both counts span warranties and documents, but the chips beneath the ring
+    opened the ITEMS list with a filter. Tap "2 action needed" on a house whose
+    two are both passports and you land on an empty items screen: the number was
+    right, the destination was wrong, and the app looked like it had lost them.
+
+    A total cannot answer "where do these live", so it no longer has to.
+  */
+  needsStartingBy: KindSplit;
+  lapsedBy: KindSplit;
+  noDateBy: KindSplit;
 }
 
 /**
@@ -294,9 +314,10 @@ export interface DatedTally {
  */
 export function datedTally(items: Item[], papers: Paper[], now = new Date()): DatedTally {
   let inDate = 0;
-  let needsStarting = 0;
-  let lapsed = 0;
-  let noDate = 0;
+
+  const needsStartingBy: KindSplit = { items: 0, papers: 0 };
+  const lapsedBy: KindSplit = { items: 0, papers: 0 };
+  const noDateBy: KindSplit = { items: 0, papers: 0 };
 
   for (const item of items) {
     switch (warrantyState(item, now)) {
@@ -304,19 +325,19 @@ export function datedTally(items: Item[], papers: Paper[], now = new Date()): Da
         inDate++;
         break;
       case 'ending-soon':
-        needsStarting++;
+        needsStartingBy.items++;
         break;
       case 'expired':
-        lapsed++;
+        lapsedBy.items++;
         break;
       default:
-        noDate++;
+        noDateBy.items++;
     }
   }
 
   for (const paper of papers) {
     if (!expiryOf(paper)) {
-      noDate++;
+      noDateBy.papers++;
       continue;
     }
     switch (paperState(paper, now)) {
@@ -324,12 +345,16 @@ export function datedTally(items: Item[], papers: Paper[], now = new Date()): Da
         inDate++;
         break;
       case 'renew':
-        needsStarting++;
+        needsStartingBy.papers++;
         break;
       default:
-        lapsed++;
+        lapsedBy.papers++;
     }
   }
+
+  const needsStarting = needsStartingBy.items + needsStartingBy.papers;
+  const lapsed = lapsedBy.items + lapsedBy.papers;
+  const noDate = noDateBy.items + noDateBy.papers;
 
   const tracked = inDate + needsStarting + lapsed;
   return {
@@ -340,5 +365,25 @@ export function datedTally(items: Item[], papers: Paper[], now = new Date()): Da
     percent: tracked === 0 ? 0 : Math.round((inDate / tracked) * 100),
     items: items.length,
     papers: papers.length,
+    needsStartingBy,
+    lapsedBy,
+    noDateBy,
   };
+}
+
+/**
+ * Where tapping one of those counts should land.
+ *
+ * `null` means nowhere — a zero has nothing to show, and a chip that navigates
+ * to an empty screen is the bug this exists to fix.
+ *
+ * When a count is made of one kind only, it goes to that kind's screen. When it
+ * is made of both, items wins: it is the larger list on almost every install,
+ * and the documents tab already sorts anything needing action to its top, so
+ * the other half is one tap away and visible on arrival.
+ */
+export function destinationFor(split: KindSplit): 'items' | 'papers' | null {
+  if (split.items > 0) return 'items';
+  if (split.papers > 0) return 'papers';
+  return null;
 }

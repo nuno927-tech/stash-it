@@ -80,7 +80,17 @@ export function Papers({
                 <strong>{papers.length}</strong>
                 <small>{papers.length === 1 ? 'document' : 'documents'}</small>
               </div>
-              <div className="subtotal">
+              {/*
+                Gold, but only when there is something to be gold about.
+
+                On the subscriptions tab the accent marks the headline figure;
+                here it marks the one that wants doing, which is the same rule
+                stated for a screen whose subject is a job rather than a sum. A
+                gold zero would be the app shouting about nothing — when
+                everything is in date, nothing on this row is highlighted, and
+                that reads correctly as "no action needed".
+              */}
+              <div className={`subtotal${jobs.length > 0 ? ' lead' : ''}`}>
                 <strong>{jobs.length}</strong>
                 <small>{jobs.length === 1 ? 'needs action' : 'need action'}</small>
               </div>

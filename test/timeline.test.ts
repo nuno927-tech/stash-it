@@ -14,7 +14,15 @@ process.env.TZ = 'America/New_York';
 
 import 'fake-indexeddb/auto';
 import { SCHEMA_VERSION, type Item, type Paper, type Subscription } from '@/db/types';
-import { buildTimeline, datedTally, flaggedCount, sortTimeline, whenLabel, type Entry } from '@/lib/timeline';
+import {
+  buildTimeline,
+  datedTally,
+  destinationFor,
+  flaggedCount,
+  sortTimeline,
+  whenLabel,
+  type Entry,
+} from '@/lib/timeline';
 import { setEndingSoonDays } from '@/lib/warranty';
 
 let failures = 0;
@@ -246,6 +254,32 @@ function main() {
 
   check('nothing tracked is zero, not a divide by zero', datedTally([], [], NOW).percent === 0);
   check('and it reports the raw counts too', tally.items === 4 && tally.papers === 4);
+
+  /* ------------------------------------------------ where a chip should go */
+
+  /*
+    THE BUG THIS EXISTS FOR. Every chip under the ring opened the items list
+    with a filter, and both counts span two kinds. A house whose "action
+    needed" is two passports tapped an accurate number and landed on an empty
+    items screen — the count was right, the destination was wrong, and the app
+    looked as though it had mislaid them.
+  */
+  check('the split adds back up', tally.needsStartingBy.items + tally.needsStartingBy.papers === tally.needsStarting);
+  check('and so does lapsed', tally.lapsedBy.items + tally.lapsedBy.papers === tally.lapsed);
+  check('and undated', tally.noDateBy.items + tally.noDateBy.papers === tally.noDate);
+
+  const onlyPapers = datedTally([], [paper({ id: 'due', expiresOn: '2026-10-01' })], NOW);
+  check('a documents-only count goes to documents', destinationFor(onlyPapers.needsStartingBy) === 'papers');
+
+  const onlyItems = datedTally([warranted('Kettle', 12, 350)], [], NOW);
+  check('an items-only count goes to items', destinationFor(onlyItems.needsStartingBy) === 'items');
+
+  // Mixed goes to items: the bigger list, and documents already sort anything
+  // needing action to their own top.
+  check('a mixed count goes to items', destinationFor(tally.needsStartingBy) === 'items');
+
+  // The one that used to send you somewhere empty and now sends you nowhere.
+  check('nothing to show means no destination', destinationFor({ items: 0, papers: 0 }) === null);
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

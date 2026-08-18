@@ -3958,34 +3958,83 @@ button.countpill.tappill:active {
   make them three answers you can take at a glance — and it lets the count be
   its own tap target, which the sentence could not.
 */
+.runblock {
+  display: block;
+}
+
+/*
+  The subject line, and the only thing here that goes anywhere.
+
+  The service count used to be one of three tiles, which made a bare "9" sit
+  beside two amounts and read as money for a beat, every time. Above them it is
+  what it always was — what the three figures are about — and it takes the one
+  real destination with it.
+*/
+.runhead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 0 2px 8px;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.runhead > span {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.runhead > b {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.runhead svg {
+  align-self: center;
+  flex: none;
+}
+
+.runhead:active > b {
+  color: var(--gold);
+}
+
 .runcost {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
+/* Same panel treatment as the subscriptions tab — see .subtotal for what the
+   sheen and the hairline are doing and why they are almost invisible. */
 .runtile {
   min-width: 0;
-  padding: 12px 11px;
-  border: none;
+  padding: 12px 11px 11px;
+  border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
   background: var(--slate-700);
+  background-image: var(--sheen);
   color: inherit;
   text-align: left;
-}
-
-/* Only the first is a button — see the note at the call site. */
-button.runtile:active {
-  background: var(--slate-600);
+  overflow: hidden;
 }
 
 .runtile strong {
   display: block;
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 26px;
+  font-size: 24px;
   letter-spacing: -0.035em;
-  line-height: 1;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3993,25 +4042,23 @@ button.runtile:active {
 
 .runtile span {
   display: block;
-  margin-top: 3px;
-  font-size: 11px;
-  font-weight: 300;
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-/*
-  The third tile holds two figures in the height the others give one, so they
-  drop to the size that fits rather than the size the others use. Two numbers
-  at 26px would make that tile taller than its neighbours and turn a row of
-  three into a row of two and a bit.
-*/
-.runtile .runsmall {
-  font-size: 17px;
-  letter-spacing: -0.02em;
+/* The monthly figure, matching the subscriptions tab. It is the number people
+   carry in their heads; the other two are ways of feeling it. */
+.runtile.lead {
+  background-image: var(--sheen), linear-gradient(180deg, var(--wash-gold-soft), transparent);
+  border-color: var(--wash-gold-line);
 }
 
-.runtile .runsmall + span + .runsmall {
-  margin-top: 7px;
+.runtile.lead strong {
+  color: var(--gold);
 }
 
 /* ------------------------------------------- subscriptions, on the dashboard */
@@ -4038,158 +4085,108 @@ button.runtile:active {
   background: var(--slate-600);
 }
 
-.spendhero {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.spendhero > strong {
-  flex: none;
-  font-family: var(--font-display);
-  font-weight: 200;
-  font-size: 34px;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
-.spendhero > span {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 300;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
 /*
-  Six months of real charges. Tall enough to be a chart rather than a sparkline
-  — the whole reason it's here is that one month is several times another, and
-  a 30px strip can't show a 4:1 ratio and still leave the short months visible.
+  The plot. Fixed viewBox, scaled whole — see SpendChart for why stretching it
+  would give a stroke that is 1px one way and 2.4px the other.
 */
-/*
-  Four gridlines behind the bars, drawn by the background rather than by markup.
-
-  Bars floating in an empty box are a shape; bars crossing rules are a
-  measurement. `repeating-linear-gradient` puts a hairline every quarter of the
-  height with no extra elements to keep in sync, and the baseline stays a real
-  border so it holds its weight when the lines fade.
-*/
-.spendchart {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 104px;
-  margin: 18px 0 9px;
-  border-bottom: 1px solid var(--line);
-  background-image: repeating-linear-gradient(
-    to top,
-    transparent 0 25px,
-    var(--hairline) 25px 26px
-  );
-}
-
-.spendcol {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-/*
-  The bar. Everything but this month is held back, so the chart has a "you are
-  here" without needing a second colour to mean something else.
-
-  The fill falls away toward the baseline rather than sitting flat. A solid
-  block of gold six times over is a lot of gold, and the gradient lets the tops
-  — the part carrying the information — stay the most saturated thing in the
-  card while the mass below it recedes.
-*/
-.spendcol i {
+.spendplot {
   display: block;
   width: 100%;
-  border-radius: 5px 5px 2px 2px;
-  background: var(--gold-fall);
-  opacity: 0.4;
-  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  height: auto;
+  margin: 14px 0 4px;
+  overflow: visible;
 }
 
-/* This month, lit. The glow is doing what the opacity jump alone could not:
-   at 40% against 100% the difference reads as "faded", and with the bloom it
-   reads as "current". */
-.spendcol.now i {
-  opacity: 1;
-  box-shadow: 0 0 14px -3px rgba(242, 179, 61, 0.55);
-}
-
-.spendcol em {
-  position: absolute;
-  bottom: -19px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-style: normal;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* The current month is named in the brand colour, matching its bar. Two
-   signals for one fact, which is the right number when the fact is "start
-   reading here". */
-.spendcol.now em {
-  color: var(--gold);
+/* The floor the area sits on. A real border-weight line, so it reads as the
+   edge of the chart rather than as another gridline. */
+.spendbase {
+  stroke: var(--line);
+  stroke-width: 1;
 }
 
 /*
-  The monthly average, drawn across the actual months.
-
-  It's here to be disagreed with: the gap between this line and a tall bar is
-  the difference between what subscriptions cost you and what actually leaves
-  in March, which is the distinction the whole tab is built on. Labelled,
-  because an unexplained line across a chart is furniture.
+  The monthly average, across the actual months. It exists to be disagreed
+  with: the gap between it and the peak is the difference between what
+  subscriptions cost you and what actually leaves in March.
 */
-.spendavg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 0;
-  /* Gold, now that the gridlines behind it are grey. Dashed grey on top of
-     dashed grey made the one line that means something indistinguishable from
-     the four that are just scaffolding. */
-  border-top: 1px dashed var(--wash-gold-line);
-  pointer-events: none;
-  z-index: 1;
+.spendmean {
+  stroke: var(--wash-gold-line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
 }
 
-.spendavg::after {
-  content: 'average';
-  position: absolute;
-  right: 0;
-  bottom: 3px;
-  padding: 1px 5px;
-  border-radius: var(--r-pill);
-  /* On its own chip, because at 9px over a bar the word was unreadable
-     precisely where the line was most interesting — crossing something. */
-  background: var(--slate-700);
+.spendmeanlbl {
   font-size: 8.5px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  fill: var(--muted);
 }
+
+/* Gold at the curve, nothing at the baseline. It gives the line a body
+   without becoming a second solid shape competing with it. */
+.spendarea {
+  fill: url(#spendfade);
+}
+
+.spendline {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*
+  A dot on every month, and this is not decoration.
+
+  A curve through six monthly totals implies something happens between them,
+  and nothing does. Marking each value says where the real numbers are and
+  leaves the line as what it is — how they relate.
+*/
+.spenddot {
+  fill: var(--gold);
+  opacity: 0.55;
+}
+
+/* This month. Everything to its right is a forecast; this one is the bill. */
+.spendhalo {
+  fill: var(--gold);
+  opacity: 0.16;
+}
+
+.spendmark {
+  fill: var(--gold);
+  stroke: var(--slate-700);
+  stroke-width: 1.5;
+}
+
+.spendval {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  fill: var(--text);
+}
+
+.spendmonth {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+
+.spendmonth.now {
+  fill: var(--gold);
+}
+
 
 /* The finding, if there is one. See spendNote — it says "level" rather than
    inventing a heaviest month when the months are all much of a muchness. */
 .spendnote {
   display: block;
-  margin-top: 22px;
+  margin-top: 12px;
   font-size: 11.5px;
   font-weight: 300;
   line-height: 1.45;
@@ -4715,7 +4712,7 @@ button.calcell {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  margin-top: 22px;
+  margin-top: 12px;
   padding: 13px 14px;
   border: 1px dashed var(--slate-600);
   border-radius: var(--r-md);

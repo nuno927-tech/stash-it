@@ -554,6 +554,7 @@ function Shell() {
           onSubs={() => go({ kind: 'subs' })}
           onOpenSub={(id) => go({ kind: 'editsub', id })}
           onOpenPaper={(id) => go({ kind: 'editpaper', id })}
+          onPapers={() => go({ kind: 'papers' })}
         />
       )}
 

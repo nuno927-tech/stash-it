@@ -17,9 +17,11 @@ import { dailyCents, totalMonthlyCents, totalYearlyCents } from '@/lib/subscript
 import {
   buildTimeline,
   datedTally,
+  destinationFor,
   whenLabel,
   type DatedTally,
   type Entry,
+  type KindSplit,
   type Urgency,
 } from '@/lib/timeline';
 import { coverageArcs, formatMoney, warrantyDateLabel } from '@/lib/warranty';
@@ -54,6 +56,7 @@ export function Home({
   onSubs,
   onOpenSub,
   onOpenPaper,
+  onPapers,
 }: {
   propertyId: string;
   onAdd: () => void;
@@ -69,6 +72,8 @@ export function Home({
      merged list handing the user back the sorting job it just did for them. */
   onOpenSub: (id: string) => void;
   onOpenPaper: (id: string) => void;
+  /** The documents list, for a ring chip whose count is all documents. */
+  onPapers: () => void;
 }) {
   const [hidden, setHidden] = useState<NudgeKind[]>([]);
 
@@ -128,7 +133,7 @@ export function Home({
         onDismiss={(n) => setHidden((h) => [...h, n.kind])}
       />
 
-      <CoverCard tally={tally} onBrowse={onBrowse} />
+      <CoverCard tally={tally} onBrowse={onBrowse} onPapers={onPapers} />
 
       {/* The running cost, above the timeline: it frames the renewals in it
           rather than trailing them as a footnote. The six-month chart lives on
@@ -176,10 +181,25 @@ export function Home({
 function CoverCard({
   tally,
   onBrowse,
+  onPapers,
 }: {
   tally: DatedTally;
   onBrowse: (filter?: ItemsFilter) => void;
+  onPapers: () => void;
 }) {
+  /*
+    One chip's destination, from what the chip is counting.
+
+    Returns undefined for a zero, and `Stat` renders a non-button when there is
+    no handler — which is the correct behaviour for "0 lapsed" and was not what
+    it did before.
+  */
+  const go = (split: KindSplit, filter: ItemsFilter) => {
+    const where = destinationFor(split);
+    if (!where) return undefined;
+    return where === 'papers' ? onPapers : () => onBrowse(filter);
+  };
+
   /*
     THREE ARCS, NOT FOUR. Undated records aren't drawn and aren't in the
     divisor — see datedTally for the argument. Drawing a grey wedge that the
@@ -263,14 +283,11 @@ function CoverCard({
         The three you can act on are buttons; "in date" is not, because there
         is nothing to do about something that is fine.
 
-        THEY LAND ON THE ITEMS LIST, and that is worth knowing about. Each
-        count spans two kinds — a lapsed warranty and an expired passport both
-        sit in "lapsed" — while the filters they open are items only, so the
-        chip you arrive at can read a smaller number than the one you tapped.
-        The alternative was leaving them dead, which was the previous answer
-        and a worse one: a number you can see needs dealing with and cannot
-        touch. Documents in the same state are sorted to the top of their own
-        tab, which is where the timeline above sends them.
+        WHERE THEY LAND depends on what the count is made of, and it used to
+        not. Every one of these opened the items list with a filter, so a house
+        whose two "action needed" were both passports tapped a correct number
+        and arrived at an empty screen — the app looking as though it had lost
+        them. Each chip now asks its own split; see destinationFor.
       */}
       <div className="coverstats">
         <Stat n={tally.inDate} label="in date" tone="moss" />
@@ -278,10 +295,20 @@ function CoverCard({
           n={tally.needsStarting}
           label="action needed"
           tone="honey"
-          onClick={() => onBrowse('ending')}
+          onClick={go(tally.needsStartingBy, 'ending')}
         />
-        <Stat n={tally.lapsed} label="lapsed" tone="ember" onClick={() => onBrowse('expired')} />
-        <Stat n={tally.noDate} label="no date" tone="none" onClick={() => onBrowse('nowarranty')} />
+        <Stat
+          n={tally.lapsed}
+          label="lapsed"
+          tone="ember"
+          onClick={go(tally.lapsedBy, 'expired')}
+        />
+        <Stat
+          n={tally.noDate}
+          label="no date"
+          tone="none"
+          onClick={go(tally.noDateBy, 'nowarranty')}
+        />
       </div>
 
       <p className="coverfoot">
@@ -575,36 +602,47 @@ function RunningCost({
   const perDay = dailyCents(subs);
 
   return (
-    <div className="runcost">
+    <section className="runblock">
       {/*
-        Only the count is a button. It is the one that has somewhere to go —
-        the subscriptions tab is the list of those services. The two money
-        tiles have no destination of their own: tapping "$135 a month" would
-        land you on the same list, and three routes to one screen is three
-        chances to wonder whether they differ.
+        The count moves up into a header, and takes the navigation with it.
+
+        It was a tile, which made it one of three things that looked like
+        money and wasn't — "9" beside "$135" and "$4" reads as an amount for a
+        beat every time. As a heading it is what it actually is: the subject
+        the three figures are about. It is still the only thing here that
+        leads anywhere, because the other three all describe the same list.
+
+        And it frees the third tile, which was carrying the daily and yearly
+        rates stacked at two-thirds size to fit. Each figure gets its own now.
       */}
-      <button type="button" className="runtile" onClick={onOpen}>
-        <strong>{subs.length}</strong>
-        <span>{subs.length === 1 ? 'service' : 'services'}</span>
+      <button type="button" className="runhead" onClick={onOpen}>
+        <span>Subscriptions</span>
+        <b>
+          {subs.length} {subs.length === 1 ? 'service' : 'services'}
+        </b>
+        <Chevron />
       </button>
 
-      <div className="runtile">
-        <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
-        <span>a month</span>
-      </div>
+      <div className="runcost">
+        {/* Gold on the monthly figure, matching the subscriptions tab. It is
+            the number people actually hold in their heads; the day rate is a
+            way of feeling it and the yearly is a way of being alarmed by it. */}
+        <div className="runtile lead">
+          <strong>{formatMoney(totalMonthlyCents(subs), currency)}</strong>
+          <span>a month</span>
+        </div>
 
-      {/*
-        The two framings of the same money, together in the third tile. A day
-        rate is a coffee and a yearly total is a holiday; they belong to each
-        other, and neither is the headline.
-      */}
-      <div className="runtile">
-        <strong className="runsmall">{formatMoney(Math.round(perDay), currency)}</strong>
-        <span>a day</span>
-        <strong className="runsmall">{formatMoney(totalYearlyCents(subs), currency)}</strong>
-        <span>a year</span>
+        <div className="runtile">
+          <strong>{formatMoney(Math.round(perDay), currency)}</strong>
+          <span>a day</span>
+        </div>
+
+        <div className="runtile">
+          <strong>{formatMoney(totalYearlyCents(subs), currency)}</strong>
+          <span>a year</span>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
