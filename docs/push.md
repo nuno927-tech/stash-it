@@ -288,11 +288,20 @@ firebase deploy --only functions,firestore:rules
 ```
 
 It prints the function URLs. Take the base — everything before `/register` —
-and put it in `.env.local`:
+and put it in `.env.local`. For this project that is:
 
 ```
-PUSH_ENDPOINT=https://us-central1-your-project.cloudfunctions.net
+PUSH_ENDPOINT=https://us-central1-stashit-47534.cloudfunctions.net
 ```
+
+Then set the same value as the `PUSH_ENDPOINT` **repository variable** on
+GitHub, or the deployed app still has no sender. `.env.local` configures one
+laptop; see the note in step 2.
+
+Only `register` and `forget` print a URL. `sweep` has none by design — it is
+triggered by the clock, not by anything on the internet, and there is no
+address at which a stranger could ask it to run. Confirm all three appear in
+the Functions dashboard, `sweep` with a clock icon rather than an HTTP badge.
 
 **8. Turn the logging down.** Cloud Logging keeps request metadata including IP
 addresses by default, which quietly undoes part of what this design is for.
