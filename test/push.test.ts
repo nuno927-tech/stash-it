@@ -11,6 +11,7 @@
 // Dates, so: pinned. See the note at the top of subs.test.ts.
 process.env.TZ = 'America/New_York';
 
+import { existsSync, readFileSync } from 'node:fs';
 import 'fake-indexeddb/auto';
 import { SCHEMA_VERSION, type Item, type Paper, type Subscription } from '@/db/types';
 import { compose, pushSchedule, verdict, vapidBytes, wakeDates, wakeTimes, noteFor } from '@/lib/push';
@@ -255,6 +256,39 @@ function main() {
   const bytes = vapidBytes('BFy-abc_123');
   check('the key decodes to bytes', bytes instanceof Uint8Array && bytes.length > 0, `${bytes.length}`);
   check('over a real ArrayBuffer', bytes.buffer instanceof ArrayBuffer);
+
+  /* ------------------------------------------------- the one committed .env */
+
+  /*
+    functions/.env is the single exception to the repo's "no .env files" rule,
+    because Firebase has nowhere else to read the allowed-origins list from.
+    An exception to a rule that exists to stop a private key being committed
+    needs a guard of its own, so: exactly one name is permitted in that file.
+
+    A private key pasted here would be committed, pushed, and public before
+    anyone noticed, and rotating one kills every reminder subscription in
+    existence.
+  */
+  if (existsSync('functions/.env')) {
+    const names = readFileSync('functions/.env', 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'))
+      .map((l) => l.split('=')[0]!.trim());
+
+    const strays = names.filter((n) => n !== 'ALLOWED_ORIGINS');
+    check('functions/.env holds nothing but the origins list', strays.length === 0, strays.join(', '));
+
+    const origins = (readFileSync('functions/.env', 'utf8').match(/^ALLOWED_ORIGINS=(.*)$/m)?.[1] ?? '')
+      .split(',')
+      .filter(Boolean);
+    check('and at least one origin is set', origins.length > 0);
+    check(
+      'every one an https origin with no trailing slash',
+      origins.every((o) => /^https:\/\/[^/]+$/.test(o)),
+      origins.join(' '),
+    );
+  }
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);

@@ -258,10 +258,28 @@ firebase functions:secrets:set VAPID_PUBLIC_KEY
 firebase functions:secrets:set VAPID_PRIVATE_KEY
 ```
 
-**6. Tell it which origin may call it.** In `firebase.json`, or via the console
-after the first deploy, set `ALLOWED_ORIGINS` to the app's exact origin —
-`https://nuno927-tech.github.io`, and later `https://stash-it.app`. Comma
-separated, no trailing slashes. Anything else is refused at the CORS check.
+**6. Tell it which websites may call it.** Nothing to do — the file already
+exists at **`functions/.env`**:
+
+```
+ALLOWED_ORIGINS=https://nuno927-tech.github.io
+```
+
+Firebase reads it automatically on deploy. Add `https://stash-it.app` to the
+same line, comma separated and with no trailing slash, the day that domain
+exists. Anything not on the list is refused.
+
+*An earlier version of this step said to put it in `firebase.json`. That was
+wrong and there was nothing to find: `firebase.json` says what to deploy, not
+what the deployed code is configured with.*
+
+`functions/.env` is committed on purpose and is the only `.env` file in the
+repository that is — a list of allowed websites is public, and keeping it
+tracked is what makes a deploy from a fresh clone behave like a deploy from
+this laptop. Because that is an exception to the rule stopping a private key
+being committed, `test/push.test.ts` fails if any name other than
+`ALLOWED_ORIGINS` appears in it. **The private key never goes in a file** — it
+goes in Firebase's secret store, in step 5.
 
 **7. Deploy.**
 

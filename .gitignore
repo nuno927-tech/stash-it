@@ -27,3 +27,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# The exception: the sender's list of allowed websites. Firebase loads this
+# file on deploy and there is nowhere else to put it, so ignoring it would
+# mean a deploy from a fresh clone silently refuses every request. It holds no
+# secrets and test/push.test.ts fails if anything but ALLOWED_ORIGINS appears
+# in it — including, especially, the private signing key.
+!functions/.env
