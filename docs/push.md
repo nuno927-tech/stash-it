@@ -49,17 +49,26 @@ subscription becomes unreachable and everyone has to turn reminders on again.
 
 ## 2. Put the public key in the build
 
+**`.env.local` is already in the repository root**, gitignored, with the line
+waiting. Paste the public key after the `=`:
+
 ```bash
-# .env.local — gitignored
 VAPID_PUBLIC_KEY=BJx...
 ```
 
-`vite.config.ts` reads it into `__VAPID_PUBLIC_KEY__`. With no key the switch
-in Settings stays off and says *"Reminders are not configured in this build"*,
-which is the correct behaviour for a fork and for CI.
+No quotes, no spaces around the `=`. `.env.example` is the committed copy of
+the same file, for anyone cloning this.
+
+`vite.config.ts` reads it through `loadEnv` — **not** `process.env`, which
+does not contain .env files inside a Vite config and would silently build an
+empty key while the file looked perfectly filled in. A real shell variable
+still wins, so CI can pass one without a file.
+
+With no key the switch in Settings stays off and says *"Reminders are not
+configured in this build"*, which is correct for a fork and for CI.
 
 **Never add `VAPID_PRIVATE_KEY` here.** Nothing in the app has any use for it,
-and anything in `.env.local` that the app imports ends up in a public bundle.
+and anything in `.env.local` that the app reads ends up in a public bundle.
 
 ## 3. Run it
 

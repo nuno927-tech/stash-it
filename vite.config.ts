@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
@@ -44,6 +44,21 @@ const scope = process.env.SITE_PATH ?? base;
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
 
+  /*
+    `.env.local` is not in `process.env`, and assuming it was is a silent bug.
+
+    Vite reads .env files for the *client* and exposes only `VITE_`-prefixed
+    values on `import.meta.env`. Nothing populates `process.env` inside this
+    config, so `process.env.VAPID_PUBLIC_KEY` reads undefined however carefully
+    the file was filled in — and the build succeeds, ships an empty key, and
+    the reminders switch says "not configured" as if that were the truth.
+
+    `loadEnv` with an empty prefix reads every variable in the .env files,
+    which is what the config needs and what the client must never get. A real
+    shell variable still wins, so CI can pass one in without a file.
+  */
+  const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
+
   return {
     // A single file can be opened from any path, so its asset URLs must be
     // relative — it has no idea where it will be served from.
@@ -67,7 +82,7 @@ export default defineConfig(({ mode }) => {
         Empty by default, and the reminders toggle says "not configured in this
         build" rather than failing at the browser. See docs/push.md.
       */
-      __VAPID_PUBLIC_KEY__: JSON.stringify(process.env.VAPID_PUBLIC_KEY ?? ''),
+      __VAPID_PUBLIC_KEY__: JSON.stringify(env.VAPID_PUBLIC_KEY ?? ''),
     },
 
     plugins: [
