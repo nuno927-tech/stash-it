@@ -133,6 +133,12 @@ export function Home({
         onDismiss={(n) => setHidden((h) => [...h, n.kind])}
       />
 
+      {/* The ring had no title, which made it the one block on the screen you
+          had to work out. Everything else here announces itself first. */}
+      <div className="seclabel">
+        <span>Items and documents</span>
+      </div>
+
       <CoverCard tally={tally} onBrowse={onBrowse} onPapers={onPapers} />
 
       {/* The running cost, above the timeline: it frames the renewals in it
@@ -604,24 +610,25 @@ function RunningCost({
   return (
     <section className="runblock">
       {/*
-        The count moves up into a header, and takes the navigation with it.
+        The count moved up into a heading, and took the navigation with it.
 
-        It was a tile, which made it one of three things that looked like
-        money and wasn't — "9" beside "$135" and "$4" reads as an amount for a
-        beat every time. As a heading it is what it actually is: the subject
-        the three figures are about. It is still the only thing here that
-        leads anywhere, because the other three all describe the same list.
+        As a tile it was one of three things that looked like money and wasn't
+        — a bare "9" beside "$135" and "$4" reads as an amount for a beat,
+        every time. As a heading it is what it always was: the subject the
+        three figures are about. It also frees the third tile, which had been
+        carrying the daily and yearly rates stacked at two-thirds size to fit.
 
-        And it frees the third tile, which was carrying the daily and yearly
-        rates stacked at two-thirds size to fit. Each figure gets its own now.
+        Same object as "Recently added / See all", because it is doing the
+        same job — a section title with one way out of it. It had its own
+        uppercase treatment for a version, which made one heading on the
+        dashboard shout while the other three spoke.
       */}
-      <button type="button" className="runhead" onClick={onOpen}>
+      <div className="seclabel runhead">
         <span>Subscriptions</span>
-        <b>
+        <button type="button" className="linkish" onClick={onOpen}>
           {subs.length} {subs.length === 1 ? 'service' : 'services'}
-        </b>
-        <Chevron />
-      </button>
+        </button>
+      </div>
 
       <div className="runcost">
         {/* Gold on the monthly figure, matching the subscriptions tab. It is

@@ -359,7 +359,7 @@ export function Subs({
 }
 
 /* The plot, in its own coordinates. Scales as one piece — see the note below. */
-const PLOT = { w: 320, top: 24, h: 76, bottom: 26 };
+const PLOT = { w: 320, top: 30, h: 74, bottom: 26 };
 
 /**
  * Six months of real charges, as a curve.
@@ -435,7 +435,10 @@ function SpendChart({ subs, currency }: { subs: Subscription[]; currency: string
         {peak > 0 && (
           <>
             <line className="spendmean" x1="0" y1={mean} x2={PLOT.w} y2={mean} />
-            <text className="spendmeanlbl" x={PLOT.w} y={mean - 5} textAnchor="end">
+            {/* Below its own line, not above it. Every point now carries a
+                figure above the dot, and a label sitting above the average
+                would collide with whichever month happens to run near it. */}
+            <text className="spendmeanlbl" x={PLOT.w} y={mean + 10} textAnchor="end">
               average
             </text>
           </>
@@ -448,17 +451,34 @@ function SpendChart({ subs, currency }: { subs: Subscription[]; currency: string
           <circle key={`d${i}`} className="spenddot" cx={p.x} cy={p.y} r="2.4" />
         ))}
 
-        {/* This month, named and priced. The one value worth reading exactly:
-            everything to its right is a forecast, and this is the bill. */}
+        {/* This month gets the marker as well as the figure. Everything to its
+            right is a forecast; this one is the bill. */}
         {head && (
           <>
             <circle className="spendhalo" cx={head.x} cy={head.y} r="7" />
             <circle className="spendmark" cx={head.x} cy={head.y} r="3.4" />
-            <text className="spendval" x={head.x} y={head.y - 12} textAnchor="start">
-              {formatMoney(spend[0]!.cents, currency)}
-            </text>
           </>
         )}
+
+        {/*
+          Every month priced, above its dot.
+
+          Six labels across 320 units is about 53 each, and a four-figure total
+          at this size is under 30 — so they fit without collision arithmetic.
+          The ends anchor inward rather than centring, which is the only reason
+          the first and last don't hang off the edges of the box.
+        */}
+        {points.map((p, i) => (
+          <text
+            key={`v${i}`}
+            className={`spendval${i === 0 ? ' now' : ''}`}
+            x={p.x}
+            y={p.y - (i === 0 ? 13 : 9)}
+            textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}
+          >
+            {formatMoney(spend[i]!.cents, currency)}
+          </text>
+        ))}
 
         {spend.map((m, i) => (
           <text

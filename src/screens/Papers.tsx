@@ -123,9 +123,19 @@ export function Papers({
                   deleteLabel={`Delete ${p.label}`}
                   onDelete={() => setConfirming(p)}
                 >
+                  {/*
+                    A ring round anything that needs doing, the same one the
+                    dashboard timeline uses on a flagged row.
+
+                    Outline, not fill: these rows already sort to the top and
+                    already carry a coloured icon and a state line, so a solid
+                    background would be the fourth way of saying it — and four
+                    filled rows in a row stop reading as urgent and start
+                    reading as the list.
+                  */}
                   <button
                     type="button"
-                    className="subrow"
+                    className={`subrow${paperState(p, now) === 'valid' ? '' : ' flagged'}`}
                     onClick={() => (swiped === p.id ? setSwiped(null) : onOpen(p.id))}
                   >
                     <PaperIcon kind={p.kind} state={paperState(p, now)} />

@@ -3537,11 +3537,15 @@ button.countpill.tappill:active {
    go missing, and bottom alignment meant he sank a little further from the
    heading with each one — by four rows he was level with the last line and
    reading as part of it rather than as the card's own figure. */
+/* Space above it. The timeline's last row ended flush against this card, so
+   "Nothing needs you" read as the final entry in the list rather than as an
+   answer to it. */
 .needscard {
   display: flex;
   align-items: stretch;
   gap: 12px;
   padding: 14px 4px 6px 12px;
+  margin-top: 20px;
   margin-bottom: 12px;
 }
 
@@ -3962,49 +3966,11 @@ button.countpill.tappill:active {
   display: block;
 }
 
-/*
-  The subject line, and the only thing here that goes anywhere.
-
-  The service count used to be one of three tiles, which made a bare "9" sit
-  beside two amounts and read as money for a beat, every time. Above them it is
-  what it always was — what the three figures are about — and it takes the one
-  real destination with it.
-*/
+/* A section title, carrying the one destination these figures share. It is a
+   `.seclabel` — see the note at the call site for why it stopped being its
+   own uppercase thing. */
 .runhead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding: 0 2px 8px;
-  border: none;
-  background: none;
-  color: inherit;
-  text-align: left;
-}
-
-.runhead > span {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.runhead > b {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.runhead svg {
-  align-self: center;
-  flex: none;
-}
-
-.runhead:active > b {
-  color: var(--gold);
+  margin-top: 24px;
 }
 
 .runcost {
@@ -4161,12 +4127,26 @@ button.countpill.tappill:active {
   stroke-width: 1.5;
 }
 
+/*
+  The figure over each dot.
+
+  Quiet by default and gold for this month — the same rule the whole screen
+  runs on. Six of these at full contrast would be a wall of numbers competing
+  with the line they are annotating; the line is the finding, and these are for
+  when someone wants the actual amount.
+*/
 .spendval {
   font-family: var(--font-display);
   font-weight: 200;
-  font-size: 15px;
+  font-size: 11px;
   letter-spacing: -0.02em;
-  fill: var(--text);
+  font-variant-numeric: tabular-nums;
+  fill: var(--muted);
+}
+
+.spendval.now {
+  font-size: 15px;
+  fill: var(--gold);
 }
 
 .spendmonth {
@@ -4622,6 +4602,21 @@ button.calcell {
   background: none;
   color: inherit;
   text-align: left;
+}
+
+/*
+  A document that needs starting or has run out, ringed — the same object as
+  `.duerow.flagged` on the dashboard, so the two screens agree about what
+  "this one" looks like.
+
+  The divider has to go with it: a row that is both boxed and underlined reads
+  as a box with a line through its bottom edge.
+*/
+.subrow.flagged {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 4px;
 }
 
 .subrow:active {
