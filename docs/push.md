@@ -217,9 +217,29 @@ Turn Google Analytics **off** — it is a tracker on a privacy feature.
 card is required. Set a budget alert at $1 immediately: your realistic bill for
 this is zero, and the alert is there to tell you if something is being abused.
 
-**3. Firestore.** Build → Firestore → Create database → **Production mode**.
-Rules are in `firestore.rules` and deny everything: nothing reaches this
-database from a browser, only through the functions.
+**3. Firestore.** Project shortcuts → **Firestore** → **Create database**. It is
+a three-step wizard, and the middle step contains the only irreversible
+decision in this whole document.
+
+1. **Edition** — **Standard**. Enterprise buys a query engine and MongoDB
+   compatibility; this database has one collection and one range query.
+2. **Database ID & location** — leave the ID as `(default)`. The free tier and
+   `firebase deploy` both assume it. For **Location** the console offers
+   `nam5 (United States)`, a multi-region; pick **`us-central1 (Iowa)`**
+   instead. It is the region Cloud Functions default to, so the sweep's reads
+   are local, and a single region is cheaper per operation. Multi-region buys
+   survival of losing one US region, which here would delay a notification
+   rather than lose anything — every subscription can be re-registered from the
+   phone that made it. **This cannot be changed afterwards.** Moving means a
+   new database and every subscriber re-enrolling.
+3. **Configure** — **Start in production mode**. The preview pane should read
+   `allow read, write: if false;`, which is character-for-character what
+   `firestore.rules` deploys in step 7. Test mode opens the database to the
+   world for 30 days and there is no reason to spend a single one of them: the
+   functions run with admin credentials and never consult these rules.
+
+Nothing reaches this database from a browser — only through the functions.
+Confirm on the **Rules** tab that it says `if false` before moving on.
 
 **4. Install and log in.**
 
