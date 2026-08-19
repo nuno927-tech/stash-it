@@ -8,8 +8,8 @@
  * they didn't type, and two words that live in different fields.
  */
 
-import type { Doc, Item, Room } from '@/db/types';
-import { matchSummary, normalize, searchItems, terms } from '@/lib/search';
+import type { Doc, Item, Paper, Room, Subscription } from '@/db/types';
+import { matchSummary, normalize, searchAll, terms } from '@/lib/search';
 
 let failures = 0;
 
@@ -84,14 +84,58 @@ const docs: Doc[] = [
   },
 ];
 
-const input = { items, docs, rooms };
-const names = (q: string) => searchItems(q, input).map((h) => h.item.name);
+const papers: Paper[] = [
+  {
+    id: 'pp',
+    schemaVersion: 1,
+    propertyId: 'p1',
+    kind: 'passport',
+    label: 'Passport',
+    holder: 'Nuno',
+    authority: 'HM Passport Office',
+    storedAt: 'Desk drawer',
+    expiresOn: '2027-02-11',
+    createdAt: ts,
+    updatedAt: ts,
+  },
+  {
+    id: 'mot',
+    schemaVersion: 1,
+    propertyId: 'p1',
+    kind: 'vehicle',
+    label: 'MOT',
+    holder: 'Golf',
+    expiresOn: '2026-07-10',
+    createdAt: ts,
+    updatedAt: ts,
+  },
+  { id: 'gone', schemaVersion: 1, propertyId: 'p1', kind: 'passport', label: 'Old passport', expiresOn: '2020-01-01', createdAt: ts, updatedAt: ts, deletedAt: ts },
+];
+
+const subs: Subscription[] = [
+  {
+    id: 'nflx',
+    schemaVersion: 1,
+    propertyId: 'p1',
+    name: 'Netflix',
+    cadence: 'monthly',
+    anchorDate: '2026-08-22',
+    amountCents: 1549,
+    currency: 'USD',
+    notes: 'Shared with Kelly',
+    createdAt: ts,
+    updatedAt: ts,
+  },
+];
+
+const input = { items, docs, rooms, papers, subs };
+const names = (q: string) => searchAll(q, input).map((h) => h.title);
 
 /* ---------------------------------------------------------- normalising */
 
 check('accents fold', normalize('Séries') === 'series', normalize('Séries'));
 check('terms split on whitespace', terms('  bosch   kitchen ').join('|') === 'bosch|kitchen');
-check('an empty query returns nothing', searchItems('   ', input).length === 0);
+check('an empty query returns nothing', searchAll('   ', input).length === 0);
 
 /* -------------------------------------------------------------- basics */
 
@@ -147,34 +191,78 @@ check(
   names('kitchen').join(', '),
 );
 
-const boschHits = searchItems('bosch', input);
+const boschHits = searchAll('bosch', input);
 check(
   'an exact brand match outranks a substring',
-  boschHits[0]!.item.name === 'Bosch Dishwasher',
-  boschHits.map((h) => `${h.item.name}:${Math.round(h.score)}`).join(', '),
+  boschHits[0]!.title === 'Bosch Dishwasher',
+  boschHits.map((h) => `${h.title}:${Math.round(h.score)}`).join(', '),
 );
 check('scores descend', boschHits.every((h, i) => i === 0 || h.score <= boschHits[i - 1]!.score));
 
 /* ------------------------------------------------------------ summary */
 
-check('a name-only match explains nothing', matchSummary(searchItems('dishwasher', input)[0]!) === null);
+check('a name-only match explains nothing', matchSummary(searchAll('dishwasher', input)[0]!) === null);
 check(
   'a serial match says so',
-  matchSummary(searchItems('22817', input)[0]!) === 'Matched on serial number',
-  String(matchSummary(searchItems('22817', input)[0]!)),
+  matchSummary(searchAll('22817', input)[0]!) === 'Matched on serial number',
+  String(matchSummary(searchAll('22817', input)[0]!)),
 );
 check(
   'a document match says so',
-  matchSummary(searchItems('certificate', input)[0]!) === 'Matched on a document',
-  String(matchSummary(searchItems('certificate', input)[0]!)),
+  matchSummary(searchAll('certificate', input)[0]!) === 'Matched on a document',
+  String(matchSummary(searchAll('certificate', input)[0]!)),
 );
 
 /* ------------------------------------------------------------- safety */
 
-check('regex metacharacters are literal, not wildcards', searchItems('a.*', input).length === 0);
-check('a wildcard-looking query matches nothing', searchItems('.*', input).length === 0);
-check('a lone bracket does not throw', searchItems('[', input).length === 0);
-check('short punctuation-stripped terms do not run wild', searchItems('n-', input).length === 0);
+check('regex metacharacters are literal, not wildcards', searchAll('a.*', input).length === 0);
+check('a wildcard-looking query matches nothing', searchAll('.*', input).length === 0);
+check('a lone bracket does not throw', searchAll('[', input).length === 0);
+check('short punctuation-stripped terms do not run wild', searchAll('n-', input).length === 0);
+
+/* ------------------------------------------------------ all three kinds */
+
+/*
+  THE GAP THIS CLOSED. The one search field in the app lived on the Items tab
+  and only ever looked at items, which was right until the app grew two more
+  tables. Typing "passport" returned nothing — and an empty result does not
+  read as "wrong tab", it reads as the app having lost your passport.
+*/
+check('a document is findable at all', names('passport').includes('Passport'), names('passport').join(', '));
+check('by the kind, not just the label', names('mot').includes('MOT'));
+check('by who it belongs to', names('nuno').includes('Passport'));
+check('by who issued it', names('hm passport office').includes('Passport'));
+check('and by where it is kept', names('drawer').includes('Passport'));
+
+check('a subscription is findable', names('netflix').includes('Netflix'));
+check('and by its notes', names('kelly plumbing').includes('Bosch Dishwasher'));
+
+// Deleted records stay deleted, whatever table they are in.
+check('a deleted document does not surface', !names('old passport').includes('Old passport'));
+
+/*
+  ONE LIST, RANKED TOGETHER, not three lists stacked. Someone searching a word
+  wants the closest match to it and neither knows nor cares which table it came
+  from — "golf" is the car's MOT, and it beats the notes of a dishwasher.
+*/
+const golf = searchAll('golf', input);
+check('kinds compete on the same scale', golf[0]?.title === 'MOT', golf.map((h) => h.title).join(', '));
+check('and each result knows what it is', golf[0]?.kind === 'paper', golf[0]?.kind);
+
+// A word that hits two kinds returns both, so the badge in the UI is the only
+// thing telling them apart — which is why it exists.
+const kelly = searchAll('kelly', input);
+check('a word can match across kinds', new Set(kelly.map((h) => h.kind)).size === 2, kelly.map((h) => `${h.kind}:${h.title}`).join(', '));
+
+check(
+  'the why-line names a document field',
+  matchSummary(searchAll('drawer', input)[0]!) === 'Matched on where it is kept',
+  String(matchSummary(searchAll('drawer', input)[0]!)),
+);
+
+// Every term still has to land, whatever mix of kinds is in play.
+check('two words that never co-occur find nothing', searchAll('passport netflix', input).length === 0);
+check('two words on one document do', names('passport nuno').includes('Passport'));
 
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

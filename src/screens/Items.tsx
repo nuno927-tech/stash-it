@@ -1,18 +1,29 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
-import { activeItems, activeRooms, deletedItems, softDeleteItem } from '@/db/repo';
+import {
+  activeItems,
+  activePapers,
+  activeRooms,
+  activeSubscriptions,
+  deletedItems,
+  softDeleteItem,
+} from '@/db/repo';
 import type { Item } from '@/db/types';
 import { binSummary } from '@/lib/bin';
 import { shortMoney, valueByCurrency } from '@/lib/dashboard';
+import { paperLabel, paperState } from '@/lib/papers';
 import { prefsFrom } from '@/lib/prefs';
-import { matchSummary, searchItems } from '@/lib/search';
+import { CADENCE_LABEL } from '@/lib/subscriptions';
+import { matchSummary, searchAll, type SearchHit } from '@/lib/search';
 import { effectiveExpiry, warrantyState } from '@/lib/warranty';
 import { feedback } from '@/lib/feedback';
 import { ItemRow } from '@/components/ItemRow';
 import { SwipeRow } from '@/components/SwipeRow';
 import { Scout } from '@/components/Scout';
 import { RoomIcon } from '@/components/RoomIcon';
+import { PaperIcon } from '@/components/PaperIcon';
+import { ServiceMark } from '@/components/ServiceMark';
 
 export type ItemsFilter =
   | 'ending'
@@ -61,12 +72,18 @@ export function Items({
   propertyId,
   filter,
   onOpenItem,
+  onOpenPaper,
+  onOpenSub,
   onAdd,
   onOpenBin,
 }: {
   propertyId: string;
   filter?: ItemsFilter;
   onOpenItem: (id: string) => void;
+  /* Search reaches all three kinds now, so a result has to be able to open a
+     document or a subscription as well as an item. */
+  onOpenPaper: (id: string) => void;
+  onOpenSub: (id: string) => void;
   onAdd: () => void;
   onOpenBin: () => void;
 }) {
@@ -74,6 +91,13 @@ export function Items({
   const binned = useLiveQuery(() => deletedItems(propertyId), [propertyId]) ?? [];
   const rooms = useLiveQuery(() => activeRooms(propertyId), [propertyId]) ?? [];
   const docs = useLiveQuery(() => db.docs.toArray(), []) ?? [];
+  /*
+    Loaded only for search, which is why they are not in the empty-state check
+    below: this screen is still the items list, and a house with three
+    subscriptions and no items should still be told it has nothing stashed.
+  */
+  const papers = useLiveQuery(() => activePapers(propertyId), [propertyId]) ?? [];
+  const subs = useLiveQuery(() => activeSubscriptions(propertyId), [propertyId]) ?? [];
   const settings = useLiveQuery(() => db.settings.get('singleton'), []);
   const startCollapsed = prefsFrom(settings).roomsView === 'collapsed';
 
@@ -113,8 +137,8 @@ export function Items({
   const searching = query.trim().length > 0;
 
   const hits = useMemo(
-    () => (searching ? searchItems(query, { items: all, docs, rooms }) : []),
-    [searching, query, all, docs, rooms],
+    () => (searching ? searchAll(query, { items: all, docs, rooms, papers, subs }) : []),
+    [searching, query, all, docs, rooms, papers, subs],
   );
 
   const filtered = useMemo(() => {
@@ -303,7 +327,12 @@ export function Items({
       </div>
 
       {searching ? (
-        <SearchResults hits={hits} onOpenItem={onOpenItem} />
+        <SearchResults
+          hits={hits}
+          onOpenItem={onOpenItem}
+          onOpenPaper={onOpenPaper}
+          onOpenSub={onOpenSub}
+        />
       ) : (
         <>
           {active && (
@@ -449,16 +478,20 @@ function BinLink({ binned, onOpenBin }: { binned: Item[]; onOpenBin: () => void 
 function SearchResults({
   hits,
   onOpenItem,
+  onOpenPaper,
+  onOpenSub,
 }: {
-  hits: ReturnType<typeof searchItems>;
+  hits: SearchHit[];
   onOpenItem: (id: string) => void;
+  onOpenPaper: (id: string) => void;
+  onOpenSub: (id: string) => void;
 }) {
   if (hits.length === 0) {
     return (
       <div className="empty inline">
         <Scout pose="alert" height={120} motion={['float']} shadow alt="" />
         <h3>Nothing found</h3>
-        <p>Scout checked names, brands, models, serials, rooms, notes and document titles.</p>
+        <p>Scout checked everything you own, every document and every subscription.</p>
       </div>
     );
   }
@@ -472,14 +505,54 @@ function SearchResults({
       {hits.map((hit) => {
         const why = matchSummary(hit);
         return (
-          <div key={hit.item.id}>
-            <ItemRow item={hit.item} onOpen={onOpenItem} />
+          <div key={`${hit.kind}:${key(hit)}`}>
+            {/*
+              Items keep their own row, photo and countdown. The other two get
+              a plainer one — a result list mixing three row designs is three
+              things to read rather than one list to scan, and the badge on the
+              right is what says which tab it lives on.
+            */}
+            {hit.kind === 'item' ? (
+              <ItemRow item={hit.item} onOpen={onOpenItem} />
+            ) : hit.kind === 'paper' ? (
+              <button
+                type="button"
+                className="subrow"
+                onClick={() => onOpenPaper(hit.paper.id)}
+              >
+                <PaperIcon kind={hit.paper.kind} state={paperState(hit.paper)} />
+                <span className="subtxt">
+                  <strong>{hit.paper.label}</strong>
+                  <small>{paperLabel(hit.paper)}</small>
+                </span>
+                <span className="foundkind">Document</span>
+              </button>
+            ) : (
+              <button type="button" className="subrow" onClick={() => onOpenSub(hit.sub.id)}>
+                <ServiceMark
+                  serviceId={hit.sub.serviceId}
+                  logoBlobId={hit.sub.logoBlobId}
+                  name={hit.sub.name}
+                  size={34}
+                />
+                <span className="subtxt">
+                  <strong>{hit.sub.name}</strong>
+                  <small>{CADENCE_LABEL[hit.sub.cadence]}</small>
+                </span>
+                <span className="foundkind">Subscription</span>
+              </button>
+            )}
             {why && <p className="why">{why}</p>}
           </div>
         );
       })}
     </>
   );
+}
+
+/** Ids are unique per table, not across them — hence the kind in the key. */
+function key(hit: SearchHit): string {
+  return hit.kind === 'item' ? hit.item.id : hit.kind === 'paper' ? hit.paper.id : hit.sub.id;
 }
 
 interface Group {

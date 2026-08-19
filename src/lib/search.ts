@@ -15,7 +15,8 @@
  *    kitchen" finds the Bosch in the kitchen.
  */
 
-import type { Doc, Item, Room } from '@/db/types';
+import type { Doc, Item, Paper, Room, Subscription } from '@/db/types';
+import { KIND_LABEL } from './papers';
 import { coveragesOf } from './warranty';
 
 export type MatchField =
@@ -27,17 +28,27 @@ export type MatchField =
   | 'room'
   | 'notes'
   | 'warranty'
-  | 'document';
+  | 'document'
+  /* Documents. "Whose" is the one people actually search — a household with
+     four passports is four rows with the same label. */
+  | 'holder'
+  | 'kind'
+  | 'issuer'
+  | 'stored';
 
 /** Field weights. Name dominates; notes are a last resort. */
 const WEIGHT: Record<MatchField, number> = {
   name: 40,
   serial: 35,
+  holder: 32,
   model: 30,
   brand: 28,
+  kind: 26,
   document: 22,
   retailer: 20,
+  issuer: 19,
   room: 18,
+  stored: 16,
   warranty: 15,
   notes: 10,
 };
@@ -52,14 +63,38 @@ const FIELD_LABEL: Record<MatchField, string> = {
   notes: 'notes',
   warranty: 'warranty details',
   document: 'a document',
+  holder: 'who it belongs to',
+  kind: 'what kind it is',
+  issuer: 'who issued it',
+  stored: 'where it is kept',
 };
 
-export interface SearchHit {
-  item: Item;
+/**
+ * One result, whatever kind of thing it is.
+ *
+ * ── Why one list rather than three ────────────────────────────────────────
+ * The search field lives on the Items tab and only ever looked at items, which
+ * was correct when items were all there was. It stopped being correct the day
+ * the app grew documents and subscriptions: typing "passport" into the one
+ * search box in the app returned nothing, which does not read as "wrong tab",
+ * it reads as "the app has lost my passport".
+ *
+ * Ranked together rather than grouped by kind, for the same reason the
+ * dashboard timeline is one list: someone searching "golf" wants the closest
+ * match to the word, and does not know or care which table it came from.
+ */
+export type Found =
+  | { kind: 'item'; item: Item }
+  | { kind: 'paper'; paper: Paper }
+  | { kind: 'subscription'; sub: Subscription };
+
+export type SearchHit = Found & {
   score: number;
   /** Which fields earned the match, best first. Drives the "why" line. */
   fields: MatchField[];
-}
+  /** The display name, so ties break alphabetically without a switch. */
+  title: string;
+};
 
 export function normalize(s: string): string {
   return s
@@ -142,13 +177,55 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** A document's searchable text. No numbers, because there are none to hold. */
+function paperHay(paper: Paper): Haystack[] {
+  const out: Haystack[] = [{ field: 'name', text: paper.label }];
+  if (paper.holder) out.push({ field: 'holder', text: paper.holder });
+  // The kind, in the words the app shows: "Driving licence" should answer to
+  // "licence" even when the row is called "Mine".
+  out.push({ field: 'kind', text: KIND_LABEL[paper.kind] ?? paper.kind });
+  if (paper.authority) out.push({ field: 'issuer', text: paper.authority });
+  if (paper.storedAt) out.push({ field: 'stored', text: paper.storedAt });
+  if (paper.notes) out.push({ field: 'notes', text: paper.notes });
+  return out;
+}
+
+function subHay(sub: Subscription): Haystack[] {
+  const out: Haystack[] = [{ field: 'name', text: sub.name }];
+  if (sub.notes) out.push({ field: 'notes', text: sub.notes });
+  return out;
+}
+
+/** Every term has to land somewhere, and the best landing counts. */
+function rank(words: string[], hay: Haystack[]): { score: number; fields: MatchField[] } | null {
+  let total = 0;
+  const fields: { field: MatchField; score: number }[] = [];
+
+  for (const word of words) {
+    const best = scoreTerm(word, hay);
+    if (!best) return null;
+    total += best.score;
+    fields.push(best);
+  }
+
+  return {
+    score: total,
+    fields: [...new Set(fields.sort((a, b) => b.score - a.score).map((f) => f.field))],
+  };
+}
+
 export interface SearchInput {
   items: Item[];
   docs: Doc[];
   rooms: Room[];
+  papers?: Paper[];
+  subs?: Subscription[];
 }
 
-export function searchItems(query: string, { items, docs, rooms }: SearchInput): SearchHit[] {
+export function searchAll(
+  query: string,
+  { items, docs, rooms, papers = [], subs = [] }: SearchInput,
+): SearchHit[] {
   const words = terms(query);
   if (words.length === 0) return [];
 
@@ -165,41 +242,38 @@ export function searchItems(query: string, { items, docs, rooms }: SearchInput):
 
   for (const item of items) {
     if (item.deletedAt) continue;
-    const hay = haystacks(
-      item,
-      item.roomId ? roomById.get(item.roomId) : undefined,
-      titlesByItem.get(item.id) ?? [],
+    const got = rank(
+      words,
+      haystacks(
+        item,
+        item.roomId ? roomById.get(item.roomId) : undefined,
+        titlesByItem.get(item.id) ?? [],
+      ),
     );
+    if (got) hits.push({ kind: 'item', item, title: item.name, ...got });
+  }
 
-    let total = 0;
-    const fields: { field: MatchField; score: number }[] = [];
-    let matchedEvery = true;
+  for (const paper of papers) {
+    if (paper.deletedAt) continue;
+    const got = rank(words, paperHay(paper));
+    if (got) hits.push({ kind: 'paper', paper, title: paper.label, ...got });
+  }
 
-    for (const word of words) {
-      const best = scoreTerm(word, hay);
-      if (!best) {
-        matchedEvery = false;
-        break;
-      }
-      total += best.score;
-      fields.push(best);
-    }
-
-    if (!matchedEvery) continue;
-
-    const ordered = [...new Set(fields.sort((a, b) => b.score - a.score).map((f) => f.field))];
-    hits.push({ item, score: total, fields: ordered });
+  for (const sub of subs) {
+    if (sub.deletedAt) continue;
+    const got = rank(words, subHay(sub));
+    if (got) hits.push({ kind: 'subscription', sub, title: sub.name, ...got });
   }
 
   // Ties break alphabetically so the order never jitters between keystrokes.
-  return hits.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
+  return hits.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
 }
 
 /**
  * "Matched on serial number and notes" — omitted entirely when the only match
  * was the name, since that's self-evident from the row itself.
  */
-export function matchSummary(hit: SearchHit): string | null {
+export function matchSummary(hit: Pick<SearchHit, 'fields'>): string | null {
   const other = hit.fields.filter((f) => f !== 'name');
   if (other.length === 0) return null;
   const labels = other.slice(0, 2).map((f) => FIELD_LABEL[f]);

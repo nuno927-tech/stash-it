@@ -6,10 +6,12 @@ import type { Doc, Item, Subscription } from '@/db/types';
 import { gapsFor, metricsFor, type GapKind } from '@/lib/dashboard';
 import { greeting } from '@/lib/greeting';
 import {
+  backupStatus,
   clearNudgePreview,
   dueNudges,
   nudgePreviewArmed,
   sampleNudges,
+  type BackupStatus,
   type NudgeKind,
 } from '@/lib/nudges';
 import { prefsFrom } from '@/lib/prefs';
@@ -140,6 +142,24 @@ export function Home({
       </div>
 
       <CoverCard tally={tally} onBrowse={onBrowse} onPapers={onPapers} />
+
+      {/*
+        The backup, said permanently rather than only when it is late.
+
+        The nudge above already shouts when the interval lapses, and between
+        nudges the dashboard said nothing at all — so a quiet screen read as
+        "fine", and the state it was quietest about was a phone holding the
+        only copy of everything. This never goes away, and it opens Settings,
+        because a date you cannot act on is a date you learn to skip.
+      */}
+      <BackupLine
+        status={backupStatus({
+          lastBackupAt: settings?.lastBackupAt,
+          everyDays: settings?.backupReminderDays ?? 30,
+          itemCount: items.length + papers.length + subs.length,
+        })}
+        onSettings={onSettings}
+      />
 
       {/* The running cost, above the timeline: it frames the renewals in it
           rather than trailing them as a footnote. The six-month chart lives on
@@ -650,6 +670,33 @@ function RunningCost({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * One line about the only copy of everything.
+ *
+ * Deliberately quiet when it is good news and only ever one step louder when
+ * it isn't — an alarm that is on all the time is furniture. The three states
+ * are "recently", "a while ago" and "never", and the third is the one this
+ * exists for: a phone that has held everything since the day it was set up and
+ * has never been asked to prove it.
+ */
+function BackupLine({
+  status,
+  onSettings,
+}: {
+  status: BackupStatus | null;
+  onSettings: () => void;
+}) {
+  if (!status) return null;
+
+  return (
+    <button type="button" className={`backline ${status.tone}`} onClick={onSettings}>
+      <i className="dot" aria-hidden="true" />
+      <span>{status.label}</span>
+      <b>{status.tone === 'ok' ? 'Back up' : 'Back up now'}</b>
+    </button>
   );
 }
 

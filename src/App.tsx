@@ -564,6 +564,8 @@ function Shell() {
           propertyId={property.id}
           filter={screen.filter}
           onOpenItem={(id) => go({ kind: 'detail', id, from: 'items' })}
+          onOpenPaper={(id) => go({ kind: 'editpaper', id })}
+          onOpenSub={(id) => go({ kind: 'editsub', id })}
           onAdd={() => go({ kind: 'add', from: 'items' })}
           onOpenBin={() => go({ kind: 'bin' })}
         />

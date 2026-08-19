@@ -104,6 +104,58 @@ export function backupNudge(
   };
 }
 
+/**
+ * The backup, said on the dashboard whether or not it is overdue.
+ *
+ * ── Why this is separate from the nudge above ─────────────────────────────
+ * `backupNudge` is a warning: it appears when the interval has lapsed and is
+ * dismissible, which is correct for a warning and wrong for a fact. Between
+ * nudges the dashboard said nothing at all about backups, so the honest
+ * reading of a quiet screen was "fine" — and the state it was quietest about
+ * was a phone whose only copy of everything was itself.
+ *
+ * So this never goes away and cannot be dismissed. It is one line, and most of
+ * the time it is a reassuring one; the point is that the day it stops being
+ * reassuring, nothing has to appear for you to notice.
+ *
+ * Returns null only when there is nothing to protect. Nagging someone about
+ * an empty database is how a reminder teaches people to ignore reminders —
+ * the same rule the nudge follows.
+ */
+export type BackupTone = 'ok' | 'due' | 'never';
+
+export interface BackupStatus {
+  /** Days since the last one, or null if there has never been one. */
+  days: number | null;
+  tone: BackupTone;
+  label: string;
+}
+
+export function backupStatus(
+  o: { lastBackupAt?: string; everyDays: number; itemCount: number },
+  now = new Date(),
+): BackupStatus | null {
+  if (o.itemCount === 0) return null;
+
+  const days = daysSince(o.lastBackupAt, now);
+  if (days === null) {
+    return { days: null, tone: 'never', label: 'Never backed up' };
+  }
+
+  /*
+    "Due" follows the interval the user chose, and falls back to a month when
+    they chose never. Turning the reminder off is a decision about being
+    interrupted, not a claim that a six-month-old backup is current — so the
+    line still goes amber, it just never grows into a nudge.
+  */
+  const every = o.everyDays > 0 ? o.everyDays : 30;
+  const tone: BackupTone = days >= every ? 'due' : 'ok';
+
+  const when =
+    days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  return { days, tone, label: `Backed up ${when}` };
+}
+
 /** Warranties inside the window the user asked to be warned about. */
 export function warrantyNudge(o: { endingSoon: number; days: number }): Nudge | null {
   if (o.endingSoon === 0) return null;

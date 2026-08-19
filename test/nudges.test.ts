@@ -17,6 +17,7 @@ import type { Settings } from '@/db/types';
 import {
   armNudgePreview,
   backupNudge,
+  backupStatus,
   clearNudgePreview,
   DEFAULT_ENDING_SOON_DAYS,
   dueNudges,
@@ -96,6 +97,52 @@ function main() {
   const never = backupNudge({ everyDays: 30, itemCount: 5 }, NOW);
   check('never having backed up nudges', never?.title === 'No backup yet', never?.title);
   check('and counts what is at stake', never!.body.includes('5 items'), never?.body);
+
+  /* ------------------------------------------- the line on the dashboard */
+
+  /*
+    Separate from the nudge above, and the difference is the point. A nudge is
+    a warning: it appears when the interval lapses and can be dismissed. This
+    is a fact, and it never goes away — because between nudges the dashboard
+    said nothing about backups at all, and a quiet screen reads as "fine".
+  */
+  const ok = backupStatus({ lastBackupAt: daysAgo(3), everyDays: 30, itemCount: 5 }, NOW);
+  check('a recent backup still says so', ok?.label === 'Backed up 3 days ago', ok?.label);
+  check('and stays quiet about it', ok?.tone === 'ok', ok?.tone);
+
+  check(
+    'today is named, not counted',
+    backupStatus({ lastBackupAt: daysAgo(0), everyDays: 30, itemCount: 5 }, NOW)?.label ===
+      'Backed up today',
+  );
+  check(
+    'and so is yesterday',
+    backupStatus({ lastBackupAt: daysAgo(1), everyDays: 30, itemCount: 5 }, NOW)?.label ===
+      'Backed up yesterday',
+  );
+
+  const late = backupStatus({ lastBackupAt: daysAgo(40), everyDays: 30, itemCount: 5 }, NOW);
+  check('a lapsed one goes amber', late?.tone === 'due', late?.tone);
+
+  const none = backupStatus({ everyDays: 30, itemCount: 5 }, NOW);
+  check('never is its own state', none?.tone === 'never' && none.days === null, none?.label);
+
+  /*
+    Turning the reminder off is a decision about being interrupted, not a claim
+    that a six-month-old backup is current. The line still colours; it just
+    never grows into a nudge.
+  */
+  check(
+    'switching the reminder off does not make an old backup fresh',
+    backupStatus({ lastBackupAt: daysAgo(200), everyDays: 0, itemCount: 5 }, NOW)?.tone === 'due',
+  );
+  check(
+    'and the nudge stays silent for it',
+    backupNudge({ lastBackupAt: daysAgo(200), everyDays: 0, itemCount: 5 }, NOW) === null,
+  );
+
+  // Nothing to protect, nothing to say — the same rule the nudge follows.
+  check('an empty collection gets no line', backupStatus({ everyDays: 30, itemCount: 0 }, NOW) === null);
 
   // "Never" is a choice, not an interval of zero days.
   check('never means never', backupNudge({ everyDays: 0, itemCount: 5 }, NOW) === null);

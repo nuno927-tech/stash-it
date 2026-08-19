@@ -3962,6 +3962,71 @@ button.countpill.tappill:active {
   make them three answers you can take at a glance — and it lets the count be
   its own tap target, which the sentence could not.
 */
+/*
+  The backup line. A row, not a card.
+
+  It is permanent, which is exactly why it has to be small — a full card
+  repeating "backed up 3 days ago" every time you open the app is a card people
+  learn to look past, and then miss on the day it says something else. A dot, a
+  sentence and a way to act on it.
+*/
+.backline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--slate-700);
+  background-image: var(--sheen);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.backline > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.backline > b {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gold);
+}
+
+.backline .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--moss);
+}
+
+/* Amber for overdue, ember for never. "Never" is a different thing from
+   "late": one is a lapsed habit and the other is a phone that has never once
+   been asked to prove it holds anything. */
+.backline.due .dot {
+  background: var(--honey);
+}
+
+.backline.never {
+  border-color: var(--wash-ember);
+  color: var(--text);
+}
+
+.backline.never .dot {
+  background: var(--ember);
+}
+
+.backline:active {
+  background: var(--slate-600);
+}
+
 .runblock {
   display: block;
 }
@@ -4626,6 +4691,21 @@ button.calcell {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 10px;
+}
+
+/* Which tab a search result lives on. Search returns all three kinds ranked
+   together, and without this the only way to tell a document from an item is
+   to tap it and find out. */
+.foundkind {
+  flex: none;
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px 8px;
 }
 
 .subrow:active {

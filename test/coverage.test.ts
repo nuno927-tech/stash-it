@@ -15,7 +15,7 @@ import type { Coverage, Item } from '@/db/types';
 import { blankCoverage, draftFromForm, emptyForm, formFromItem, saveNewItem } from '@/lib/addItem';
 import { exportBundle, parseBundle, restoreBundle } from '@/lib/backup';
 import { gapsFor } from '@/lib/dashboard';
-import { searchItems } from '@/lib/search';
+import { searchAll } from '@/lib/search';
 import { MAX_RINGS } from '@/components/WarrantyRing';
 import {
   coverageArcs,
@@ -291,9 +291,9 @@ async function main() {
     gaps.map((g) => g.kind).join(','),
   );
 
-  const hits = searchItems('fabric', { items: [saved], docs: [], rooms: [] });
+  const hits = searchAll('fabric', { items: [saved], docs: [], rooms: [] });
   check('a policy name is searchable', hits.length === 1, `${hits.length} hits`);
-  const covers = searchItems('pilling', { items: [couch], docs: [], rooms: [] });
+  const covers = searchAll('pilling', { items: [couch], docs: [], rooms: [] });
   check('and so is what it covers', covers.length === 1, `${covers.length} hits`);
 
   /* --------------------------------------------------- backup round trip */
