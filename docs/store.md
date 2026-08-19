@@ -19,6 +19,64 @@ package anything.
 
 ---
 
+## The order, and what blocks what
+
+The only item measured in weeks is the closed test, and it cannot start until
+there is a package to upload — so everything above it is on the critical path
+and everything below it runs in parallel with the clock.
+
+```
+1  domain                     ── blocks everything
+2  move the app to it         ── blocks the package (asset links are per origin)
+3  screenshots                ── needs the app deployed at its final address
+4  decide the v1 price story  ── blocks the listing, not the package
+5  Play account, $25          ── can be done any time before 6
+6  package with PWABuilder    ── produces the signing key AND assetlinks.json
+7  host assetlinks, verify    ── needs 6; without it the address bar stays
+8  upload to closed testing   ── STARTS THE 14-DAY CLOCK
+9  listing assets + forms     ── do these while the clock runs
+10 apply for production       ── 14 days after 8, at the earliest
+```
+
+---
+
+## Moving to the domain
+
+Three files, and one of them is not obvious.
+
+**`site/CNAME`** — a new file containing nothing but `stash-it.app`. GitHub
+Pages reads it from the published artifact, and the deploy workflow assembles
+that from `site/`, so it has to live there rather than in the repository root.
+Without it Pages forgets the custom domain on the next deploy.
+
+**`.github/workflows/deploy.yml`** — `BASE_PATH` and `SITE_PATH` currently
+derive from the repository name, which is right for a project site and wrong
+for a domain:
+
+```yaml
+BASE_PATH: /app/
+SITE_PATH: /
+```
+
+**`functions/.env`** — add the new origin to `ALLOWED_ORIGINS`, comma
+separated, and `firebase deploy --only functions`. Miss this and reminders
+fail at the CORS check from the new address with no visible error, because a
+failed sync is deliberately silent.
+
+Keep the old origin on that list for as long as anyone might still have the
+app installed from it.
+
+**What does not change:** the VAPID key, the `PUSH_ENDPOINT`, and both GitHub
+repository variables. The sender is addressed by its own URL and does not care
+where the app is served from, only who is allowed to call it.
+
+**What quietly does:** the manifest `id`, which is derived from `BASE_PATH`.
+Nothing installed from the old address will recognise the new one as the same
+app. That is the same origin problem as the data, stated a second way, and the
+same answer: move before anyone is using it.
+
+---
+
 ## Screenshots
 
 Drop PNGs into `public/screenshots` and they appear in the manifest
@@ -65,6 +123,35 @@ icon.
 | **Privacy policy URL** | `site/privacy.html`. Play requires one in the listing, and reminders make the Data Safety form a real declaration rather than a formality. |
 | **Notifications enabled in the package** | PWABuilder has a toggle for it. Off by default, and off means the reminders silently never arrive in the store build — the hardest kind of bug to notice. Android 13+ also asks the user at runtime. |
 | **A Play developer account** | $25, once. |
+
+## The price story, which has to be settled before the listing
+
+The site sells a Pro tier: twenty-five records free, unlimited plus
+notifications for $10 a year. The app implements neither half — notifications
+are free to everyone and there is no way to pay for anything.
+
+That is fine for a website and not fine for a store listing, and there is a
+second constraint on top of it: **Play policy requires Google Play Billing for
+digital goods sold inside an app it distributes.** In a Trusted Web Activity
+that means the Digital Goods API and the Payment Request API, not a Stripe
+checkout — so the web version and the Play version would need different
+purchase paths and a shared idea of who has Pro.
+
+Two honest ways forward:
+
+**Ship v1 free.** Everything on, cap at twenty-five, no Pro anywhere. Amend
+the site's pricing section to match. Adds nothing to the critical path and
+gets the closed test started weeks earlier. Pro can arrive in v2 with Play
+Billing behind it, which is also when the entitlement question has to be
+answered properly rather than guessed at.
+
+**Build billing first.** Correct, and it is the longest thing on this list by
+a distance — a purchase flow, an entitlement check, a restore path, and a
+second implementation for the web. Nothing else in this document is blocked by
+it, so it can only delay the launch.
+
+The first is recommended. A free app that works beats a paid tier nobody can
+buy, and the closed-test clock is fourteen days you cannot get back.
 
 ## The long pole
 
