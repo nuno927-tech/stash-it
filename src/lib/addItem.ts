@@ -197,13 +197,13 @@ export const COVERAGE_LABELS = [
   'Warranty',
   'Limited warranty',
   'Extended warranty',
-  'Parts and labour',
+  'Parts and labor',
   'Money back',
   'Free service',
 ];
 
 /** Examples of what a policy covers, shown as the field's placeholder. */
-export const COVERS_PLACEHOLDER = 'Parts and labour, not accidental damage';
+export const COVERS_PLACEHOLDER = 'Parts and labor, not accidental damage';
 
 /**
  * Money is stored as integer minor units, never a float. Accepts what people

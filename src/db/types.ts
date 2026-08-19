@@ -283,6 +283,13 @@ export const PAPER_KINDS = [
   'visa',
   'vehicle',
   'insurance',
+  /*
+    A lease is here for the one thing nothing else on this list has: a deadline
+    before the deadline. You do not want to know a tenancy ends, you want to
+    know before the notice period closes — miss that and it costs a month's
+    rent or renews itself for another year.
+  */
+  'lease',
   'certification',
   'membership',
   /*

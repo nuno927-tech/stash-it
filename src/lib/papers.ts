@@ -32,13 +32,14 @@ const today = (now: Date) => startOfDay(now);
 export const KIND_LABEL: Record<PaperKind, string> = {
   passport: 'Passport',
   id: 'ID card',
-  licence: 'Driving licence',
+  licence: 'Driving license',
   visa: 'Visa or permit',
   vehicle: 'Vehicle',
   insurance: 'Insurance',
+  lease: 'Lease',
   certification: 'Certification',
   membership: 'Membership',
-  petlicence: 'Pet licence',
+  petlicence: 'Pet license',
   petvaccine: 'Pet vaccination',
   voucher: 'Gift card',
   other: 'Other',
@@ -65,6 +66,13 @@ export const DEFAULT_LEAD_DAYS: Record<PaperKind, number> = {
   insurance: 30,
   certification: 90,
   membership: 30,
+  /*
+    Ninety, and it is the notice period rather than the paperwork. A month is
+    the commonest term and two is not rare, so this has to clear the longer one
+    with time to decide — the date that matters is the last day you can give
+    notice, not the day the tenancy ends.
+  */
+  lease: 90,
   /*
     A month for both. A pet licence renews online in five minutes, and a
     booster needs an appointment — which is the longer of the two jobs, but

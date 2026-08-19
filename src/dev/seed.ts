@@ -69,7 +69,7 @@ function fixtures(): Fixture[] {
           covers: 'One free tune-up: brushes, bearings and blade alignment.',
           unit: 'years',
           amount: 1,
-          provider: 'DeWalt service centre',
+          provider: 'DeWalt service center',
         },
         {
           id: 'seed-dewalt-refund',

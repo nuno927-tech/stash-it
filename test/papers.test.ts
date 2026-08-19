@@ -90,7 +90,7 @@ async function main() {
     Tapping a tile fills the name box, so nobody has to type the word they
     just pressed. The interesting half is what it refuses to overwrite.
   */
-  check('a tile names itself', renameForKind('licence', '', 'passport') === 'Driving licence');
+  check('a tile names itself', renameForKind('licence', '', 'passport') === 'Driving license');
   check(
     'and replaces the previous tile’s name',
     renameForKind('visa', 'Passport', 'passport') === 'Visa or permit',

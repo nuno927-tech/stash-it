@@ -81,6 +81,16 @@ const GLYPH: Record<PaperKind, React.ReactNode> = {
       <path d="M6.4 9.6v4.8M9 9.6v4.8M11.6 9.6v4.8M15 9.6v4.8M17.6 9.6v4.8" />
     </>
   ),
+  // A door with a key beside it. A house says "property"; a key says the
+  // property is not yours, which is what a lease is.
+  lease: (
+    <>
+      <path d="M4.5 20.5V6.2l7.5-2.7v17" />
+      <circle cx="9.6" cy="12.6" r="0.9" />
+      <circle cx="17" cy="9.6" r="2.4" />
+      <path d="M17 12v8.5M17 16.6h2.6M17 19h2.2" />
+    </>
+  ),
   // A paw. The one shape that says "pet" before any label is read.
   petlicence: (
     <>

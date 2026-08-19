@@ -94,6 +94,35 @@ for (const subject of ['document', 'subscription', 'passport']) {
   check(`the site mentions ${subject}s`, site.toLowerCase().includes(subject));
 }
 
+/* ------------------------------------------------------------- the words */
+
+/*
+  One dialect, and it is American.
+
+  The app was written in British English and the person writing the copy is
+  not — so "Driving licence" sat two rows above a form that said "license",
+  and "Parts and labour" appeared under a price in dollars. Nobody notices one
+  of these; everybody notices the pair.
+
+  ── The one exception, and why it is not a bug ────────────────────────────
+  `PaperKind` still has a member spelled `licence`. That string is written into
+  every saved document and into every backup ever exported, so renaming it
+  means a schema migration for a spelling. The KEY is frozen; only what people
+  read changed. The rule below is written to allow the key and catch the prose:
+  a bare `'licence'` is the identifier, and the labels people read are checked
+  in test/words.test.ts, which can import them rather than guess at them with a
+  regular expression.
+*/
+const BRITISH = ['licence', 'labour', 'organis', 'centre', 'colour', 'favourite', 'apologis'];
+
+for (const [name, text] of [
+  ['the site', site],
+  ['the policy', policy],
+]) {
+  const found = BRITISH.filter((w) => new RegExp(w, 'i').test(text));
+  check(`${name} is written in American English`, found.length === 0, found.join(', '));
+}
+
 /* ------------------------------------------------------------ the policy */
 
 check('the privacy policy is linked from the site', site.includes('privacy.html'));

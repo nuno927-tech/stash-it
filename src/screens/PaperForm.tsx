@@ -155,7 +155,11 @@ export function PaperForm({
             <button
               key={k}
               type="button"
-              className={`servicetile${kind === k ? ' on' : ''}`}
+              /* "Other" takes the whole last row. It is not a peer of the
+                 twelve above it — it is the escape hatch — and it also keeps
+                 the grid square without inventing a thirteenth kind to fill a
+                 gap, which is a terrible reason to add a feature. */
+              className={`servicetile${k === 'other' ? ' catchall' : ''}${kind === k ? ' on' : ''}`}
               onClick={() => pick(k)}
             >
               <PaperIcon kind={k} state="valid" size={30} />
@@ -169,7 +173,7 @@ export function PaperForm({
             <input
               type="text"
               value={label}
-              placeholder={kind === 'other' ? 'Library card, TV licence…' : KIND_LABEL[kind]}
+              placeholder={kind === 'other' ? 'Library card, TV license…' : KIND_LABEL[kind]}
               onChange={(e) => setLabel(e.target.value)}
             />
           </Field>

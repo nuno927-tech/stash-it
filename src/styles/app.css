@@ -4304,14 +4304,25 @@ button.countpill.tappill:active {
   white-space: nowrap;
 }
 
-/* Three across, not five. Nine kinds with names as long as "Driving licence"
-   need the width; the service picker gets away with five because a brand name
-   is one word and there are fifty of them to fit. */
+/* Three across, not five. Names as long as "Pet vaccination" need the width;
+   the service picker gets away with five because a brand name is one word and
+   there are fifty of them to fit. Twelve kinds make four clean rows and the
+   catch-all takes the fifth on its own — see below. */
 .kindgrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin: 12px 0;
+}
+
+/* The catch-all, across the bottom. Twelve real kinds make four tidy rows;
+   "Other" is what you pick when none of them fit, which is a different sort of
+   answer and deserves to look like one. */
+.kindgrid .servicetile.catchall {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
 }
 
 /*

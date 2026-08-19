@@ -70,7 +70,7 @@ export const TOUR_STEPS: TourStep[] = [
     */
     key: 'papers',
     pose: 'clipboard',
-    title: 'Passports, licences, insurance',
+    title: 'Passports, licenses, insurance',
     body: "The Documents tab watches the things that expire on you. Dates and general details only — no scans, no document numbers — and I'll tell you when to start renewing, not when it's too late.",
   },
   {
