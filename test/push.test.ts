@@ -258,6 +258,38 @@ function main() {
   check('the key decodes to bytes', bytes instanceof Uint8Array && bytes.length > 0, `${bytes.length}`);
   check('over a real ArrayBuffer', bytes.buffer instanceof ArrayBuffer);
 
+  /* ------------------------------------------- an item's own lead time */
+
+  /*
+    The wake has to move with the item's lead, or the phone buzzes on a day the
+    dashboard says nothing is happening — and the dashboard is the thing people
+    check to find out whether the notification was real.
+
+    Headphones: bought 690 days ago with 24 months of cover, so about forty
+    days of runway — amber in ten at the default thirty.
+  */
+  const kit = warranted('Headphones', 24, 690);
+  const defaulted = pushSchedule([kit], [], [], NOW);
+  check('the default lead schedules one wake', defaulted.length === 1, `${defaulted.length}`);
+
+  const early = pushSchedule([{ ...kit, leadDays: 365 }], [], [], NOW);
+  /*
+    A year of notice on cover that ends in forty days puts the wake in the
+    past, and the past is not scheduled — the dashboard is already carrying it,
+    which is exactly what should happen for something you asked to hear about
+    a year ahead and are now three hundred days late seeing.
+  */
+  check('a lead longer than the runway wakes nobody', early.length === 0, `${early.length}`);
+
+  // And a shorter one moves the day later rather than dropping it.
+  const late = pushSchedule([{ ...kit, leadDays: 3 }], [], [], NOW);
+  check('a shorter lead moves the wake nearer the end', late.length === 1, `${late.length}`);
+  check(
+    'and it lands after the default would have',
+    !!late[0] && !!defaulted[0] && late[0].on > defaulted[0].on,
+    `${late[0]?.on} vs ${defaulted[0]?.on}`,
+  );
+
   /* ------------------------------------------------------- the test bench */
 
   /*

@@ -1,7 +1,7 @@
 import type { Item, Paper, Subscription } from '@/db/types';
 import { addDays, daysUntilRenewal, nextRenewal, startOfDay } from '@/lib/subscriptions';
 import { expiryOf, renewBy } from '@/lib/papers';
-import { effectiveExpiry, getEndingSoonDays } from '@/lib/warranty';
+import { effectiveExpiry, itemLeadDays } from '@/lib/warranty';
 
 /**
  * Reminders that arrive while the app is closed.
@@ -91,8 +91,10 @@ export function pushSchedule(
   for (const item of items) {
     const end = effectiveExpiry(item, now);
     if (!end) continue;
-    // The day the countdown turns amber, not the day the cover ends.
-    add(addDays(end, -getEndingSoonDays()), item.name);
+    // The day the countdown turns amber, not the day the cover ends — and
+    // this item's own lead if it was given one, so the push lands on the same
+    // day the dashboard changes colour.
+    add(addDays(end, -itemLeadDays(item)), item.name);
   }
 
   for (const sub of subs) {

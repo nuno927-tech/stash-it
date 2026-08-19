@@ -45,7 +45,7 @@ export function CoverList({ item }: { item: Item }) {
         const lapsed = d.daysLeft !== null && d.daysLeft < 0;
         // Lifetime is 'covered' as a state but shouldn't wear the green a
         // running countdown earns — there's nothing counting.
-        const tone = d.end ? TONE[coverageState(d)] : TONE.unknown;
+        const tone = d.end ? TONE[coverageState(d, item)] : TONE.unknown;
 
         return (
           <div key={c.id} className={`cov${lapsed ? ' lapsed' : ''}`}>

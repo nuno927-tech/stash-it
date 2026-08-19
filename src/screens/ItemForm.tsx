@@ -4,6 +4,7 @@ import { db } from '@/db/db';
 import { activeRooms, createRoom, RoomNameTakenError } from '@/db/repo';
 import type { Item } from '@/db/types';
 import {
+  draftExpiry,
   emptyForm,
   formFromItem,
   ItemLimitError,
@@ -17,7 +18,9 @@ import { attachStaged, stageDocs, type StagedDoc } from '@/lib/docs';
 import { feedback } from '@/lib/feedback';
 import { completeMoneyInput, currencySymbol, formatMoneyInput } from '@/lib/format';
 import { armNotifyOffer, datedSave } from '@/lib/notifyOffer';
+import { ITEM_LEAD_CHOICES } from '@/lib/prefs';
 import { PhotoError, storePhoto } from '@/lib/photo';
+import { getEndingSoonDays } from '@/lib/warranty';
 import { ChoiceSheet } from '@/components/ChoiceSheet';
 import { Scout } from '@/components/Scout';
 import { CoverageField } from '@/components/CoverageField';
@@ -126,6 +129,20 @@ export function ItemForm({
     So: always on a new item, and on an edit only if there was a date to begin
     with. You can't clear one, you're not made to invent one.
   */
+  /*
+    The day the app would start asking, from the drafts as they stand — so the
+    reminder card can name a month rather than a number of days. Recomputed on
+    every keystroke, which is three date parses and cheaper than the render it
+    sits inside.
+  */
+  const expiry = draftExpiry(form);
+  const startsAsking =
+    expiry && form.leadDays !== undefined
+      ? new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate() - form.leadDays)
+      : expiry
+        ? new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate() - getEndingSoonDays())
+        : null;
+
   const dateRequired = !editing || !!item?.purchaseDate;
   const missingDate = dateRequired && !form.purchaseDate.trim();
   const canSave = !!form.name.trim() && !missingDate;
@@ -545,6 +562,61 @@ export function ItemForm({
           setStaged((list) => list.map((s) => (s.key === key ? { ...s, kind } : s)))
         }
       />
+
+      {/* ------------------------------------------------- how much warning */}
+      {/*
+        Last, and its own card, because it is the only thing on this form that
+        is about the future rather than about the thing. Everything above
+        records what you bought; this decides when you hear about it.
+
+        Same object as the Documents form, down to the wording — one control
+        doing one job in two places should not be called two things. See the
+        note there for why there is no second "reminder" switch: a reminder
+        some days before the day the app starts asking is just a longer lead
+        time expressed in a second unit, with its own chance to be left wrong.
+      */}
+      <section className="card formcard">
+        <div className="cardhead">
+          <h3>How much warning</h3>
+        </div>
+
+        {/*
+          The answer above the control, as the subtitle of the heading — you
+          see what the current setting means before touching anything, and each
+          tap rewrites the line you are already reading.
+
+          And it is the number turned into the thing it means. Nobody has a
+          view on "182 days"; everybody has one on "March 2027".
+        */}
+        {startsAsking && (
+          <p className="leadsays">
+            Scout will start asking in{' '}
+            <b>{startsAsking.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</b>
+            {form.leadDays === undefined ? ', following your setting' : ''}.
+          </p>
+        )}
+
+        <div className="seg six">
+          {ITEM_LEAD_CHOICES.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              className={form.leadDays === c.days ? 'on' : ''}
+              onClick={() => set('leadDays', c.days)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="hint">
+          {/* Said plainly, because it is the surprising half: this is not a
+              second notification, it is when the item starts counting as
+              something that needs you — on the dashboard as well as on your
+              lock screen. */}
+          Turns the item amber on the dashboard, and sends a notification if you have them on.
+        </p>
+      </section>
 
       <div className="savebar">
         {/* Says which one is missing rather than sitting there greyed out with

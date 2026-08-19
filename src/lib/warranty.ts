@@ -28,6 +28,30 @@ export function getEndingSoonDays(): number {
   return endingSoon;
 }
 
+/**
+ * How much notice THIS item wants, which is not always the global answer.
+ *
+ * ── Why an override and not a second reminder ─────────────────────────────
+ * A roof and a kettle do not deserve the same warning. Thirty days is ample
+ * for a kettle and useless for anything that needs a tradesman, a quote and a
+ * date in a diary — by the time the app mentions it, the useful window has
+ * gone.
+ *
+ * The obvious alternative is an extra reminder on top of the global one, and
+ * it is worse: two notifications about one warranty, and a dashboard that
+ * disagrees with them. The ring, the timeline, the list filter and the push
+ * all read "is this ending soon" from one function, so overriding the lead
+ * time here makes every one of those surfaces agree — set a roof to a year and
+ * it turns amber a year out, which is the whole point of having said so.
+ *
+ * The same shape documents already use: a per-record `leadDays`, undefined
+ * meaning "use the default". Zero is a real answer — tell me on the day — so
+ * only undefined falls back. `||` would silently overwrite it.
+ */
+export function itemLeadDays(item: Pick<Item, 'leadDays'>): number {
+  return item.leadDays ?? endingSoon;
+}
+
 /** Parses YYYY-MM-DD as a local calendar date, not UTC midnight. */
 export function parseDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -240,7 +264,7 @@ export function warrantyState(item: Item, now = new Date()): WarrantyState {
 
   const next = nextToLapse(item, now);
   if (next) {
-    return next.daysLeft! <= endingSoon ? 'ending-soon' : 'covered';
+    return next.daysLeft! <= itemLeadDays(item) ? 'ending-soon' : 'covered';
   }
   // Every dated policy has run out. A lifetime policy means the item is still
   // covered for something, so it must not be painted as expired.
@@ -330,7 +354,7 @@ export function warrantyDateLabel(item: Item, now = new Date()): string {
 
   if (next) {
     const end = next.end!;
-    if (next.daysLeft! <= endingSoon) return `Ends ${dayMonth(end)}`;
+    if (next.daysLeft! <= itemLeadDays(item)) return `Ends ${dayMonth(end)}`;
     return `Covered to ${monthYear(end)}`;
   }
 
@@ -415,11 +439,17 @@ export function coverageParts(d: DatedCoverage, now = new Date()): WarrantyParts
   return { value: rem ? `${years}y ${rem}m` : `${years}y`, unit: 'left' };
 }
 
-/** The colour a single policy earns, on the same scale as the item's. */
-export function coverageState(d: DatedCoverage): WarrantyState {
+/**
+ * The colour a single policy earns, on the same scale as the item's.
+ *
+ * Takes the item's lead so one row of coverage cannot say "covered" while the
+ * item it belongs to says "ending soon" — which is what happened the moment
+ * the lead stopped being one number for everything.
+ */
+export function coverageState(d: DatedCoverage, item?: Pick<Item, 'leadDays'>): WarrantyState {
   if (!d.end) return 'covered';
   if (d.daysLeft! < 0) return 'expired';
-  return d.daysLeft! <= endingSoon ? 'ending-soon' : 'covered';
+  return d.daysLeft! <= (item ? itemLeadDays(item) : endingSoon) ? 'ending-soon' : 'covered';
 }
 
 /** How much of one policy's term is left, 0..1, for its arc. */

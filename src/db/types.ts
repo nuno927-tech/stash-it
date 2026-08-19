@@ -118,6 +118,19 @@ export interface Item {
   warranty?: Warranty;
   extendedWarranty?: Warranty;
 
+  /**
+   * How much notice this item wants before its cover ends, in days.
+   *
+   * Undefined means "use the setting" — the global window in Settings. Set,
+   * it overrides it for this item alone: a roof and a kettle do not deserve
+   * the same warning, and thirty days is useless for anything needing a quote
+   * and a tradesman. See `itemLeadDays` for why this overrides rather than
+   * adding a second reminder.
+   *
+   * Same shape as `Paper.leadDays`, deliberately.
+   */
+  leadDays?: number;
+
   notes?: string;
   /** Small, for lists. */
   thumbBlobId?: string;

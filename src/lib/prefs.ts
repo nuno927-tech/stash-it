@@ -85,6 +85,27 @@ export const REMINDER_CHOICES = [
   { days: 90, label: '3 months' },
 ];
 
+/**
+ * Per-item notice, on the item's own form.
+ *
+ * Longer than the global list on purpose, and longer than a subscription's by
+ * a mile. A renewal is a payment you might want to cancel this week; a
+ * warranty on something installed is a job — a quote, a tradesman, a date in a
+ * diary — and thirty days does not cover any of it. A roof wants a year.
+ *
+ * `undefined` is the first option and the default: follow the setting. It has
+ * to be a real, selectable choice rather than an absence, or there is no way
+ * back once someone has picked a number.
+ */
+export const ITEM_LEAD_CHOICES: { days: number | undefined; label: string }[] = [
+  { days: undefined, label: 'Default' },
+  { days: 14, label: '2 weeks' },
+  { days: 30, label: '1 month' },
+  { days: 90, label: '3 months' },
+  { days: 182, label: '6 months' },
+  { days: 365, label: '1 year' },
+];
+
 export const BACKUP_REMINDER_CHOICES = [
   { days: 7, label: 'Weekly' },
   { days: 30, label: 'Monthly' },

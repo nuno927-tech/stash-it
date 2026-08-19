@@ -16,7 +16,12 @@ import {
   type WarrantyUnit,
 } from '@/db/types';
 import { formatMoneyInput } from './format';
-import { coveragesOf, DEFAULT_COVERAGE_LABEL, termToMonths } from './warranty';
+import {
+  coveragesOf,
+  DEFAULT_COVERAGE_LABEL,
+  effectiveExpiry,
+  termToMonths,
+} from './warranty';
 
 export class ValidationError extends Error {}
 /**
@@ -90,6 +95,11 @@ export interface AddItemForm {
    * a single warranty — looks exactly like the single field it replaced.
    */
   coverages: CoverageDraft[];
+  /**
+   * How much notice this item wants, in days. `undefined` is a real value
+   * here and means "follow the setting" — see Item.leadDays.
+   */
+  leadDays: number | undefined;
   /** All optional, and each says so in its own placeholder. */
   brand: string;
   model: string;
@@ -106,6 +116,7 @@ export function emptyForm(currency: string): AddItemForm {
     price: '',
     currency,
     coverages: [blankCoverage()],
+    leadDays: undefined,
     brand: '',
     model: '',
     serial: '',
@@ -133,6 +144,7 @@ export function formFromItem(item: Item, fallbackCurrency: string): AddItemForm 
     // Reads through coveragesOf, so an item saved before this existed edits as
     // the one or two policies it always had rather than as an empty list.
     coverages: coveragesFor(item),
+    leadDays: item.leadDays,
     brand: item.brand ?? '',
     model: item.model ?? '',
     serial: item.serial ?? '',
@@ -278,6 +290,7 @@ export function draftFromForm(
     currency: form.currency,
     retailer: clean(form.retailer),
     coverages: coverages.length ? coverages : undefined,
+    leadDays: form.leadDays,
     // The two old fields are still written from the first two dated policies.
     // They're what an older build — or a backup opened on a phone that hasn't
     // updated — knows how to read, and one warranty is a much better failure
@@ -287,6 +300,29 @@ export function draftFromForm(
     thumbBlobId: photo?.thumbBlobId,
     photoBlobId: photo?.blobId,
   };
+}
+
+/**
+ * The soonest the cover on this form would run out, from the drafts as typed.
+ *
+ * The reminder card needs a real date to count back from before anything has
+ * been saved, and `draftFromForm` is the wrong tool for it — that one throws
+ * on a missing name, which is exactly the state a half-filled form is in. This
+ * reads the same rows through the same converter and asks the same question
+ * the item page will ask later, so the date shown while typing is the date
+ * that ends up on the record.
+ */
+export function draftExpiry(form: AddItemForm, now = new Date()): Date | null {
+  const purchaseDate = clean(form.purchaseDate);
+  if (!purchaseDate) return null;
+
+  const coverages = form.coverages.map(toCoverage).filter((c): c is Coverage => c !== null);
+  if (coverages.length === 0) return null;
+
+  return effectiveExpiry(
+    { purchaseDate, coverages } as Item,
+    now,
+  );
 }
 
 /** A form row becomes a policy, or nothing at all when it's still blank. */

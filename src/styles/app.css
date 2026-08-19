@@ -1149,6 +1149,15 @@ select.compact {
   padding: 9px 1px;
 }
 
+/* Six, and the labels are spans of time rather than single words — "2 weeks"
+   is the widest. Below this they wrap, and a segmented control on two rows
+   stops reading as one choice. */
+.seg.six button {
+  font-size: 10px;
+  padding: 9px 0;
+  letter-spacing: -0.01em;
+}
+
 /* A setting whose control is a segmented row: label and note stacked above it
    rather than beside it, since the control wants the card's full width. The
    hairline keeps the card's rhythm with the plain rows around it. */

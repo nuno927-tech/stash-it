@@ -27,6 +27,9 @@ import {
   effectiveExpiry,
   hasLifetime,
   nextToLapse,
+  itemLeadDays,
+  setEndingSoonDays,
+  getEndingSoonDays,
   toISODate,
   warrantyLabel,
   warrantyParts,
@@ -306,6 +309,87 @@ async function main() {
   check('coverages survive a backup', restored.coverages?.length === 2, `${restored.coverages?.length}`);
   check('lifetime survives', restored.coverages?.[0]?.unit === 'lifetime');
   check('and the countdown still points at the fabric', coverageLabel(nextToLapse(restored)!.coverage) === 'Fabric');
+
+  /* ------------------------------------------------ per-item lead time */
+
+  /*
+    A roof and a kettle do not deserve the same warning. `leadDays` overrides
+    the global window for one item — and because every surface in the app asks
+    `warrantyState` rather than reading the window itself, overriding it here
+    moves the ring, the timeline, the list filter and the push together.
+
+    That is the whole design: one number, one question, four screens that
+    cannot disagree.
+  */
+  const globalWindow = getEndingSoonDays();
+  setEndingSoonDays(30);
+
+  const NOW = new Date(2026, 7, 17); // 17 August 2026
+  // Cover running to 1 March 2027 — 196 days out.
+  const roof = item({
+    id: 'roof',
+    name: 'Roof',
+    purchaseDate: '2026-03-01',
+    coverages: [cover({ unit: 'months', amount: 12 })],
+  });
+
+  check('the default is the global window', itemLeadDays({}) === 30, `${itemLeadDays({})}`);
+  check('and an item can say otherwise', itemLeadDays({ leadDays: 365 }) === 365);
+
+  /*
+    Zero is a real answer — "tell me on the day" — so only undefined falls
+    back. `||` here would silently promote it to thirty.
+  */
+  check('zero is an answer, not an absence', itemLeadDays({ leadDays: 0 }) === 0);
+
+  check(
+    'at the global window it is still just covered',
+    warrantyState(roof, NOW) === 'covered',
+    warrantyState(roof, NOW),
+  );
+  check(
+    'and a year of notice turns it amber today',
+    warrantyState({ ...roof, leadDays: 365 }, NOW) === 'ending-soon',
+    warrantyState({ ...roof, leadDays: 365 }, NOW),
+  );
+  check(
+    'a shorter lead than the global one narrows it',
+    warrantyState({ ...item({ purchaseDate: '2026-08-01', coverages: [cover({ unit: 'months', amount: 2 })] }), leadDays: 3 }, NOW) === 'covered',
+  );
+
+  // Expiry itself never moves. The lead decides when you are told, not when
+  // the cover ends — getting that wrong would rewrite the fact to suit the
+  // reminder.
+  check(
+    'the expiry is untouched by the lead',
+    toISODate(effectiveExpiry(roof, NOW)!) === toISODate(effectiveExpiry({ ...roof, leadDays: 365 }, NOW)!),
+  );
+
+  // A lapsed warranty stays lapsed however much notice was asked for.
+  const gone = item({ purchaseDate: '2020-01-01', coverages: [cover({ unit: 'months', amount: 12 })] });
+  check('a long lead cannot revive a lapsed item', warrantyState({ ...gone, leadDays: 365 }, NOW) === 'expired');
+
+  /* ------------------------------------------------ it survives the trip */
+
+  const leadId = await saveNewItem(
+    {
+      ...emptyForm('USD'),
+      name: 'Roof',
+      purchaseDate: '2026-03-01',
+      leadDays: 365,
+      coverages: [blankCoverage({ unit: 'years', amount: '10' })],
+    },
+    property.id,
+  );
+  check('the form writes it', (await db.items.get(leadId))?.leadDays === 365);
+  check('and the edit form reads it back', formFromItem((await db.items.get(leadId))!, 'USD').leadDays === 365);
+
+  const withLead = await exportBundle();
+  const reparsed = await parseBundle(new File([withLead.blob], withLead.filename));
+  await restoreBundle(reparsed, 'replace');
+  check('and a backup carries it', (await db.items.get(leadId))?.leadDays === 365);
+
+  setEndingSoonDays(globalWindow);
 
   console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
   process.exit(failures === 0 ? 0 : 1);
