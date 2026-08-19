@@ -178,7 +178,9 @@ export function Settings({
           >
             Settings
           </button>
-          <p>Everything below changes how Stash it behaves. Nothing here leaves the device.</p>
+          {/* It used to end "Nothing here leaves the device", which stopped
+              being true the moment the Reminders card landed on this page. */}
+          <p>How Stash it behaves.</p>
         </div>
 
         {/* 104, the same as on Items. He was 132 here and 104 there, which read
@@ -438,9 +440,11 @@ function Appearance({ settings }: { settings: SettingsRecord }) {
         ))}
       </div>
 
+      {/* No note. A toggle called Sounds that makes sounds is not a thing
+          anyone needs explained, and the preview fires the moment you flip
+          it — which says it better than a sentence could. */}
       <Row
         label="Sounds"
-        note="Clicks as you tap, and short tones when something saves."
         control={
           <Toggle
             on={prefs.sounds}
@@ -453,13 +457,12 @@ function Appearance({ settings }: { settings: SettingsRecord }) {
         }
       />
 
+      {/* A note only when it will not work. "A gentle tick as you tap" is the
+          label again; "this does nothing here" is the one thing you could not
+          have guessed by looking at it. */}
       <Row
         label="Haptics"
-        note={
-          canBuzz
-            ? 'A gentle tick as you tap, firmer when something saves or is deleted.'
-            : 'This browser has no vibration support, so this does nothing here.'
-        }
+        note={canBuzz ? undefined : 'This browser has no vibration, so this does nothing.'}
         control={
           <Toggle
             on={prefs.haptics}
@@ -531,7 +534,6 @@ function LockCard({
     <Card title="Lock">
       <Row
         label="Unlock with biometrics"
-        note="Ask for your fingerprint or face before the app opens."
         control={
           <Toggle
             on={on}
@@ -542,10 +544,13 @@ function LockCard({
           />
         }
       />
+      {/* This one stays and stays long. It is the difference between a lock
+          and a safe, and someone who reads it wrong plans around a promise the
+          app cannot keep. */}
       <p className="hint">
-        This locks the app, not the data. What you've saved is stored unencrypted, the way every
-        browser database is — so the lock stops someone picking up your phone, not someone with
-        your phone and a laptop.
+        This locks the app, not the data — what you've saved is stored unencrypted, like any
+        browser database. It stops someone picking up your phone, not someone with your phone and
+        a laptop.
       </p>
     </Card>
   );
@@ -562,11 +567,11 @@ function YourHome({
 }) {
   return (
     <Card title="Your home">
-      {/* Used in exactly one place — the greeting on the dashboard — so the
-          note says so rather than implying an account exists. */}
+      {/* Kept, because the question it answers is "am I making an account".
+          Four words is enough to say no. */}
       <Row
         label="Your name"
-        note="What the dashboard calls you. Leave it empty for a plain greeting."
+        note="Only used in the greeting."
         control={
           <input
             type="text"
@@ -585,15 +590,13 @@ function YourHome({
         }
       />
 
-      <Row
-        label="Rooms"
-        note="Add, rename and reorder the rooms items live in."
-        onClick={onOpenRooms}
-      />
+      <Row label="Rooms" onClick={onOpenRooms} />
 
+      {/* Relabelled rather than explained. "Items open" needed a sentence to
+          say what it meant, which is a label doing its job badly — and the two
+          options finish the sentence on their own. */}
       <SegRow
-        label="Items open"
-        note="Whether rooms start shut or already showing what's inside."
+        label="Rooms start"
         value={prefsFrom(settings).roomsView}
         options={[
           { value: 'collapsed', label: 'Collapsed' },
@@ -602,9 +605,11 @@ function YourHome({
         onChange={(v) => setPref('roomsView', v as RoomsView)}
       />
 
+      {/* Left in because it stops a fair worry: changing this does not go back
+          and rewrite what you have already saved. */}
       <Row
         label="Currency"
-        note="Used for new items. Each item keeps what it was saved with."
+        note="New items only."
         control={
           <Pick
             value={settings.currency}
@@ -620,7 +625,6 @@ function YourHome({
 
       <SegRow
         label="Warn me before a warranty ends"
-        note="How much notice you want on the home screen."
         value={settings.reminderOffsetsDays[0] ?? 30}
         options={REMINDER_CHOICES.map((r) => ({ value: r.days, label: r.label }))}
         onChange={(days) => db.settings.update('singleton', { reminderOffsetsDays: [days] })}
@@ -715,7 +719,7 @@ function Reminders({
           */}
           <small>
             {state === 'ready' || on
-              ? 'Warranties running out, documents to renew, and any subscription you asked about. Only the dates leave your phone — never what the reminder is about.'
+              ? 'Told on the day, with the app closed. Only the dates leave your phone — never what the reminder is about.'
               : VERDICT_COPY[state]}
           </small>
         </span>
@@ -864,8 +868,7 @@ function Backup({
           to two buttons; as a segmented row at the top it's the question the
           card is really asking. */}
       <p className="hint remindhint">
-        Nothing syncs anywhere, so a backup only exists if you make one. How
-        often should Scout nudge you?
+        Nothing syncs anywhere, so a backup only exists if you make one.
       </p>
       <div className="seg four">
         {BACKUP_REMINDER_CHOICES.map((b) => (
@@ -1199,7 +1202,7 @@ function Support({ settings, focus }: { settings: SettingsRecord; focus?: boolea
       */}
       <SegRow
         label="Remind me again"
-        note="Venmo can't schedule a payment from a link, so nothing is charged automatically — Stash it just asks again."
+        note="Nothing is charged automatically. Stash it just asks."
         value={cadence}
         options={[
           { value: 'never' as TipCadence, label: 'Never' },
@@ -1236,8 +1239,7 @@ function Support({ settings, focus }: { settings: SettingsRecord; focus?: boolea
       </a>
 
       <p className="hint">
-        Opens Venmo with the amount filled in — you confirm it there. Marked private, so it doesn't
-        appear in anyone's feed.
+        You confirm the payment in Venmo. Marked private, so it isn't in anyone's feed.
       </p>
     </section>
   );
@@ -1297,14 +1299,17 @@ function AboutApp({
   return (
     <Card title="Stash it">
       {offer !== 'none' && (
+        /* The instructions stay where there is no button to press; the data
+           point stays everywhere, because "installing protects your data" is
+           the reason to bother and nobody knows it. */
         <Row
           label="Add to home screen"
           note={
             offer === 'native'
-              ? 'Opens full screen, and makes the browser far less willing to clear your data.'
+              ? 'Also makes the browser far less willing to clear your data.'
               : offer === 'ios'
-                ? 'In Safari, tap Share then Add to Home Screen. That also protects your data.'
-                : 'From the browser menu, choose Add to Home screen. That also protects your data.'
+                ? 'Safari: Share, then Add to Home Screen. Also protects your data.'
+                : 'Browser menu, then Add to Home screen. Also protects your data.'
           }
           control={
             offer === 'native' ? (
@@ -1318,7 +1323,6 @@ function AboutApp({
 
       <Row
         label="Take the tour"
-        note="A few short screens on what the app does. Nothing changes by watching it."
         onClick={onTour}
       />
 
@@ -1331,7 +1335,6 @@ function AboutApp({
       */}
       <Row
         label="Privacy policy"
-        note="What stays on this phone, and the two things that don't."
         onClick={() => {
           feedback('nav');
           window.open(`${__SITE_PATH__}privacy.html`, '_blank', 'noopener');
@@ -1344,21 +1347,21 @@ function AboutApp({
         of infrastructure that's certain to exist. It also means they see the
         whole message, context line included, before anything is sent.
       */}
+      {/* One of the three says the mail app opens. Saying it on all three is
+          the app repeating itself down a column. */}
       <Row
         label="Ask a question"
-        note="Opens your mail app, addressed and with the version filled in."
+        note="Opens your mail app."
         onClick={() => writeIn('question')}
       />
 
       <Row
         label="Suggest a feature"
-        note="What should it do that it doesn't? Every version so far came from someone asking."
         onClick={() => writeIn('idea')}
       />
 
       <Row
         label="Report something broken"
-        note="What happened, and what you expected instead."
         onClick={() => writeIn('bug')}
       />
 
@@ -1452,7 +1455,7 @@ function Developer({
     >
       <Row
         label="Pro unlock"
-        note={`Lifts the ${FREE_ITEM_LIMIT}-record cap. Currently ${count} saved, counting items, subscriptions and documents.`}
+        note={`Lifts the ${FREE_ITEM_LIMIT}-record cap. ${count} saved.`}
         control={
           <Toggle
             on={settings.entitlements.proUnlock}
@@ -1484,7 +1487,7 @@ function Developer({
       */}
       <Row
         label="Preview the reminders"
-        note="Puts the backup, warranty and tip cards on the dashboard as samples. Leaving the dashboard clears them; nothing is saved."
+        note="Samples on the dashboard. Leaving it clears them."
         control={
           <button
             type="button"
