@@ -310,6 +310,38 @@ function calendarCell() {
   return out;
 }
 
+/**
+ * A field pair has to carry its own bottom margin.
+ *
+ * The two fields inside one are deliberately zeroed — see `pairMargins` above,
+ * and the long note in the stylesheet about the four reports it took to find
+ * that. Zeroing them leaves the pair itself with nothing, and the spacing
+ * rules in the form card only cover the case where the NEXT thing is another
+ * field. Anything else sits against it, and a `.hint` sits six pixels over it,
+ * because hints carry a negative top margin to tuck under a heading.
+ *
+ * Which is the same bug as the one above wearing a different hat: spacing that
+ * belongs to a component, deleted from the component, and not put back.
+ */
+function pairSpacing() {
+  for (const sheet of SHEETS) {
+    let css;
+    try {
+      css = readFileSync(sheet, 'utf8');
+    } catch {
+      continue;
+    }
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    for (const m of code.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!/^\s*\.fieldpair\s*$/.test(m[1])) continue;
+      const decl = m[2].match(/(^|[;\s])margin-bottom\s*:\s*(\d+(?:\.\d+)?)px/);
+      if (decl && parseFloat(decl[2]) > 0) return [];
+      return ['.fieldpair has no bottom margin of its own'];
+    }
+  }
+  return ['no .fieldpair rule at all'];
+}
+
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -412,6 +444,7 @@ const resized = scoutHeight();
 const squeezed = subgridMinWidth();
 const shifted = pairMargins();
 const tall = calendarCell();
+const squashed = pairSpacing();
 
 if (missing.size === 0) {
   console.log(`PASS  every class in src has a rule  — ${defined.size} defined`);
@@ -479,6 +512,16 @@ if (tall.length === 0) {
   }
 }
 
+if (squashed.length === 0) {
+  console.log('PASS  a field pair keeps the space beneath it');
+} else {
+  for (const what of squashed) {
+    console.log(`FAIL  ${what}`);
+    console.log('      Its fields are zeroed on purpose, so the pair has to carry the 14px.');
+    console.log('      Without it a .hint below lands ON the inputs — its top margin is -6px.');
+  }
+}
+
 const failures =
   missing.size +
   doubled.length +
@@ -486,6 +529,7 @@ const failures =
   resized.length +
   squeezed.length +
   shifted.length +
-  tall.length;
+  tall.length +
+  squashed.length;
 console.log(failures === 0 ? '\nall green' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

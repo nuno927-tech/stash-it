@@ -1572,6 +1572,21 @@ select.compact {
   grid-template-rows: auto auto;
   gap: 12px;
   /*
+    THE PAIR OWNS THE SPACE BENEATH IT, and it had none.
+
+    A lone `.field` carries `margin-bottom: 14px`. Inside a pair both fields
+    are zeroed — correctly, by the four-class reset further down — and nothing
+    ever put that 14px back on the pair itself. So a pair had no bottom margin
+    at all, and the spacing rules only cover what follows when the next thing
+    is another field.
+
+    Anything else landed against it. A `.hint` landed *over* it: hints carry
+    -6px of top margin so they tuck under a heading, and with nothing to
+    collapse against, -6px is just six pixels of overlap. "Call it" and "Whose"
+    against the privacy line on the document form.
+  */
+  margin-bottom: 14px;
+  /*
     No `align-items: start`. It was here and it silently undid the whole thing:
     a subgrid child has to be stretched to take part in its parent's rows, and
     `start` shrinks it to its own content instead. The rows then collapse per
@@ -3032,6 +3047,21 @@ button.countpill.tappill:active {
 .fieldpair.fieldpair > .field.field {
   margin-top: 0;
   margin-bottom: 0;
+}
+
+/*
+  A hint after a control, rather than after a heading.
+
+  `.hint` is built to sit under a title — the -6px pulls it up against the
+  words it belongs to. Under an input that same -6px is pulling it into the
+  field above, so inside a form card it gets the ordinary gap instead. The
+  three selectors are the three things a hint actually follows here: a field,
+  a pair of them, and a segmented control.
+*/
+.formcard .field + .hint,
+.formcard .fieldpair + .hint,
+.formcard .seg + .hint {
+  margin-top: 13px;
 }
 
 /* Why the save button is grey. A disabled control with no explanation is a
