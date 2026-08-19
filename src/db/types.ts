@@ -285,6 +285,19 @@ export const PAPER_KINDS = [
   'insurance',
   'certification',
   'membership',
+  /*
+    The pet ones are two kinds rather than one, because they are two documents
+    with two dates and two consequences. A licence lapsing is a fine; a booster
+    lapsing is a dog turned away at the kennel the morning you fly.
+  */
+  'petlicence',
+  'petvaccine',
+  /*
+    A voucher is the odd one here and earns its place anyway: it is money that
+    stops being money on a date, nobody else is tracking it, and the failure is
+    silent and total.
+  */
+  'voucher',
   'other',
 ] as const;
 

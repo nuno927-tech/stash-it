@@ -38,6 +38,9 @@ export const KIND_LABEL: Record<PaperKind, string> = {
   insurance: 'Insurance',
   certification: 'Certification',
   membership: 'Membership',
+  petlicence: 'Pet licence',
+  petvaccine: 'Pet vaccination',
+  voucher: 'Gift card',
   other: 'Other',
 };
 
@@ -62,6 +65,20 @@ export const DEFAULT_LEAD_DAYS: Record<PaperKind, number> = {
   insurance: 30,
   certification: 90,
   membership: 30,
+  /*
+    A month for both. A pet licence renews online in five minutes, and a
+    booster needs an appointment — which is the longer of the two jobs, but
+    vets book a fortnight out at worst and a reminder further ahead than that
+    is one you have forgotten by the time it matters.
+  */
+  petlicence: 30,
+  petvaccine: 30,
+  /*
+    Thirty, and it is a spending deadline rather than an admin one. Further
+    out and it is noted and forgotten; this is close enough that "use it" is a
+    thing you can act on this month.
+  */
+  voucher: 30,
   other: 30,
 };
 

@@ -81,6 +81,34 @@ const GLYPH: Record<PaperKind, React.ReactNode> = {
       <path d="M6.4 9.6v4.8M9 9.6v4.8M11.6 9.6v4.8M15 9.6v4.8M17.6 9.6v4.8" />
     </>
   ),
+  // A paw. The one shape that says "pet" before any label is read.
+  petlicence: (
+    <>
+      <ellipse cx="12" cy="16.2" rx="4.2" ry="3.2" />
+      <circle cx="7.2" cy="10.6" r="1.7" />
+      <circle cx="10.5" cy="8.6" r="1.8" />
+      <circle cx="13.5" cy="8.6" r="1.8" />
+      <circle cx="16.8" cy="10.6" r="1.7" />
+    </>
+  ),
+  // A syringe. Read alone it could be anyone's jab; the label says whose.
+  petvaccine: (
+    <>
+      <rect x="8.6" y="5.6" width="6.8" height="10.8" rx="1.2" />
+      <path d="M12 5.6V2.9M9.8 2.9h4.4" />
+      <path d="M12 16.4V21" />
+      <path d="M9.4 8.6h2M9.4 11.4h2M9.4 14.2h2" />
+    </>
+  ),
+  // A card with a ribbon and a bow — a gift card, at a glance.
+  voucher: (
+    <>
+      <rect x="2.8" y="7" width="18.4" height="12" rx="2" />
+      <path d="M12 7v12" />
+      <circle cx="10.4" cy="5.4" r="1.5" />
+      <circle cx="13.6" cy="5.4" r="1.5" />
+    </>
+  ),
   // A plain sheet with a folded corner.
   other: (
     <>

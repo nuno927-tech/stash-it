@@ -66,8 +66,8 @@ export function Papers({
           <Scout pose="clipboard" height={170} motion={['float']} shadow alt="" />
           <h3>Nothing tracked yet</h3>
           <p>
-            Passports, IDs, licences. Scout will tell you when to start renewing, not when it's
-            already too late.
+            Passports, IDs, the dog's booster, the gift card in the drawer. Scout will tell you
+            when to start renewing, not when it's already too late.
           </p>
           <p>General info and dates only, because your privacy matters.</p>
         </div>
