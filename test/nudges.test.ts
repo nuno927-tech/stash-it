@@ -163,7 +163,7 @@ function main() {
   check('several read as plural', many?.title === '4 warranties end within 30 days', many?.title);
   check(
     'the window quoted is the one that was set',
-    warrantyNudge({ endingSoon: 2, days: 90 })?.title.includes('90 days'),
+    warrantyNudge({ endingSoon: 2, days: 90 })?.title.includes('90 days') === true,
   );
 
   /* ------------------------------------------------------------- the tip */

@@ -11,7 +11,7 @@
 import 'fake-indexeddb/auto';
 import { db, ensureFirstRun } from '@/db/db';
 import { DocValidationError, assertDocValid, createDoc, putBlob } from '@/db/repo';
-import { saveNewItem, emptyForm } from '@/lib/addItem';
+import { blankCoverage, saveNewItem, emptyForm } from '@/lib/addItem';
 import {
   attachFile,
   attachLink,
@@ -46,7 +46,12 @@ async function main() {
   await ensureFirstRun();
   const property = (await db.properties.toArray())[0]!;
   const itemId = await saveNewItem(
-    { ...emptyForm('USD'), name: 'Bosch Dishwasher', warrantyAmount: '24', purchaseDate: '2026-01-10' },
+    {
+      ...emptyForm('USD'),
+      name: 'Bosch Dishwasher',
+      purchaseDate: '2026-01-10',
+      coverages: [blankCoverage({ unit: 'months', amount: '24' })],
+    },
     property.id,
   );
 

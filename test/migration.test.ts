@@ -151,7 +151,7 @@ async function main() {
 
   const upgraded = (await db.items.get('i1')) as (Record<string, unknown> & { name: string }) | undefined;
   check('the item survives', upgraded?.name === 'Bosch Dishwasher', String(upgraded?.name));
-  check('category is gone from the record', upgraded && !('category' in upgraded));
+  check('category is gone from the record', !!upgraded && !('category' in upgraded));
   check('its schema version moves to 2', upgraded?.schemaVersion === SCHEMA_VERSION);
   check('everything else is intact', upgraded?.purchasePriceCents === 84900);
   check(

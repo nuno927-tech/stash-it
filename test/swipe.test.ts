@@ -44,9 +44,15 @@ const W = 390; // a common phone width
   does this carry the attribute, and what is its parent. Building it by hand
   keeps this file free of a DOM implementation for one function.
 */
-type Node = { hasAttribute: (n: string) => boolean; parentElement: Node | null };
-const fakeRoot = (): Node => ({ hasAttribute: () => false, parentElement: null });
-const fakeNode = (owns: boolean): Node => {
+type Stub = { hasAttribute: (n: string) => boolean; parentElement: Stub | null };
+
+/* `ownsItsSwipe` is typed against Element because that is what it gets in the
+   app. The stub is two methods wide on purpose — the cast is the price of not
+   pulling a DOM implementation into this file for one function. */
+const asElement = (stub: Stub): Element => stub as unknown as Element;
+
+const fakeRoot = (): Stub => ({ hasAttribute: () => false, parentElement: null });
+const fakeNode = (owns: boolean): Stub => {
   const root = fakeRoot();
   const row = { hasAttribute: (n: string) => owns && n === OWNS_SWIPE, parentElement: root };
   return { hasAttribute: () => false, parentElement: row };
@@ -199,7 +205,8 @@ function main() {
   */
   check(
     'a row that owns its swipe is left alone',
-    ownsItsSwipe(fakeNode(true), fakeRoot()) && !ownsItsSwipe(fakeNode(false), fakeRoot()),
+    ownsItsSwipe(asElement(fakeNode(true)), asElement(fakeRoot())) &&
+      !ownsItsSwipe(asElement(fakeNode(false)), asElement(fakeRoot())),
   );
 
   check('the row never travels past the button', rowOffset(-400, false) === -ROW_REVEAL);

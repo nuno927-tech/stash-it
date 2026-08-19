@@ -53,9 +53,9 @@ const items: Item[] = [
     model: 'DWE7491RS',
     roomId: 'r-garage',
   }),
-  item({ name: 'Séries 8 Oven', brand: 'Bosch', roomId: 'r-kitchen', category: 'appliance' }),
+  item({ name: 'Séries 8 Oven', brand: 'Bosch', roomId: 'r-kitchen' }),
   item({ name: 'Deleted Thing', deletedAt: ts }),
-  item({ name: 'Kitchen Scales', category: 'other' }),
+  item({ name: 'Kitchen Scales' }),
 ];
 
 const docs: Doc[] = [

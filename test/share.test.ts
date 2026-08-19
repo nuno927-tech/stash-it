@@ -29,7 +29,16 @@ function abort(): Promise<never> {
 async function main() {
   /* ------------------------------------------------------- the happy path */
 
+  /*
+    Read through a function, not directly.
+
+    TypeScript cannot see that an async callback ran, so it narrows `shared`
+    back to `null` at every check below and each property read lands on
+    `never`. A getter returns the declared type instead — which is also more
+    honest about what is being asserted: the last thing the fake share saw.
+  */
   let shared: { title: string; text: string; url: string } | null = null;
+  const lastShared = () => shared;
   const withShare: ShareDeps = {
     share: async (d) => {
       shared = d;
@@ -40,9 +49,9 @@ async function main() {
   };
 
   check('the share sheet is preferred', (await shareApp(URL_, withShare)) === 'shared');
-  check('the URL is passed along', shared !== null && shared!.url === URL_);
-  check('so is a description', shared !== null && shared!.text === SHARE_TEXT);
-  check('and a title', shared !== null && shared!.title === 'Stash it');
+  check('the URL is passed along', lastShared()?.url === URL_);
+  check('so is a description', lastShared()?.text === SHARE_TEXT);
+  check('and a title', lastShared()?.title === 'Stash it');
 
   /* ----------------------------------------------------- no share support */
 
