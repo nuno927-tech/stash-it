@@ -142,6 +142,9 @@ export function Settings({
      because that note is what sent them there. */
   const [costs, setCosts] = useState(false);
   const [toJar, setToJar] = useState(false);
+  /* Stable, so the scroll effect in Support depends on the flag and not on a
+     fresh arrow arriving with every render. */
+  const jarDone = useCallback(() => setToJar(false), []);
 
   if (!settings) return null;
 
@@ -209,7 +212,7 @@ export function Settings({
         onEnabled={() => !settings.pushCostShownAt && setCosts(true)}
       />
       <AboutApp onNotice={setNotice} onTour={onTour} />
-      <Support settings={settings} focus={toJar} />
+      <Support settings={settings} focus={toJar} onFocused={jarDone} />
 
       {costs && (
         <RunningCosts
@@ -1126,7 +1129,34 @@ function describe(r: RestoreResult): string {
  * which is also why the monthly option is a reminder rather than a standing
  * order. See src/lib/donate.ts.
  */
-function Support({ settings, focus }: { settings: SettingsRecord; focus?: boolean }) {
+function Support({
+  settings,
+  focus,
+  onFocused,
+}: {
+  settings: SettingsRecord;
+  focus?: boolean;
+  /** Fired once the jar has been scrolled to, so it only happens once. */
+  onFocused?: () => void;
+}) {
+  /*
+    AN EFFECT, NOT AN INLINE REF, and the difference was a bug.
+
+    A ref written as an inline arrow gets a new identity every render, so React
+    tears it down and sets it up again each time — which meant scrolling here
+    fired on every single re-render of Settings while the flag was up, and the
+    flag was never lowered. Flip any toggle, edit your name, dismiss a notice,
+    and the page yanked itself back to the Venmo button.
+
+    Keyed on `focus` and cleared the moment it has done its job.
+  */
+  const jar = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (!focus || !jar.current) return;
+    jar.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    onFocused?.();
+  }, [focus, onFocused]);
+
   /*
     The old boolean, read once. Anyone who had "Make it monthly" switched on
     before this became a three-way choice keeps their reminder rather than
@@ -1221,14 +1251,12 @@ function Support({ settings, focus }: { settings: SettingsRecord; focus?: boolea
 
       {/* An anchor, not a button: it leaves the app, and the long-press menu
           that gives — copy the link, open in a new tab — is worth keeping. */}
+      {/* Arrived here from the running-costs note, which promised a tip jar.
+          Landing at the top of Settings instead is how a person concludes the
+          button did nothing — see the effect above. */}
       <a
+        ref={jar}
         className="btn wide"
-        ref={(el) => {
-          // Arrived here from the running-costs note, which promised a tip jar.
-          // Landing at the top of Settings instead is how a person concludes
-          // the button did nothing.
-          if (focus && el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }}
         href={venmoUrl({ amount: picked.amount, note: picked.note, cadence })}
         target="_blank"
         rel="noreferrer"
