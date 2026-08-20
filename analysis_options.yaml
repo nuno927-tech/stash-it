@@ -1,0 +1,14 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # The port carries a lot of prose. Comments explaining why something is the
+    # way it is are the point of this codebase, not clutter to be linted away.
+    - prefer_final_locals
+    - unnecessary_this
+    - avoid_relative_lib_imports

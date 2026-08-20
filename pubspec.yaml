@@ -1,0 +1,25 @@
+name: stash_it
+description: >-
+  Warranties, documents and subscriptions — every date you'd rather not miss.
+  Phase 1: the logic, headless.
+publish_to: none
+version: 0.1.0
+
+# A plain Dart package on purpose, not a Flutter one.
+#
+# Phase 1 is arithmetic and assertions. Nothing here touches a widget, so
+# depending on the Flutter SDK would buy nothing and would mean `dart test`
+# needed a Flutter toolchain to run. As written it needs the Dart SDK alone —
+# which is inside Flutter anyway, so nobody has to install anything twice.
+#
+# When phase 3 brings the UI, this file gains a `flutter:` dependency and the
+# package becomes a Flutter one. That is three lines, later.
+environment:
+  sdk: ^3.5.0
+
+dev_dependencies:
+  test: ^1.25.0
+  # A range rather than a caret: this was written without a Dart SDK to
+  # resolve against, and a pub failure on a lint package would block the one
+  # thing phase 1 is for.
+  lints: '>=4.0.0 <6.0.0'
