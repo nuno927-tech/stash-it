@@ -9,7 +9,10 @@
 /// effect whatsoever. A setting that writes to the database and changes
 /// nothing is worse than a missing feature: it looks answered.
 ///
-/// ── Six assertions from the web suite are deliberately not here ───────────
+/// ── Assertions from the web suite that are deliberately not here ──────────
+/// Four tested the tip jar, which is dropped from the port on request — see
+/// the note in nudges.dart.
+///
 /// Three tested `nudgeClass`, which built a CSS class list. Flutter has no
 /// global style namespace for a kind name to collide in, so the function is
 /// gone and its guard is not needed — see the note in nudges.dart.
@@ -37,15 +40,11 @@ Settings settings({
   List<int> reminderOffsetsDays = const [30],
   DateTime? lastBackupAt,
   int backupReminderDays = 30,
-  bool donateMonthly = false,
-  DateTime? donateLastAt,
 }) =>
     Settings(
       reminderOffsetsDays: reminderOffsetsDays,
       lastBackupAt: lastBackupAt,
       backupReminderDays: backupReminderDays,
-      donateMonthly: donateMonthly,
-      donateLastAt: donateLastAt,
     );
 
 void main() {
@@ -247,45 +246,17 @@ void main() {
     });
   });
 
-  group('the tip', () {
-    test('a one-off tip never nags', () {
-      expect(tipNudge(monthly: false, lastAt: daysAgo(400), now: now), isNull);
-    });
-
-    test('a monthly one waits its month', () {
-      expect(tipNudge(monthly: true, lastAt: daysAgo(10), now: now), isNull);
-    });
-
-    test('then asks', () {
-      expect(tipNudge(monthly: true, lastAt: daysAgo(31), now: now), isNotNull);
-    });
-
-    test('monthly with no history asks now', () {
-      expect(tipNudge(monthly: true, now: now), isNotNull);
-    });
-  });
-
   group('all of it', () {
-    test('all three can be due at once, in the order that matters', () {
+    test('both can be due at once, in the order that matters', () {
       final all = dueNudges(
-        settings: settings(
-          lastBackupAt: daysAgo(60),
-          donateMonthly: true,
-          donateLastAt: daysAgo(60),
-        ),
+        settings: settings(lastBackupAt: daysAgo(60)),
         itemCount: 9,
         endingSoon: 2,
         now: now,
       );
 
-      expect(all.length, 3);
-      // Backup leads — it is the one that can cost you data. The tip is last,
-      // being the one that asks rather than offers.
-      expect(all.map((n) => n.kind), [
-        NudgeKind.backup,
-        NudgeKind.warranty,
-        NudgeKind.tip,
-      ]);
+      // Backup leads — it is the one where waiting can cost you data.
+      expect(all.map((n) => n.kind), [NudgeKind.backup, NudgeKind.warranty]);
     });
 
     test('a tidy collection says nothing', () {
@@ -340,11 +311,7 @@ void main() {
 
     test('the developer preview has one of each, and they are the real ones', () {
       final samples = sampleNudges(now);
-      expect(samples.map((n) => n.kind), [
-        NudgeKind.backup,
-        NudgeKind.warranty,
-        NudgeKind.tip,
-      ]);
+      expect(samples.map((n) => n.kind), [NudgeKind.backup, NudgeKind.warranty]);
       for (final n in samples) {
         expect(n.title, isNotEmpty);
         expect(n.body, isNotEmpty);

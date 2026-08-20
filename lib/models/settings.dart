@@ -25,18 +25,66 @@
 /// outside.
 library;
 
+/// What has been paid for.
+///
+/// `proUnlock` lifts the item cap and turns on reminders that arrive while the
+/// app is closed. `source` records which store said so, because a receipt from
+/// Play means nothing to the App Store and the app has to be able to tell a
+/// user why their purchase is not showing on a second device.
+class Entitlements {
+  const Entitlements({
+    this.proUnlock = false,
+    this.reportUnlock = false,
+    this.source,
+    this.verifiedAt,
+  });
+
+  final bool proUnlock;
+  final bool reportUnlock;
+  final String? source;
+  final DateTime? verifiedAt;
+}
+
+enum ThemeChoice { system, light, dark }
+
+/// How the Items list opens: rooms shut, or everything on show.
+enum RoomsView { collapsed, expanded }
+
 class Settings {
   const Settings({
     this.reminderOffsetsDays = const [30],
     this.currency = 'USD',
     this.lastBackupAt,
     this.backupReminderDays = 30,
-    this.donateMonthly = false,
-    this.donateLastAt,
+    this.entitlements = const Entitlements(),
     this.devModeEnabled = false,
     this.displayName,
     this.onboardedAt,
+    this.theme,
+    this.sounds,
+    this.haptics,
+    this.roomsView,
+    this.biometricLock,
   });
+
+  final Entitlements entitlements;
+
+  /*
+    Preferences, all nullable.
+
+    Null is not "off" — it is "this record was written before the preference
+    existed, and has no opinion". Read them through `prefsFrom` in
+    logic/prefs.dart, which supplies the defaults, rather than touching them
+    directly. That is deliberately cheaper than a schema migration: an older
+    build reading a newer record simply ignores what it does not recognise.
+  */
+  final ThemeChoice? theme;
+  final bool? sounds;
+  final bool? haptics;
+  final RoomsView? roomsView;
+
+  /// Ask for a fingerprint or face check before the app opens.
+  final bool? biometricLock;
 
   /// How much notice to give before cover ends. A list because the web schema
   /// allowed several offsets; only the first is read, and always has been.
@@ -52,11 +100,6 @@ class Settings {
   /// "every zero days".
   final int backupReminderDays;
 
-  /// The tip jar. Venmo cannot schedule a payment from a link, so "monthly"
-  /// was only ever a reminder the app gives itself.
-  final bool donateMonthly;
-  final DateTime? donateLastAt;
-
   final bool devModeEnabled;
 
   /// What the greeting calls you. Empty means asked and declined, which is a
@@ -71,21 +114,29 @@ class Settings {
     String? currency,
     DateTime? lastBackupAt,
     int? backupReminderDays,
-    bool? donateMonthly,
-    DateTime? donateLastAt,
+    Entitlements? entitlements,
     bool? devModeEnabled,
     String? displayName,
     DateTime? onboardedAt,
+    ThemeChoice? theme,
+    bool? sounds,
+    bool? haptics,
+    RoomsView? roomsView,
+    bool? biometricLock,
   }) =>
       Settings(
         reminderOffsetsDays: reminderOffsetsDays ?? this.reminderOffsetsDays,
         currency: currency ?? this.currency,
         lastBackupAt: lastBackupAt ?? this.lastBackupAt,
         backupReminderDays: backupReminderDays ?? this.backupReminderDays,
-        donateMonthly: donateMonthly ?? this.donateMonthly,
-        donateLastAt: donateLastAt ?? this.donateLastAt,
+        entitlements: entitlements ?? this.entitlements,
         devModeEnabled: devModeEnabled ?? this.devModeEnabled,
         displayName: displayName ?? this.displayName,
         onboardedAt: onboardedAt ?? this.onboardedAt,
+        theme: theme ?? this.theme,
+        sounds: sounds ?? this.sounds,
+        haptics: haptics ?? this.haptics,
+        roomsView: roomsView ?? this.roomsView,
+        biometricLock: biometricLock ?? this.biometricLock,
       );
 }

@@ -49,7 +49,7 @@ library;
 import '../models/settings.dart';
 import 'warranty.dart' show defaultEndingSoonDays;
 
-enum NudgeKind { backup, warranty, tip }
+enum NudgeKind { backup, warranty }
 
 class Nudge {
   const Nudge({
@@ -209,29 +209,22 @@ Nudge? warrantyNudge({required int endingSoon, required int days}) {
   );
 }
 
-/// The tip jar, if it was set to monthly.
-///
-/// Venmo cannot schedule a payment from a link, so "monthly" was only ever a
-/// reminder the app gives itself. This is that reminder.
-Nudge? tipNudge({required bool monthly, DateTime? lastAt, DateTime? now}) {
-  if (!monthly) return null;
+/*
+  ── The tip jar is not here, and that is a product decision ────────────────
 
-  final since = _daysSince(lastAt, now ?? DateTime.now());
-  if (since != null && since < 30) return null;
+  The web app had a third nudge: a monthly reminder to drop something in a
+  Venmo link, because Venmo cannot schedule a payment and "monthly" was only
+  ever a reminder the app gave itself.
 
-  return const Nudge(
-    kind: NudgeKind.tip,
-    title: 'Your monthly tip is due',
-    body: 'You asked to be reminded. Ignoring it is a perfectly good answer — '
-        'nothing changes either way.',
-    action: 'Open Venmo',
-  );
-}
+  It is dropped from the port, on request. It was also the odd one out on its
+  own terms — the two above offer you something, and this one asked. With a
+  paid tier in the plan, an app that charges and also passes a hat is asking
+  the same person twice for the same thing.
+*/
 
 /// Everything worth saying today, in the order it matters.
 ///
-/// Backup first: it is the only one where waiting can cost you data. The tip is
-/// last, because it is the one asking rather than offering.
+/// Backup first: it is the only one where waiting can cost you data.
 List<Nudge> dueNudges({
   Settings? settings,
   required int itemCount,
@@ -241,17 +234,14 @@ List<Nudge> dueNudges({
   final s = settings;
   if (s == null) return [];
 
-  final at = now ?? DateTime.now();
-
   return [
     backupNudge(
       lastBackupAt: s.lastBackupAt,
       everyDays: s.backupReminderDays,
       itemCount: itemCount,
-      now: at,
+      now: now ?? DateTime.now(),
     ),
     warrantyNudge(endingSoon: endingSoon, days: endingSoonDays(s)),
-    tipNudge(monthly: s.donateMonthly, lastAt: s.donateLastAt, now: at),
   ].whereType<Nudge>().toList();
 }
 
@@ -282,9 +272,7 @@ List<Nudge> sampleNudges([DateTime? now]) {
   final longAgo = at.subtract(const Duration(days: 120));
 
   return [
-    backupNudge(
-        lastBackupAt: longAgo, everyDays: 30, itemCount: 12, now: at)!,
+    backupNudge(lastBackupAt: longAgo, everyDays: 30, itemCount: 12, now: at)!,
     warrantyNudge(endingSoon: 3, days: 30)!,
-    tipNudge(monthly: true, lastAt: longAgo, now: at)!,
   ];
 }
