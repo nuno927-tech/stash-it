@@ -149,6 +149,42 @@ DueWithin dueWithin(List<Subscription> subs, int days, [DateTime? now]) {
 double dailyCents(List<Subscription> subs) =>
     ((totalYearlyCents(subs) / 365.25) * 100).round() / 100;
 
+/* --------------------------------------------------------------- reminders */
+
+/// Days before renewal a reminder can be set for. `0` means none.
+const List<int> remindChoices = [0, 1, 3, 7];
+
+/// Whether this subscription wants to be mentioned right now.
+///
+/// "Right now" means the next time the app is opened, because on the web that
+/// was the only moment it could say anything: there was no server and nothing
+/// ran while the app was closed. Every word around this setting was written to
+/// be honest about that.
+///
+/// **This is one of the promises the port can finally keep.** A native app has
+/// a real scheduler, so in phase 5 this becomes a notification that arrives
+/// whether the app is open or not. The predicate does not change — what
+/// changes is that something other than a screen render can ask it.
+///
+/// `remindDays` null or 0 both mean no reminder, which is the default: nine
+/// monthly services would otherwise be nine notifications a month for money
+/// that leaves whether you are told or not.
+bool reminderDue(Subscription sub, [DateTime? now]) {
+  final want = sub.remindDays;
+  if (want == null || want == 0) return false;
+  final days = daysUntilRenewal(sub, now);
+  if (days == null) return false;
+  return days >= 0 && days <= want;
+}
+
+/// Everything that wants mentioning, soonest first.
+List<Subscription> dueReminders(List<Subscription> subs, [DateTime? now]) {
+  final out = subs.where((s) => reminderDue(s, now)).toList();
+  out.sort((a, b) =>
+      (daysUntilRenewal(a, now) ?? 0) - (daysUntilRenewal(b, now) ?? 0));
+  return out;
+}
+
 /// Every renewal between two dates, inclusive.
 ///
 /// Steps by asking `nextRenewal` again from the day after each hit rather than

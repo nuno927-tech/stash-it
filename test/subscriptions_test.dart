@@ -267,6 +267,55 @@ void main() {
     });
   });
 
+  group('reminders', () {
+    final now = DateTime(2026, 8, 17);
+
+    /*
+      Off by default, and null and zero both mean off. Nine monthly services
+      would otherwise be nine notifications a month about money that leaves
+      whether you are told or not.
+    */
+    test('no reminder is the default', () {
+      expect(reminderDue(sub(anchorDate: '2026-08-22'), now), isFalse);
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 0), now), isFalse);
+    });
+
+    test('inside the window is due', () {
+      // Renews in 5 days.
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 7), now), isTrue);
+    });
+
+    test('outside it is not', () {
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 3), now), isFalse);
+    });
+
+    test('the boundary counts', () {
+      expect(reminderDue(sub(anchorDate: '2026-08-20', remindDays: 3), now), isTrue);
+    });
+
+    test('the day itself counts', () {
+      expect(reminderDue(sub(anchorDate: '2026-08-17', remindDays: 1), now), isTrue);
+    });
+
+    test('an unreadable anchor is not due', () {
+      expect(reminderDue(sub(anchorDate: 'soon', remindDays: 7), now), isFalse);
+    });
+
+    test('what is due comes back soonest first', () {
+      final all = [
+        sub(id: 'later', anchorDate: '2026-08-22', remindDays: 7),
+        sub(id: 'quiet', anchorDate: '2026-08-19'),
+        sub(id: 'sooner', anchorDate: '2026-08-18', remindDays: 7),
+      ];
+      expect(dueReminders(all, now).map((s) => s.id), ['sooner', 'later']);
+    });
+
+    test('zero is one of the offered choices, and means none', () {
+      expect(remindChoices.first, 0);
+      expect(remindChoices, [0, 1, 3, 7]);
+    });
+  });
+
   group('dailyCents', () {
     test('a year of spend, per day', () {
       // $120/year → about 32.85 cents a day.
