@@ -85,6 +85,52 @@ class Warranty {
   final String? url;
 }
 
+/// A room, for grouping items and for searching by one.
+class Room {
+  const Room({
+    required this.id,
+    required this.propertyId,
+    required this.name,
+    this.sortOrder = 0,
+
+    /// True until the user edits this row, so a future version can adjust
+    /// untouched seed rooms without overwriting anyone's names.
+    this.isSeed = false,
+    this.deletedAt,
+  });
+
+  final String id;
+  final String propertyId;
+  final String name;
+  final int sortOrder;
+  final bool isSeed;
+  final DateTime? deletedAt;
+}
+
+/// A file or a link attached to an item — a receipt, a manual, a certificate.
+///
+/// ── Deliberately thin, for now ────────────────────────────────────────────
+/// The web `Doc` also carries a kind, a storage mode, a blob id, a URL and a
+/// link-health check. None of that means anything without a storage layer, and
+/// phase 1 has none. What is here is what search needs: which item it belongs
+/// to, what it is called, and whether it has been deleted.
+///
+/// The rest arrives in phase 2 with Drift, alongside the decision about where
+/// the bytes actually live on a phone.
+class Doc {
+  const Doc({
+    required this.id,
+    required this.itemId,
+    this.title,
+    this.deletedAt,
+  });
+
+  final String id;
+  final String itemId;
+  final String? title;
+  final DateTime? deletedAt;
+}
+
 class Item {
   const Item({
     required this.id,
