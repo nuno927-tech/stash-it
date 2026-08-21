@@ -6,6 +6,13 @@
 /// these grow the annotations then.
 library;
 
+/// The shape of the records, as this build understands them.
+///
+/// Bumped whenever a table or a field changes. A backup carries the version it
+/// was written at, and `logic/bundle.dart` walks it forward — or refuses, if
+/// the file came from a newer build than this one.
+const int schemaVersion = 4;
+
 enum WarrantyUnit { days, months, years }
 
 /// `lifetime` never expires and never counts down. Stored as a unit rather
