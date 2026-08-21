@@ -85,12 +85,59 @@ is the single most likely place for a silent off-by-one.
 
 ```
 lib/
-  models/types.dart      ← src/db/types.ts
-  logic/dates.dart       ← the calendar arithmetic from subscriptions.ts + warranty.ts
-  logic/warranty.dart    ← src/lib/warranty.ts
-test/
-  dates_test.dart
-  warranty_test.dart     ← test/coverage.test.ts, test/units.test.ts
+  models/     ← src/db/types.ts, split by entity
+  logic/      ← src/lib/*.ts, one file each
+test/         ← one suite per logic file
 ```
 
 Files arrive in dependency order. Nothing here imports `package:flutter`.
+
+---
+
+## What is deliberately not being ported
+
+Some of the web app is scaffolding holding up a browser. It has no counterpart
+here, and listing it is as much a part of the port as the translation is —
+otherwise these come back one at a time as "missing features".
+
+**`backstack.ts` — the Android back gesture.** The whole module, and it was the
+single most jarring thing about the PWA on a phone. The app navigates by state
+rather than by URL, so as far as the browser is concerned every screen is the
+same page: the back swipe found nothing to go back to and left the app, from
+the item detail, from the add form, from a full-screen photo. The fix was a
+hand-rolled stack of handlers, one global `popstate` listener, and careful
+bookkeeping so the browser's history depth and ours never disagreed.
+
+Flutter's `Navigator` **is** that stack. Pushing a route gives the gesture
+something to pop, and `PopScope` intercepts when a screen needs to ask first.
+The bug and its 108 lines of fix both disappear.
+
+**The push server.** `push.ts`, `pushSync.ts`, `pushClient.ts`, the Firebase
+function, VAPID keys, the Firestore row per device, the weekly sync and the
+service worker that received a deliberately empty push. All of it existed
+because a browser cannot wake itself. `logic/reminders.dart` keeps the part
+that was ever the feature — which days earn a wake, and what a lock screen is
+allowed to say — and the OS does the rest. See the notes at the top of that
+file.
+
+**`ownsItsSwipe` and `inHorizontalScroller`.** Two DOM tree-walks that decided
+whether a horizontal drag belonged to the shell or to something inside it,
+because a browser delivers one touch to everything at once. Flutter's gesture
+arena resolves that natively.
+
+**`nudgeClass`.** Built a CSS class list, and existed because
+`class="nudge warranty"` collided with an unrelated `.warranty` rule and pushed
+one card's buttons off the screen. There is no global style namespace to
+collide in.
+
+**`sessionStorage` in `devmode.ts`.** A Flutter process is the session.
+
+**The tip jar.** Dropped on request, not for technical reasons.
+
+### And one thing that had to be rewritten rather than dropped
+
+The tour's `notify` step told people that "the only thing that leaves this
+phone is a delivery address and the days something is due". True of web push;
+false here, where nothing leaves at all. Left alone it would have been the
+port's most visible untruth, on the one screen written to earn trust.
+`test/tour_test.dart` now fails if that phrasing returns.
