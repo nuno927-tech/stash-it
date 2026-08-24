@@ -8,7 +8,7 @@
 library;
 
 import 'package:stash_it/logic/devmode.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final start = DateTime(2026, 8, 12, 9);
 

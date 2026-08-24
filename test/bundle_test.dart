@@ -16,7 +16,7 @@ import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/settings.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// A stand-in for a real hash. Deterministic, and sensitive to both the bytes
 /// and their order, which is all the parser needs it to be.

@@ -1,55 +1,71 @@
 name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
-  Phase 1: the logic, headless.
 publish_to: none
 version: 0.1.0
 
-# A plain Dart package on purpose, not a Flutter one.
-#
-# Phase 1 is arithmetic and assertions. Nothing here touches a widget, so
-# depending on the Flutter SDK would buy nothing and would mean `dart test`
-# needed a Flutter toolchain to run. As written it needs the Dart SDK alone —
-# which is inside Flutter anyway, so nobody has to install anything twice.
-#
-# When phase 3 brings the UI, this file gains a `flutter:` dependency and the
-# package becomes a Flutter one. That is three lines, later.
 environment:
   sdk: ^3.5.0
 
-# The first two dependencies, and both are here to do one job: read a real
-# `.stashit` file. `logic/bundle.dart` deliberately takes the unzipping and the
-# hashing as arguments so it stays testable with nothing installed; these are
-# what gets passed in.
 dependencies:
-  # Pinned to 3.x rather than 4.x. The zip reading is twenty lines and both
-  # majors can do it, but 4.x deprecated `ArchiveFile.content` in favour of
-  # `readBytes()`, and this was written without a toolchain to check against.
-  # Moving to 4.x later is a two-line change in lib/io/bundle_file.dart.
+  flutter:
+    sdk: flutter
+
+  # ── reading a .stashit backup ──────────────────────────────────────────
+  #
+  # `logic/bundle.dart` takes the unzipping and the hashing as arguments so it
+  # stays testable without either. These are what gets passed in.
+  #
+  # archive is pinned to 3.x: 4.x deprecated `ArchiveFile.content` in favour of
+  # `readBytes()`, and moving is a two-line change in lib/io/bundle_file.dart.
   archive: ^3.6.1
   crypto: ^3.0.3
 
-  # The database.
+  # ── the database ───────────────────────────────────────────────────────
   #
   # Drift rather than raw sqflite: the queries are checked at build time, and
   # the thing this app does most — watch a table and rebuild a list when it
   # changes — is one line instead of a subscription mechanism written by hand.
   drift: ^2.20.0
 
-  # The engine, for tests and for desktop. **The phone does not use this one.**
-  # It ships `sqlcipher_flutter_libs` instead, which is the same SQLite with
-  # encryption compiled in — see lib/db/open.dart for why that swap is a
-  # dependency change and not a code change.
+  # SQLite with encryption compiled in. **This is the whole of the encryption
+  # decision**: same engine, same SQL, one `PRAGMA key` issued on open. See
+  # lib/db/open_flutter.dart.
+  sqlcipher_flutter_libs: ^0.6.0
+
+  # And the plain engine, for `flutter test` and for desktop runs, where there
+  # is no keystore to hold a key and nothing worth encrypting against.
   sqlite3: ^2.4.0
 
+  # Where the database file goes.
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Where the key goes: the Android Keystore, hardware-backed, never leaving
+  # the phone. That is the point, and it is also why a lost key is lost data —
+  # see the note in lib/db/open_flutter.dart.
+  flutter_secure_storage: ^9.2.2
+
+  # Choosing a .stashit file to restore from.
+  file_picker: ^8.1.2
+
 dev_dependencies:
-  test: ^1.25.0
+  flutter_test:
+    sdk: flutter
+
+  # ── on `flutter_test` rather than `test` ───────────────────────────────
+  #
+  # The suites were written against `package:test` when this was a plain Dart
+  # package. `flutter_test` re-exports all of it — `test`, `group`, `expect`
+  # and every matcher — so the change is one import line per file and nothing
+  # else. Keeping both would mean pinning `test` to whatever version the
+  # Flutter SDK happens to agree with, which is a fight worth avoiding.
 
   # Drift generates the typed row classes. Nothing compiles until
   # `dart run build_runner build` has been run at least once.
   drift_dev: ^2.20.0
   build_runner: ^2.4.6
-  # A range rather than a caret: this was written without a Dart SDK to
-  # resolve against, and a pub failure on a lint package would block the one
-  # thing phase 1 is for.
-  lints: '>=4.0.0 <6.0.0'
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

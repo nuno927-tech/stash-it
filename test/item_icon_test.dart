@@ -7,7 +7,7 @@
 library;
 
 import 'package:stash_it/logic/item_icon.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 IconKey iconFor({String? name, String? brand, String? model, String? notes}) =>
     iconKeyFor(IconSubject(name: name, brand: brand, model: model, notes: notes));

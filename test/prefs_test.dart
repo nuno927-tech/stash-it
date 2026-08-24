@@ -11,7 +11,7 @@ library;
 
 import 'package:stash_it/logic/prefs.dart';
 import 'package:stash_it/models/settings.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('defaults', () {

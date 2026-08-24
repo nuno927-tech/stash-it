@@ -8,7 +8,7 @@
 library;
 
 import 'package:stash_it/logic/swipe.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 const phone = 390.0; // a normal handset width
 

@@ -10,7 +10,7 @@
 library;
 
 import 'package:stash_it/logic/reorder.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// Five 50-pixel rows, stacked.
 final rows = [

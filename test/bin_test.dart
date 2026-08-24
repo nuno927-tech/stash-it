@@ -18,7 +18,7 @@ import 'package:stash_it/logic/bin.dart';
 import 'package:stash_it/logic/limits.dart';
 import 'package:stash_it/models/settings.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final now = DateTime(2026, 8, 12, 9);
 

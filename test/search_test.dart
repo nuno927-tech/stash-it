@@ -12,7 +12,7 @@ import 'package:stash_it/logic/search.dart';
 import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final rooms = [
   const Room(id: 'r-kitchen', propertyId: 'p1', name: 'Kitchen', sortOrder: 1),

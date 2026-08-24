@@ -16,7 +16,7 @@ import 'dart:convert';
 import 'package:stash_it/io/bundle_file.dart';
 import 'package:stash_it/logic/bundle.dart';
 import 'package:stash_it/models/paper.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// The smallest readable bundle, for the tests that only need one to exist.
 List<int> simpleFile() => writeBundle(tables: {

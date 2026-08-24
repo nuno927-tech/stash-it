@@ -14,7 +14,7 @@
 library;
 
 import 'package:stash_it/logic/tour.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final now = DateTime(2026, 8, 12, 9);
 

@@ -12,7 +12,7 @@
 library;
 
 import 'package:stash_it/logic/notify_offer.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 OfferInput offer({
   bool asked = false,

@@ -22,7 +22,7 @@ import 'package:stash_it/logic/warranty.dart';
 import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// 17 August 2026. See the note on timezones in timeline_test.dart.
 final now = DateTime(2026, 8, 17);

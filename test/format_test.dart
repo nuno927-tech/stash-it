@@ -8,7 +8,7 @@
 library;
 
 import 'package:stash_it/logic/format.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void money(String input, String want, [String currency = 'USD']) {
   test('money "$input" → "$want"${currency == 'USD' ? '' : ' ($currency)'}', () {

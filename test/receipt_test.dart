@@ -9,7 +9,7 @@ library;
 
 import 'package:stash_it/logic/receipt.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final today = DateTime(2026, 8, 11, 12);
 

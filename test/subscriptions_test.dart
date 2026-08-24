@@ -8,7 +8,7 @@ library;
 
 import 'package:stash_it/logic/subscriptions.dart';
 import 'package:stash_it/models/subscription.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Subscription sub({
   String id = 's',

@@ -7,7 +7,7 @@
 library;
 
 import 'package:stash_it/logic/greeting.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 DateTime at(int hour, [int minute = 0]) => DateTime(2026, 8, 12, hour, minute);
 

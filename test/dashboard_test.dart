@@ -13,7 +13,7 @@ import 'package:stash_it/logic/dashboard.dart';
 import 'package:stash_it/logic/dates.dart';
 import 'package:stash_it/logic/warranty.dart';
 import 'package:stash_it/models/types.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final now = DateTime(2026, 8, 17);
 

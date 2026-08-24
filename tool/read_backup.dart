@@ -14,6 +14,11 @@
 ///
 /// It reads only. Nothing is written, and nothing about your backup leaves the
 /// machine.
+///
+/// `avoid_print` is off for this file and this file alone. The lint is right
+/// about app code — a `print` in a running app goes somewhere nobody reads —
+/// and wrong about a command-line tool, where stdout is the entire product.
+// ignore_for_file: avoid_print
 library;
 
 import 'dart:io';
