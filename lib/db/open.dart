@@ -12,6 +12,7 @@ library;
 
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import 'tables.dart';
@@ -21,7 +22,23 @@ import 'tables.dart';
 /// `setUp` gets a clean one, `tearDown` throws it away, and nothing touches a
 /// disk — which is what makes it reasonable to open a real database in a unit
 /// test rather than mocking one.
-StashDatabase openInMemory() => StashDatabase(NativeDatabase.memory());
+StashDatabase openInMemory() {
+  /*
+    Drift warns when a database class is constructed twice, because two
+    instances sharing one executor race each other and can corrupt the file.
+
+    That is not what is happening here. Every call makes its own
+    `NativeDatabase.memory()` — a fresh, private, disk-less executor — so there
+    is nothing shared to race over. The warning is correct in general and noise
+    in this one place, and it is loud enough to bury the actual failure in a
+    test run.
+
+    Set here rather than in each test file so the reason lives next to the
+    thing it is about.
+  */
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  return StashDatabase(NativeDatabase.memory());
+}
 
 /// A database in a file, unencrypted.
 ///

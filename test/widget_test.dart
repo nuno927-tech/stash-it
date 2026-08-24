@@ -1,80 +1,230 @@
-/// The one widget test, and it is deliberately small.
+/// The screens, against a real in-memory database.
 ///
 ///   flutter test test/widget_test.dart
 ///
 /// `main()` opens an encrypted database through the platform keystore, which
-/// does not exist in a test harness — so the app cannot be booted here, and
-/// pretending otherwise with a pile of mocks would be testing the mocks. What
-/// is worth checking is that the screen renders against a real in-memory
-/// database, because that is where a null-safety mistake or a bad `switch`
-/// would show up.
+/// does not exist in a test harness — so the app is never booted here. What is
+/// worth checking is that each tab renders, because a null-safety mistake or a
+/// bad `switch` in a builder shows up nowhere else until it is on a phone.
 ///
 /// ── Two harness rules this file has to obey ───────────────────────────────
-/// **No `pumpAndSettle`.** The screen shows a spinner while its query runs,
-/// and a spinner is an animation that never settles — `pumpAndSettle` waits
-/// for the frames to stop and they never do. Explicit `pump`s with durations
-/// advance the clock a known amount instead.
+/// **No `pumpAndSettle`.** Every tab shows a spinner while its query runs, and
+/// a spinner is an animation that never settles — `pumpAndSettle` waits for
+/// frames to stop and they never do.
 ///
-/// **The database is closed inside the test, not in `tearDown`.** The widget
-/// harness asserts that no timer outlives the widget tree, and it does that
-/// check at the end of the test body — before `tearDown` runs. A database left
-/// open is a timer left pending, and the failure names neither.
+/// **The database is closed inside the test, not in `tearDown`.** The harness
+/// asserts that no timer outlives the widget tree, and it runs that check at
+/// the end of the test body, before `tearDown`. An open database is a pending
+/// timer, and the failure names neither.
 library;
 
+// For `ListView` and `Offset` in the one test that has to scroll.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stash_it/db/open.dart';
 import 'package:stash_it/db/repository.dart';
 import 'package:stash_it/db/tables.dart';
 import 'package:stash_it/main.dart';
+import 'package:stash_it/models/paper.dart';
+import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
 
 void main() {
-  /// Renders the app, lets the stream and the query land, and hands back the
-  /// database so the caller can close it before the harness checks.
-  Future<StashDatabase> show(WidgetTester tester, {Item? item}) async {
+  Future<StashDatabase> show(
+    WidgetTester tester, {
+    List<Item> items = const [],
+    List<Paper> papers = const [],
+    List<Subscription> subs = const [],
+  }) async {
     final db = openInMemory();
-    if (item != null) await Repository(db).createItem(item);
+    final repo = Repository(db);
+
+    for (final i in items) {
+      await repo.createItem(i);
+    }
+    for (final p in papers) {
+      await repo.createPaper(p);
+    }
+    for (final s in subs) {
+      await repo.createSubscription(s);
+    }
 
     await tester.pumpWidget(StashItApp(db: db));
-
-    // One frame to build, then enough time for the stream and the FutureBuilder
-    // behind it to deliver.
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.pump(const Duration(milliseconds: 200));
-
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
     return db;
   }
 
-  testWidgets('an empty database says so rather than showing an empty list',
-      (tester) async {
+  Future<void> goTo(WidgetTester tester, String label) async {
+    await tester.tap(find.text(label));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  testWidgets('the dashboard opens on an empty install', (tester) async {
     final db = await show(tester);
 
-    expect(find.textContaining('Nothing here yet'), findsOneWidget);
+    // Nothing to do is a state worth saying out loud, not a blank screen.
+    expect(find.text('Nothing needs you.'), findsOneWidget);
+    expect(find.text('Items and documents'), findsOneWidget);
 
     await db.close();
   });
 
-  testWidgets('and an item that is in it appears', (tester) async {
-    final db = await show(
-      tester,
-      item: const Item(id: '', propertyId: 'default', name: 'Bosch Dishwasher'),
-    );
+  testWidgets('and counts what is in date', (tester) async {
+    final db = await show(tester, items: [
+      const Item(
+        id: '',
+        propertyId: 'default',
+        name: 'Fridge',
+        purchaseDate: '2026-07-01',
+        warranty: Warranty(months: 60, unit: WarrantyUnit.months, amount: 60),
+      ),
+    ]);
 
+    expect(find.text('100%'), findsOneWidget);
+    expect(find.text('in date'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('the items tab lists what is saved', (tester) async {
+    final db = await show(tester, items: [
+      const Item(id: '', propertyId: 'default', name: 'Bosch Dishwasher'),
+    ]);
+
+    await goTo(tester, 'Items');
     expect(find.text('Bosch Dishwasher'), findsOneWidget);
-    // No purchase date and no term, so there is nothing to count down to —
-    // and the tile has to say that rather than showing a blank subtitle.
-    expect(find.text('No cover recorded'), findsOneWidget);
+    // No term recorded, so the tile has to say so rather than sit blank.
+    expect(find.text('No warranty length recorded'), findsOneWidget);
 
     await db.close();
   });
 
-  testWidgets('the restore button is reachable', (tester) async {
+  testWidgets('an empty items tab says nothing is saved', (tester) async {
     final db = await show(tester);
+    await goTo(tester, 'Items');
+    expect(find.text('Nothing saved yet.'), findsOneWidget);
+    await db.close();
+  });
 
-    expect(find.byIcon(Icons.download), findsOneWidget);
+  testWidgets('the documents tab names the holder', (tester) async {
+    final db = await show(tester, papers: [
+      const Paper(
+        id: '',
+        propertyId: 'default',
+        kind: PaperKind.passport,
+        label: 'Passport',
+        holder: 'Nuno',
+        expiresOn: '2030-02-11',
+      ),
+    ]);
+
+    await goTo(tester, 'Documents');
+    expect(find.text('Passport — Nuno'), findsOneWidget);
 
     await db.close();
+  });
+
+  /*
+    The empty documents tab is the one screen that has to make a promise
+    before anyone has put anything in. Somebody being asked to record a
+    passport is entitled to know what the app will hold first.
+  */
+  testWidgets('and an empty one promises no scans and no numbers', (tester) async {
+    final db = await show(tester);
+    await goTo(tester, 'Documents');
+
+    expect(find.textContaining('No scans, no document numbers'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('the subscriptions tab totals what a month costs', (tester) async {
+    final db = await show(tester, subs: [
+      const Subscription(
+        id: '',
+        propertyId: 'default',
+        name: 'Netflix',
+        cadence: Cadence.monthly,
+        anchorDate: '2026-09-22',
+        amountCents: 1549,
+        currency: 'USD',
+      ),
+    ]);
+
+    await goTo(tester, 'Subs');
+    expect(find.text('Netflix'), findsOneWidget);
+    expect(find.text(r'$15.49'), findsWidgets);
+
+    await db.close();
+  });
+
+  group('settings', () {
+    testWidgets('shows how much of the free tier is used', (tester) async {
+      final db = await show(tester, items: [
+        const Item(id: '', propertyId: 'default', name: 'Kettle'),
+      ]);
+
+      await goTo(tester, 'Settings');
+      expect(find.text('1 of 25 saved'), findsOneWidget);
+
+      await db.close();
+    });
+
+    /*
+      The backup writer does not exist yet, and the row says so rather than
+      being absent. A missing row lets somebody assume the feature is
+      somewhere they have not looked — and with an encrypted database whose
+      key cannot leave the phone, that assumption is expensive.
+    */
+    testWidgets('and admits the backup writer is missing', (tester) async {
+      final db = await show(tester);
+      await goTo(tester, 'Settings');
+
+      expect(find.text('Back up now'), findsOneWidget);
+      expect(find.textContaining('Not built yet'), findsWidgets);
+
+      await db.close();
+    });
+
+    testWidgets('the developer tools stay hidden until ten taps', (tester) async {
+      final db = await show(tester);
+      await goTo(tester, 'Settings');
+
+      expect(find.text('Developer'), findsNothing);
+
+      // Silence until the tapping is obviously deliberate, then a countdown.
+      for (var i = 0; i < 8; i++) {
+        await tester.tap(find.text('Stash it'));
+        await tester.pump();
+      }
+      expect(find.textContaining('2 more taps'), findsOneWidget);
+
+      await tester.tap(find.text('Stash it'));
+      await tester.pump();
+      await tester.tap(find.text('Stash it'));
+      await tester.pump();
+
+      /*
+        The developer section renders below the fold, and a ListView does not
+        build children that are off screen — so `find.text` genuinely cannot
+        see it until the list is scrolled. Not a rendering bug; a fact about
+        lazy lists that this test has to know.
+      */
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pump();
+
+      expect(find.text('Developer'), findsOneWidget);
+
+      // Leave it as it was found — the unlock is library state and outlives
+      // this test otherwise.
+      await tester.tap(find.text('Hide developer tools'));
+      await tester.pump();
+
+      await db.close();
+    });
   });
 }
