@@ -58,15 +58,38 @@ class Repository {
   Repository(this.db, {this.propertyId = 'default'});
 
   final StashDatabase db;
+
+  /// Stamped onto anything written. **Not filtered on when reading** — see
+  /// below.
   final String propertyId;
 
   /* ------------------------------------------------------------- reading */
 
+  /*
+    ── Reads do not filter by property, and that is deliberate now ─────────
+
+    They used to. Every read carried `where propertyId = 'default'`, ported
+    faithfully from a web app whose repository did the same — and it cost a
+    day: a restore wrote twenty-one items with the household id from the
+    backup file, reported "restored 21 items" truthfully, and every screen
+    showed nothing. The rows were there, encrypted, correct, and invisible.
+
+    The first fix made a restore adopt the rows onto the local property. That
+    was right and insufficient: it only runs during a restore, so a database
+    already in the wrong state stays wrong until someone restores again — and
+    nobody restores an app that looks empty.
+
+    So the filter is gone. **This app seeds exactly one property and has no way
+    to make a second**, which means the clause was guarding against a state
+    that cannot occur while producing one that plainly can. The field is still
+    written, so the day multiple households exist the filter comes back — with
+    a migration, and with a screen to switch between them.
+  */
+
   /// Everything not in the bin.
   Future<List<Item>> activeItems() async {
-    final rows = await (db.select(db.items)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
-        .get();
+    final rows =
+        await (db.select(db.items)..where((t) => t.deletedAt.isNull())).get();
     return rows.map(itemOf).toList();
   }
 
@@ -77,8 +100,7 @@ class Repository {
   /// update" bug, which the web version had to solve with a refresh counter
   /// threaded through four components.
   Stream<List<Item>> watchActiveItems() =>
-      (db.select(db.items)
-            ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
+      (db.select(db.items)..where((t) => t.deletedAt.isNull()))
           .watch()
           .map((rows) => rows.map(itemOf).toList());
 
@@ -89,15 +111,14 @@ class Repository {
   }
 
   Future<List<Paper>> activePapers() async {
-    final rows = await (db.select(db.papers)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
-        .get();
+    final rows =
+        await (db.select(db.papers)..where((t) => t.deletedAt.isNull())).get();
     return rows.map(paperOf).toList();
   }
 
   Future<List<Subscription>> activeSubscriptions() async {
     final rows = await (db.select(db.subscriptions)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
+          ..where((t) => t.deletedAt.isNull()))
         .get();
     return rows.map(subscriptionOf).toList();
   }
@@ -110,7 +131,7 @@ class Repository {
 
   Future<List<Room>> rooms() async {
     final rows = await (db.select(db.rooms)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull())
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
         .get();
     return rows.map(roomOf).toList();
@@ -140,19 +161,10 @@ class Repository {
   /// and three tiny selects that obviously do what they say beat one clever
   /// aggregate on a path where being wrong means either refusing a save
   /// somebody paid for, or giving away the tier.
-  Future<int> cappedCount() async {
-    final items = await (db.select(db.items)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
-        .get();
-    final subs = await (db.select(db.subscriptions)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
-        .get();
-    final papers = await (db.select(db.papers)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNull()))
-        .get();
-
-    return items.length + subs.length + papers.length;
-  }
+  Future<int> cappedCount() async =>
+      (await activeItems()).length +
+      (await activeSubscriptions()).length +
+      (await activePapers()).length;
 
   Future<bool> canSave() async {
     final e = (await settings()).entitlements;
@@ -276,7 +288,7 @@ class Repository {
   /// the top.
   Future<List<Item>> deletedItems() async {
     final rows = await (db.select(db.items)
-          ..where((t) => t.propertyId.equals(propertyId) & t.deletedAt.isNotNull())
+          ..where((t) => t.deletedAt.isNotNull())
           ..orderBy([(t) => OrderingTerm(expression: t.deletedAt)]))
         .get();
     return rows.map(itemOf).toList();

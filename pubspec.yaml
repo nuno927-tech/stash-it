@@ -49,6 +49,11 @@ dependencies:
   # Choosing a .stashit file to restore from.
   file_picker: ^8.1.2
 
+  # And handing one back out. The backup goes to the share sheet rather than to
+  # Downloads, because the point is that it ends up somewhere that is **not
+  # this phone** — see the note on `_backUp`.
+  share_plus: ^10.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -5,7 +5,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../db/backup.dart';
 import '../db/repository.dart';
 import '../db/restore.dart';
 import '../io/bundle_file.dart';
@@ -15,6 +19,60 @@ import '../logic/limits.dart';
 import 'parts.dart';
 
 const appVersion = '0.1.0';
+
+/// Raw table counts beside what the repository returns.
+///
+/// Temporary — see the Diagnostics section below.
+class _Counts {
+  const _Counts({
+    required this.rawItems,
+    required this.rawPapers,
+    required this.rawSubs,
+    required this.rawBlobs,
+    required this.liveItems,
+    required this.livePapers,
+    required this.liveSubs,
+    required this.deletedItems,
+    required this.propertyIds,
+  });
+
+  final int rawItems;
+  final int rawPapers;
+  final int rawSubs;
+  final int rawBlobs;
+
+  final int liveItems;
+  final int livePapers;
+  final int liveSubs;
+
+  final int deletedItems;
+  final List<String> propertyIds;
+
+  static Future<_Counts> of(Repository repo) async {
+    final db = repo.db;
+
+    // No `where` at all. This is the number that settles it.
+    final items = await db.select(db.items).get();
+    final papers = await db.select(db.papers).get();
+    final subs = await db.select(db.subscriptions).get();
+    final blobs = await db.select(db.blobs).get();
+
+    return _Counts(
+      rawItems: items.length,
+      rawPapers: papers.length,
+      rawSubs: subs.length,
+      rawBlobs: blobs.length,
+      liveItems: (await repo.activeItems()).length,
+      livePapers: (await repo.activePapers()).length,
+      liveSubs: (await repo.activeSubscriptions()).length,
+      deletedItems: items.where((i) => i.deletedAt != null).length,
+      propertyIds: {
+        for (final i in items) i.propertyId,
+        for (final p in papers) p.propertyId,
+      }.toList(),
+    );
+  }
+}
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -66,6 +124,49 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  /// Writes the backup and hands it to the share sheet.
+  ///
+  /// ── Shared, not saved ─────────────────────────────────────────────────
+  /// The file goes to a cache directory and straight into the share sheet, so
+  /// it lands wherever the person chooses — Drive, Files, an email to
+  /// themselves. Writing it into Downloads instead would need storage
+  /// permission and would leave a file most people never look at again.
+  ///
+  /// The whole point is that the backup ends up somewhere that is **not this
+  /// phone**, so the flow should end in an app that can do that.
+  Future<void> _backUp() async {
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
+
+    try {
+      final bytes = await exportBackup(widget.repo.db);
+
+      final dir = await getTemporaryDirectory();
+      final file = File(p.join(dir.path, backupFileName()));
+      await file.writeAsBytes(bytes);
+
+      // share_plus 10's API. Version 11 replaced this with
+      // `SharePlus.instance.share(ShareParams(...))`; when the dependency
+      // moves, so does this line and nothing else.
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Stash it backup',
+      );
+
+      setState(() {
+        final kb = (bytes.length / 1024).round();
+        _status = 'Made ${backupFileName()} — $kb KB. '
+            'Keep it somewhere that is not this phone.';
+      });
+    } catch (e) {
+      setState(() => _status = 'That did not work: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   /*
     Ten taps on the version, and the run resets if you pause.
 
@@ -110,27 +211,22 @@ class _SettingsTabState extends State<SettingsTab> {
         ),
 
         /*
-          ── The one that is not built yet, and says so ──────────────────────
+          ── The only copy that can survive this phone ──────────────────────
 
-          The app can read a .stashit and cannot yet write one. That gap is
-          worse here than it was on the web: the database is encrypted with a
-          key that lives in this handset's Keystore and never leaves it, so a
-          lost or reset phone is unrecoverable data unless a backup exists
-          somewhere else.
-
-          A disabled row saying "not built yet" is uncomfortable and correct.
-          A missing row would let somebody assume it was somewhere they had not
-          looked.
+          The database is encrypted with a key held in this handset's Keystore,
+          and that key never leaves. A factory reset or a lost phone produces a
+          file nobody can open, us included. So this is not a convenience
+          feature, and the subtitle says the actual reason rather than "keep
+          your data safe".
         */
-        const ListTile(
-          enabled: false,
-          leading: Icon(Icons.upload_outlined),
-          title: Text('Back up now'),
-          subtitle: Text(
-            'Not built yet. Until it is, keep the backup you restored from — '
-            'the database on this phone is encrypted with a key that cannot '
-            'leave it.',
+        ListTile(
+          leading: const Icon(Icons.upload_outlined),
+          title: const Text('Back up now'),
+          subtitle: const Text(
+            'One file with everything in it. The only copy that survives '
+            'losing this phone.',
           ),
+          onTap: _busy ? null : _backUp,
         ),
 
         if (_busy) const LinearProgressIndicator(),
@@ -149,6 +245,69 @@ class _SettingsTabState extends State<SettingsTab> {
             'Not built yet. When it is, your phone will keep the schedule '
             'itself — nothing is sent anywhere.',
           ),
+        ),
+
+        /*
+          ── Temporary, and it is here because guessing failed twice ────────
+
+          Twenty-one items restored into an encrypted database and no screen
+          showed them. The first theory — that every row carried the household
+          id from the backup while the queries asked for the local one — was
+          plausible, was fixed, and did not fix it.
+
+          So this stops the guessing: raw table counts, with no `where` clause
+          at all, next to what the repository actually returns. If the raw
+          number is zero the restore is not writing; if it is twenty-one and
+          the filtered number is zero, something is still filtering them out,
+          and the property ids below say what.
+
+          Goes away once the answer is known.
+        */
+        const SectionTitle('Diagnostics'),
+        FutureBuilder<_Counts>(
+          future: _Counts.of(widget.repo),
+          builder: (context, snap) {
+            final c = snap.data;
+            if (c == null) return const LinearProgressIndicator();
+
+            return Column(
+              children: [
+                ListTile(
+                  dense: true,
+                  title: const Text('Rows in the database'),
+                  subtitle: Text(
+                    'items ${c.rawItems} · documents ${c.rawPapers} · '
+                    'subscriptions ${c.rawSubs} · blobs ${c.rawBlobs}',
+                  ),
+                ),
+                ListTile(
+                  dense: true,
+                  title: const Text('Rows the app can see'),
+                  subtitle: Text(
+                    'items ${c.liveItems} · documents ${c.livePapers} · '
+                    'subscriptions ${c.liveSubs}',
+                  ),
+                ),
+                ListTile(
+                  dense: true,
+                  title: const Text('Household ids on those rows'),
+                  subtitle: Text(
+                    c.propertyIds.isEmpty ? 'none' : c.propertyIds.join(', '),
+                  ),
+                ),
+                ListTile(
+                  dense: true,
+                  title: const Text('This repository is reading'),
+                  subtitle: Text(widget.repo.propertyId),
+                ),
+                ListTile(
+                  dense: true,
+                  title: const Text('Deleted rows'),
+                  subtitle: Text('${c.deletedItems} items in the bin'),
+                ),
+              ],
+            );
+          },
         ),
 
         const SectionTitle('About'),

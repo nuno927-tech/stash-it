@@ -18,7 +18,10 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 
+import '../db/backup.dart';
+import '../db/tables.dart';
 import '../logic/bundle.dart';
+import '../models/types.dart';
 
 /// The real hash. Injected into `parseBundle` so the parser never imports it.
 String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
@@ -63,14 +66,16 @@ ParsedBundle parseBackupFile(String path) =>
 ParsedBundle parseBackupBytes(List<int> bytes) =>
     parseBundle(unzipBundle(bytes), sha256Hex: sha256Hex);
 
-/* ------------------------------------------------------------- for tests */
+/* ---------------------------------------------------------------- writing */
 
-/// Builds a bundle in memory, so the reader can be tested against something
-/// this file did not also produce a shortcut for.
+/// Builds a `.stashit` in memory.
 ///
-/// Not an exporter — writing a real backup is a later job with its own
-/// decisions about naming and where the file goes. This is the smallest thing
-/// that produces bytes `parseBackupBytes` should accept.
+/// Started life as a test fixture and is now the real exporter, which is the
+/// right outcome: the bytes a test asserts against are the bytes a person gets.
+///
+/// The caller supplies the tables — see `db/backup.dart` for where they come
+/// from — and this does the two things `logic/bundle.dart` refuses to do,
+/// hashing and zipping, in the same place it does them for reading.
 List<int> writeBundle({
   Map<String, Object?> tables = const {},
   Map<String, List<int>> blobs = const {},
@@ -84,7 +89,9 @@ List<int> writeBundle({
   final manifest = <String, Object?>{
     'format': backupFormat,
     'formatVersion': backupFormatVersion,
-    'schemaVersion': 4,
+    // The constant, not a literal. A file claiming a version the app does not
+    // actually write is the one lie this format cannot survive.
+    'schemaVersion': schemaVersion,
     'appVersion': 'dart-port',
     'exportedAt': DateTime.now().toUtc().toIso8601String(),
     'counts': {
@@ -106,4 +113,29 @@ List<int> writeBundle({
   final encoded = ZipEncoder().encode(archive);
   if (encoded == null) throw StateError('the zip encoder produced nothing');
   return Uint8List.fromList(encoded);
+}
+
+/// The whole export: gather, encode, hash, zip.
+///
+/// Kept as one function because the alternative — a caller assembling these
+/// four steps itself — is a caller that can get the order wrong, and getting
+/// the order wrong means a checksum over bytes that are not the bytes in the
+/// file. The reader would then refuse every backup this app produced.
+Future<List<int>> exportBackup(StashDatabase db) async {
+  final contents = await gatherBackup(db);
+
+  final bytes = writeBundle(
+    tables: contents.tables,
+    blobs: contents.blobs,
+    manifestOverrides: {
+      'counts': {
+        'items': contents.counts.$1,
+        'docs': contents.counts.$2,
+        'blobs': contents.counts.$3,
+      },
+    },
+  );
+
+  await markBackedUp(db);
+  return bytes;
 }

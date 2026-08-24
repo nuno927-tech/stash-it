@@ -18,8 +18,6 @@
 /// timer, and the failure names neither.
 library;
 
-// For `ListView` and `Offset` in the one test that has to scroll.
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stash_it/db/open.dart';
 import 'package:stash_it/db/repository.dart';
@@ -196,7 +194,21 @@ void main() {
 
       expect(find.text('Developer'), findsNothing);
 
+      /*
+        Everything below is scrolled to before it is touched.
+
+        A ListView does not build children that are off screen, so `find.text`
+        genuinely cannot see them — and this screen keeps growing, which broke
+        this test twice as rows were added above the version. Asking the list
+        to bring a thing into view is the version that survives the next row.
+      */
+      Future<void> reach(String text) async {
+        await tester.scrollUntilVisible(find.text(text), 200);
+        await tester.pump();
+      }
+
       // Silence until the tapping is obviously deliberate, then a countdown.
+      await reach('Stash it');
       for (var i = 0; i < 8; i++) {
         await tester.tap(find.text('Stash it'));
         await tester.pump();
@@ -208,19 +220,12 @@ void main() {
       await tester.tap(find.text('Stash it'));
       await tester.pump();
 
-      /*
-        The developer section renders below the fold, and a ListView does not
-        build children that are off screen — so `find.text` genuinely cannot
-        see it until the list is scrolled. Not a rendering bug; a fact about
-        lazy lists that this test has to know.
-      */
-      await tester.drag(find.byType(ListView), const Offset(0, -400));
-      await tester.pump();
-
+      await reach('Developer');
       expect(find.text('Developer'), findsOneWidget);
 
       // Leave it as it was found — the unlock is library state and outlives
       // this test otherwise.
+      await reach('Hide developer tools');
       await tester.tap(find.text('Hide developer tools'));
       await tester.pump();
 

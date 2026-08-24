@@ -49,7 +49,11 @@ class RestoreResult {
 /// and it would do it to a database the user just told us to overwrite,
 /// meaning the thing they wanted back is gone and what replaced it is broken.
 /// Either all of it lands or none of it does.
-Future<RestoreResult> restoreInto(StashDatabase db, ParsedBundle bundle) async {
+Future<RestoreResult> restoreInto(
+  StashDatabase db,
+  ParsedBundle bundle, {
+  String propertyId = 'default',
+}) async {
   final data = bundle.data;
 
   return db.transaction(() async {
@@ -86,6 +90,34 @@ Future<RestoreResult> restoreInto(StashDatabase db, ParsedBundle bundle) async {
             byteLength: Value(entry.value.bytes.length),
           ));
     }
+
+    /*
+      ── Everything is adopted onto this phone's property ──────────────────
+
+      THE BUG THIS EXISTS FOR, and it was invisible in the worst way.
+
+      Every record carries a `propertyId` — the household it belongs to — and
+      a backup carries whichever id the app that wrote it had generated. The
+      repository reads with `where propertyId = 'default'`. So a restore wrote
+      twenty-one items, reported "restored 21 items", and was telling the
+      truth: they were in the database, correctly stored, and unreachable by
+      every query in the app.
+
+      A restore means "this data is mine, on this phone, now". Adopting the
+      rows onto the local property is what that sentence actually means, and
+      it removes the whole class of silent mismatch rather than the one
+      instance of it.
+
+      Done as an UPDATE after the inserts rather than by rewriting each model:
+      four statements that plainly say what they do, against however many
+      fields the models grow later.
+    */
+    await db.update(db.items).write(ItemsCompanion(propertyId: Value(propertyId)));
+    await db.update(db.papers).write(PapersCompanion(propertyId: Value(propertyId)));
+    await db
+        .update(db.subscriptions)
+        .write(SubscriptionsCompanion(propertyId: Value(propertyId)));
+    await db.update(db.rooms).write(RoomsCompanion(propertyId: Value(propertyId)));
 
     /*
       Settings restore, minus the entitlements — `settingsToRow` cannot write
