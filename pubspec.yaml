@@ -17,8 +17,38 @@ version: 0.1.0
 environment:
   sdk: ^3.5.0
 
+# The first two dependencies, and both are here to do one job: read a real
+# `.stashit` file. `logic/bundle.dart` deliberately takes the unzipping and the
+# hashing as arguments so it stays testable with nothing installed; these are
+# what gets passed in.
+dependencies:
+  # Pinned to 3.x rather than 4.x. The zip reading is twenty lines and both
+  # majors can do it, but 4.x deprecated `ArchiveFile.content` in favour of
+  # `readBytes()`, and this was written without a toolchain to check against.
+  # Moving to 4.x later is a two-line change in lib/io/bundle_file.dart.
+  archive: ^3.6.1
+  crypto: ^3.0.3
+
+  # The database.
+  #
+  # Drift rather than raw sqflite: the queries are checked at build time, and
+  # the thing this app does most — watch a table and rebuild a list when it
+  # changes — is one line instead of a subscription mechanism written by hand.
+  drift: ^2.20.0
+
+  # The engine, for tests and for desktop. **The phone does not use this one.**
+  # It ships `sqlcipher_flutter_libs` instead, which is the same SQLite with
+  # encryption compiled in — see lib/db/open.dart for why that swap is a
+  # dependency change and not a code change.
+  sqlite3: ^2.4.0
+
 dev_dependencies:
   test: ^1.25.0
+
+  # Drift generates the typed row classes. Nothing compiles until
+  # `dart run build_runner build` has been run at least once.
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.6
   # A range rather than a caret: this was written without a Dart SDK to
   # resolve against, and a pub failure on a lint package would block the one
   # thing phase 1 is for.
