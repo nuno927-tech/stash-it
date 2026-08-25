@@ -452,6 +452,143 @@ void main() {
   });
 
   /*
+    ── Documents and subscriptions in the bin ────────────────────────────────
+
+    THE GAP THIS CLOSES, AND IT WAS ONE I MADE. Delete went onto documents and
+    subscriptions in the same release that gave them forms — with the same
+    dialog promising thirty days — while the bin, the restore and the sweep all
+    still handled items only. So a deleted passport left the list, appeared
+    nowhere, could not be brought back, and sat in the database for ever.
+
+    Every assertion below goes through the repository rather than the tables,
+    because the two suites either side of this gap were both green: the delete
+    worked, and the sweep worked, and nothing tied them together.
+  */
+  group('the bin holds all three kinds', () {
+    Future<String> aPaper([String label = 'Passport']) => repo.createPaper(
+          Paper(
+            id: '',
+            propertyId: 'default',
+            kind: PaperKind.passport,
+            label: label,
+            expiresOn: '2027-02-11',
+          ),
+        );
+
+    Future<String> aSub([String name = 'Netflix']) => repo.createSubscription(
+          Subscription(
+            id: '',
+            propertyId: 'default',
+            name: name,
+            cadence: Cadence.monthly,
+            anchorDate: '2026-09-01',
+            amountCents: 999,
+            currency: 'USD',
+          ),
+        );
+
+    test('a deleted document is listed, not lost', () async {
+      final id = await aPaper();
+      await repo.softDeletePaper(id);
+
+      expect(await repo.activePapers(), isEmpty);
+      expect((await repo.deletedPapers()).single.id, id);
+    });
+
+    test('a deleted subscription is listed, not lost', () async {
+      final id = await aSub();
+      await repo.softDeleteSubscription(id);
+
+      expect(await repo.activeSubscriptions(), isEmpty);
+      expect((await repo.deletedSubscriptions()).single.id, id);
+    });
+
+    test('a document comes back whole', () async {
+      final id = await aPaper('Driving licence');
+      await repo.softDeletePaper(id);
+      await repo.restorePaper(id);
+
+      final back = (await repo.activePapers()).single;
+      expect(back.id, id);
+      expect(back.label, 'Driving licence');
+      expect(back.deletedAt, isNull);
+    });
+
+    test('and so does a subscription', () async {
+      final id = await aSub('The gym');
+      await repo.softDeleteSubscription(id);
+      await repo.restoreSubscription(id);
+
+      final back = (await repo.activeSubscriptions()).single;
+      expect(back.id, id);
+      expect(back.name, 'The gym');
+      expect(back.deletedAt, isNull);
+    });
+
+    /*
+      THE ONE THAT WOULD HAVE STAYED BROKEN LONGEST. A sweep that collects only
+      items leaves documents and subscriptions in the database for ever, and
+      nothing on any screen would ever show it — they are deleted, so no list
+      includes them, and the only symptom is a file that slowly grows.
+    */
+    test('the sweep collects all three', () async {
+      final item = await repo.createItem(draft('Kettle'));
+      final paper = await aPaper();
+      final sub = await aSub();
+
+      final longAgo = DateTime.now().subtract(const Duration(days: 40));
+      await (db.update(db.items)..where((t) => t.id.equals(item)))
+          .write(ItemsCompanion(deletedAt: Value(longAgo)));
+      await (db.update(db.papers)..where((t) => t.id.equals(paper)))
+          .write(PapersCompanion(deletedAt: Value(longAgo)));
+      await (db.update(db.subscriptions)..where((t) => t.id.equals(sub)))
+          .write(SubscriptionsCompanion(deletedAt: Value(longAgo)));
+
+      expect(await repo.purgeExpiredDeletes(), 3);
+
+      expect(await repo.deletedItems(), isEmpty);
+      expect(await repo.deletedPapers(), isEmpty);
+      expect(await repo.deletedSubscriptions(), isEmpty);
+    });
+
+    // And anything still inside its window is left alone. A sweep that is too
+    // keen is worse than one that never runs.
+    test('but leaves anything still inside its window', () async {
+      final id = await aPaper();
+      await repo.softDeletePaper(id);
+
+      expect(await repo.purgeExpiredDeletes(), 0);
+      expect((await repo.deletedPapers()).single.id, id);
+    });
+
+    test('emptying takes all three', () async {
+      await repo.softDeleteItem(await repo.createItem(draft('Kettle')));
+      await repo.softDeletePaper(await aPaper());
+      await repo.softDeleteSubscription(await aSub());
+
+      expect(await repo.emptyBin(), 3);
+      expect(await repo.deletedPapers(), isEmpty);
+      expect(await repo.deletedSubscriptions(), isEmpty);
+    });
+
+    // Erasing must not leave a blob behind. `orphanedBlobs` is the claim that
+    // nothing ever does; this is a case that would break it if the logo were
+    // forgotten.
+    test('and a subscription takes its logo with it', () async {
+      final id = await aSub();
+      await repo.putBlob('logo', Uint8List.fromList([1, 2, 3]), 'image/png');
+      await (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
+          .write(const SubscriptionsCompanion(logoBlobId: Value('logo')));
+
+      await repo.softDeleteSubscription(id);
+      await repo.purgeSubscriptionNow(id);
+
+      expect(await repo.blob('logo'), isNull);
+      expect(await repo.orphanedBlobs(), isEmpty);
+    });
+  });
+
+  /*
     ── The notification switch, and the two things that must not touch it ────
 
     This is the same shape of guarantee as the entitlements above, for a

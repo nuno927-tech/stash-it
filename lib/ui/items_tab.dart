@@ -63,7 +63,7 @@ class _ItemsTabState extends State<ItemsTab> {
 
         return Scaffold(
           floatingActionButton: FloatingActionButton(
-            onPressed: () => _open(context, null),
+            onPressed: () => _open(null),
             tooltip: 'Add something',
             child: const Icon(Icons.add),
           ),
@@ -127,7 +127,7 @@ class _ItemsTabState extends State<ItemsTab> {
                         padding: const EdgeInsets.only(bottom: 88),
                         itemBuilder: (context, i) => _ItemTile(
                           item: shown[i],
-                          onTap: () => _open(context, shown[i]),
+                          onTap: () => _open(shown[i]),
                         ),
                       ),
               ),
@@ -143,7 +143,12 @@ class _ItemsTabState extends State<ItemsTab> {
   /// Nothing is passed back and nothing needs to be: the list is a Drift
   /// stream, so a save rebuilds it. That is the whole reason the repository
   /// exposes `watchActiveItems` rather than a future.
-  Future<void> _open(BuildContext context, Item? item) async {
+  ///
+  /// ── Why the context is not a parameter ─────────────────────────────────
+  /// It was, and the analyzer was right to object: `mounted` describes this
+  /// State, and a `BuildContext` handed in from elsewhere is not tied to it.
+  /// Using the State's own `context` makes the guard mean what it reads like.
+  Future<void> _open(Item? item) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => ItemFormScreen(repo: widget.repo, existing: item),

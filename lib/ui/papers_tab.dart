@@ -33,7 +33,9 @@ class _PapersTabState extends State<PapersTab> {
   /// Unlike Items, this tab reads a future rather than a stream — so a save
   /// has to be told about. Worth knowing the difference is deliberate: the
   /// items list is watched because it is the one people leave open.
-  Future<void> open(BuildContext context, Paper? paper) async {
+  /// No `BuildContext` parameter: `mounted` describes this State, and a
+  /// context handed in from elsewhere is not tied to it. The analyzer says so.
+  Future<void> open(Paper? paper) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => PaperFormScreen(repo: widget.repo, existing: paper),
@@ -48,7 +50,7 @@ class _PapersTabState extends State<PapersTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () => open(context, null),
+        onPressed: () => open(null),
         tooltip: 'Add a document',
         child: const Icon(Icons.add),
       ),
@@ -89,7 +91,7 @@ class _PapersTabState extends State<PapersTab> {
                     ),
             ),
             for (final paper in sorted)
-              _PaperTile(paper: paper, onTap: () => open(context, paper)),
+              _PaperTile(paper: paper, onTap: () => open(paper)),
             const SizedBox(height: 24),
           ],
         );

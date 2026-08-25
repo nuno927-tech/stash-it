@@ -40,7 +40,23 @@ Future<void> main() async {
     handshake, on the other hand, is how an app gets a reputation for being slow
     to open.
   */
-  unawaited(syncReminders(Repository(db)));
+  final repo = Repository(db);
+
+  /*
+    ── The sweep, which had never once run ────────────────────────────────
+
+    `purgeExpiredDeletes` has existed since the repository was written, with a
+    test proving it erases what is past thirty days, and nothing ever called
+    it. Deleted records were accumulating in the database for ever: invisible,
+    counted in no total, and carried into every backup.
+
+    That is the same failure the bin screen was just written to fix, one layer
+    down — a green test on a function with no caller. On launch, before the
+    reminders, because a swept record must not be scheduled.
+  */
+  unawaited(
+    repo.purgeExpiredDeletes().then((_) => syncReminders(repo)),
+  );
 }
 
 class StashItApp extends StatelessWidget {

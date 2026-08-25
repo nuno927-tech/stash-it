@@ -15,7 +15,6 @@
 library;
 
 import '../models/settings.dart';
-import '../models/types.dart';
 import 'limits.dart';
 
 /// Whole days until this item is erased.
@@ -64,25 +63,80 @@ String restoreBlockedReason(int activeCount) =>
     "You're at $activeCount of $freeItemLimit saved things. Remove something, "
     'or subscribe, and this comes straight back — it stays here either way.';
 
-/// "3 items" / "1 item", for the entry row and the heading.
-String binCount(int n) => '$n ${n == 1 ? 'item' : 'items'}';
+/// "3 things" / "1 thing", for the entry row and the heading.
+///
+/// **"Things", not "items".** The bin holds all three kinds now, and "items"
+/// is the name of a tab — "3 items in the bin" would read as three of the
+/// records on that one screen, which is exactly the sort of small wrongness
+/// that makes somebody open the bin to check whether their passport is really
+/// still there.
+String binCount(int n) => '$n ${n == 1 ? 'thing' : 'things'}';
+
+/* --------------------------------------------------------------- entries */
+
+enum BinKind { item, paper, subscription }
+
+/// One row in the bin, whatever it used to be.
+///
+/// ── Why the bin flattens the three kinds ──────────────────────────────────
+/// Every other screen in the app is organised by what a record *is*, because
+/// that is what you are looking for. The bin is organised by what is about to
+/// go, because that is the only question it answers — and a passport with two
+/// days left belongs above a kettle with twenty regardless of which tab either
+/// came from. Three separate lists would bury the urgent one under a heading.
+class BinEntry {
+  const BinEntry({
+    required this.id,
+    required this.kind,
+    required this.name,
+    required this.deletedAt,
+  });
+
+  final String id;
+  final BinKind kind;
+
+  /// What to call it on the row. Already includes the holder for a document,
+  /// because "Passport" alone is four identical rows in a household.
+  final String name;
+
+  final DateTime? deletedAt;
+}
+
+/// Everything in the bin, soonest to go first.
+///
+/// The sort is on the deletion date rather than the name: the only question
+/// this screen answers is "what am I about to lose", and the answer belongs at
+/// the top. A missing date sorts last — see the note in `binSummary` on why it
+/// is treated as freshly deleted rather than as overdue.
+List<BinEntry> sortBin(List<BinEntry> entries) {
+  final out = [...entries];
+  out.sort((a, b) {
+    final x = a.deletedAt;
+    final y = b.deletedAt;
+    if (x == null && y == null) return a.name.compareTo(b.name);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return x.compareTo(y);
+  });
+  return out;
+}
 
 /// The bin's own summary line: how many, and how long the most urgent one has.
 ///
 /// Stating the soonest rather than an average — the only deadline that matters
 /// is the next one.
-String binSummary(List<Item> items, [DateTime? now]) {
-  if (items.isEmpty) return 'Nothing here';
+String binSummary(List<BinEntry> entries, [DateTime? now]) {
+  if (entries.isEmpty) return 'Nothing here';
 
   final at = now ?? DateTime.now();
   var soonest = purgeAfterDays;
-  for (final i in items) {
-    final gone = i.deletedAt;
-    // A live item in the bin list is a caller's bug, not a countdown. It gets
+  for (final e in entries) {
+    final gone = e.deletedAt;
+    // A live record in the bin list is a caller's bug, not a countdown. It gets
     // the full window rather than being hurried towards deletion.
     final left = gone == null ? purgeAfterDays : daysLeft(gone, at);
     if (left < soonest) soonest = left;
   }
 
-  return '${binCount(items.length)} · ${daysLeftLabel(soonest).toLowerCase()}';
+  return '${binCount(entries.length)} · ${daysLeftLabel(soonest).toLowerCase()}';
 }

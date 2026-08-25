@@ -29,7 +29,9 @@ class SubsTab extends StatefulWidget {
 }
 
 class _SubsTabState extends State<SubsTab> {
-  Future<void> open(BuildContext context, Subscription? sub) async {
+  /// No `BuildContext` parameter: `mounted` describes this State, and a
+  /// context handed in from elsewhere is not tied to it. The analyzer says so.
+  Future<void> open(Subscription? sub) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => SubFormScreen(repo: widget.repo, existing: sub),
@@ -44,7 +46,7 @@ class _SubsTabState extends State<SubsTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () => open(context, null),
+        onPressed: () => open(null),
         tooltip: 'Add a subscription',
         child: const Icon(Icons.add),
       ),
@@ -123,7 +125,7 @@ class _SubsTabState extends State<SubsTab> {
 
             const SectionTitle('Renewing next'),
             for (final sub in sorted)
-              _SubTile(sub: sub, onTap: () => open(context, sub)),
+              _SubTile(sub: sub, onTap: () => open(sub)),
             const SizedBox(height: 88),
           ],
         );

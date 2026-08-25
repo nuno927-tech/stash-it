@@ -366,33 +366,121 @@ class Repository {
         await (db.delete(db.items)..where((t) => t.id.equals(itemId))).go();
       });
 
+  /* ── Documents and subscriptions in the bin ─────────────────────────────
+
+     These arrived later than items and were, for one release, soft-deleted
+     into nowhere: no list showed them, no sweep collected them, and the delete
+     dialog promised a thirty-day window that only items actually had. That is
+     the same failure `logic/bin.dart` was written about, reproduced.
+
+     Neither holds an attachment the way an item does — a document has no
+     scans by design, a subscription has at most a logo — so erasing one is a
+     row delete rather than the transaction `_erase` needs. The logo still has
+     to go with it, or `orphanedBlobs` starts finding things.
+  */
+
+  Future<List<Paper>> deletedPapers() async {
+    final rows = await (db.select(db.papers)
+          ..where((t) => t.deletedAt.isNotNull())
+          ..orderBy([(t) => OrderingTerm(expression: t.deletedAt)]))
+        .get();
+    return rows.map(paperOf).toList();
+  }
+
+  Future<List<Subscription>> deletedSubscriptions() async {
+    final rows = await (db.select(db.subscriptions)
+          ..where((t) => t.deletedAt.isNotNull())
+          ..orderBy([(t) => OrderingTerm(expression: t.deletedAt)]))
+        .get();
+    return rows.map(subscriptionOf).toList();
+  }
+
+  Future<void> restorePaper(String id) async {
+    await _requireRoom();
+    await (db.update(db.papers)..where((t) => t.id.equals(id)))
+        .write(const PapersCompanion(deletedAt: Value(null)));
+  }
+
+  Future<void> restoreSubscription(String id) async {
+    await _requireRoom();
+    await (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
+        .write(const SubscriptionsCompanion(deletedAt: Value(null)));
+  }
+
+  Future<void> _erasePaper(String id) =>
+      (db.delete(db.papers)..where((t) => t.id.equals(id))).go();
+
+  Future<void> _eraseSubscription(String id) => db.transaction(() async {
+        final row = await (db.select(db.subscriptions)
+              ..where((t) => t.id.equals(id)))
+            .getSingleOrNull();
+        if (row == null) return;
+
+        final logo = row.logoBlobId;
+        if (logo != null) {
+          await (db.delete(db.blobs)..where((t) => t.id.equals(logo))).go();
+        }
+        await (db.delete(db.subscriptions)..where((t) => t.id.equals(id))).go();
+      });
+
   /// Skip the wait. Only reachable from the bin, and only after a confirmation.
   Future<void> purgeItemNow(String id) => _erase(id);
+  Future<void> purgePaperNow(String id) => _erasePaper(id);
+  Future<void> purgeSubscriptionNow(String id) => _eraseSubscription(id);
 
+  /// Everything in the bin, gone for good. Returns how many.
   Future<int> emptyBin() async {
-    final gone = await deletedItems();
-    for (final item in gone) {
+    final items = await deletedItems();
+    for (final item in items) {
       await _erase(item.id);
     }
-    return gone.length;
+
+    final papers = await deletedPapers();
+    for (final paper in papers) {
+      await _erasePaper(paper.id);
+    }
+
+    final subs = await deletedSubscriptions();
+    for (final sub in subs) {
+      await _eraseSubscription(sub.id);
+    }
+
+    return items.length + papers.length + subs.length;
   }
 
   /// The sweep. Returns how many were erased.
   ///
   /// The cutoff is the same arithmetic `daysLeft` shows on the row, so the
   /// number on screen and the day it actually goes cannot disagree.
+  ///
+  /// All three kinds, for the same reason: a countdown printed on a row that
+  /// nothing ever collects is a lie with a number on it.
   Future<int> purgeExpiredDeletes([DateTime? now]) async {
     final at = now ?? DateTime.now();
     final cutoff = at.subtract(const Duration(days: purgeAfterDays));
 
-    final stale = await (db.select(db.items)
+    final staleItems = await (db.select(db.items)
           ..where((t) => t.deletedAt.isSmallerThanValue(cutoff)))
         .get();
-
-    for (final row in stale) {
+    for (final row in staleItems) {
       await _erase(row.id);
     }
-    return stale.length;
+
+    final stalePapers = await (db.select(db.papers)
+          ..where((t) => t.deletedAt.isSmallerThanValue(cutoff)))
+        .get();
+    for (final row in stalePapers) {
+      await _erasePaper(row.id);
+    }
+
+    final staleSubs = await (db.select(db.subscriptions)
+          ..where((t) => t.deletedAt.isSmallerThanValue(cutoff)))
+        .get();
+    for (final row in staleSubs) {
+      await _eraseSubscription(row.id);
+    }
+
+    return staleItems.length + stalePapers.length + staleSubs.length;
   }
 
   /* --------------------------------------------------------------- blobs */

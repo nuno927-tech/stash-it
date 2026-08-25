@@ -13,14 +13,16 @@ import '../db/backup.dart';
 import '../db/repository.dart';
 import '../db/restore.dart';
 import '../io/bundle_file.dart';
+import '../logic/bin.dart';
 import '../logic/bundle.dart';
 import '../logic/devmode.dart';
 import '../logic/reminders.dart';
 import '../models/settings.dart';
 import '../notify/sync.dart';
+import 'bin_screen.dart';
 import 'parts.dart';
 
-const appVersion = '0.3.0';
+const appVersion = '0.4.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -119,6 +121,29 @@ class _SettingsTabState extends State<SettingsTab> {
   /// tab changes it and nothing tells this screen.
   Future<int> get _pendingCount => syncReminders(widget.repo);
 
+  /// "3 things · last day", or "Nothing here".
+  ///
+  /// Built here rather than in `binSummary` because the three queries are the
+  /// repository's business and the sentence is the logic's — the same split as
+  /// everywhere else, and the reason `binSummary` takes `BinEntry` rather than
+  /// three lists.
+  Future<String> get _binLine async {
+    final entries = [
+      for (final i in await widget.repo.deletedItems())
+        BinEntry(id: i.id, kind: BinKind.item, name: i.name, deletedAt: i.deletedAt),
+      for (final p in await widget.repo.deletedPapers())
+        BinEntry(
+            id: p.id, kind: BinKind.paper, name: p.label, deletedAt: p.deletedAt),
+      for (final s in await widget.repo.deletedSubscriptions())
+        BinEntry(
+            id: s.id,
+            kind: BinKind.subscription,
+            name: s.name,
+            deletedAt: s.deletedAt),
+    ];
+    return binSummary(entries);
+  }
+
   /// The switch, and the OS prompt behind it.
   ///
   /// Turning it on has to ask Android, and Android only asks once per install —
@@ -188,6 +213,36 @@ class _SettingsTabState extends State<SettingsTab> {
               ),
             );
           },
+        ),
+
+        /*
+          ── The bin, and why it is a row rather than a tab ─────────────────
+
+          The delete dialog has always promised a thirty-day window. This is
+          the way to it, and until it existed the promise was unkeepable.
+
+          Not a sixth tab: a tab is for somewhere you go regularly, and the bin
+          is somewhere you go once, urgently, having just deleted the wrong
+          passport. The subtitle carries the count so the row itself answers
+          "is there anything in there" without being opened.
+        */
+        FutureBuilder<String>(
+          future: _binLine,
+          builder: (context, snap) => ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Bin'),
+            subtitle: Text(snap.data ?? 'Counting…'),
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => BinScreen(repo: widget.repo),
+                ),
+              );
+              // The count on this row is now stale, and the restored record
+              // has to reappear in the tally above it.
+              if (mounted) setState(() {});
+            },
+          ),
         ),
 
         ListTile(

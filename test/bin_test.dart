@@ -17,15 +17,14 @@ library;
 import 'package:stash_it/logic/bin.dart';
 import 'package:stash_it/logic/limits.dart';
 import 'package:stash_it/models/settings.dart';
-import 'package:stash_it/models/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final now = DateTime(2026, 8, 12, 9);
 
 DateTime daysAgo(int n) => now.subtract(Duration(days: n));
 
-Item binned(String id, int ago) =>
-    Item(id: id, name: id, propertyId: 'p', deletedAt: daysAgo(ago));
+BinEntry binned(String id, int ago) =>
+    BinEntry(id: id, kind: BinKind.item, name: id, deletedAt: daysAgo(ago));
 
 const free = Entitlements();
 const pro = Entitlements(proUnlock: true);
@@ -70,8 +69,13 @@ void main() {
   });
 
   group('counting', () {
-    test('one item reads singular', () => expect(binCount(1), '1 item'));
-    test('two do not', () => expect(binCount(2), '2 items'));
+    /*
+      "Things", not "items". The bin holds documents and subscriptions now, and
+      "items" is the name of a tab — counting a binned passport as an "item"
+      sends somebody to the wrong screen to look for it.
+    */
+    test('one reads singular', () => expect(binCount(1), '1 thing'));
+    test('two do not', () => expect(binCount(2), '2 things'));
   });
 
   group('the summary', () {
@@ -85,11 +89,64 @@ void main() {
         binned('Oldest', purgeAfterDays - 1),
         binned('Middle', 10),
       ];
-      expect(binSummary(rows, now), '3 items · last day');
+      expect(binSummary(rows, now), '3 things · last day');
     });
 
     test('and reads singular for one', () {
-      expect(binSummary([binned('Only', 0)], now), '1 item · 30 days left');
+      expect(binSummary([binned('Only', 0)], now), '1 thing · 30 days left');
+    });
+  });
+
+  /*
+    ── The order, which is the screen's whole argument ───────────────────────
+
+    Every other list in the app is grouped by what a record is. The bin is
+    sorted by what is about to go, across all three kinds at once, because the
+    only question it answers is "what am I about to lose" — and a passport with
+    two days left belongs above a kettle with twenty regardless of which tab
+    either came from.
+  */
+  group('the order', () {
+    test('soonest to go, first', () {
+      final sorted = sortBin([
+        binned('Newest', 0),
+        binned('Oldest', 20),
+        binned('Middle', 10),
+      ]);
+      expect(sorted.map((e) => e.name), ['Oldest', 'Middle', 'Newest']);
+    });
+
+    test('and the kinds are mixed rather than grouped', () {
+      final sorted = sortBin([
+        BinEntry(
+          id: 'k',
+          kind: BinKind.item,
+          name: 'Kettle',
+          deletedAt: daysAgo(1),
+        ),
+        BinEntry(
+          id: 'p',
+          kind: BinKind.paper,
+          name: 'Passport',
+          deletedAt: daysAgo(28),
+        ),
+      ]);
+      expect(sorted.first.name, 'Passport');
+    });
+
+    // A live record in the bin list is a caller's bug. It sorts last rather
+    // than crashing or being hurried to the top.
+    test('a missing date sorts last', () {
+      final sorted = sortBin([
+        const BinEntry(
+          id: 'x',
+          kind: BinKind.item,
+          name: 'Never deleted',
+          deletedAt: null,
+        ),
+        binned('Real', 5),
+      ]);
+      expect(sorted.last.name, 'Never deleted');
     });
   });
 
