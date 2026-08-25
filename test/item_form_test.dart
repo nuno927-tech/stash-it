@@ -212,4 +212,102 @@ void main() {
       expect(order, ['fabric', 'frame']);
     });
   });
+
+  /*
+    ── The fields the form does not show, and used to destroy ────────────────
+
+    The round trip above claims "saving an untouched draft changes nothing" and
+    it passed for months while `toItem` silently dropped `roomId`,
+    `thumbBlobId` and `photoBlobId` — because the fixture it ran against had
+    none of them set. A round-trip test is only as strong as the awkwardness in
+    its fixture, which is the same lesson the backup suite learned about
+    `Doc.blobId`.
+
+    The rule these enforce: **a form model must carry every field of the
+    record, whether or not the form shows it.** A field the draft does not hold
+    is not a missing feature; it is a delete that fires on Save.
+  */
+  group('fields the form never shows', () {
+    final furnished = Item(
+      id: 'tv',
+      propertyId: 'default',
+      name: 'Television',
+      roomId: 'living-room',
+      thumbBlobId: 'thumb-1',
+      photoBlobId: 'photo-1',
+      coverages: const [
+        Coverage(
+          id: 'base',
+          label: 'Warranty',
+          unit: CoverageUnit.years,
+          amount: 2,
+          // None of these three is on the form either.
+          startsOn: '2026-02-01',
+          phone: '0800 000 000',
+          url: 'https://example.com/claim',
+        ),
+      ],
+    );
+
+    test('the room survives an untouched save', () {
+      expect(toItem(draftOf(furnished), propertyId: 'default').roomId,
+          'living-room');
+    });
+
+    // Severing this leaves the picture in the database as an orphan and the
+    // item looking as though it never had one. Nothing on any screen would
+    // have shown it happening.
+    test('and so does the photograph', () {
+      final back = toItem(draftOf(furnished), propertyId: 'default');
+      expect(back.photoBlobId, 'photo-1');
+      expect(back.thumbBlobId, 'thumb-1');
+    });
+
+    test('and the parts of a policy that are not on the form', () {
+      final policy =
+          toItem(draftOf(furnished), propertyId: 'default').coverages.single;
+      expect(policy.startsOn, '2026-02-01');
+      expect(policy.phone, '0800 000 000');
+      expect(policy.url, 'https://example.com/claim');
+    });
+
+    /*
+      AND THE WORST ONE. An item written before the coverages list existed
+      keeps its warranty in the legacy `warranty` field, which `coveragesOf`
+      folds into a policy at read time. `draftOf` was reading the raw list
+      instead — so such an item opened showing NO cover at all, and saving wrote
+      that emptiness back. Opening the form and pressing Save destroyed the
+      warranty.
+    */
+    test('a legacy warranty opens as a policy and survives the save', () {
+      const old = Item(
+        id: 'kettle',
+        propertyId: 'default',
+        name: 'Kettle',
+        purchaseDate: '2026-01-01',
+        warranty: Warranty(
+          months: 24,
+          unit: WarrantyUnit.months,
+          amount: 24,
+          provider: 'Bosch',
+        ),
+      );
+
+      final draft = draftOf(old);
+      expect(draft.coverages, hasLength(1),
+          reason: 'the fold has to happen when the form opens');
+      expect(draft.coverages.single.amountText, '24');
+
+      final back = toItem(draft, propertyId: 'default');
+      expect(back.coverages, hasLength(1));
+      expect(back.coverages.single.amount, 24);
+      expect(back.coverages.single.provider, 'Bosch');
+
+      // And the app reads the same cover afterwards, which is the point of
+      // completing the migration rather than merely not losing it.
+      expect(coveragesOf(back), hasLength(1));
+      expect(effectiveExpiry(back, DateTime(2026, 8, 24)),
+          DateTime(2028, 1, 1));
+    });
+  });
 }

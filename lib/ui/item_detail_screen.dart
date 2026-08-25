@@ -87,6 +87,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
             _Photo(repo: widget.repo, blobId: _item.photoBlobId!),
 
           const SectionTitle('The facts'),
+          if (_item.roomId != null)
+            FutureBuilder<List<Room>>(
+              future: widget.repo.rooms(),
+              builder: (context, snap) {
+                final room = snap.data
+                    ?.where((r) => r.id == _item.roomId)
+                    .firstOrNull;
+                if (room == null) return const SizedBox.shrink();
+                return _fact('Where', room.name, theme);
+              },
+            ),
           ..._facts(theme),
 
           if (schedule.isNotEmpty) ...[
@@ -155,20 +166,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
 
     return [
-      for (final (label, value) in rows)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 110,
-                child: Text(label, style: theme.textTheme.bodySmall),
-              ),
-              Expanded(child: Text(value)),
-            ],
-          ),
-        ),
+      for (final (label, value) in rows) _fact(label, value, theme),
       if ((_item.notes ?? '').isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -176,6 +174,20 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         ),
     ];
   }
+
+  Widget _fact(String label, String value, ThemeData theme) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(label, style: theme.textTheme.bodySmall),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
 
   Widget _coverage(DatedCoverage dated, ThemeData theme) {
     final left = dated.daysLeft;

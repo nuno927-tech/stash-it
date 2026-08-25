@@ -33,6 +33,10 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   late final ItemDraft _draft =
       widget.existing == null ? ItemDraft() : draftOf(widget.existing!);
 
+  /// Read once. Held rather than re-fetched on every rebuild, because a
+  /// `FutureBuilder` handed a fresh future each frame reloads for ever.
+  late final Future<List<Room>> _rooms = widget.repo.rooms();
+
   String? _problem;
   bool _saving = false;
 
@@ -172,6 +176,48 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
             label: 'Serial number',
             initial: _draft.serial,
             onChanged: (v) => _draft.serial = v,
+          ),
+
+          /*
+            ── The room, which the form has never once asked about ───────────
+
+            Sixteen rooms came across in the restore, every item carrying the
+            one it belongs to, and there was no way to see or set it. Worse,
+            the draft did not carry `roomId` either — so opening an item and
+            pressing Save moved it out of its room permanently.
+
+            A dropdown rather than free text: rooms are a fixed short list a
+            person has already named, and typing "Kitchen" a second time as
+            "kitchen" would quietly make two.
+          */
+          FutureBuilder<List<Room>>(
+            future: _rooms,
+            builder: (context, snap) {
+              final rooms = snap.data ?? const <Room>[];
+              if (rooms.isEmpty) return const SizedBox.shrink();
+
+              // A roomId pointing at a room that no longer exists must not be
+              // handed to the dropdown — it throws rather than showing blank.
+              final known = rooms.any((r) => r.id == _draft.roomId);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: DropdownButtonFormField<String?>(
+                  initialValue: known ? _draft.roomId : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Where it lives',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Not set')),
+                    for (final room in rooms)
+                      DropdownMenuItem(value: room.id, child: Text(room.name)),
+                  ],
+                  onChanged: (v) => setState(() => _draft.roomId = v),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 8),

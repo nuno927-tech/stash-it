@@ -23,7 +23,7 @@ import 'format.dart';
   disagreeing about what to show. The same reasoning as the ending-soon
   default in nudges.dart.
 */
-import 'warranty.dart' show defaultCoverageLabel;
+import 'warranty.dart' show coveragesOf, defaultCoverageLabel;
 
 /// A coverage as the form holds it: text in boxes, not yet a policy.
 class CoverageDraft {
@@ -35,6 +35,9 @@ class CoverageDraft {
     this.covers = '',
     this.provider = '',
     this.policyNumber = '',
+    this.startsOn,
+    this.phone,
+    this.url,
   });
 
   final String? id;
@@ -44,6 +47,13 @@ class CoverageDraft {
   String covers;
   String provider;
   String policyNumber;
+
+  /// Carried, not edited. None of these three is on the form, and all three
+  /// would be erased on save if the draft did not hold them — see the note on
+  /// `ItemDraft.thumbBlobId`.
+  String? startsOn;
+  String? phone;
+  String? url;
 
   /// A row nobody has touched. Blank rows are dropped rather than refused —
   /// tapping "add cover" and changing your mind is not an error.
@@ -72,6 +82,9 @@ class ItemDraft {
     this.currency = 'USD',
     this.notes = '',
     this.leadDays,
+    this.roomId,
+    this.thumbBlobId,
+    this.photoBlobId,
     List<CoverageDraft>? coverages,
   }) : coverages = coverages ?? [];
 
@@ -92,6 +105,30 @@ class ItemDraft {
 
   /// Null means "use the setting". Zero is a real answer.
   int? leadDays;
+
+  /// Which room it lives in.
+  String? roomId;
+
+  /*
+    ── Carried, not edited, and that distinction is the bug ─────────────────
+
+    These two are not on the form and nothing here changes them. They are
+    fields on the draft anyway, because a draft that does not carry a field is
+    a draft that DELETES it on save.
+
+    That is not hypothetical: `toItem` did not mention `roomId`,
+    `thumbBlobId` or `photoBlobId`, so every edit to an existing item silently
+    dropped its room and severed its photograph — leaving the picture in the
+    database as an orphan, and the item looking as though it never had one.
+    Opening an item and pressing Save was enough.
+
+    It is the same failure as `Doc.blobId`: a field that one layer does not
+    know about is a field that layer erases. The rule that comes out of both:
+    **a form model must round-trip every field of the record, whether or not
+    the form shows it.**
+  */
+  String? thumbBlobId;
+  String? photoBlobId;
 
   final List<CoverageDraft> coverages;
 
@@ -155,6 +192,11 @@ Item toItem(ItemDraft d, {required String propertyId, DateTime? createdAt}) {
     currency: d.currency,
     notes: clean(d.notes),
     leadDays: d.leadDays,
+    // Carried through untouched — see the note on the draft's fields. Dropping
+    // any of these three is a silent delete, not a missing feature.
+    roomId: d.roomId,
+    thumbBlobId: d.thumbBlobId,
+    photoBlobId: d.photoBlobId,
     createdAt: createdAt,
     coverages: [
       for (var i = 0; i < d.realCoverages.length; i++)
@@ -179,6 +221,9 @@ Coverage _toCoverage(CoverageDraft c, int index) {
     covers: clean(c.covers),
     provider: clean(c.provider),
     policyNumber: clean(c.policyNumber),
+    startsOn: c.startsOn,
+    phone: c.phone,
+    url: c.url,
   );
 }
 
@@ -197,8 +242,25 @@ ItemDraft draftOf(Item item) => ItemDraft(
       currency: item.currency ?? 'USD',
       notes: item.notes ?? '',
       leadDays: item.leadDays,
+      roomId: item.roomId,
+      thumbBlobId: item.thumbBlobId,
+      photoBlobId: item.photoBlobId,
+
+      /*
+        ── `coveragesOf`, NOT `item.coverages` ────────────────────────────────
+
+        An item written before the coverages list existed keeps its warranty in
+        `warranty` and `extendedWarranty`, and `coveragesOf` is the read-time
+        fold that presents those as policies. Reading the raw list instead
+        opened every such record with NO cover shown — and saving then wrote
+        that back, destroying a warranty by opening the form and pressing Save.
+
+        Folding here means an edit also completes the migration for that
+        record: the policies land in the real list, and `toItem` leaving the
+        legacy fields behind is then correct rather than destructive.
+      */
       coverages: [
-        for (final c in item.coverages)
+        for (final c in coveragesOf(item))
           CoverageDraft(
             id: c.id,
             label: c.label,
@@ -207,6 +269,9 @@ ItemDraft draftOf(Item item) => ItemDraft(
             covers: c.covers ?? '',
             provider: c.provider ?? '',
             policyNumber: c.policyNumber ?? '',
+            startsOn: c.startsOn,
+            phone: c.phone,
+            url: c.url,
           ),
       ],
     );
