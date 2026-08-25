@@ -59,18 +59,18 @@ class StashItButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.pill),
         onTap: () => _open(context),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 16, 24, 16),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add, size: 20, color: c.onGold),
-              const SizedBox(width: 6),
+              Icon(Icons.add, size: 24, color: c.onGold),
+              const SizedBox(width: 8),
               Text(
                 'Stash it',
                 style: TextStyle(
                   fontFamily: fontDisplay,
                   fontWeight: FontWeight.w800,
-                  fontSize: 16,
+                  fontSize: 19,
                   letterSpacing: -0.3,
                   color: c.onGold,
                 ),

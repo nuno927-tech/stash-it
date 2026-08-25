@@ -238,7 +238,20 @@ ThemeData stashTheme({required bool dark}) {
 
   return base.copyWith(
     colorScheme: scheme,
-    scaffoldBackgroundColor: c.slate900,
+
+    /*
+      `slate800`, not `slate900`.
+
+      The PWA paints `body` with 900 and the `.app` column inside it with 800 —
+      but that column is 480 wide with the page showing either side of it,
+      which only happens on a desktop browser. On a phone the app IS the
+      viewport, so the surface somebody actually sees is 800: white in the
+      light theme, and one step nearer than the page behind it in the dark one.
+
+      Using 900 here made every screen the colour of the gap around the app
+      rather than the colour of the app.
+    */
+    scaffoldBackgroundColor: c.slate800,
     canvasColor: c.slate800,
     dividerColor: c.line,
     extensions: [c],

@@ -236,3 +236,148 @@ WarrantyState coverageState(DatedCoverage d, [Item? item]) {
   final lead = item != null ? itemLeadDays(item) : _endingSoon;
   return d.daysLeft! <= lead ? WarrantyState.endingSoon : WarrantyState.covered;
 }
+
+/* ------------------------------------------------- the countdown, in parts */
+
+/// The number and its unit, kept apart.
+///
+/// Apart because the row draws them at very different sizes — 27px of the
+/// display face for the figure, 10.5px for the words under it — and a single
+/// string like "142 days left" would either wrap on a phone or force the number
+/// down to the size of the label.
+class WarrantyParts {
+  const WarrantyParts(this.value, this.unit, [this.which]);
+
+  final String value;
+  final String unit;
+
+  /// Which policy the number belongs to, or null when there is only one. On
+  /// the overwhelming majority of items the name would just be the word
+  /// "Warranty" under every figure in the list.
+  final String? which;
+}
+
+/// True when the end is close enough that days are the useful unit.
+///
+/// Six months. Past that "142 days" is a number nobody converts; inside it,
+/// months round away the thing you actually want to know.
+bool inFinalStretch(DateTime end, [DateTime? now]) =>
+    !end.isAfter(addMonthsClamped(startOfDay(now ?? DateTime.now()), 6));
+
+String _sinceLabel(int daysAgo) {
+  if (daysAgo < 31) return '$daysAgo ${daysAgo == 1 ? 'day' : 'days'} ago';
+  final months = (daysAgo / 30.44).floor();
+  if (months < 12) return '$months ${months == 1 ? 'month' : 'months'} ago';
+  final years = (months / 12).floor();
+  return '$years ${years == 1 ? 'year' : 'years'} ago';
+}
+
+/// The countdown for one named policy.
+///
+/// A term entered in days counts down in days for its whole life, however long
+/// that is. Somebody who typed 90 days is watching a 90-day clock, and showing
+/// them "2 months" on day one answers a question they did not ask.
+WarrantyParts coverageParts(DatedCoverage d, [DateTime? now]) {
+  if (d.end == null) return const WarrantyParts('Lifetime', 'no end date');
+
+  final days = d.daysLeft!;
+  if (days < 0) return WarrantyParts('Ended', _sinceLabel(-days));
+  if (days == 0) return const WarrantyParts('Today', 'last day');
+
+  if (d.coverage.unit == CoverageUnit.days || inFinalStretch(d.end!, now)) {
+    return WarrantyParts('$days', days == 1 ? 'day left' : 'days left');
+  }
+
+  final months = (days / 30.44).floor();
+  if (months < 12) return WarrantyParts('$months', 'months left');
+
+  final years = (months / 12).floor();
+  final rem = months % 12;
+  return WarrantyParts(rem != 0 ? '${years}y ${rem}m' : '${years}y', 'left');
+}
+
+/// The item's own countdown: the policy that will lapse first.
+WarrantyParts warrantyParts(Item item, [DateTime? now]) {
+  final all = coveragesOf(item);
+  final next = nextToLapse(item, now);
+
+  if (next == null) {
+    if (hasLifetime(item)) return const WarrantyParts('Lifetime', 'no end date');
+
+    final last = _lastLapsed(item, now);
+    if (last == null) {
+      return WarrantyParts('—', all.isEmpty ? 'no warranty' : 'no start date');
+    }
+    return WarrantyParts(
+      'Ended',
+      _sinceLabel(-last.daysLeft!),
+      all.length > 1 ? coverageLabel(last.coverage) : null,
+    );
+  }
+
+  final parts = coverageParts(next, now);
+  return WarrantyParts(
+    parts.value,
+    parts.unit,
+    all.length > 1 ? coverageLabel(next.coverage) : null,
+  );
+}
+
+/* ------------------------------------------------------------- the rings */
+
+/// How much of one policy's term is left, 0..1, for its arc.
+double coverageProgress(DatedCoverage d, Item item) {
+  // Lifetime is a full circle, because it never empties.
+  if (d.end == null) return 1;
+
+  final startsOn = d.coverage.startsOn ?? item.purchaseDate;
+  final start = startsOn == null ? null : parseDate(startsOn);
+  if (start == null) return 0;
+
+  final total = daysUntil(d.end!, start);
+  if (total <= 0) return 0;
+  return (d.daysLeft! / total).clamp(0.0, 1.0);
+}
+
+class CoverageArc {
+  const CoverageArc(this.progress, this.state);
+  final double progress;
+  final WarrantyState state;
+}
+
+/// One arc per policy, soonest to lapse outermost.
+///
+/// The caller draws only the first few, which is why the order matters: the
+/// ones that get dropped are the ones furthest from mattering.
+List<CoverageArc> coverageArcs(Item item, [DateTime? now]) {
+  final schedule = coverageSchedule(item, now);
+
+  // Still one ring, drawn as an empty track. A row with no ring at all reads as
+  // a different kind of row rather than as an item with nothing recorded.
+  if (schedule.isEmpty) {
+    return const [CoverageArc(0, WarrantyState.unknown)];
+  }
+
+  return [
+    for (final d in schedule) CoverageArc(coverageProgress(d, item), coverageState(d, item)),
+  ];
+}
+
+/// The cover line under an item's name: which policy ends first.
+///
+/// Only for items with more than one — on everything else the row keeps showing
+/// the model and the year, which is more useful than the word "Warranty"
+/// repeated down the page.
+///
+/// How many there are is drawn on the ring rather than said here. Saying both
+/// put a number in two places on one row, and the count was the less useful
+/// half: knowing it is the fabric tells you what to do.
+String? coverSummary(Item item, [DateTime? now]) {
+  final all = coveragesOf(item);
+  if (all.length < 2) return null;
+
+  final next = nextToLapse(item, now);
+  if (next != null) return '${coverageLabel(next.coverage)} ends first';
+  if (hasLifetime(item)) return 'Covered for life';
+  return 'Every policy has ended';
+}

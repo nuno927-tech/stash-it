@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
+import '../logic/devmode.dart';
 import '../logic/swipe.dart';
 import 'add_button.dart';
 import 'feedback.dart';
@@ -43,6 +44,21 @@ class _ShellState extends State<Shell> {
   /// Bumped to force the visible tab to rebuild after the add sheet closes.
   /// Items watches a stream and does not need it; the other three read futures.
   int _generation = 0;
+
+  TapState _taps = noTaps;
+  String? _hint;
+
+  void _tapTitle() {
+    setState(() {
+      _taps = tap(_taps, DateTime.now());
+      _hint = tapHint(_taps);
+      if (unlocked(_taps)) {
+        rememberUnlocked(true);
+        // The Settings screen has to redraw to show what just appeared.
+        _generation++;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +122,25 @@ class _ShellState extends State<Shell> {
                     Tab.settings => ScoutPose.settings,
                     Tab.home => null,
                   },
+                  /*
+                    Ten taps on the word "Settings", and the run resets if you
+                    pause. Not a secret worth keeping — it is that a switch
+                    which lifts the item cap has no business being one stray
+                    thumb away on somebody's settings screen.
+
+                    The heading rather than the version row, which is where the
+                    port had put it: a title that does something when tapped is
+                    invisible to anybody not looking for it, and a version
+                    number that does is a version number people tap by accident
+                    while reading it.
+                  */
+                  onTap: _tab == Tab.settings ? _tapTitle : null,
+                  trailing: _hint == null
+                      ? null
+                      : Padding(
+                          padding: const EdgeInsets.only(left: 8, bottom: 6),
+                          child: Text(_hint!, style: Theme.of(context).textTheme.bodySmall),
+                        ),
                 ),
 
               Expanded(

@@ -162,9 +162,14 @@ class SectionTitle extends StatelessWidget {
 /// Home is the exception and takes the wordmark instead, because a masthead
 /// saying "Home" would be the app introducing itself as a navigation state.
 class TabTitle extends StatelessWidget {
-  const TabTitle(this.title, {this.pose, this.trailing, super.key});
+  const TabTitle(this.title, {this.pose, this.trailing, this.onTap, super.key});
 
   final String title;
+
+  /// The Settings heading is the dev-mode tap target — ten taps on the word
+  /// "Settings". A title that does something when tapped is invisible to
+  /// anybody not looking for it, which is the whole point of an easter egg.
+  final VoidCallback? onTap;
 
   /// Scout, small, at the right-hand end. The PWA gives every tab head one —
   /// `.subshead`, `.masthead` — doing the job that screen is for.
@@ -180,12 +185,15 @@ class TabTitle extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: Text(
-              title,
-              // The same style as the wordmark, deliberately. These are all
-              // mastheads — the app naming the screen you are on — and a
-              // heading that changes face between tabs reads as two apps.
-              style: Theme.of(context).textTheme.headlineSmall,
+            child: GestureDetector(
+              onTap: onTap,
+              child: Text(
+                title,
+                // The same style as the wordmark, deliberately. These are all
+                // mastheads — the app naming the screen you are on — and a
+                // heading that changes face between tabs reads as two apps.
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
           ),
           if (pose != null)
@@ -250,30 +258,58 @@ class Blank extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (pose != null) ...[
-              Scout(
-                pose: pose!,
-                height: poseHeight,
-                motion: const [ScoutMotion.float],
-                shadow: true,
+    /*
+      ── Scout shrinks rather than overflowing ────────────────────────────────
+
+      An empty state is the one screen whose height is entirely out of its own
+      control: a search that found nothing on a small phone in landscape gets a
+      couple of hundred pixels, and a 180-tall mascot plus four lines of text
+      does not fit in it. Flutter's answer to that is a yellow-and-black bar,
+      which is a worse empty state than no mascot at all.
+
+      So the pose is measured against what it has been given, and the whole
+      thing scrolls if even the shrunken version is too tall. He disappears
+      entirely below about 130 pixels — at that point he would be a thumbnail
+      competing with the sentence, and the sentence is the part that has to be
+      read.
+    */
+    return LayoutBuilder(
+      builder: (context, box) {
+        final room = box.maxHeight;
+        final showPose = pose != null && room > 200;
+        final height = showPose ? poseHeight.clamp(90.0, room * 0.45) : 0.0;
+
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: room.isFinite ? room : 0),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showPose) ...[
+                      Scout(
+                        pose: pose!,
+                        height: height,
+                        motion: const [ScoutMotion.float],
+                        shadow: true,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 28),
-            ],
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -336,7 +372,7 @@ class Ring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = StashColors.of(context);
 
     return SizedBox(
       height: 168,
@@ -346,15 +382,58 @@ class Ring extends StatelessWidget {
           covered: inDate.toDouble(),
           soon: needsStarting.toDouble(),
           lapsed: lapsed.toDouble(),
-          track: theme.colorScheme.surfaceContainerHighest,
-          error: theme.colorScheme.error,
+          track: c.slate600,
+          error: c.ember,
         ),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$percent%', style: theme.textTheme.headlineMedium),
-              Text('in date', style: theme.textTheme.labelSmall),
+              /*
+                ── Big, and thin ─────────────────────────────────────────────
+
+                52px of the display face at weight 200. The number is the
+                headline of the whole screen and it has a 168px circle to sit
+                in; anything smaller leaves the ring looking like a frame round
+                an empty space.
+
+                Thin rather than bold for the same reason the counts below are:
+                weight would make it shout, and 83% is not news. The per cent
+                sign is dropped to a third of the size and baseline-aligned,
+                because "83" is the number and "%" is its unit.
+              */
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '$percent',
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontWeight: FontWeight.w200,
+                      fontSize: 52,
+                      letterSpacing: -2.4,
+                      height: 1,
+                      color: c.text,
+                    ),
+                  ),
+                  Text(
+                    '%',
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontWeight: FontWeight.w200,
+                      fontSize: 19,
+                      color: c.text,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'still in date',
+                style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+              ),
             ],
           ),
         ),

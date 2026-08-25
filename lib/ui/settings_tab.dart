@@ -25,7 +25,7 @@ import 'parts.dart';
 import 'prefs_scope.dart';
 import 'scout.dart';
 
-const appVersion = '0.12.0';
+const appVersion = '0.14.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -39,7 +39,6 @@ class SettingsTab extends StatefulWidget {
 class _SettingsTabState extends State<SettingsTab> {
   String? _status;
   bool _busy = false;
-  TapState _taps = noTaps;
 
   Future<void> _restore() async {
     setState(() {
@@ -248,23 +247,9 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
-  /*
-    Ten taps on the version, and the run resets if you pause.
-
-    Not a secret worth keeping — it is that a switch which lifts the item cap
-    has no business being one stray thumb away on somebody's settings screen.
-  */
-  void _tapVersion() {
-    setState(() {
-      _taps = tap(_taps, DateTime.now());
-      if (unlocked(_taps)) rememberUnlocked(true);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hint = tapHint(_taps);
 
     return ListView(
       children: [
@@ -422,11 +407,13 @@ class _SettingsTabState extends State<SettingsTab> {
         _appearance(context),
 
         const SectionTitle('About'),
-        ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: const Text('Stash it'),
-          subtitle: Text(hint == null ? appVersion : '$appVersion · $hint'),
-          onTap: _tapVersion,
+        // Not the tap target any more — the heading is. See `_tapTitle` in
+        // shell.dart: a version number people tap by accident while reading it
+        // is a worse hiding place than a word that does nothing visible.
+        const ListTile(
+          leading: Icon(Icons.info_outline),
+          title: Text('Stash it'),
+          subtitle: Text(appVersion),
         ),
 
         if (readUnlocked()) ...[
@@ -443,10 +430,7 @@ class _SettingsTabState extends State<SettingsTab> {
           ListTile(
             leading: const Icon(Icons.visibility_off_outlined),
             title: const Text('Hide developer tools'),
-            onTap: () => setState(() {
-              rememberUnlocked(false);
-              _taps = noTaps;
-            }),
+            onTap: () => setState(() => rememberUnlocked(false)),
           ),
         ],
 

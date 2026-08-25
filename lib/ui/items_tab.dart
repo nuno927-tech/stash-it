@@ -18,6 +18,9 @@ import 'item_form_screen.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
 import 'scout.dart';
+import 'theme.dart';
+import 'thumb.dart';
+import 'warranty_ring.dart';
 
 class ItemsTab extends StatefulWidget {
   const ItemsTab({required this.repo, super.key});
@@ -130,6 +133,7 @@ class _ItemsTabState extends State<ItemsTab> {
                         // last row, which is the row people most often want.
                         padding: const EdgeInsets.only(bottom: 88),
                         itemBuilder: (context, i) => _ItemTile(
+                          repo: widget.repo,
                           item: shown[i],
                           onTap: () => _open(shown[i]),
                         ),
@@ -211,32 +215,85 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// One row: the photograph inside its rings, the name, and the countdown.
+///
+/// ── The picture replaced the icon, and that is not decoration ─────────────
+/// A guessed icon says "this is probably a kitchen thing". A photograph says
+/// "this is your dishwasher", which is the question somebody scanning a list of
+/// twenty appliances is actually asking. The icon stays as the fallback for
+/// items with no photo, where a guess beats an empty circle.
+///
+/// The ring goes round the photograph rather than beside it so the state and
+/// the picture occupy one piece of space instead of two — see `WarrantyRing`.
 class _ItemTile extends StatelessWidget {
-  const _ItemTile({required this.item, this.onTap});
+  const _ItemTile({required this.repo, required this.item, this.onTap});
 
+  final Repository repo;
   final Item item;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final c = StashColors.of(context);
     final state = warrantyState(item);
-    final next = nextToLapse(item);
     final end = effectiveExpiry(item);
 
-    return ListTile(
+    /*
+      On an item with several policies the cover is the more useful second line
+      — which one ends first — so it takes the slot the model and year usually
+      hold. On everything else nothing changes: one warranty needs no
+      explaining, and "Warranty ends first" down the whole list would be noise
+      dressed as information.
+    */
+    final second = coverSummary(item) ?? _subtitle(item, state, end);
+
+    return InkWell(
       onTap: onTap,
-      leading: CircleAvatar(
-        backgroundColor: toneOf(state, context).withValues(alpha: 0.2),
-        child: Icon(_icon(item), size: 20, color: toneOf(state, context)),
-      ),
-      title: Text(item.name),
-      subtitle: Text(_subtitle(item, state, end)),
-      trailing: next?.daysLeft == null
-          ? null
-          : Text(
-              '${next!.daysLeft} d',
-              style: Theme.of(context).textTheme.labelMedium,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(
+          children: [
+            ItemArtLive(
+              repo: repo,
+              item: item,
+              fallback: Icon(_icon(item), size: 18, color: c.muted),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: c.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    second,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // The number is the reason to open the row, so it gets the type.
+            // The unit sits under it rather than beside it — "142 days left" on
+            // one line at 27px wraps on a phone.
+            TimeLeft(item: item),
+          ],
+        ),
+      ),
     );
   }
 

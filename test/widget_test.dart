@@ -96,7 +96,21 @@ void main() {
     ]);
 
     expect(find.text('100%'), findsOneWidget);
-    expect(find.text('in date'), findsOneWidget);
+
+    /*
+      ── Twice, and that is the design now ──────────────────────────────────
+
+      This asserted exactly one. An earlier version of the dashboard had an
+      "in date" chip alongside the ring, and it was removed because it said
+      the same thing in two places and had nowhere to go when tapped.
+
+      The PWA has both, and the reason is the second half of that sentence:
+      the ring is the SUMMARY — one percentage — and the `.coverstats` row
+      below it is the BREAKDOWN, four counts that add up to the collection.
+      "In date" is the only column of the four that is not tappable, because
+      there is nothing to do about something that is fine.
+    */
+    expect(find.text('in date'), findsNWidgets(2));
 
     await db.close();
   });
@@ -121,16 +135,36 @@ void main() {
     // `textContaining`, because the empty state also says how to fix itself —
     // an empty screen that does not tell you what to do next is a dead end.
     expect(find.textContaining('Nothing saved yet'), findsOneWidget);
-    expect(find.textContaining('Tap + to put something in'), findsOneWidget);
+    // Named, not drawn as a symbol: the button is a pill with the app's name
+    // on it now, and "tap +" would send somebody looking for a plus that is
+    // only half of what the button says.
+    expect(find.textContaining('Tap Stash it to put something in'), findsOneWidget);
 
     await db.close();
   });
 
-  testWidgets('and the add button opens the form', (tester) async {
+  /*
+    ── The add button asks which kind, and that is the point of it ───────────
+
+    It used to be a `+` on each tab that added whatever that tab held, which
+    works right up until somebody looking at their subscriptions wants to add a
+    receipt. One button, three answers — so this test taps through the sheet
+    rather than landing straight on the form.
+  */
+  testWidgets('the Stash it button asks what kind, then opens the form',
+      (tester) async {
     final db = await show(tester);
     await goTo(tester, 'Items');
 
     await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Something you own'), findsOneWidget);
+    expect(find.text('Something recurring'), findsOneWidget);
+    expect(find.text('A document'), findsOneWidget);
+
+    await tester.tap(find.text('Something you own'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -273,30 +307,42 @@ void main() {
         this test twice as rows were added above the version. Asking the list
         to bring a thing into view is the version that survives the next row.
       */
-      Future<void> reach(String text) async {
-        await tester.scrollUntilVisible(find.text(text), 200);
+      Future<void> reach(Finder finder) async {
+        await tester.scrollUntilVisible(finder, 200);
         await tester.pump();
       }
 
+      /*
+        ── The heading, not the version row ─────────────────────────────────
+
+        The port had put the ten-tap unlock on the version number in About. The
+        PWA puts it on the screen's own title, and that is the better hiding
+        place twice over: a version number is a thing people tap by accident
+        while reading it, and a title that does something when tapped is
+        invisible to anybody not looking for it.
+
+        The title lives in the shell now, so it is on screen without scrolling.
+      */
+      final heading = find.text('Settings');
+
       // Silence until the tapping is obviously deliberate, then a countdown.
-      await reach('Stash it');
       for (var i = 0; i < 8; i++) {
-        await tester.tap(find.text('Stash it'));
+        await tester.tap(heading.first);
         await tester.pump();
       }
       expect(find.textContaining('2 more taps'), findsOneWidget);
 
-      await tester.tap(find.text('Stash it'));
+      await tester.tap(heading.first);
       await tester.pump();
-      await tester.tap(find.text('Stash it'));
+      await tester.tap(heading.first);
       await tester.pump();
 
-      await reach('Developer');
+      await reach(find.text('Developer'));
       expect(find.text('Developer'), findsOneWidget);
 
       // Leave it as it was found — the unlock is library state and outlives
       // this test otherwise.
-      await reach('Hide developer tools');
+      await reach(find.text('Hide developer tools'));
       await tester.tap(find.text('Hide developer tools'));
       await tester.pump();
 
