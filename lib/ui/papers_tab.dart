@@ -17,6 +17,7 @@ import '../models/paper.dart';
 import 'notify_offer_dialog.dart';
 import 'paper_form_screen.dart';
 import 'parts.dart';
+import 'scout.dart';
 
 class PapersTab extends StatefulWidget {
   const PapersTab({required this.repo, super.key});
@@ -70,6 +71,7 @@ class _PapersTabState extends State<PapersTab> {
             'Passports, licenses, insurance — the things that expire on you.\n\n'
             'Dates and general details only. No scans, no document numbers.\n\n'
             'Tap + to add one.',
+            pose: ScoutPose.clipboard,
           );
         }
 
@@ -79,8 +81,11 @@ class _PapersTabState extends State<PapersTab> {
         return ListView(
           padding: const EdgeInsets.only(bottom: 88),
           children: [
+            // "Documents" is the shell's heading now — see `TabTitle`. What is
+            // left here is the count, which is the only part that was ever
+            // about this screen's contents.
             SectionTitle(
-              'Documents',
+              'Expiring',
               trailing: needing == 0
                   ? null
                   : Text(

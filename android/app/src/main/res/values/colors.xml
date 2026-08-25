@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The one colour Android needs to know about before Flutter is running.
+    The colour Android paints before Flutter is running.
 
-    `main.dart` builds its theme with `Brightness.dark` and no light variant, so
-    the app is dark whatever the phone's setting says. The launch window has to
-    match, or every cold start is a white flash followed by a dark app — which
-    reads as a bug on a phone in a dark room.
+    The slate-900 token from the PWA's tokens.css, light side: the furthest
+    surface from the reader. On paper that means the palest, which is why this
+    file and the values-night one look inverted rather than merely different.
+
+    (Token names are written without their leading dashes on purpose — XML
+    forbids a double hyphen inside a comment and the build fails on it.)
+
+    ── The case this cannot get right ──────────────────────────────────────
+    The app's theme is a preference, not the system setting, so somebody who
+    runs their phone light and chose dark in Settings still gets a pale launch
+    window for a frame. Fixing that would mean writing the choice somewhere
+    Android can read before Dart starts, which is a second copy of a setting —
+    and a second copy is a thing that can disagree. Following the system is
+    right for everyone who has not overridden it, which is nearly everyone.
 -->
 <resources>
-    <color name="launch_background">#12100E</color>
-	<color name="ic_launcher_background">#12100E</color>
+    <color name="launch_background">#f4f2ed</color>
+    <color name="ic_launcher_background">#0d0f12</color>
 </resources>

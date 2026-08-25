@@ -20,9 +20,12 @@ import '../logic/reminders.dart';
 import '../models/settings.dart';
 import '../notify/sync.dart';
 import 'bin_screen.dart';
+import 'feedback.dart';
 import 'parts.dart';
+import 'prefs_scope.dart';
+import 'scout.dart';
 
-const appVersion = '0.9.0';
+const appVersion = '0.11.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -171,6 +174,80 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  /// Theme, sound and haptics.
+  ///
+  /// ── All three had to actually do something before they went on screen ──
+  /// `nudges.dart` opens by describing two settings that wrote to the database
+  /// and changed nothing anybody could see, and calls that worse than a missing
+  /// feature because it looks answered. Adding a sound switch with no sound
+  /// behind it would have been the third.
+  ///
+  /// So the theme repaints the whole app through `PrefsScope`, the haptics call
+  /// `HapticFeedback`, and the tones are synthesised in `ui/feedback.dart` from
+  /// the same note table the PWA uses. Each switch previews itself as it is
+  /// turned on, because a toggle you cannot hear is one you have to take on
+  /// trust.
+  Widget _appearance(BuildContext context) {
+    final prefs = PrefsScope.of(context);
+
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.contrast),
+          title: const Text('Theme'),
+          subtitle: Text(switch (prefs.theme) {
+            ThemeChoice.system => 'Match my device',
+            ThemeChoice.light => 'Light',
+            ThemeChoice.dark => 'Dark',
+          }),
+          trailing: SegmentedButton<ThemeChoice>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: ThemeChoice.system, icon: Icon(Icons.brightness_auto_outlined)),
+              ButtonSegment(value: ThemeChoice.light, icon: Icon(Icons.light_mode_outlined)),
+              ButtonSegment(value: ThemeChoice.dark, icon: Icon(Icons.dark_mode_outlined)),
+            ],
+            selected: {prefs.theme},
+            onSelectionChanged: (s) {
+              feedback(Cue.tap);
+              prefs.set(theme: s.first);
+            },
+          ),
+        ),
+
+        SwitchListTile(
+          secondary: const Icon(Icons.volume_up_outlined),
+          title: const Text('Sound'),
+          subtitle: const Text(
+            'Short tones on saving, deleting and moving about. Off by default.',
+          ),
+          value: prefs.sounds,
+          onChanged: (on) {
+            prefs.set(sounds: on);
+            // Demonstrated with `save`, which is the one with a shape to it.
+            // Previewing `tap` would prove almost nothing — it is deliberately
+            // the least interesting sound in the set.
+            if (on) previewCue(Cue.save, sounds: true, haptics: prefs.haptics);
+          },
+        ),
+
+        SwitchListTile(
+          secondary: const Icon(Icons.vibration),
+          title: const Text('Haptics'),
+          subtitle: const Text(
+            'A tick under your thumb. The scale is the point — a tap is barely '
+            'there, a delete you would feel with the phone face-down.',
+          ),
+          value: prefs.haptics,
+          onChanged: (on) {
+            prefs.set(haptics: on);
+            if (on) previewCue(Cue.delete, sounds: false, haptics: true);
+          },
+        ),
+      ],
+    );
+  }
+
   /*
     Ten taps on the version, and the run resets if you pause.
 
@@ -191,6 +268,18 @@ class _SettingsTabState extends State<SettingsTab> {
 
     return ListView(
       children: [
+        // At the control desk, which is what this screen is.
+        const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: Center(
+            child: Scout(
+              pose: ScoutPose.settings,
+              height: 104,
+              motion: [ScoutMotion.breathe],
+            ),
+          ),
+        ),
+
         const SectionTitle('Your data'),
 
         /*
@@ -328,6 +417,9 @@ class _SettingsTabState extends State<SettingsTab> {
             );
           },
         ),
+
+        const SectionTitle('How it looks and feels'),
+        _appearance(context),
 
         const SectionTitle('About'),
         ListTile(

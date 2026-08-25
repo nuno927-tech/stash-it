@@ -20,6 +20,7 @@ import '../db/repository.dart';
 import '../logic/bin.dart';
 import '../logic/limits.dart';
 import 'parts.dart';
+import 'scout.dart';
 
 class BinScreen extends StatefulWidget {
   const BinScreen({required this.repo, super.key});
@@ -193,6 +194,10 @@ class _BinScreenState extends State<BinScreen> {
               'Nothing here.\n\n'
               'Anything you delete waits $purgeAfterDays days before it is '
               'erased, so you have time to change your mind.',
+              // Curled up, because an empty bin is the one screen in the app
+              // where there is genuinely nothing to do.
+              pose: ScoutPose.resting,
+              poseHeight: 150,
             );
           }
 

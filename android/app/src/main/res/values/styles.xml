@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Both themes are dark, in the light-mode folder as well as the night one.
+    Light, now that the app has a light theme.
 
-    That looks like a mistake and is not. `main.dart` builds one theme, with
-    `Brightness.dark` and no light variant, so the app is dark on a phone set to
-    light mode too. If this file followed the system setting, someone with light
-    mode on would get a white launch window and a white frame behind the UI —
-    visible as a flash on start and as white edges during a keyboard animation.
-
-    The day the app grows a light theme, this goes back to Theme.Light and the
-    night folder keeps its own.
+    These followed the system setting, then were forced dark while the app was
+    dark-only, and now follow it again — which is the right answer for anyone
+    who has not overridden the choice in Settings. See ../values/colors.xml for
+    the case this cannot get right.
 -->
 <resources>
-    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
     </style>
 
-    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/launch_background</item>
     </style>
 </resources>

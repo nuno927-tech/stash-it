@@ -13,7 +13,10 @@ import 'db/open_flutter.dart';
 import 'db/repository.dart';
 import 'db/tables.dart';
 import 'notify/sync.dart';
+import 'ui/feedback.dart';
+import 'ui/prefs_scope.dart';
 import 'ui/shell.dart';
+import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +31,18 @@ Future<void> main() async {
     the crash names the reason.
   */
   final db = await openEncrypted();
-  runApp(StashItApp(db: db));
+  final repo = Repository(db);
+
+  /*
+    Preferences are read before the first frame too, and for a smaller but
+    sharper reason: the theme. Painting dark and then switching to light a
+    frame later is a flash on every launch for anybody who chose light, and it
+    is the kind of thing that reads as the app being unsure of itself.
+  */
+  final prefs = PrefsController(repo);
+  await prefs.load();
+
+  runApp(StashItApp(repo: repo, prefs: prefs));
 
   /*
     Rescheduling happens AFTER the first frame, and is deliberately not awaited.
@@ -40,7 +54,6 @@ Future<void> main() async {
     handshake, on the other hand, is how an app gets a reputation for being slow
     to open.
   */
-  final repo = Repository(db);
 
   /*
     ── The sweep, which had never once run ────────────────────────────────
@@ -50,35 +63,48 @@ Future<void> main() async {
     it. Deleted records were accumulating in the database for ever: invisible,
     counted in no total, and carried into every backup.
 
-    That is the same failure the bin screen was just written to fix, one layer
-    down — a green test on a function with no caller. On launch, before the
+    That is the same failure the bin screen was written to fix, one layer down
+    — a green test on a function with no caller. On launch, before the
     reminders, because a swept record must not be scheduled.
   */
   unawaited(
     repo.purgeExpiredDeletes().then((_) => syncReminders(repo)),
   );
+
+  // Three rising notes, once. See `Cue.launch` — it is the only cue in the set
+  // allowed to have a shape, because it is heard at most once per launch.
+  feedback(Cue.launch);
 }
 
 class StashItApp extends StatelessWidget {
-  const StashItApp({required this.db, super.key});
+  const StashItApp({required this.repo, required this.prefs, super.key});
 
-  final StashDatabase db;
+  final Repository repo;
+  final PrefsController prefs;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Stash it',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          // The gold from the web app, which is the one piece of the old
-          // design worth carrying across before the rest is drawn.
-          seedColor: const Color(0xFFF2B33D),
-          brightness: Brightness.dark,
+    return PrefsScope(
+      notifier: prefs,
+      child: AnimatedBuilder(
+        animation: prefs,
+        builder: (context, _) => MaterialApp(
+          title: 'Stash it',
+          debugShowCheckedModeBanner: false,
+
+          /*
+            Both palettes are given, and `themeMode` chooses. Handing Flutter
+            one resolved theme instead would make "match my device" a lie the
+            moment the device changed its mind — at dusk, on a schedule, or
+            because somebody turned on battery saver.
+          */
+          theme: stashTheme(dark: false),
+          darkTheme: stashTheme(dark: true),
+          themeMode: themeModeOf(prefs.theme),
+
+          home: Shell(repo: repo),
         ),
-        useMaterial3: true,
       ),
-      home: Shell(repo: Repository(db)),
     );
   }
 }

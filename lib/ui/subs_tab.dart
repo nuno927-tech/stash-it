@@ -17,6 +17,7 @@ import '../logic/timeline.dart';
 import '../models/subscription.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
+import 'scout.dart';
 import 'sub_form_screen.dart';
 
 class SubsTab extends StatefulWidget {
@@ -67,6 +68,7 @@ class _SubsTabState extends State<SubsTab> {
             'Add what you pay for and this shows what a month really costs, '
             'which months are the heavy ones, and what renews next.\n\n'
             'Tap + to add one.',
+            pose: ScoutPose.calendar,
           );
         }
 
@@ -84,7 +86,7 @@ class _SubsTabState extends State<SubsTab> {
 
         return ListView(
           children: [
-            const SectionTitle('Subscriptions'),
+            const SectionTitle('What it costs'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Wrap(

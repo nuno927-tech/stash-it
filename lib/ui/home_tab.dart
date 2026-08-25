@@ -15,6 +15,7 @@ import '../logic/timeline.dart';
 import '../models/settings.dart';
 import '../models/types.dart';
 import 'parts.dart';
+import 'scout.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({required this.repo, required this.onGo, super.key});
@@ -97,22 +98,53 @@ class _HomeBody extends StatelessWidget {
 
     return ListView(
       children: [
+        /*
+          The greeting sits under the wordmark, lighter and smaller.
+
+          The masthead is the app saying its own name; this is the app saying
+          hello to you. Same face, two hundred weight against eight hundred —
+          the contrast is what stops the pair reading as one long heading.
+        */
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Text(
             greeting(data.settings.displayName),
-            style: theme.textTheme.headlineSmall,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w200,
+              letterSpacing: -0.34,
+            ),
           ),
         ),
 
         const SectionTitle('Items and documents'),
-        Center(
-          child: Ring(
-            inDate: t.inDate,
-            needsStarting: t.needsStarting,
-            lapsed: t.lapsed,
-            percent: t.percent,
-          ),
+
+        /*
+          Scout presents the numbers rather than the screen simply having some.
+
+          Beside the ring, not above it: the pair reads as somebody showing you
+          a result, which is what the dashboard is. His baseline sits level with
+          the ring's lower edge — the PWA nudges it 6px for the same reason.
+        */
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(right: 4, bottom: 6),
+              child: Scout(
+                pose: ScoutPose.report,
+                height: 148,
+                motion: [ScoutMotion.breathe],
+              ),
+            ),
+            Ring(
+              inDate: t.inDate,
+              needsStarting: t.needsStarting,
+              lapsed: t.lapsed,
+              percent: t.percent,
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         /*
@@ -195,7 +227,11 @@ class _HomeBody extends StatelessWidget {
         ),
 
         if (data.line.isEmpty)
-          const Blank('Nothing needs you.')
+          const Blank(
+            'Nothing needs you.',
+            pose: ScoutPose.resting,
+            poseHeight: 104,
+          )
         else
           for (final entry in data.line.take(12)) TimelineTile(entry: entry),
 
@@ -239,9 +275,33 @@ class _NudgeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(nudge.title, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 6),
-            Text(nudge.body, style: theme.textTheme.bodySmall),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nudge.title, style: theme.textTheme.titleSmall),
+                      const SizedBox(height: 6),
+                      Text(nudge.body, style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                // Ears up. The card only exists when something needs doing, so
+                // the pose is the one that means exactly that — and the motion
+                // is the restrained one, because a card you are trying to read
+                // should not be twitching at you.
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Scout(
+                    pose: ScoutPose.alert,
+                    height: 84,
+                    motion: [ScoutMotion.alert],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,

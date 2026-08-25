@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.9.0
+version: 0.11.0
 
 environment:
   sdk: ^3.5.0
@@ -67,6 +67,11 @@ dependencies:
   timezone: ^0.9.4
   flutter_timezone: ^3.0.1
 
+  # The cue tones. Nothing is bundled as audio — `ui/feedback.dart` writes the
+  # PCM itself, for the same reason the PWA synthesises with WebAudio, and this
+  # only has to play the bytes.
+  audioplayers: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -92,25 +97,28 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    # Scout, thirteen poses. Copied from the PWA's `src/assets/mascot/` rather
+    # than redrawn — same renders, same alpha, same contact shadows, so the two
+    # apps cannot drift apart by one of them being touched up.
+    - assets/mascot/
+
 # ── The launcher icon ────────────────────────────────────────────────────
 #
 #   dart run flutter_launcher_icons
 #
-# `image_path` is the whole square, used for older Android and for the Play
-# listing. The adaptive pair below is what Android 8 and later actually shows:
-# a background colour and a foreground drawn on top, which the OS masks to
-# whatever shape the launcher wants — circle, squircle, rounded square, teardrop.
+# Scout with the receipt, taken straight from the PWA's `public/icon-512.png`.
+# The two apps have to be the same thing on a home screen; anything drawn fresh
+# here would be a second brand.
 #
-# That masking is why `icon-foreground.png` has so much padding. Android crops
-# adaptive foregrounds hard, and artwork that fills the square loses its edges
-# on any launcher that prefers a circle.
-#
-# The source is `assets/icon/make_icon.py`, kept so the artwork can be changed
-# rather than only replaced.
+# `image_path` is the whole square, for older Android and the Play listing.
+# `adaptive_icon_foreground` is what Android 8+ actually shows, masked by the
+# launcher to a circle, squircle or teardrop — and the maskable variant is the
+# one the PWA already ships for exactly that reason, with the subject pulled in
+# from the edges so the crop cannot take his ears off.
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/icon/icon.png
-  adaptive_icon_background: "#12100E"
-  adaptive_icon_foreground: assets/icon/icon-foreground.png
-  remove_alpha_ios: true
+  adaptive_icon_background: "#0d0f12"
+  adaptive_icon_foreground: assets/icon/icon-maskable.png

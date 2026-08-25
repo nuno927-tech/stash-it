@@ -17,6 +17,7 @@ import 'item_detail_screen.dart';
 import 'item_form_screen.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
+import 'scout.dart';
 
 class ItemsTab extends StatefulWidget {
   const ItemsTab({required this.repo, super.key});
@@ -120,6 +121,12 @@ class _ItemsTabState extends State<ItemsTab> {
                         all.isEmpty
                             ? 'Nothing saved yet.\n\nTap + to put something in.'
                             : 'Nothing here matches that.',
+                        // Paperwork when the list has never had anything in it;
+                        // ears up when a search found nothing, because those are
+                        // different situations and only one of them is a
+                        // beginning.
+                        pose: all.isEmpty ? ScoutPose.receipt : ScoutPose.alert,
+                        poseHeight: all.isEmpty ? 180 : 120,
                       )
                     : ListView.builder(
                         itemCount: shown.length,

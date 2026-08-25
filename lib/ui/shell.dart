@@ -16,9 +16,11 @@ import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
 import '../logic/swipe.dart';
+import 'feedback.dart';
 import 'home_tab.dart';
 import 'items_tab.dart';
 import 'papers_tab.dart';
+import 'parts.dart';
 import 'settings_tab.dart';
 import 'subs_tab.dart';
 
@@ -38,17 +40,47 @@ class _ShellState extends State<Shell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: switch (_tab) {
-          Tab.home => HomeTab(repo: widget.repo, onGo: _go),
-          Tab.items => ItemsTab(repo: widget.repo),
-          Tab.subs => SubsTab(repo: widget.repo),
-          Tab.papers => PapersTab(repo: widget.repo),
-          Tab.settings => SettingsTab(repo: widget.repo),
-        },
+        child: Column(
+          children: [
+            // The heading belongs to the shell, not to each screen: it has to
+            // be in the same place, at the same size, after every swipe, and
+            // five screens each drawing their own is five chances for it not
+            // to be. Home takes the wordmark — see `Wordmark`.
+            if (_tab == Tab.home)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 18, 16, 8),
+                child: Align(alignment: Alignment.centerLeft, child: Wordmark()),
+              )
+            else
+              TabTitle(switch (_tab) {
+                Tab.items => 'Items',
+                Tab.subs => 'Subscriptions',
+                Tab.papers => 'Documents',
+                Tab.settings => 'Settings',
+                Tab.home => '',
+              }),
+
+            Expanded(
+              child: switch (_tab) {
+                Tab.home => HomeTab(repo: widget.repo, onGo: _go),
+                Tab.items => ItemsTab(repo: widget.repo),
+                Tab.subs => SubsTab(repo: widget.repo),
+                Tab.papers => PapersTab(repo: widget.repo),
+                Tab.settings => SettingsTab(repo: widget.repo),
+              },
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab.index,
-        onDestinationSelected: (i) => setState(() => _tab = Tab.values[i]),
+        onDestinationSelected: (i) {
+          // The nav cue: a lower, rounder note than an ordinary tap, because
+          // moving between tabs is a bigger gesture and pitch carries that
+          // better than volume does.
+          feedback(Cue.nav);
+          setState(() => _tab = Tab.values[i]);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.donut_large_outlined),

@@ -16,6 +16,7 @@ import '../logic/notify_offer.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
+import 'scout.dart';
 
 class ItemFormScreen extends StatefulWidget {
   const ItemFormScreen({required this.repo, this.existing, super.key});
@@ -146,6 +147,20 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
                 ),
               ),
             ),
+
+          // Glasses on, taking it down. Small and inline — a full-height pose
+          // on a form is something to scroll past on the way to the fields.
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 4),
+              child: Scout(
+                pose: ScoutPose.clipboard,
+                height: 62,
+                motion: [ScoutMotion.breathe],
+              ),
+            ),
+          ),
 
           _Field(
             label: 'Call it',

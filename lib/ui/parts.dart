@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
+import 'scout.dart';
+import 'theme.dart';
 
 /// One number with a word under it.
 class Figure extends StatelessWidget {
@@ -68,21 +70,114 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
+/// The heading at the top of a tab.
+///
+/// ── Every screen says what it is ──────────────────────────────────────────
+/// The PWA gives each tab an `.apphead` with the screen's name in the display
+/// face, and the port had none of them: five screens that opened straight into
+/// a list. On a phone that is a real loss rather than a cosmetic one — the
+/// bottom bar shows five icons and a small label, and after a swipe between
+/// tabs the only thing telling you where you landed is the content.
+///
+/// Home is the exception and takes the wordmark instead, because a masthead
+/// saying "Home" would be the app introducing itself as a navigation state.
+class TabTitle extends StatelessWidget {
+  const TabTitle(this.title, {this.trailing, super.key});
+
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
+/// "Stash **it**" — the masthead, with the second word in gold.
+///
+/// One widget rather than a string, because the colour change mid-phrase is
+/// the wordmark. Written as `it` in gold everywhere it appears, including the
+/// PWA's `.apptitle span`.
+class Wordmark extends StatelessWidget {
+  const Wordmark({this.fontSize = 27, super.key});
+
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = theme.textTheme.headlineSmall!.copyWith(fontSize: fontSize);
+
+    return RichText(
+      text: TextSpan(
+        style: base,
+        children: [
+          const TextSpan(text: 'Stash '),
+          TextSpan(
+            text: 'it',
+            style: base.copyWith(color: StashColors.of(context).gold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// What an empty list should say, which is never nothing.
 class Blank extends StatelessWidget {
-  const Blank(this.message, {super.key});
+  const Blank(this.message, {this.pose, this.poseHeight = 170, super.key});
 
   final String message;
+
+  /*
+    ── Scout stands on the empty screens, and this is not decoration ─────────
+
+    An empty list is the least informative thing an app can show, and it is
+    also the first thing a new user sees on four of the five tabs. The PWA puts
+    a pose on every one of them for that reason — floating, with a shadow, so
+    the screen has a subject rather than a paragraph in the middle of nothing.
+
+    Which pose is not arbitrary either: the one holding a receipt on Items,
+    the one holding up a month on Subscriptions, the one with a clipboard on
+    Documents. He is doing the job the screen is for.
+  */
+  final ScoutPose? pose;
+  final double poseHeight;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Center(
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (pose != null) ...[
+              Scout(
+                pose: pose!,
+                height: poseHeight,
+                motion: const [ScoutMotion.float],
+                shadow: true,
+              ),
+              const SizedBox(height: 28),
+            ],
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
         ),
       ),
     );
