@@ -102,6 +102,37 @@ void main() {
 
     await repo.putBlob('b1', Uint8List.fromList([82, 73, 70, 70]), 'image/webp');
 
+    /*
+      ── A document WITH A FILE ON IT, which was missing from this fixture ────
+
+      There were no documents here at all, and that omission cost real data.
+      `Doc` had no `blobId` field, so the importer dropped it, the exporter
+      never wrote it, and a restore imported 37 receipts and 76 files and
+      connected none of them. Every layer was individually correct; the loss
+      lived in a field three of them had agreed not to mention.
+
+      A fixture with no documents in it cannot catch that, which is the actual
+      lesson: the round trip is only as good as the awkwardness in `fill`.
+    */
+    await repo.putBlob('receipt-pdf', Uint8List.fromList([37, 80, 68, 70]), 'application/pdf');
+    await repo.createDoc(const Doc(
+      id: 'd1',
+      itemId: 'couch',
+      kind: DocKind.receipt,
+      title: 'John Lewis receipt',
+      blobId: 'receipt-pdf',
+    ));
+
+    // And one that is a link rather than a file, because the two travel
+    // differently and only one of them has bytes to carry.
+    await repo.createDoc(const Doc(
+      id: 'd2',
+      itemId: 'kettle',
+      kind: DocKind.manual,
+      title: 'Bosch manual',
+      url: 'https://example.com/manual.pdf',
+    ));
+
     // Something in the bin. A restore has to be able to undo a delete, so the
     // bin travels — a backup that quietly drops it turns "I deleted the wrong
     // thing and restored yesterday's file" into a dead end.
@@ -121,6 +152,60 @@ void main() {
     await restoreInto(other, parsed);
     return ParsedBundleLike(other, Repository(other));
   }
+
+  /*
+    ── The bug this group exists for ─────────────────────────────────────────
+
+    A restore used to import the documents and import the files and join them
+    to nothing. On a real phone that looked like success: 37 documents, 76
+    files, no error — and not one receipt that could ever be opened again.
+
+    Both assertions go through the repository rather than the tables, because
+    the two suites either side of the gap were green. The doc importer was
+    correct at what it claimed to do; what it claimed was too little.
+  */
+  group('a document keeps hold of its file', () {
+    test('through a full round trip', () async {
+      await fill();
+      final there = await roundTrip();
+
+      final docs = await there.repo.docsForItem('couch');
+      expect(docs, hasLength(1));
+      expect(docs.single.title, 'John Lewis receipt');
+      expect(docs.single.blobId, 'receipt-pdf');
+      expect(docs.single.isLocal, isTrue);
+
+      // And the bytes are actually there, which is the part that matters.
+      final blob = await there.repo.blob(docs.single.blobId!);
+      expect(blob, isNotNull);
+      expect(blob!.mime, 'application/pdf');
+
+      await there.db.close();
+    });
+
+    test('and a link survives as a link', () async {
+      await fill();
+      final there = await roundTrip();
+
+      final docs = await there.repo.docsForItem('kettle');
+      expect(docs.single.url, 'https://example.com/manual.pdf');
+      expect(docs.single.blobId, isNull);
+      expect(docs.single.isLocal, isFalse);
+
+      await there.db.close();
+    });
+
+    // Nothing should be left pointing at nothing. This is the check that would
+    // have failed loudly on the broken importer, which is why it is here.
+    test('and no file is left orphaned by the restore', () async {
+      await fill();
+      final there = await roundTrip();
+
+      expect(await there.repo.orphanedBlobs(), isEmpty);
+
+      await there.db.close();
+    });
+  });
 
   group('a full round trip', () {
     test('every item comes back', () async {
@@ -294,9 +379,10 @@ void main() {
       await fill();
       final parsed = parseBackupBytes(await exportBackup(db));
 
-      // Three items — two live and one in the bin — plus one blob.
+      // Three items — two live and one in the bin — and two blobs: the couch's
+      // thumbnail and the receipt PDF attached to it.
       expect(parsed.manifest.itemCount, 3);
-      expect(parsed.manifest.blobCount, 1);
+      expect(parsed.manifest.blobCount, 2);
       expect(parsed.manifest.schemaVersion, schemaVersion);
     });
 

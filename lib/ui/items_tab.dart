@@ -13,6 +13,7 @@ import '../logic/search.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
+import 'item_detail_screen.dart';
 import 'item_form_screen.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
@@ -148,10 +149,20 @@ class _ItemsTabState extends State<ItemsTab> {
   /// It was, and the analyzer was right to object: `mounted` describes this
   /// State, and a `BuildContext` handed in from elsewhere is not tied to it.
   /// Using the State's own `context` makes the guard mean what it reads like.
+  /// ── Tapping a row opens the item, not the form ────────────────────────
+  /// It used to go straight to editing, which was fine while there was nothing
+  /// to look at. There is now: the photograph, the receipts, the manuals. An
+  /// app where the only way to see your receipt is to open an edit form is an
+  /// app that thinks its records are for filing rather than for using.
+  ///
+  /// The plus button still goes straight to the form — there is nothing to
+  /// read about a record that does not exist yet.
   Future<void> _open(Item? item) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => ItemFormScreen(repo: widget.repo, existing: item),
+        builder: (context) => item == null
+            ? ItemFormScreen(repo: widget.repo)
+            : ItemDetailScreen(repo: widget.repo, item: item),
       ),
     );
     if (!mounted) return;

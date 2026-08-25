@@ -57,6 +57,8 @@ Doc docOf(DocRow r) => Doc(
       itemId: r.itemId,
       kind: enumOf(r.kind, DocKind.values, DocKind.other),
       title: r.title,
+      blobId: r.blobId,
+      url: r.url,
       deletedAt: r.deletedAt,
     );
 
@@ -158,6 +160,8 @@ DocsCompanion docToRow(Doc d) => DocsCompanion.insert(
       itemId: d.itemId,
       kind: Value(d.kind.name),
       title: Value(d.title),
+      blobId: Value(d.blobId),
+      url: Value(d.url),
       deletedAt: Value(d.deletedAt),
     );
 

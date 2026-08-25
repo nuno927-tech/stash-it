@@ -22,7 +22,7 @@ import '../notify/sync.dart';
 import 'bin_screen.dart';
 import 'parts.dart';
 
-const appVersion = '0.4.0';
+const appVersion = '0.5.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});

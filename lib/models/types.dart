@@ -122,20 +122,34 @@ enum DocKind { receipt, manual, warranty, photo, other }
 
 /// A file or a link attached to an item — a receipt, a manual, a certificate.
 ///
-/// ── Deliberately thin, for now ────────────────────────────────────────────
-/// The web `Doc` also carries a storage mode, a blob id, a URL and a
-/// link-health check. None of that means anything without a storage layer, and
-/// phase 1 has none. What is here is what the logic needs: which item it
-/// belongs to, what kind it is, what it is called, and whether it is deleted.
+/// ── This was thin for one phase too many, and it cost real data ───────────
+/// Phase 1 had no storage layer, so this held only what the logic needed:
+/// whose it is, what kind, what it is called. `blobId` was left for "phase 2,
+/// alongside the decision about where the bytes live on a phone".
 ///
-/// The rest arrives in phase 2 with Drift, alongside the decision about where
-/// the bytes actually live on a phone.
+/// Phase 2 arrived, the bytes went into the database, and **this class was not
+/// revisited** — so `readDoc` silently dropped `blobId` out of every backup it
+/// read and `docToRow` had none to write. A restore imported the documents and
+/// imported the files, and connected nothing: 76 blobs sitting in the database
+/// with not one row pointing at them, and 37 receipts that could never be
+/// opened again.
+///
+/// Nothing reported it, because every layer was individually correct. The
+/// backup file was fine, the blob importer was fine, the doc importer was fine
+/// at what it claimed to do. The loss lived in a field that three of them had
+/// agreed not to mention.
+///
+/// `linkStatus` and `lastCheckedAt` from the web schema are still not here,
+/// and that is a real omission rather than this one repeated: they describe a
+/// periodic check on remote URLs that this app does not perform.
 class Doc {
   const Doc({
     required this.id,
     required this.itemId,
     this.kind = DocKind.other,
     this.title,
+    this.blobId,
+    this.url,
     this.deletedAt,
   });
 
@@ -143,7 +157,21 @@ class Doc {
   final String itemId;
   final DocKind kind;
   final String? title;
+
+  /// The file, in the `blobs` table. Null for a document that is only a link.
+  final String? blobId;
+
+  /// A link, for a receipt that lives in somebody's email rather than here.
+  final String? url;
+
   final DateTime? deletedAt;
+
+  /// The web schema's `storageMode`, derived rather than stored.
+  ///
+  /// Two fields that must agree — a mode and a blob id — are two chances to
+  /// disagree. There is exactly one question worth asking, and it is whether
+  /// there are bytes.
+  bool get isLocal => blobId != null;
 }
 
 class Item {

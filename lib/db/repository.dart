@@ -123,6 +123,52 @@ class Repository {
     return rows.map(subscriptionOf).toList();
   }
 
+  /// Attach a document to an item.
+  ///
+  /// Nothing in the app calls this yet — files arrive by restore, and adding
+  /// one from the phone is the next job. It exists now because the round-trip
+  /// test needs a document with a file on it, and the absence of exactly that
+  /// case is how `blobId` went missing from the backup importer unnoticed.
+  Future<String> createDoc(Doc d) async {
+    final id = d.id.isEmpty ? newId() : d.id;
+    await db.into(db.docs).insert(
+          docToRow(Doc(
+            id: id,
+            itemId: d.itemId,
+            kind: d.kind,
+            title: d.title,
+            blobId: d.blobId,
+            url: d.url,
+            deletedAt: d.deletedAt,
+          )),
+        );
+    return id;
+  }
+
+  /// The files attached to one item, receipts first.
+  ///
+  /// That order rather than by date: a receipt and a warranty certificate are
+  /// the two things a claim actually asks for — see `metricsFor` — and a manual
+  /// is useful without being evidence. The list is short enough that sorting it
+  /// by anything else would just be arbitrary.
+  Future<List<Doc>> docsForItem(String itemId) async {
+    final rows = await (db.select(db.docs)
+          ..where((t) => t.itemId.equals(itemId) & t.deletedAt.isNull()))
+        .get();
+
+    const rank = {
+      DocKind.receipt: 0,
+      DocKind.warranty: 1,
+      DocKind.manual: 2,
+      DocKind.photo: 3,
+      DocKind.other: 4,
+    };
+
+    final docs = rows.map(docOf).toList()
+      ..sort((a, b) => (rank[a.kind] ?? 9).compareTo(rank[b.kind] ?? 9));
+    return docs;
+  }
+
   Future<List<Doc>> activeDocs() async {
     final rows =
         await (db.select(db.docs)..where((t) => t.deletedAt.isNull())).get();

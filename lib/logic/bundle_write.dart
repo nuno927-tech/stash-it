@@ -87,6 +87,13 @@ Map<String, Object?> docToJson(Doc d) => _tidy({
       'itemId': d.itemId,
       'kind': d.kind.name,
       'title': d.title,
+      // Both halves of the round trip, or a backup made by this app ships the
+      // files and loses every reference to them. See the note on `Doc`.
+      'blobId': d.blobId,
+      'url': d.url,
+      // Derived rather than stored, but written out because the web app reads
+      // this key and would treat its absence as a linked document.
+      'storageMode': d.isLocal ? 'local' : 'linked',
       'deletedAt': _iso(d.deletedAt),
     });
 

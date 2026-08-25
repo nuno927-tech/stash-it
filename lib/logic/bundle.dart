@@ -443,11 +443,17 @@ Warranty? readWarranty(Object? v) {
   );
 }
 
+/// ── `blobId` is the whole reason a document is worth restoring ────────────
+/// Without it a restored receipt is a row with a name on it, and the file it
+/// names is in the same database, unreachable. This function dropped it for
+/// one release; see the note on `Doc`.
 Doc readDoc(Map<String, dynamic> j) => Doc(
       id: stringOf(j['id']) ?? '',
       itemId: stringOf(j['itemId']) ?? '',
       kind: enumOf(j['kind'], DocKind.values, DocKind.other),
       title: stringOf(j['title']),
+      blobId: stringOf(j['blobId']),
+      url: stringOf(j['url']),
       deletedAt: dateOf(j['deletedAt']),
     );
 
