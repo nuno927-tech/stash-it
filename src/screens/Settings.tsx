@@ -961,19 +961,82 @@ function Backup({
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const how = await saveBundle(ready.blob, ready.filename);
+              let how = await saveBundle(ready.blob, ready.filename);
+
+              /*
+                ── The bug this branch fixes ────────────────────────────────
+
+                'needs-gesture' was not handled here, so a second refusal fell
+                through to the success path: the button vanished, the backup
+                date was stamped, and the app announced it had sent a file that
+                had never left. Nothing on screen for the person to act on, and
+                a reminder that would now stay quiet for thirty days.
+
+                A second refusal means the fresh-gesture theory is wrong, so
+                stop testing it and write the file out instead. See the note on
+                `saveBundle`'s `share` option.
+              */
+              if (how === 'needs-gesture') {
+                how = await saveBundle(ready.blob, ready.filename, { share: false });
+              }
+
+              // A cancel stamps nothing and claims nothing. The button stays,
+              // because the file is still sitting there ready to go.
               if (how === 'cancelled') {
                 onNotice({ tone: 'bad', text: 'Cancelled — nothing was saved.' });
                 return;
               }
+
               setReady(null);
               await markBackedUp();
               feedback('save');
-              onNotice({ tone: 'ok', text: `Sent ${ready.filename}.` });
+              onNotice({
+                tone: 'ok',
+                text:
+                  how === 'shared'
+                    ? `Sent ${ready.filename}. Check it arrived where you sent it.`
+                    : `This browser would not open the share sheet, so ${ready.filename} went to your downloads. Move it somewhere off this device.`,
+              });
             })
           }
         >
           Send it somewhere
+        </button>
+      )}
+
+      {/*
+        ── The way out, and why it is a button rather than a fallback ────────
+
+        "Send it somewhere" is a request to the browser, and a browser is
+        entitled to refuse — silently, repeatedly, for reasons the page cannot
+        see. When that happens the person is left tapping a button that plays a
+        sound and does nothing, which is the report that led here.
+
+        So the escape is on the screen, always, next to the thing that might
+        fail. It writes the file to the downloads folder, which is the one
+        route no permission and no user gesture can take away. It is drawn as
+        the quieter of the two because sharing is still the better outcome on a
+        phone — the file ends up somewhere that is not this device.
+      */}
+      {ready && (
+        <button
+          type="button"
+          className="btn wide ghost"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              await saveBundle(ready.blob, ready.filename, { share: false });
+              setReady(null);
+              await markBackedUp();
+              feedback('save');
+              onNotice({
+                tone: 'ok',
+                text: `Saved ${ready.filename} to your downloads. Move it somewhere off this device.`,
+              });
+            })
+          }
+        >
+          Save it to this device instead
         </button>
       )}
 

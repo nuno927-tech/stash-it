@@ -20,6 +20,7 @@ import {
   markBackedUp,
   parseBundle,
   restoreBundle,
+  saveBundle,
   type SaveOutcome,
 } from '@/lib/backup';
 
@@ -235,6 +236,47 @@ async function main() {
   */
   const outcomes: SaveOutcome[] = ['shared', 'downloaded', 'cancelled', 'needs-gesture'];
   check('a cancel is distinguishable from a save', outcomes.includes('cancelled'));
+
+  /*
+    ── And so is 'needs-gesture', which the second button forgot ────────────
+
+    'needs-gesture' means "ask for a fresh tap", and the Settings card grew a
+    second button to do exactly that. What it did not grow was a branch for the
+    same answer coming back twice — so a second refusal fell through to the
+    success path: the button vanished, `markBackedUp` ran, and the app
+    announced it had sent a file that had never left.
+
+    Which is the identical failure the whole section above is about, one layer
+    out. The first bug was a cancel counted as a save; this was a refusal
+    counted as a save.
+
+    It cannot be proved here — sharing does not exist in Node, so this path is
+    unreachable from a test — but the outcome being distinguishable is the
+    thing that makes handling it possible, and that is worth pinning.
+  */
+  check('as is a refusal', outcomes.includes('needs-gesture'));
+
+  /*
+    `saveBundle` must be able to skip the share sheet entirely, which is how
+    the second button escapes a browser that will never open one.
+
+    Asserted by calling it rather than by reading `saveBundle.length` — which
+    is 2, because `Function.length` stops counting at the first parameter with
+    a default and the options bag has one. That assertion would have failed in
+    CI and blocked the deploy, which is a considerably worse outcome than the
+    bug it was guarding.
+
+    In Node there is no `navigator`, so this takes the download path, and
+    `document` does not exist either — so the check is that it refuses rather
+    than shares, whichever way it fails.
+  */
+  let skipped = '';
+  try {
+    skipped = await saveBundle(built.blob, 'probe.stashit', { share: false });
+  } catch {
+    skipped = 'threw';
+  }
+  check('sharing can be turned off by the caller', skipped !== 'shared', skipped);
 
   /*
     THE SHARE SHEET IS NOT AVAILABLE FOR THIS FILE ON CHROMIUM, and the app has

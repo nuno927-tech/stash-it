@@ -600,10 +600,27 @@ export function canShareBundle(filename = backupFilename()): boolean {
  * the sheet has said no; answering that by silently writing the file to their
  * downloads folder is not what they asked for.
  */
-export async function saveBundle(blob: Blob, filename: string): Promise<SaveOutcome> {
+export async function saveBundle(
+  blob: Blob,
+  filename: string,
+  /*
+    ── Why the caller can turn sharing off ─────────────────────────────────
+
+    'needs-gesture' is a theory: that the tap which started the backup expired
+    while the zip was being built, and a fresh one will work. The second button
+    exists to test that theory.
+
+    When the second tap ALSO comes back 'needs-gesture', the theory is wrong —
+    this browser is refusing to share the file for some other reason — and
+    asking for a third tap is asking somebody to keep pressing a button that
+    does not work. The caller passes `share: false` and gets the download,
+    which always works.
+  */
+  { share = true }: { share?: boolean } = {},
+): Promise<SaveOutcome> {
   const file = new File([blob], filename, { type: 'application/zip' });
 
-  if (canShareBundle(filename)) {
+  if (share && canShareBundle(filename)) {
     try {
       await navigator.share({ files: [file], title: 'Stash it backup' });
       return 'shared';
