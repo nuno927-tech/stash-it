@@ -173,9 +173,15 @@ class _HomeBody extends StatelessWidget {
               },
             ),
             title: Text(data.backup!.label),
+            // It says "never backed up" and the way to fix that is two taps
+            // away on another tab. A line that reports a problem and cannot
+            // reach the fix is a line that gets read and ignored.
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => onGo(Tab.settings),
           ),
 
-        for (final nudge in data.nudges) _NudgeCard(nudge: nudge),
+        for (final nudge in data.nudges)
+          _NudgeCard(nudge: nudge, onAct: () => onGo(_where(nudge.kind))),
 
         SectionTitle(
           'Coming up',
@@ -199,13 +205,33 @@ class _HomeBody extends StatelessWidget {
   }
 }
 
+/// Where the one thing a nudge asks for actually happens.
+Tab _where(NudgeKind kind) => switch (kind) {
+      NudgeKind.backup => Tab.settings,
+      NudgeKind.warranty => Tab.items,
+    };
+
+/// A card with something to do about it.
+///
+/// ── The button was missing, which made the card a complaint ───────────────
+/// `Nudge.action` has always carried the words for it — "Back up now" — and
+/// nothing rendered them. So the dashboard would say *"your 21 items live on
+/// this phone and nowhere else"* and then offer no way to do anything about it.
+///
+/// That is precisely the failure `logic/nudges.dart` opens by describing: a
+/// setting that writes to the database and changes nothing is worse than a
+/// missing feature, because it looks answered. A warning with no button is the
+/// same shape — it looks handled.
 class _NudgeCard extends StatelessWidget {
-  const _NudgeCard({required this.nudge});
+  const _NudgeCard({required this.nudge, this.onAct});
 
   final Nudge nudge;
+  final VoidCallback? onAct;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Padding(
@@ -213,9 +239,16 @@ class _NudgeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(nudge.title, style: Theme.of(context).textTheme.titleSmall),
+            Text(nudge.title, style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            Text(nudge.body, style: Theme.of(context).textTheme.bodySmall),
+            Text(nudge.body, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              // One button, because every nudge has exactly one thing to do
+              // about it — see the note on `Nudge.action`.
+              child: FilledButton(onPressed: onAct, child: Text(nudge.action)),
+            ),
           ],
         ),
       ),

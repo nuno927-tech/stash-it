@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.7.0
+version: 0.9.0
 
 environment:
   sdk: ^3.5.0
@@ -85,5 +85,32 @@ dev_dependencies:
   build_runner: ^2.4.6
   flutter_lints: ^5.0.0
 
+  # Generates the launcher icons from assets/icon/. A build-time tool, not a
+  # dependency of the app — run it when the artwork changes and never again.
+  flutter_launcher_icons: ^0.14.1
+
 flutter:
   uses-material-design: true
+
+# ── The launcher icon ────────────────────────────────────────────────────
+#
+#   dart run flutter_launcher_icons
+#
+# `image_path` is the whole square, used for older Android and for the Play
+# listing. The adaptive pair below is what Android 8 and later actually shows:
+# a background colour and a foreground drawn on top, which the OS masks to
+# whatever shape the launcher wants — circle, squircle, rounded square, teardrop.
+#
+# That masking is why `icon-foreground.png` has so much padding. Android crops
+# adaptive foregrounds hard, and artwork that fills the square loses its edges
+# on any launcher that prefers a circle.
+#
+# The source is `assets/icon/make_icon.py`, kept so the artwork can be changed
+# rather than only replaced.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon/icon.png
+  adaptive_icon_background: "#12100E"
+  adaptive_icon_foreground: assets/icon/icon-foreground.png
+  remove_alpha_ios: true

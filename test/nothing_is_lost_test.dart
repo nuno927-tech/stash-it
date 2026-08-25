@@ -219,6 +219,23 @@ void main() {
      ───────────────────────────────────────────────────────────────────── */
 
   group('saving to the database and reading it back', () {
+    /*
+      ── Instants, not clock faces ─────────────────────────────────────────
+
+      SQLite has no date type, so Drift stores a `DateTime` as a unix timestamp
+      and reads it back in the phone's local zone. A field written as
+      09:00 UTC comes back as 04:00-05:00 — the same moment, described from
+      where the phone is standing.
+
+      So these compare instants rather than values. `expect(a, b)` on two
+      `DateTime`s compares the UTC flag as well, and would fail here on a
+      difference that is not a loss. The suite is about fields being dropped;
+      asserting the representation instead would mean this file failing for
+      anyone who ran it in a different time zone from mine.
+    */
+    Matcher sameMoment(DateTime? d) =>
+        d == null ? isNull : predicate<DateTime?>((v) => v?.isAtSameMomentAs(d) ?? false);
+
     test('keeps every field of an item', () async {
       await repo.createItem(theWorks);
       await repo.saveItem(theWorks);
@@ -228,7 +245,7 @@ void main() {
       expect(back.photoBlobId, 'photo-1');
       expect(back.thumbBlobId, 'thumb-1');
       expect(back.coverages.single.phone, '0800 000 000');
-      expect(back.createdAt, theWorks.createdAt);
+      expect(back.createdAt, sameMoment(theWorks.createdAt));
     });
 
     test('keeps every field of a document', () async {
@@ -239,7 +256,7 @@ void main() {
       expect(back.issuedOn, '2017-02-11');
       expect(back.authority, 'HMPO');
       expect(back.storedAt, 'Desk drawer');
-      expect(back.createdAt, thePassport.createdAt);
+      expect(back.createdAt, sameMoment(thePassport.createdAt));
     });
 
     test('keeps every field of a subscription', () async {
@@ -250,7 +267,7 @@ void main() {
       expect(back.serviceId, 'puregym');
       expect(back.logoBlobId, 'logo-1');
       expect(back.startedDate, '2024-06-01');
-      expect(back.createdAt, theGym.createdAt);
+      expect(back.createdAt, sameMoment(theGym.createdAt));
     });
 
     test('keeps both halves of a document attachment', () async {

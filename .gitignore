@@ -1,6 +1,21 @@
 .dart_tool/
 build/
-pubspec.lock
 
 # Drift generates this
 *.g.dart
+
+# ── Signing ────────────────────────────────────────────────────────────────
+#
+# THE KEYSTORE AND ITS PASSWORDS NEVER GO IN THE REPOSITORY.
+#
+# Not because the repository is public — it is not — but because the upload key
+# is the one secret in this project that cannot be rotated. Lose it and the app
+# on the Play Store can never be updated again by anybody, including you; leak
+# it and somebody else can publish an update that Android will install over the
+# real one without a warning.
+#
+# Back it up somewhere that is not this folder and not this laptop. See
+# RELEASE.md.
+*.jks
+*.keystore
+android/key.properties
