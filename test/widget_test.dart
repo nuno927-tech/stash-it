@@ -95,22 +95,32 @@ void main() {
       ),
     ]);
 
-    expect(find.text('100%'), findsOneWidget);
+    /*
+      The number and its sign are two `Text`s now, not one string.
+
+      They are set at 52px and 19px on a shared baseline, because "100" is the
+      figure and "%" is its unit — one string could not do that. So the finder
+      asks for the part that carries the meaning.
+    */
+    expect(find.text('100'), findsOneWidget);
+    expect(find.text('still in date'), findsOneWidget);
 
     /*
-      ── Twice, and that is the design now ──────────────────────────────────
+      ── Said twice, worded differently, and that is the point ──────────────
 
-      This asserted exactly one. An earlier version of the dashboard had an
-      "in date" chip alongside the ring, and it was removed because it said
-      the same thing in two places and had nowhere to go when tapped.
+      This has been asserted as one, then as two, and is one again — which
+      looks like churn and is actually the design settling.
 
-      The PWA has both, and the reason is the second half of that sentence:
-      the ring is the SUMMARY — one percentage — and the `.coverstats` row
-      below it is the BREAKDOWN, four counts that add up to the collection.
-      "In date" is the only column of the four that is not tappable, because
-      there is nothing to do about something that is fine.
+      The ring is the SUMMARY and the row beneath it is the BREAKDOWN: one
+      percentage against four counts that add up to the collection. Both are
+      about the same thing, so both say so — but the ring says "still in date"
+      and the column says "in date", and that difference is what stops the pair
+      reading as the same fact printed twice.
+
+      So: exactly one of each. Two identical strings would mean the wording had
+      drifted back together.
     */
-    expect(find.text('in date'), findsNWidgets(2));
+    expect(find.text('in date'), findsOneWidget);
 
     await db.close();
   });
@@ -160,11 +170,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Something you own'), findsOneWidget);
-    expect(find.text('Something recurring'), findsOneWidget);
-    expect(find.text('A document'), findsOneWidget);
+    expect(find.text('Product'), findsOneWidget);
+    expect(find.text('Subscription'), findsOneWidget);
+    expect(find.text('Document'), findsOneWidget);
 
-    await tester.tap(find.text('Something you own'));
+    await tester.tap(find.text('Product'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

@@ -143,26 +143,39 @@ class _ShellState extends State<Shell> {
                         ),
                 ),
 
+              /*
+                The screen and the add button share one stack, so the button's
+                scrim can dim the screen. As a `floatingActionButton` it sat in
+                the Scaffold's own slot, sized to itself, and could only ever
+                have dimmed the eighty pixels it occupied.
+              */
               Expanded(
-                child: KeyedSubtree(
-                  key: ValueKey('${_tab.name}-$_generation'),
-                  child: switch (_tab) {
-                    Tab.home => HomeTab(repo: widget.repo, onGo: _select),
-                    Tab.items => ItemsTab(repo: widget.repo),
-                    Tab.subs => SubsTab(repo: widget.repo),
-                    Tab.papers => PapersTab(repo: widget.repo),
-                    Tab.settings => SettingsTab(repo: widget.repo),
-                  },
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: KeyedSubtree(
+                        key: ValueKey('${_tab.name}-$_generation'),
+                        child: switch (_tab) {
+                          Tab.home => HomeTab(repo: widget.repo, onGo: _select),
+                          Tab.items => ItemsTab(repo: widget.repo),
+                          Tab.subs => SubsTab(repo: widget.repo),
+                          Tab.papers => PapersTab(repo: widget.repo),
+                          Tab.settings => SettingsTab(repo: widget.repo),
+                        },
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: StashItButton(
+                        repo: widget.repo,
+                        onDone: () => setState(() => _generation++),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-      ),
-
-      floatingActionButton: StashItButton(
-        repo: widget.repo,
-        onDone: () => setState(() => _generation++),
       ),
 
       bottomNavigationBar: NavigationBar(

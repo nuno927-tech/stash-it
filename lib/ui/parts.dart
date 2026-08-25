@@ -402,32 +402,45 @@ class Ring extends StatelessWidget {
                 sign is dropped to a third of the size and baseline-aligned,
                 because "83" is the number and "%" is its unit.
               */
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    '$percent',
-                    style: TextStyle(
-                      fontFamily: fontDisplay,
-                      fontWeight: FontWeight.w200,
-                      fontSize: 52,
-                      letterSpacing: -2.4,
-                      height: 1,
-                      color: c.text,
+              /*
+                Scaled to fit, and the case that needs it is the good one.
+
+                "100%" at 52px is 168.05 pixels wide inside a 168 pixel ring —
+                over by a twentieth of a pixel, which Flutter reports as an
+                overflow with a striped bar across the number. A household with
+                everything in date is not an edge case, and shrinking the type
+                by a hair is a better answer than making the ring bigger for
+                everybody else.
+              */
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '$percent',
+                      style: TextStyle(
+                        fontFamily: fontDisplay,
+                        fontWeight: FontWeight.w200,
+                        fontSize: 52,
+                        letterSpacing: -2.4,
+                        height: 1,
+                        color: c.text,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '%',
-                    style: TextStyle(
-                      fontFamily: fontDisplay,
-                      fontWeight: FontWeight.w200,
-                      fontSize: 19,
-                      color: c.text,
+                    Text(
+                      '%',
+                      style: TextStyle(
+                        fontFamily: fontDisplay,
+                        fontWeight: FontWeight.w200,
+                        fontSize: 19,
+                        color: c.text,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 4),
               Text(

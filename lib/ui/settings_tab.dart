@@ -25,7 +25,7 @@ import 'parts.dart';
 import 'prefs_scope.dart';
 import 'scout.dart';
 
-const appVersion = '0.14.0';
+const appVersion = '0.15.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});

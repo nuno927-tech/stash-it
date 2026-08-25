@@ -508,7 +508,10 @@ class _SpendChips extends StatelessWidget {
             child: _Chip(money(totalMonthlyCents(subs)), 'A MONTH', lead: true),
           ),
           const SizedBox(width: 10),
-          Expanded(child: _Chip(money(dailyCents(subs)), 'A DAY')),
+          // `dailyCents` returns a double — a month's spend divided by 30.44
+          // does not land on a whole cent, and rounding it before the yearly
+          // figure is worked out would make the three numbers disagree.
+          Expanded(child: _Chip(money(dailyCents(subs).round()), 'A DAY')),
           const SizedBox(width: 10),
           Expanded(child: _Chip(money(totalYearlyCents(subs)), 'A YEAR')),
         ],
