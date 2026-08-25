@@ -52,6 +52,7 @@ class Paper {
     this.authority,
     this.storedAt,
     this.notes,
+    this.createdAt,
     this.deletedAt,
   });
 
@@ -80,5 +81,10 @@ class Paper {
   final String? storedAt;
 
   final String? notes;
+
+  /// When it was first saved. See the note on `Subscription.createdAt` — the
+  /// column existed and no model read it, so every edit wrote null over it.
+  final DateTime? createdAt;
+
   final DateTime? deletedAt;
 }

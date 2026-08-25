@@ -479,6 +479,7 @@ Subscription readSubscription(Map<String, dynamic> j) => Subscription(
       startedDate: isoDateOf(j['startedDate']),
       remindDays: intOf(j['remindDays']),
       notes: stringOf(j['notes']),
+      createdAt: dateOf(j['createdAt']),
       deletedAt: dateOf(j['deletedAt']),
     );
 
@@ -502,6 +503,7 @@ Paper readPaper(Map<String, dynamic> j) => Paper(
       authority: stringOf(j['authority']),
       storedAt: stringOf(j['storedAt']),
       notes: stringOf(j['notes']),
+      createdAt: dateOf(j['createdAt']),
       deletedAt: dateOf(j['deletedAt']),
     );
 

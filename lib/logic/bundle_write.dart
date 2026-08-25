@@ -119,6 +119,7 @@ Map<String, Object?> subscriptionToJson(Subscription s) => _tidy({
       'startedDate': s.startedDate,
       'remindDays': s.remindDays,
       'notes': s.notes,
+      'createdAt': _iso(s.createdAt),
       'deletedAt': _iso(s.deletedAt),
     });
 
@@ -138,6 +139,7 @@ Map<String, Object?> paperToJson(Paper p) => _tidy({
       'authority': p.authority,
       'storedAt': p.storedAt,
       'notes': p.notes,
+      'createdAt': _iso(p.createdAt),
       'deletedAt': _iso(p.deletedAt),
     });
 

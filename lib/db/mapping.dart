@@ -84,6 +84,7 @@ Subscription subscriptionOf(SubscriptionRow r) => Subscription(
       startedDate: r.startedDate,
       remindDays: r.remindDays,
       notes: r.notes,
+      createdAt: r.createdAt,
       deletedAt: r.deletedAt,
     );
 
@@ -100,6 +101,7 @@ Paper paperOf(PaperRow r) => Paper(
       authority: r.authority,
       storedAt: r.storedAt,
       notes: r.notes,
+      createdAt: r.createdAt,
       deletedAt: r.deletedAt,
     );
 
@@ -187,6 +189,10 @@ SubscriptionsCompanion subscriptionToRow(Subscription s) => SubscriptionsCompani
       startedDate: Value(s.startedDate),
       remindDays: Value(s.remindDays),
       notes: Value(s.notes),
+      // Preserved rather than stamped, exactly as `itemToRow` does it. These
+      // rows are written with `.replace()`, so a field this function forgets is
+      // a field every edit sets back to null.
+      createdAt: Value(s.createdAt ?? DateTime.now()),
       deletedAt: Value(s.deletedAt),
     );
 
@@ -202,6 +208,7 @@ PapersCompanion paperToRow(Paper p) => PapersCompanion.insert(
       authority: Value(p.authority),
       storedAt: Value(p.storedAt),
       notes: Value(p.notes),
+      createdAt: Value(p.createdAt ?? DateTime.now()),
       deletedAt: Value(p.deletedAt),
     );
 

@@ -26,6 +26,7 @@ class PaperDraft {
     this.storedAt = '',
     this.notes = '',
     this.leadDays,
+    this.createdAt,
   });
 
   final String? id;
@@ -44,6 +45,10 @@ class PaperDraft {
   /// Null means "use the default for its kind" — a passport wants eight
   /// months, a vehicle inspection wants one.
   int? leadDays;
+
+  /// Carried, not edited. A draft that does not hold a field deletes it on
+  /// save — see the note on `SubscriptionDraft.serviceId`.
+  DateTime? createdAt;
 
   /// Tapping a different kind renames the box, unless somebody typed in it.
   ///
@@ -88,6 +93,7 @@ Paper toPaper(PaperDraft d, {required String propertyId}) {
     authority: clean(d.authority),
     storedAt: clean(d.storedAt),
     notes: clean(d.notes),
+    createdAt: d.createdAt,
   );
 }
 
@@ -102,6 +108,7 @@ PaperDraft draftOfPaper(Paper p) => PaperDraft(
       storedAt: p.storedAt ?? '',
       notes: p.notes ?? '',
       leadDays: p.leadDays,
+      createdAt: p.createdAt,
     );
 
 /// How much runway this document will get, spelled out.

@@ -24,11 +24,32 @@ class SubscriptionDraft {
     this.currency = 'USD',
     this.notes = '',
     this.remindDays,
+    this.serviceId,
+    this.logoBlobId,
+    this.startedDate,
+    this.createdAt,
   });
 
   final String? id;
   String name;
   Cadence cadence;
+
+  /*
+    ── Carried, not edited ─────────────────────────────────────────────────
+
+    None of these four is on the form, and all four were being erased on save,
+    because a draft that does not hold a field deletes it. `logoBlobId` was the
+    expensive one: editing a subscription severed its logo and left the image
+    in the database as an orphan.
+
+    Same failure as `ItemDraft.photoBlobId` and `Doc.blobId` before it. The
+    rule: **a form model must round-trip every field of the record, whether or
+    not the form shows it.**
+  */
+  String? serviceId;
+  String? logoBlobId;
+  String? startedDate;
+  DateTime? createdAt;
 
   /// One real renewal date, `YYYY-MM-DD`. Everything derives from it.
   String anchorDate;
@@ -74,6 +95,10 @@ Subscription toSubscription(SubscriptionDraft d, {required String propertyId}) {
     currency: d.currency,
     remindDays: d.remindDays,
     notes: clean(d.notes),
+    serviceId: d.serviceId,
+    logoBlobId: d.logoBlobId,
+    startedDate: d.startedDate,
+    createdAt: d.createdAt,
   );
 }
 
@@ -86,4 +111,8 @@ SubscriptionDraft draftOfSubscription(Subscription s) => SubscriptionDraft(
       currency: s.currency,
       notes: s.notes ?? '',
       remindDays: s.remindDays,
+      serviceId: s.serviceId,
+      logoBlobId: s.logoBlobId,
+      startedDate: s.startedDate,
+      createdAt: s.createdAt,
     );

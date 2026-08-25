@@ -23,6 +23,7 @@ class Subscription {
     this.startedDate,
     this.remindDays,
     this.notes,
+    this.createdAt,
     this.deletedAt,
   });
 
@@ -57,5 +58,14 @@ class Subscription {
   final int? remindDays;
 
   final String? notes;
+
+  /// When it was first saved.
+  ///
+  /// The column has existed since the tables were written and no model ever
+  /// read it, so `.replace()` on every edit wrote null back over it — a field
+  /// that could only ever hold nothing. Here now for the same reason the item's
+  /// is: a row that cannot say when it arrived cannot be ordered by age.
+  final DateTime? createdAt;
+
   final DateTime? deletedAt;
 }
