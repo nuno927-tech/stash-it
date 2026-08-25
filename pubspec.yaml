@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.1.0
+version: 0.3.0
 
 environment:
   sdk: ^3.5.0
@@ -53,6 +53,19 @@ dependencies:
   # Downloads, because the point is that it ends up somewhere that is **not
   # this phone** — see the note on `_backUp`.
   share_plus: ^10.1.2
+
+  # ── reminders that arrive while the app is shut ────────────────────────
+  #
+  # This is the entire replacement for the web app's push stack: no keys, no
+  # Firebase function, no endpoint, no service worker. `logic/reminders.dart`
+  # works out which days earn a wake; this hands that list to the OS.
+  flutter_local_notifications: ^17.2.3
+
+  # Its scheduler wants a zoned instant rather than a local one, because a
+  # phone that crosses a time zone must not fire a 9am reminder at 4am. See
+  # lib/notify/notifications.dart.
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
 
 dev_dependencies:
   flutter_test:

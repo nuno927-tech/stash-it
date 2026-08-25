@@ -15,64 +15,12 @@ import '../db/restore.dart';
 import '../io/bundle_file.dart';
 import '../logic/bundle.dart';
 import '../logic/devmode.dart';
-import '../logic/limits.dart';
+import '../logic/reminders.dart';
+import '../models/settings.dart';
+import '../notify/sync.dart';
 import 'parts.dart';
 
-const appVersion = '0.1.0';
-
-/// Raw table counts beside what the repository returns.
-///
-/// Temporary — see the Diagnostics section below.
-class _Counts {
-  const _Counts({
-    required this.rawItems,
-    required this.rawPapers,
-    required this.rawSubs,
-    required this.rawBlobs,
-    required this.liveItems,
-    required this.livePapers,
-    required this.liveSubs,
-    required this.deletedItems,
-    required this.propertyIds,
-  });
-
-  final int rawItems;
-  final int rawPapers;
-  final int rawSubs;
-  final int rawBlobs;
-
-  final int liveItems;
-  final int livePapers;
-  final int liveSubs;
-
-  final int deletedItems;
-  final List<String> propertyIds;
-
-  static Future<_Counts> of(Repository repo) async {
-    final db = repo.db;
-
-    // No `where` at all. This is the number that settles it.
-    final items = await db.select(db.items).get();
-    final papers = await db.select(db.papers).get();
-    final subs = await db.select(db.subscriptions).get();
-    final blobs = await db.select(db.blobs).get();
-
-    return _Counts(
-      rawItems: items.length,
-      rawPapers: papers.length,
-      rawSubs: subs.length,
-      rawBlobs: blobs.length,
-      liveItems: (await repo.activeItems()).length,
-      livePapers: (await repo.activePapers()).length,
-      liveSubs: (await repo.activeSubscriptions()).length,
-      deletedItems: items.where((i) => i.deletedAt != null).length,
-      propertyIds: {
-        for (final i in items) i.propertyId,
-        for (final p in papers) p.propertyId,
-      }.toList(),
-    );
-  }
-}
+const appVersion = '0.3.0';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -167,6 +115,37 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  /// Recomputed on each rebuild rather than cached, because a save on another
+  /// tab changes it and nothing tells this screen.
+  Future<int> get _pendingCount => syncReminders(widget.repo);
+
+  /// The switch, and the OS prompt behind it.
+  ///
+  /// Turning it on has to ask Android, and Android only asks once per install —
+  /// after a decline, the switch cannot be turned on from in here at all, which
+  /// is why the failure says where to go rather than just refusing.
+  Future<void> _setNotify(bool wanted) async {
+    setState(() => _busy = true);
+
+    try {
+      var enabled = false;
+      if (wanted) enabled = await notifications.ask();
+
+      await widget.repo.setNotify(enabled: enabled);
+      await syncReminders(widget.repo);
+
+      if (!mounted) return;
+      setState(() {
+        _status = wanted && !enabled
+            ? 'Android is holding notifications for Stash it. Turn them on in '
+                'the phone\'s app settings and this switch will follow.'
+            : null;
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   /*
     Ten taps on the version, and the run resets if you pause.
 
@@ -189,13 +168,21 @@ class _SettingsTabState extends State<SettingsTab> {
       children: [
         const SectionTitle('Your data'),
 
+        /*
+          A count, not a quota.
+
+          This said "1 of 25 saved" while the cap was on. It is off now — see
+          `capEnforced` — and a screen advertising a limit nothing enforces is
+          worse than one that says nothing: somebody would ration themselves
+          against a number that does not exist.
+        */
         FutureBuilder<int>(
           future: widget.repo.cappedCount(),
           builder: (context, snap) {
             final used = snap.data;
             return ListTile(
               leading: const Icon(Icons.inventory_2_outlined),
-              title: Text(used == null ? 'Counting…' : '$used of $freeItemLimit saved'),
+              title: Text(used == null ? 'Counting…' : '$used saved'),
               subtitle: const Text(
                 'Items, documents and subscriptions together.',
               ),
@@ -237,74 +224,51 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
 
         const SectionTitle('Reminders'),
-        const ListTile(
-          enabled: false,
-          leading: Icon(Icons.notifications_outlined),
-          title: Text('Notify me'),
-          subtitle: Text(
-            'Not built yet. When it is, your phone will keep the schedule '
-            'itself — nothing is sent anywhere.',
-          ),
-        ),
-
-        /*
-          ── Temporary, and it is here because guessing failed twice ────────
-
-          Twenty-one items restored into an encrypted database and no screen
-          showed them. The first theory — that every row carried the household
-          id from the backup while the queries asked for the local one — was
-          plausible, was fixed, and did not fix it.
-
-          So this stops the guessing: raw table counts, with no `where` clause
-          at all, next to what the repository actually returns. If the raw
-          number is zero the restore is not writing; if it is twenty-one and
-          the filtered number is zero, something is still filtering them out,
-          and the property ids below say what.
-
-          Goes away once the answer is known.
-        */
-        const SectionTitle('Diagnostics'),
-        FutureBuilder<_Counts>(
-          future: _Counts.of(widget.repo),
+        FutureBuilder<Settings>(
+          future: widget.repo.settings(),
           builder: (context, snap) {
-            final c = snap.data;
-            if (c == null) return const LinearProgressIndicator();
+            final settings = snap.data;
+            final on = settings?.notifyEnabled == true;
 
             return Column(
               children: [
-                ListTile(
-                  dense: true,
-                  title: const Text('Rows in the database'),
-                  subtitle: Text(
-                    'items ${c.rawItems} · documents ${c.rawPapers} · '
-                    'subscriptions ${c.rawSubs} · blobs ${c.rawBlobs}',
+                SwitchListTile(
+                  secondary: const Icon(Icons.notifications_outlined),
+                  title: const Text('Notify me'),
+                  subtitle: const Text(
+                    'A warning when a warranty is running out or a document '
+                    'needs renewing. Set on this phone, sent nowhere.',
                   ),
+                  value: on,
+                  onChanged: settings == null || _busy ? null : _setNotify,
                 ),
-                ListTile(
-                  dense: true,
-                  title: const Text('Rows the app can see'),
-                  subtitle: Text(
-                    'items ${c.liveItems} · documents ${c.livePapers} · '
-                    'subscriptions ${c.liveSubs}',
+
+                /*
+                  ── Why the pending count is on screen ──────────────────────
+
+                  A switch says what was intended. This says what is actually
+                  scheduled — and the two come apart in ways nothing else would
+                  show: permission revoked in system settings months ago,
+                  nothing due inside the sixty-day horizon, or every date
+                  already past. "On, 0 pending" is a sentence somebody can ask
+                  about; a switch on its own quietly lies.
+                */
+                if (on)
+                  FutureBuilder<int>(
+                    future: _pendingCount,
+                    builder: (context, count) => Padding(
+                      padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+                      child: Text(
+                        switch (count.data) {
+                          null => 'Checking…',
+                          0 => 'Nothing due in the next $horizonDays days.',
+                          1 => '1 reminder set.',
+                          final n => '$n reminders set.',
+                        },
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
                   ),
-                ),
-                ListTile(
-                  dense: true,
-                  title: const Text('Household ids on those rows'),
-                  subtitle: Text(
-                    c.propertyIds.isEmpty ? 'none' : c.propertyIds.join(', '),
-                  ),
-                ),
-                ListTile(
-                  dense: true,
-                  title: const Text('This repository is reading'),
-                  subtitle: Text(widget.repo.propertyId),
-                ),
-                ListTile(
-                  dense: true,
-                  title: const Text('Deleted rows'),
-                  subtitle: Text('${c.deletedItems} items in the bin'),
-                ),
               ],
             );
           },

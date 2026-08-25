@@ -15,17 +15,46 @@ import '../logic/format.dart';
 import '../logic/subscriptions.dart';
 import '../logic/timeline.dart';
 import '../models/subscription.dart';
+import 'notify_offer_dialog.dart';
 import 'parts.dart';
+import 'sub_form_screen.dart';
 
-class SubsTab extends StatelessWidget {
+class SubsTab extends StatefulWidget {
   const SubsTab({required this.repo, super.key});
 
   final Repository repo;
 
   @override
+  State<SubsTab> createState() => _SubsTabState();
+}
+
+class _SubsTabState extends State<SubsTab> {
+  Future<void> open(BuildContext context, Subscription? sub) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => SubFormScreen(repo: widget.repo, existing: sub),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
+    await maybeOfferNotifications(context, widget.repo);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => open(context, null),
+        tooltip: 'Add a subscription',
+        child: const Icon(Icons.add),
+      ),
+      body: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return FutureBuilder<List<Subscription>>(
-      future: repo.activeSubscriptions(),
+      future: widget.repo.activeSubscriptions(),
       builder: (context, snap) {
         final subs = snap.data;
         if (subs == null) return const Center(child: CircularProgressIndicator());
@@ -34,7 +63,8 @@ class SubsTab extends StatelessWidget {
           return const Blank(
             'Nothing recurring yet.\n\n'
             'Add what you pay for and this shows what a month really costs, '
-            'which months are the heavy ones, and what renews next.',
+            'which months are the heavy ones, and what renews next.\n\n'
+            'Tap + to add one.',
           );
         }
 
@@ -92,8 +122,9 @@ class SubsTab extends StatelessWidget {
               ),
 
             const SectionTitle('Renewing next'),
-            for (final sub in sorted) _SubTile(sub: sub),
-            const SizedBox(height: 24),
+            for (final sub in sorted)
+              _SubTile(sub: sub, onTap: () => open(context, sub)),
+            const SizedBox(height: 88),
           ],
         );
       },
@@ -164,9 +195,10 @@ class _SpendChart extends StatelessWidget {
 }
 
 class _SubTile extends StatelessWidget {
-  const _SubTile({required this.sub});
+  const _SubTile({required this.sub, this.onTap});
 
   final Subscription sub;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -175,6 +207,7 @@ class _SubTile extends StatelessWidget {
     final due = reminderDue(sub);
 
     return ListTile(
+      onTap: onTap,
       leading: CircleAvatar(
         child: Text(sub.name.isEmpty ? '?' : sub.name[0].toUpperCase()),
       ),

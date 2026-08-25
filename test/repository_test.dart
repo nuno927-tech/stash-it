@@ -103,6 +103,19 @@ void main() {
 
   group('the cap', () {
     /*
+      ── The cap is off in the shipped app, and on in here ────────────────
+
+      Switched off deliberately while the app is being built out, and kept
+      whole rather than deleted — see `capEnforced`. The rule is still worth
+      testing, because the hard part was never the comparison: it was that
+      **both** insert paths go through the same gate. That property has to keep
+      being true while the cap is dormant, or turning it back on ships a cap
+      with a hole in it.
+    */
+    setUp(() => capEnforced = true);
+    tearDown(() => capEnforced = false);
+
+    /*
       THE ASSERTION THE FILE EXISTS FOR. `canAddItem` was always right; what
       matters is that the save path asks it.
     */
@@ -186,6 +199,24 @@ void main() {
     });
   });
 
+  group('with the cap off, which is how the app ships today', () {
+    test('nothing is refused', () async {
+      await fillTo(freeItemLimit + 10);
+      expect(await repo.cappedCount(), freeItemLimit + 10);
+      expect(await repo.canSave(), isTrue);
+    });
+
+    test('and a restore from the bin is never blocked', () async {
+      await fillTo(freeItemLimit + 5);
+      final victim = (await repo.activeItems()).first;
+
+      await repo.softDeleteItem(victim.id);
+      await repo.restoreItem(victim.id);
+
+      expect((await repo.activeItems()).map((i) => i.id), contains(victim.id));
+    });
+  });
+
   group('the bin', () {
     test('a deleted item leaves the list and appears in the bin', () async {
       final id = await repo.createItem(draft('Kettle'));
@@ -207,35 +238,49 @@ void main() {
     });
 
     /*
-      THE HOLE THIS CLOSES. Deleting frees a slot immediately, so an unchecked
-      restore is a hole you could drive the whole tier through: fill up, delete
-      the lot, fill up again, restore the lot. Fifty items on a twenty-five
-      item tier, by pressing undo.
+      ── Restoring, with the cap switched back on ─────────────────────────────
+
+      These two turn `capEnforced` on for the duration, because the app ships
+      with it off. That is not the tests bending to fit the code: the hole
+      below is a property of the cap, so it can only be demonstrated with a cap
+      in place, and the day the cap comes back is the day somebody needs to
+      know this was already thought about.
     */
-    test('but not when there is no room for it', () async {
-      await fillTo(freeItemLimit);
-      final victim = (await repo.activeItems()).first;
+    group('and restoring when the cap is on', () {
+      setUp(() => capEnforced = true);
+      tearDown(() => capEnforced = false);
 
-      await repo.softDeleteItem(victim.id);
-      await repo.createItem(draft('Took the slot'));
+      /*
+        THE HOLE THIS CLOSES. Deleting frees a slot immediately, so an
+        unchecked restore is a hole you could drive the whole tier through:
+        fill up, delete the lot, fill up again, restore the lot. Fifty items on
+        a twenty-five item tier, by pressing undo.
+      */
+      test('is refused when there is no room for it', () async {
+        await fillTo(freeItemLimit);
+        final victim = (await repo.activeItems()).first;
 
-      expect(repo.restoreItem(victim.id), throwsA(isA<CapReached>()));
-    });
+        await repo.softDeleteItem(victim.id);
+        await repo.createItem(draft('Took the slot'));
 
-    // Nothing is lost when it refuses. The item stays in the bin, and its own
-    // countdown is the only thing that can remove it.
-    test('and it stays in the bin when it refuses', () async {
-      await fillTo(freeItemLimit);
-      final victim = (await repo.activeItems()).first;
-      await repo.softDeleteItem(victim.id);
-      await repo.createItem(draft('Took the slot'));
+        expect(repo.restoreItem(victim.id), throwsA(isA<CapReached>()));
+      });
 
-      try {
-        await repo.restoreItem(victim.id);
-      } on CapReached {
-        // expected
-      }
-      expect((await repo.deletedItems()).map((i) => i.id), contains(victim.id));
+      // Nothing is lost when it refuses. The item stays in the bin, and its own
+      // countdown is the only thing that can remove it.
+      test('and it stays in the bin when it refuses', () async {
+        await fillTo(freeItemLimit);
+        final victim = (await repo.activeItems()).first;
+        await repo.softDeleteItem(victim.id);
+        await repo.createItem(draft('Took the slot'));
+
+        try {
+          await repo.restoreItem(victim.id);
+        } on CapReached {
+          // expected
+        }
+        expect((await repo.deletedItems()).map((i) => i.id), contains(victim.id));
+      });
     });
 
     /*
@@ -391,12 +436,71 @@ void main() {
       a way to grant one.
     */
     test('but saving them cannot grant a paid unlock', () async {
+      // The cap is off in the shipping app, so the second half of this test —
+      // the half that proves the pretend unlock bought nothing — has to switch
+      // it on to have anything to prove.
+      capEnforced = true;
+      addTearDown(() => capEnforced = false);
+
       const pretend = Settings(entitlements: Entitlements(proUnlock: true));
       await repo.saveSettings(pretend);
 
       expect((await repo.settings()).entitlements.proUnlock, isFalse);
       await fillTo(freeItemLimit);
       expect(repo.createItem(draft('Nope')), throwsA(isA<CapReached>()));
+    });
+  });
+
+  /*
+    ── The notification switch, and the two things that must not touch it ────
+
+    This is the same shape of guarantee as the entitlements above, for a
+    different reason. Entitlements are excluded from `settingsToRow` so a file
+    cannot buy an unlock; the notification switch is excluded so a restore
+    cannot silently turn somebody's reminders off — a backup taken on another
+    phone, or on this one before reminders existed, carries a null for both
+    columns, and writing it through would look exactly like "switch it off and
+    ask again".
+
+    Both are enforced by the same mechanism: `settingsToRow` cannot write them,
+    and `settingsToRow` is the only route a restore has.
+  */
+  group('the notification switch', () {
+    test('starts as null, which is not the same as off', () async {
+      final s = await repo.settings();
+      expect(s.notifyEnabled, isNull);
+      expect(s.notifyAskedAt, isNull);
+    });
+
+    test('setNotify records the answer and that it was asked', () async {
+      await repo.setNotify(enabled: true);
+
+      final s = await repo.settings();
+      expect(s.notifyEnabled, isTrue);
+      expect(s.notifyAskedAt, isNotNull);
+    });
+
+    // Declining is an answer, and has to be remembered as one — otherwise the
+    // offer dialog reappears on the next save, forever.
+    test('and declining is remembered as an answer, not as silence', () async {
+      await repo.setNotify(enabled: false);
+
+      final s = await repo.settings();
+      expect(s.notifyEnabled, isFalse);
+      expect(s.notifyAskedAt, isNotNull);
+    });
+
+    test('saving settings cannot switch it off', () async {
+      await repo.setNotify(enabled: true);
+
+      // A Settings object with nulls in it, which is exactly what the backup
+      // decoder produces.
+      await repo.saveSettings(const Settings(currency: 'GBP'));
+
+      final s = await repo.settings();
+      expect(s.currency, 'GBP', reason: 'the rest of the row still saves');
+      expect(s.notifyEnabled, isTrue, reason: 'and this one is untouchable');
+      expect(s.notifyAskedAt, isNotNull);
     });
   });
 }

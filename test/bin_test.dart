@@ -99,7 +99,13 @@ void main() {
       immediately — deliberate, so someone at the limit can make room — but an
       unchecked restore would be a hole you could drive the whole tier through:
       fill up, delete the lot, fill up again, restore the lot.
+
+      The cap is off in the shipped app for now, so these turn it on. The rule
+      is dormant, not gone — see `capEnforced`.
     */
+    setUp(() => capEnforced = true);
+    tearDown(() => capEnforced = false);
+
     test('a subscriber can always restore', () => expect(canRestore(999, pro), isTrue));
 
     test('with room, so can anyone', () {
@@ -114,6 +120,11 @@ void main() {
       expect(why, contains('subscribe'));
       expect(why, contains('stays here'));
       expect(why, contains('$freeItemLimit'));
+    });
+
+    test('but with the cap off, nothing is refused at all', () {
+      capEnforced = false;
+      expect(canRestore(freeItemLimit + 100, free), isTrue);
     });
   });
 }

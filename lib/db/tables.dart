@@ -258,6 +258,20 @@ class SettingsTable extends Table {
   BoolColumn get biometricLock => boolean().nullable()();
 
   /*
+    ── Reminders, and why these are two columns rather than one ─────────────
+
+    `notifyEnabled` is the switch. `notifyAskedAt` is whether the question has
+    ever been put — and off-because-declined has to be distinguishable from
+    off-because-never-asked, or the offer dialog reappears forever. See
+    `shouldOffer` in logic/notify_offer.dart, which reads both.
+
+    Neither is written by a restore. A backup carries dates and names, not this
+    phone's relationship with its own notification tray.
+  */
+  BoolColumn get notifyEnabled => boolean().nullable()();
+  DateTimeColumn get notifyAskedAt => dateTime().nullable()();
+
+  /*
     Entitlements live here and are the one thing a restore must never write.
     See `_settingsOf` in logic/bundle.dart: the backup decoder does not read
     the field at all, so there is no path from a file anyone can edit to a paid
@@ -292,13 +306,33 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _seed();
+        },
+
+        /*
+          ── The first migration, and the rule it sets ──────────────────────
+
+          There is already a phone with real data on it, restored from a v0.67
+          backup, so from here on a schema change has to be additive and has to
+          be tested against a database that predates it — see
+          `test/migration_test.dart`.
+
+          Adding a nullable column is the safe shape: every existing row gets
+          null, and null already means "no opinion" everywhere preferences are
+          read. Nobody who upgrades finds notifications silently switched on,
+          and nobody finds the offer dialog silently marked as already asked.
+        */
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(settingsTable, settingsTable.notifyEnabled);
+            await m.addColumn(settingsTable, settingsTable.notifyAskedAt);
+          }
         },
         beforeOpen: (details) async {
           // Foreign keys are off by default in SQLite — every time, per

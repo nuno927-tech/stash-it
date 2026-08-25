@@ -14,17 +14,51 @@ import '../db/repository.dart';
 import '../logic/papers.dart';
 import '../logic/timeline.dart';
 import '../models/paper.dart';
+import 'notify_offer_dialog.dart';
+import 'paper_form_screen.dart';
 import 'parts.dart';
 
-class PapersTab extends StatelessWidget {
+class PapersTab extends StatefulWidget {
   const PapersTab({required this.repo, super.key});
 
   final Repository repo;
 
   @override
+  State<PapersTab> createState() => _PapersTabState();
+}
+
+class _PapersTabState extends State<PapersTab> {
+  /// The form, then a rebuild.
+  ///
+  /// Unlike Items, this tab reads a future rather than a stream — so a save
+  /// has to be told about. Worth knowing the difference is deliberate: the
+  /// items list is watched because it is the one people leave open.
+  Future<void> open(BuildContext context, Paper? paper) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => PaperFormScreen(repo: widget.repo, existing: paper),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
+    await maybeOfferNotifications(context, widget.repo);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => open(context, null),
+        tooltip: 'Add a document',
+        child: const Icon(Icons.add),
+      ),
+      body: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return FutureBuilder<List<Paper>>(
-      future: repo.activePapers(),
+      future: widget.repo.activePapers(),
       builder: (context, snap) {
         final all = snap.data;
         if (all == null) return const Center(child: CircularProgressIndicator());
@@ -32,7 +66,8 @@ class PapersTab extends StatelessWidget {
         if (all.isEmpty) {
           return const Blank(
             'Passports, licenses, insurance — the things that expire on you.\n\n'
-            "Dates and general details only. No scans, no document numbers.",
+            'Dates and general details only. No scans, no document numbers.\n\n'
+            'Tap + to add one.',
           );
         }
 
@@ -40,6 +75,7 @@ class PapersTab extends StatelessWidget {
         final needing = needsRenewing(all).length;
 
         return ListView(
+          padding: const EdgeInsets.only(bottom: 88),
           children: [
             SectionTitle(
               'Documents',
@@ -52,7 +88,8 @@ class PapersTab extends StatelessWidget {
                           ),
                     ),
             ),
-            for (final paper in sorted) _PaperTile(paper: paper),
+            for (final paper in sorted)
+              _PaperTile(paper: paper, onTap: () => open(context, paper)),
             const SizedBox(height: 24),
           ],
         );
@@ -62,9 +99,10 @@ class PapersTab extends StatelessWidget {
 }
 
 class _PaperTile extends StatelessWidget {
-  const _PaperTile({required this.paper});
+  const _PaperTile({required this.paper, this.onTap});
 
   final Paper paper;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +120,7 @@ class _PaperTile extends StatelessWidget {
     final holder = paper.holder?.trim();
 
     return ListTile(
+      onTap: onTap,
       /*
         Anything needing action is circled, the same way the ring marks it on
         the dashboard. Two screens, one visual language: if it has a coloured

@@ -121,6 +121,8 @@ Settings settingsOf(SettingsRow r) => Settings(
       roomsView:
           r.roomsView == null ? null : enumOf(r.roomsView, RoomsView.values, RoomsView.collapsed),
       biometricLock: r.biometricLock,
+      notifyEnabled: r.notifyEnabled,
+      notifyAskedAt: r.notifyAskedAt,
     );
 
 /* -------------------------------------------------------------- writing */
@@ -219,6 +221,20 @@ SettingsTableCompanion settingsToRow(Settings s) => SettingsTableCompanion(
       haptics: Value(s.haptics),
       roomsView: Value(s.roomsView?.name),
       biometricLock: Value(s.biometricLock),
+      /*
+        `notifyEnabled` and `notifyAskedAt` are deliberately absent, for the
+        same structural reason the entitlements are: this function is the only
+        way a restore writes settings, so anything it cannot write is something
+        a backup file cannot change.
+
+        Without that, restoring a backup taken on another phone — or on this
+        one before reminders existed — would silently switch notifications off
+        and re-arm the offer dialog. Reminders belong to a handset and its
+        notification tray, not to the records.
+
+        They are written by `Repository.setNotify`, which touches these two
+        columns and nothing else.
+      */
     );
 
 /* ----------------------------------------------------------------- json */

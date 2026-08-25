@@ -18,6 +18,8 @@
 /// timer, and the failure names neither.
 library;
 
+// For `Icons` in the test that taps the add button.
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stash_it/db/open.dart';
 import 'package:stash_it/db/repository.dart';
@@ -104,7 +106,28 @@ void main() {
   testWidgets('an empty items tab says nothing is saved', (tester) async {
     final db = await show(tester);
     await goTo(tester, 'Items');
-    expect(find.text('Nothing saved yet.'), findsOneWidget);
+
+    // `textContaining`, because the empty state also says how to fix itself —
+    // an empty screen that does not tell you what to do next is a dead end.
+    expect(find.textContaining('Nothing saved yet'), findsOneWidget);
+    expect(find.textContaining('Tap + to put something in'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('and the add button opens the form', (tester) async {
+    final db = await show(tester);
+    await goTo(tester, 'Items');
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Add something'), findsOneWidget);
+    // Name is the only field the app insists on, so it is the one that opens
+    // focused — see `whyNotSaveable`.
+    expect(find.text('Call it'), findsOneWidget);
+
     await db.close();
   });
 
@@ -161,29 +184,66 @@ void main() {
   });
 
   group('settings', () {
-    testWidgets('shows how much of the free tier is used', (tester) async {
+    /*
+      A count, not a quota. The cap is off — see `capEnforced` — and a screen
+      advertising a limit nothing enforces would have people rationing
+      themselves against a number that does not exist.
+    */
+    testWidgets('shows how much is saved', (tester) async {
       final db = await show(tester, items: [
         const Item(id: '', propertyId: 'default', name: 'Kettle'),
       ]);
 
       await goTo(tester, 'Settings');
-      expect(find.text('1 of 25 saved'), findsOneWidget);
+      expect(find.text('1 saved'), findsOneWidget);
 
       await db.close();
     });
 
     /*
-      The backup writer does not exist yet, and the row says so rather than
-      being absent. A missing row lets somebody assume the feature is
-      somewhere they have not looked — and with an encrypted database whose
-      key cannot leave the phone, that assumption is expensive.
+      Both halves of the backup story are on the screen, and this test exists
+      because for a while only one of them was. With an encrypted database
+      whose key cannot leave the phone, an export nobody can find is the same
+      as no export at all.
     */
-    testWidgets('and admits the backup writer is missing', (tester) async {
+    testWidgets('and offers both halves of the backup', (tester) async {
       final db = await show(tester);
       await goTo(tester, 'Settings');
 
       expect(find.text('Back up now'), findsOneWidget);
-      expect(find.textContaining('Not built yet'), findsWidgets);
+      expect(find.text('Restore from a backup'), findsOneWidget);
+
+      await db.close();
+    });
+
+    /*
+      ── Off, and off because nobody has been asked ────────────────────────
+
+      A fresh database has null in `notifyEnabled`, and the switch has to read
+      that as off. The failure this guards against is the opposite one — a
+      default that renders as on while nothing is scheduled and no permission
+      has been granted, which is a screen telling somebody they are covered
+      when they are not.
+
+      The count line is deliberately absent here: it only appears once the
+      switch is on, because "0 reminders set" under an off switch is noise.
+    */
+    testWidgets('reminders start off, and say nothing about a schedule',
+        (tester) async {
+      final db = await show(tester);
+      await goTo(tester, 'Settings');
+
+      await tester.scrollUntilVisible(find.text('Notify me'), 200);
+      await tester.pump();
+
+      final switchTile = tester.widget<SwitchListTile>(
+        find.ancestor(
+          of: find.text('Notify me'),
+          matching: find.byType(SwitchListTile),
+        ),
+      );
+      expect(switchTile.value, isFalse);
+      expect(find.textContaining('reminders set'), findsNothing);
 
       await db.close();
     });

@@ -255,9 +255,48 @@ class Repository {
     return id;
   }
 
-  /// Settings, minus the entitlements — see `settingsToRow`.
+  Future<void> savePaper(Paper p) =>
+      db.update(db.papers).replace(paperToRow(p));
+
+  Future<void> saveSubscription(Subscription s) =>
+      db.update(db.subscriptions).replace(subscriptionToRow(s));
+
+  /*
+    Documents and subscriptions go to the bin too.
+
+    The web app hard-deleted both, and the reason was that neither holds an
+    attachment so there was nothing to clean up — which is an argument about
+    storage, not about people. Deleting the wrong passport is exactly as bad as
+    deleting the wrong kettle, and the thirty-day window already exists.
+  */
+  Future<void> softDeletePaper(String id) =>
+      (db.update(db.papers)..where((t) => t.id.equals(id)))
+          .write(PapersCompanion(deletedAt: Value(DateTime.now())));
+
+  Future<void> softDeleteSubscription(String id) =>
+      (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
+          .write(SubscriptionsCompanion(deletedAt: Value(DateTime.now())));
+
+  /// Settings, minus the entitlements and the notification switch — see
+  /// `settingsToRow` for why both are structurally excluded rather than merely
+  /// left out.
   Future<void> saveSettings(Settings s) =>
       db.update(db.settingsTable).write(settingsToRow(s));
+
+  /// The notification switch, and the record that the question has been put.
+  ///
+  /// Its own method because `saveSettings` cannot write these — a restore goes
+  /// through that function, and a backup must not be able to change this
+  /// phone's relationship with its own notification tray. Both columns move
+  /// together: enabling without recording the ask would leave the offer dialog
+  /// waiting to fire again.
+  Future<void> setNotify({required bool enabled, DateTime? askedAt}) =>
+      db.update(db.settingsTable).write(
+            SettingsTableCompanion(
+              notifyEnabled: Value(enabled),
+              notifyAskedAt: Value(askedAt ?? DateTime.now()),
+            ),
+          );
 
   /* ------------------------------------------------------------- the bin */
 

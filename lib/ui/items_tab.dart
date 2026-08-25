@@ -13,6 +13,8 @@ import '../logic/search.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
+import 'item_form_screen.dart';
+import 'notify_offer_dialog.dart';
 import 'parts.dart';
 
 class ItemsTab extends StatefulWidget {
@@ -59,8 +61,14 @@ class _ItemsTabState extends State<ItemsTab> {
 
         shown = [...shown]..sort(_soonestFirst);
 
-        return Column(
-          children: [
+        return Scaffold(
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _open(context, null),
+            tooltip: 'Add something',
+            child: const Icon(Icons.add),
+          ),
+          body: Column(
+            children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: TextField(
@@ -105,22 +113,44 @@ class _ItemsTabState extends State<ItemsTab> {
                 ],
               ),
             ),
-            Expanded(
-              child: shown.isEmpty
-                  ? Blank(
-                      all.isEmpty
-                          ? 'Nothing saved yet.'
-                          : 'Nothing here matches that.',
-                    )
-                  : ListView.builder(
-                      itemCount: shown.length,
-                      itemBuilder: (context, i) => _ItemTile(item: shown[i]),
-                    ),
-            ),
-          ],
+              Expanded(
+                child: shown.isEmpty
+                    ? Blank(
+                        all.isEmpty
+                            ? 'Nothing saved yet.\n\nTap + to put something in.'
+                            : 'Nothing here matches that.',
+                      )
+                    : ListView.builder(
+                        itemCount: shown.length,
+                        // Room for the button to sit over without covering the
+                        // last row, which is the row people most often want.
+                        padding: const EdgeInsets.only(bottom: 88),
+                        itemBuilder: (context, i) => _ItemTile(
+                          item: shown[i],
+                          onTap: () => _open(context, shown[i]),
+                        ),
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );
+  }
+
+  /// The form, for a new item or an existing one.
+  ///
+  /// Nothing is passed back and nothing needs to be: the list is a Drift
+  /// stream, so a save rebuilds it. That is the whole reason the repository
+  /// exposes `watchActiveItems` rather than a future.
+  Future<void> _open(BuildContext context, Item? item) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => ItemFormScreen(repo: widget.repo, existing: item),
+      ),
+    );
+    if (!mounted) return;
+    await maybeOfferNotifications(context, widget.repo);
   }
 }
 
@@ -163,9 +193,10 @@ class _Chip extends StatelessWidget {
 }
 
 class _ItemTile extends StatelessWidget {
-  const _ItemTile({required this.item});
+  const _ItemTile({required this.item, this.onTap});
 
   final Item item;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +205,7 @@ class _ItemTile extends StatelessWidget {
     final end = effectiveExpiry(item);
 
     return ListTile(
+      onTap: onTap,
       leading: CircleAvatar(
         backgroundColor: toneOf(state, context).withValues(alpha: 0.2),
         child: Icon(_icon(item), size: 20, color: toneOf(state, context)),

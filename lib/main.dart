@@ -5,11 +5,14 @@
 /// lives under `logic/`, `db/` or `ui/`.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'db/open_flutter.dart';
 import 'db/repository.dart';
 import 'db/tables.dart';
+import 'notify/sync.dart';
 import 'ui/shell.dart';
 
 Future<void> main() async {
@@ -26,6 +29,18 @@ Future<void> main() async {
   */
   final db = await openEncrypted();
   runApp(StashItApp(db: db));
+
+  /*
+    Rescheduling happens AFTER the first frame, and is deliberately not awaited.
+
+    `horizonDays` is 60, so every pending notification was worked out at most
+    two months ago and is re-derived on every launch — which means the schedule
+    is never more than one app open out of date, and being a few hundred
+    milliseconds late to fix it costs nothing. Blocking the splash on a plugin
+    handshake, on the other hand, is how an app gets a reputation for being slow
+    to open.
+  */
+  unawaited(syncReminders(Repository(db)));
 }
 
 class StashItApp extends StatelessWidget {

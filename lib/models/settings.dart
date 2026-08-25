@@ -65,6 +65,8 @@ class Settings {
     this.haptics,
     this.roomsView,
     this.biometricLock,
+    this.notifyEnabled,
+    this.notifyAskedAt,
   });
 
   final Entitlements entitlements;
@@ -85,6 +87,17 @@ class Settings {
 
   /// Ask for a fingerprint or face check before the app opens.
   final bool? biometricLock;
+
+  /// Whether reminders should arrive while the app is shut.
+  ///
+  /// Null is not false. It means the question has never been put, which is what
+  /// `notifyAskedAt` records separately — off-because-declined and
+  /// off-because-never-asked have to be told apart, or the offer returns every
+  /// time somebody saves something with a date on it.
+  final bool? notifyEnabled;
+
+  /// When the offer was made, either way. Null means never.
+  final DateTime? notifyAskedAt;
 
   /// How much notice to give before cover ends. A list because the web schema
   /// allowed several offsets; only the first is read, and always has been.
@@ -123,6 +136,8 @@ class Settings {
     bool? haptics,
     RoomsView? roomsView,
     bool? biometricLock,
+    bool? notifyEnabled,
+    DateTime? notifyAskedAt,
   }) =>
       Settings(
         reminderOffsetsDays: reminderOffsetsDays ?? this.reminderOffsetsDays,
@@ -138,5 +153,7 @@ class Settings {
         haptics: haptics ?? this.haptics,
         roomsView: roomsView ?? this.roomsView,
         biometricLock: biometricLock ?? this.biometricLock,
+        notifyEnabled: notifyEnabled ?? this.notifyEnabled,
+        notifyAskedAt: notifyAskedAt ?? this.notifyAskedAt,
       );
 }
