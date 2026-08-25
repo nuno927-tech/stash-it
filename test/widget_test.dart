@@ -28,6 +28,7 @@ import 'package:stash_it/main.dart';
 import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
+import 'package:stash_it/ui/prefs_scope.dart';
 
 void main() {
   Future<StashDatabase> show(
@@ -49,7 +50,17 @@ void main() {
       await repo.createSubscription(s);
     }
 
-    await tester.pumpWidget(StashItApp(db: db));
+    /*
+      The preferences are loaded before the widget is pumped, the same way
+      `main` does it — the theme has to be settled before the first frame or
+      every launch is a flash of the wrong palette. Loading them here also
+      means the tests exercise the real path rather than a default the app
+      never actually uses.
+    */
+    final prefs = PrefsController(repo);
+    await prefs.load();
+
+    await tester.pumpWidget(StashItApp(repo: repo, prefs: prefs));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));

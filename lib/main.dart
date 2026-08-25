@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 
 import 'db/open_flutter.dart';
 import 'db/repository.dart';
-import 'db/tables.dart';
 import 'notify/sync.dart';
 import 'ui/feedback.dart';
 import 'ui/prefs_scope.dart';

@@ -16,6 +16,7 @@ import '../models/settings.dart';
 import '../models/types.dart';
 import 'parts.dart';
 import 'scout.dart';
+import 'theme.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({required this.repo, required this.onGo, super.key});
@@ -94,6 +95,7 @@ class _HomeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final c = StashColors.of(context);
     final t = data.tally;
 
     return ListView(
@@ -158,31 +160,34 @@ class _HomeBody extends StatelessWidget {
           A chip is an offer to take you somewhere. Everything in this row can
           be acted on; the ring is the summary.
         */
-        Center(
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            children: [
-              Figure(
-                value: '${t.needsStarting}',
-                label: 'action needed',
-                tone: const Color(0xFFF2B33D),
-                onTap: _tap(t.needsStartingBy),
-              ),
-              Figure(
-                value: '${t.lapsed}',
-                label: 'lapsed',
-                tone: theme.colorScheme.error,
-                onTap: _tap(t.lapsedBy),
-              ),
-              if (t.noDate > 0)
-                Figure(
-                  value: '${t.noDate}',
-                  label: 'no date',
-                  onTap: _tap(t.noDateBy),
-                ),
-            ],
+        /*
+          Four equal columns with a rule above, which is `.coverstats`.
+
+          "In date" is here and is not tappable — there is nothing to do about
+          something that is fine — while the other three go somewhere. The ring
+          shows the same share as a percentage, and that duplication is
+          deliberate: the ring is the summary and this is the breakdown.
+        */
+        FigureRow([
+          Figure(value: '${t.inDate}', label: 'in date', tone: c.moss),
+          Figure(
+            value: '${t.needsStarting}',
+            label: 'action needed',
+            tone: c.honey,
+            onTap: _tap(t.needsStartingBy),
           ),
-        ),
+          Figure(
+            value: '${t.lapsed}',
+            label: 'lapsed',
+            tone: c.ember,
+            onTap: _tap(t.lapsedBy),
+          ),
+          Figure(
+            value: '${t.noDate}',
+            label: 'no date',
+            onTap: _tap(t.noDateBy),
+          ),
+        ]),
 
         /*
           The backup line, and it never goes away.

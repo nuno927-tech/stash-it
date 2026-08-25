@@ -63,13 +63,9 @@ class _ItemsTabState extends State<ItemsTab> {
 
         shown = [...shown]..sort(_soonestFirst);
 
-        return Scaffold(
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _open(null),
-            tooltip: 'Add something',
-            child: const Icon(Icons.add),
-          ),
-          body: Column(
+        // See the note in papers_tab.dart — the shell owns the add button.
+        return SizedBox.expand(
+          child: Column(
             children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -119,7 +115,7 @@ class _ItemsTabState extends State<ItemsTab> {
                 child: shown.isEmpty
                     ? Blank(
                         all.isEmpty
-                            ? 'Nothing saved yet.\n\nTap + to put something in.'
+                            ? 'Nothing saved yet.\n\nTap Stash it to put something in.'
                             : 'Nothing here matches that.',
                         // Paperwork when the list has never had anything in it;
                         // ears up when a search found nothing, because those are

@@ -7,10 +7,21 @@ import 'package:flutter/material.dart';
 
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
+import 'feedback.dart';
 import 'scout.dart';
 import 'theme.dart';
 
-/// One number with a word under it.
+/// One number with a word under it, as `.coverstat` draws it.
+///
+/// ── The number is LIGHT, not bold ─────────────────────────────────────────
+/// 24px of the display face at weight 200. That looks backwards for a figure
+/// somebody is meant to read first, and it is the reason the row works: four
+/// bold numbers in a row compete with each other and with the ring above them,
+/// and the eye lands nowhere. Thin and large reads as a quantity; heavy and
+/// large reads as a warning, which only one of these is.
+///
+/// The colour lives in the dot beside the label rather than in the digits, for
+/// the same reason.
 class Figure extends StatelessWidget {
   const Figure({
     required this.value,
@@ -22,28 +33,97 @@ class Figure extends StatelessWidget {
 
   final String value;
   final String label;
+
+  /// Null when there is nothing to show. A figure that navigates to an empty
+  /// screen is worse than one that does not respond.
   final VoidCallback? onTap;
+
   final Color? tone;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = StashColors.of(context);
 
     return InkWell(
-      // Null when there is nothing to show. A chip that navigates to an empty
-      // screen is worse than one that does not respond.
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      onTap: onTap == null
+          ? null
+          : () {
+              feedback(Cue.tap);
+              onTap!();
+            },
+      borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(2, 14, 2, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value, style: theme.textTheme.headlineSmall?.copyWith(color: tone)),
-            Text(label, style: theme.textTheme.labelSmall),
+            Text(
+              value,
+              style: TextStyle(
+                fontFamily: fontDisplay,
+                fontWeight: FontWeight.w200,
+                fontSize: 24,
+                letterSpacing: -0.72,
+                height: 1,
+                color: c.text,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (tone != null) ...[
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 5),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w300,
+                      color: c.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The row those figures sit in: equal columns, with a rule above.
+///
+/// A grid rather than a `Wrap`, because four equal columns is what makes them
+/// scan as one measurement broken into parts. Wrapped, they read as four
+/// separate facts that happen to be near each other — which is how the port had
+/// them, and why they stopped looking like the PWA's.
+class FigureRow extends StatelessWidget {
+  const FigureRow(this.figures, {super.key});
+
+  final List<Widget> figures;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: StashColors.of(context).slate600)),
+      ),
+      child: Row(
+        children: [for (final f in figures) Expanded(child: f)],
       ),
     );
   }
@@ -82,20 +162,34 @@ class SectionTitle extends StatelessWidget {
 /// Home is the exception and takes the wordmark instead, because a masthead
 /// saying "Home" would be the app introducing itself as a navigation state.
 class TabTitle extends StatelessWidget {
-  const TabTitle(this.title, {this.trailing, super.key});
+  const TabTitle(this.title, {this.pose, this.trailing, super.key});
 
   final String title;
+
+  /// Scout, small, at the right-hand end. The PWA gives every tab head one —
+  /// `.subshead`, `.masthead` — doing the job that screen is for.
+  final ScoutPose? pose;
+
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            child: Text(
+              title,
+              // The same style as the wordmark, deliberately. These are all
+              // mastheads — the app naming the screen you are on — and a
+              // heading that changes face between tabs reads as two apps.
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
           ),
+          if (pose != null)
+            Scout(pose: pose!, height: 74, motion: const [ScoutMotion.breathe]),
           if (trailing != null) trailing!,
         ],
       ),

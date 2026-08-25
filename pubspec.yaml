@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.11.0
+version: 0.12.0
 
 environment:
   sdk: ^3.5.0
@@ -71,6 +71,10 @@ dependencies:
   # PCM itself, for the same reason the PWA synthesises with WebAudio, and this
   # only has to play the bytes.
   audioplayers: ^6.1.0
+
+  # The nav icons are the PWA's own SVG paths, rendered rather than redrawn as
+  # Material glyphs — see lib/ui/nav_icons.dart for why that matters here.
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:

@@ -18,6 +18,7 @@ import 'notify_offer_dialog.dart';
 import 'paper_form_screen.dart';
 import 'parts.dart';
 import 'scout.dart';
+import 'theme.dart';
 
 class PapersTab extends StatefulWidget {
   const PapersTab({required this.repo, super.key});
@@ -49,14 +50,10 @@ class _PapersTabState extends State<PapersTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => open(null),
-        tooltip: 'Add a document',
-        child: const Icon(Icons.add),
-      ),
-      body: _body(context),
-    );
+    // No button of its own: the shell's "Stash it" pill adds all three kinds,
+    // and a per-tab `+` alongside it would be two ways to do one thing that
+    // disagree about what "add" means on this screen.
+    return _body(context);
   }
 
   Widget _body(BuildContext context) {
@@ -70,7 +67,7 @@ class _PapersTabState extends State<PapersTab> {
           return const Blank(
             'Passports, licenses, insurance — the things that expire on you.\n\n'
             'Dates and general details only. No scans, no document numbers.\n\n'
-            'Tap + to add one.',
+            'Tap Stash it to add one.',
             pose: ScoutPose.clipboard,
           );
         }
@@ -84,6 +81,22 @@ class _PapersTabState extends State<PapersTab> {
             // "Documents" is the shell's heading now — see `TabTitle`. What is
             // left here is the count, which is the only part that was ever
             // about this screen's contents.
+            // The count of what needs starting, as a figure row rather than a
+            // line of prose — the same shape the other two tabs use.
+            FigureRow([
+              Figure(value: '${all.length}', label: 'documents'),
+              Figure(
+                value: '$needing',
+                label: 'need you',
+                tone: needing == 0 ? null : StashColors.of(context).honey,
+              ),
+              Figure(
+                value: '${all.length - needing}',
+                label: 'in date',
+                tone: StashColors.of(context).moss,
+              ),
+            ]),
+
             SectionTitle(
               'Expiring',
               trailing: needing == 0
