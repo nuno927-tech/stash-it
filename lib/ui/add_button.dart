@@ -31,8 +31,8 @@ import 'package:flutter/material.dart';
 import '../db/repository.dart';
 import 'feedback.dart';
 import 'item_form_sheet.dart';
+import 'sub_form_sheet.dart';
 import 'paper_form_screen.dart';
-import 'sub_form_screen.dart';
 import 'theme.dart';
 
 enum AddKind { item, subscription, paper }
@@ -105,19 +105,17 @@ class _StashItButtonState extends State<StashItButton>
     setState(() {});
 
     /*
-      The item form is a sheet; the other two are still screens.
+      Two sheets and one screen, until the document form is rebuilt too.
 
-      Not an inconsistency worth hiding — an item has five cards and a
-      photograph and the other two have a handful of fields each, so the same
-      container would either crush one or waste the other. The item form is
-      also the one people open most, and a sheet keeps the list they came from
-      visible behind it.
+      Every other question in this app is asked in a sheet over the screen you
+      were on, and the three add forms were the last places taking the whole
+      screen. Documents is next; this note goes when it does.
     */
     switch (kind) {
       case AddKind.item:
         await showItemForm(context, repo: widget.repo);
       case AddKind.subscription:
-        await _push(SubFormScreen(repo: widget.repo));
+        await showSubForm(context, repo: widget.repo);
       case AddKind.paper:
         await _push(PaperFormScreen(repo: widget.repo));
     }

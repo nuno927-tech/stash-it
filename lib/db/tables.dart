@@ -145,6 +145,21 @@ class Subscriptions extends Table {
 
   TextColumn get startedDate => text().nullable()();
 
+  /*
+    ── Splitting, and what it deliberately does not do ─────────────────────
+
+    `amountCents` above stays what **you** pay, whether this is on or off.
+    Every total in the app is built from it — the monthly figure, the six
+    month chart, the running costs panel — and a number that sometimes means
+    the whole bill and sometimes half of it makes all three meaningless.
+
+    These three only record the arrangement: that it is split, who the money
+    goes to, and how it gets to them. Nothing does arithmetic on them.
+  */
+  BoolColumn get shared => boolean().nullable()();
+  TextColumn get payTo => text().nullable()();
+  TextColumn get payHow => text().nullable()();
+
   /// 0, 1, 3 or 7. Null or zero means no reminder, and is the default.
   IntColumn get remindDays => integer().nullable()();
 
@@ -310,7 +325,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -339,6 +354,14 @@ class StashDatabase extends _$StashDatabase {
           }
           if (from < 3) {
             await m.addColumn(settingsTable, settingsTable.reminderHour);
+          }
+          if (from < 4) {
+            // Splitting. Nullable, like everything added since v1: null means
+            // "no opinion", which is what every subscription written before
+            // today actually had.
+            await m.addColumn(subscriptions, subscriptions.shared);
+            await m.addColumn(subscriptions, subscriptions.payTo);
+            await m.addColumn(subscriptions, subscriptions.payHow);
           }
         },
         beforeOpen: (details) async {

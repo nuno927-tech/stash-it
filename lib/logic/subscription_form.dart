@@ -27,6 +27,9 @@ class SubscriptionDraft {
     this.serviceId,
     this.logoBlobId,
     this.startedDate,
+    this.shared = false,
+    this.payTo = '',
+    this.payHow = '',
     this.createdAt,
   });
 
@@ -57,6 +60,18 @@ class SubscriptionDraft {
   String amountText;
   String currency;
   String notes;
+
+  /*
+    ── Splitting ───────────────────────────────────────────────────────────
+
+    `amountText` stays what **you** pay either way. Every total in the app is
+    built from it, and a number that sometimes means the whole bill and
+    sometimes half of it makes the monthly figure meaningless. These three
+    only record the arrangement.
+  */
+  bool shared;
+  String payTo;
+  String payHow;
 
   /// 0, 1, 3 or 7. Null or zero means no reminder, and that is the default —
   /// nine monthly services would otherwise be nine notifications a month for
@@ -98,6 +113,18 @@ Subscription toSubscription(SubscriptionDraft d, {required String propertyId}) {
     serviceId: d.serviceId,
     logoBlobId: d.logoBlobId,
     startedDate: d.startedDate,
+
+    /*
+      Off means null, not false, and the two names go with it.
+
+      A row that says `shared: false, payTo: 'Mum'` is a row remembering an
+      arrangement somebody switched off — and it would come back the moment
+      the toggle was flipped again, which looks like the app guessing. Null is
+      "no arrangement", which is what off means.
+    */
+    shared: d.shared ? true : null,
+    payTo: d.shared ? clean(d.payTo) : null,
+    payHow: d.shared ? clean(d.payHow) : null,
     createdAt: d.createdAt,
   );
 }
@@ -114,5 +141,8 @@ SubscriptionDraft draftOfSubscription(Subscription s) => SubscriptionDraft(
       serviceId: s.serviceId,
       logoBlobId: s.logoBlobId,
       startedDate: s.startedDate,
+      shared: s.shared ?? false,
+      payTo: s.payTo ?? '',
+      payHow: s.payHow ?? '',
       createdAt: s.createdAt,
     );

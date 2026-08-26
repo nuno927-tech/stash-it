@@ -105,6 +105,9 @@ final theGym = Subscription(
   amountCents: 2499,
   currency: 'GBP',
   startedDate: '2024-06-01',
+  shared: true,
+  payTo: 'Mum',
+  payHow: 'Standing order on the 1st',
   remindDays: 3,
   notes: 'Cancel before the annual rise',
   createdAt: DateTime.utc(2026, 1, 4, 8),
@@ -206,6 +209,9 @@ void main() {
       expect(back.amountCents, theGym.amountCents);
       expect(back.currency, theGym.currency);
       expect(back.startedDate, theGym.startedDate);
+      expect(back.shared, theGym.shared);
+      expect(back.payTo, theGym.payTo);
+      expect(back.payHow, theGym.payHow);
       expect(back.remindDays, theGym.remindDays);
       expect(back.notes, theGym.notes);
       expect(back.createdAt, theGym.createdAt);
@@ -267,6 +273,9 @@ void main() {
       expect(back.serviceId, 'puregym');
       expect(back.logoBlobId, 'logo-1');
       expect(back.startedDate, '2024-06-01');
+      expect(back.shared, isTrue);
+      expect(back.payTo, 'Mum');
+      expect(back.payHow, 'Standing order on the 1st');
       expect(back.createdAt, sameMoment(theGym.createdAt));
     });
 
@@ -320,6 +329,9 @@ void main() {
       expect(back.serviceId, theGym.serviceId);
       expect(back.logoBlobId, theGym.logoBlobId);
       expect(back.startedDate, theGym.startedDate);
+      expect(back.shared, theGym.shared);
+      expect(back.payTo, theGym.payTo);
+      expect(back.payHow, theGym.payHow);
       expect(back.createdAt, theGym.createdAt);
     });
   });

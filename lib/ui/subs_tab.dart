@@ -9,7 +9,6 @@
 library;
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -23,8 +22,9 @@ import 'confirm_delete.dart';
 import 'parts.dart';
 import 'renewal_calendar.dart';
 import 'scout.dart';
+import 'service_mark.dart';
 import 'spend_line.dart';
-import 'sub_form_screen.dart';
+import 'sub_form_sheet.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
 import 'undo_bar.dart';
@@ -62,11 +62,7 @@ class _SubsTabState extends State<SubsTab> {
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
   Future<void> open(Subscription? sub) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => SubFormScreen(repo: widget.repo, existing: sub),
-      ),
-    );
+    await showSubForm(context, repo: widget.repo, existing: sub);
     if (!mounted) return;
     setState(() {});
     await maybeOfferNotifications(context, widget.repo);
@@ -391,30 +387,15 @@ class _SubTile extends StatelessWidget {
         child: Row(
           children: [
             /*
-              The initials on a coloured tile, in place of the logo the PWA
-              fetches from its service catalog. Deriving the colour from the
-              name means Netflix is the same red on every launch and on every
-              phone — a random palette would make the list look different every
-              time it was opened.
+              The real mark now.
+
+              This was initials on a colour derived from the name — a stand-in
+              written while the service catalogue was still only in the web
+              app. The catalogue came across with the subscription form, so the
+              list gets the actual logo and falls back to initials only for
+              something unlisted, which is what the gym was always going to be.
             */
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _tint(sub.name),
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              child: Text(
-                _initials(sub.name),
-                style: const TextStyle(
-                  fontFamily: fontBody,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
+            ServiceMark(serviceId: sub.serviceId, name: sub.name, size: 38),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -476,24 +457,4 @@ class _SubTile extends StatelessWidget {
     );
   }
 
-  static String _initials(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return '?';
-    final words = trimmed.split(RegExp(r'\s+'));
-    if (words.length == 1) {
-      return trimmed.substring(0, math.min(2, trimmed.length)).toUpperCase();
-    }
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-
-  /// A stable colour per name. Not random, and not from a palette the user
-  /// chose — the point is only that two services never look alike, and that
-  /// one service never changes.
-  static Color _tint(String name) {
-    var hash = 0;
-    for (final unit in name.trim().toLowerCase().codeUnits) {
-      hash = (hash * 31 + unit) & 0x7FFFFFFF;
-    }
-    return HSLColor.fromAHSL(1, (hash % 360).toDouble(), 0.62, 0.48).toColor();
-  }
 }

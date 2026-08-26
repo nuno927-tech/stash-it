@@ -21,6 +21,9 @@ class Subscription {
     this.serviceId,
     this.logoBlobId,
     this.startedDate,
+    this.shared,
+    this.payTo,
+    this.payHow,
     this.remindDays,
     this.notes,
     this.createdAt,
@@ -48,6 +51,19 @@ class Subscription {
 
   /// Optional: when the user first subscribed. Never used for arithmetic.
   final String? startedDate;
+
+  /*
+    ── Splitting, and what it deliberately does not do ───────────────────────
+
+    `amountCents` above stays what **you** pay, on or off. Every total in the
+    app is built from it, and a number that sometimes means the whole bill and
+    sometimes half of it makes the monthly figure meaningless.
+
+    These three only record the arrangement. Nothing does arithmetic on them.
+  */
+  final bool? shared;
+  final String? payTo;
+  final String? payHow;
 
   /// 0, 1, 3 or 7. Zero — or null — means no reminder, and is the default.
   ///

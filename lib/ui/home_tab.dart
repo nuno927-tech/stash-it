@@ -30,7 +30,7 @@ import 'feedback.dart';
 import 'item_detail_screen.dart';
 import 'paper_form_screen.dart';
 import 'parts.dart';
-import 'sub_form_screen.dart';
+import 'sub_form_sheet.dart';
 import 'scout.dart';
 import 'theme.dart';
 import 'thumb.dart';
@@ -164,11 +164,7 @@ class _HomeBodyState extends State<_HomeBody> {
       case TimelineKind.subscription:
         final sub = await repo.subscription(entry.id);
         if (sub == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => SubFormScreen(repo: repo, existing: sub),
-          ),
-        );
+        await showSubForm(context, repo: repo, existing: sub);
     }
 
     // The countdowns on this screen are now one edit out of date.
