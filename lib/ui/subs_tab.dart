@@ -8,18 +8,26 @@
 /// will tell you that.
 library;
 
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
+import '../notify/sync.dart';
 import '../logic/format.dart';
 import '../logic/subscriptions.dart';
-import '../logic/timeline.dart';
 import '../models/subscription.dart';
 import 'notify_offer_dialog.dart';
+import 'confirm_delete.dart';
 import 'parts.dart';
+import 'renewal_calendar.dart';
 import 'scout.dart';
+import 'spend_line.dart';
 import 'sub_form_screen.dart';
+import 'swipe_to_delete.dart';
 import 'theme.dart';
+import 'undo_bar.dart';
 
 class SubsTab extends StatefulWidget {
   const SubsTab({required this.repo, super.key});
@@ -31,6 +39,26 @@ class SubsTab extends StatefulWidget {
 }
 
 class _SubsTabState extends State<SubsTab> {
+  /// The day picked on the calendar, or null.
+  DateTime? _day;
+
+  Future<void> _delete(Subscription sub) async {
+    await widget.repo.softDeleteSubscription(sub.id);
+    unawaited(syncReminders(widget.repo));
+
+    if (!mounted) return;
+    setState(() {});
+    showUndo(
+      context,
+      message: '${sub.name} moved to the bin.',
+      onUndo: () async {
+        await widget.repo.restoreSubscription(sub.id);
+        unawaited(syncReminders(widget.repo));
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
   Future<void> open(Subscription? sub) async {
@@ -68,7 +96,7 @@ class _SubsTabState extends State<SubsTab> {
         }
 
         final theme = Theme.of(context);
-        final monthly = totalMonthlyCents(subs);
+        final c = StashColors.of(context);
         final week = dueWithin(subs, 7);
         final spend = spendByMonth(subs, 6);
         final top = biggest(subs);
@@ -79,45 +107,78 @@ class _SubsTabState extends State<SubsTab> {
             return da != db ? da - db : a.name.compareTo(b.name);
           });
 
-        return ListView(
-          children: [
-            const SectionTitle('What it costs'),
-            FigureRow([
-              Figure(value: _money(monthly), label: 'a month'),
-              Figure(value: _money(totalYearlyCents(subs)), label: 'a year'),
-              /*
-                The same money in the unit people actually feel. "$94 a month"
-                is a line on a statement; "about $3 a day" is a coffee, and it
-                is the framing that makes somebody look at the list.
-              */
-              Figure(
-                value: '\$${(dailyCents(subs) / 100).toStringAsFixed(2)}',
-                label: 'a day',
-              ),
-              if (week.count > 0)
-                Figure(
-                  value: _money(week.cents),
-                  label: 'due this week',
-                  tone: StashColors.of(context).gold,
-                ),
-            ]),
+        /*
+          ── What the chosen day does ──────────────────────────────────────
 
-            const SectionTitle('The next six months'),
-            _SpendChart(spend: spend),
+          It highlights rather than filters. Filtering would answer "what is
+          charged on the 25th" by hiding everything else — and then the list
+          under a calendar would change length every time somebody tapped it,
+          which is disorienting on the screen whose whole point is seeing the
+          month at once. Highlighting answers the same question and keeps the
+          rest of the month in view for comparison.
+        */
+        bool charged(Subscription sub) {
+          if (_day == null) return false;
+          final from = DateTime(_day!.year, _day!.month, _day!.day);
+          return renewalsBetween(sub, from, from.add(const Duration(days: 1)))
+              .isNotEmpty;
+        }
+
+        final next = sorted.isEmpty ? null : sorted.first;
+
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 120),
+          children: [
+            _Tiles(subs: subs, week: week),
+
+            const SizedBox(height: 14),
+            RenewalCalendar(
+              subs: subs,
+              selected: _day,
+              onSelect: (d) => setState(() => _day = d),
+            ),
+
+            if (next != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: RichText(
+                  text: TextSpan(
+                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                    children: [
+                      const TextSpan(text: 'Next up: '),
+                      TextSpan(
+                        text: next.name,
+                        style: TextStyle(fontWeight: FontWeight.w700, color: c.text),
+                      ),
+                      TextSpan(
+                        text: ' on the ${_ordinal(nextRenewal(next)?.day ?? 1)}, '
+                            '${_money(next.amountCents)}.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SectionTitle('Everything you pay for'),
+            for (final sub in sorted)
+              _SubTile(
+                sub: sub,
+                lit: charged(sub),
+                onTap: () => open(sub),
+                onDelete: () => _delete(sub),
+              ),
+
+            const SectionTitle('The year ahead'),
+            SpendLine(spend: spend),
 
             if (top != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: Text(
                   'Biggest is ${top.name}, at ${_money(monthlyCents(top))} a month.',
                   style: theme.textTheme.bodySmall,
                 ),
               ),
-
-            const SectionTitle('Renewing next'),
-            for (final sub in sorted)
-              _SubTile(sub: sub, onTap: () => open(sub)),
-            const SizedBox(height: 88),
           ],
         );
       },
@@ -127,107 +188,312 @@ class _SubsTabState extends State<SubsTab> {
 
 String _money(int cents) => '\$${(cents / 100).toStringAsFixed(2)}';
 
-/// Six bars, and the heaviest month named.
-///
-/// Whole months, including the part of this one already spent. A first bar
-/// showing only what is left would be a different measurement from the five
-/// beside it, which is the one thing a bar chart must never do.
-class _SpendChart extends StatelessWidget {
-  const _SpendChart({required this.spend});
+/// "25th", "1st", "22nd". Written out because a bare number in the middle of a
+/// sentence reads as a quantity — "Claude on the 25, $21.27" is two figures
+/// with no way to tell which is money.
+String _ordinal(int n) {
+  if (n >= 11 && n <= 13) return '${n}th';
+  return switch (n % 10) {
+    1 => '${n}st',
+    2 => '${n}nd',
+    3 => '${n}rd',
+    _ => '${n}th',
+  };
+}
 
-  final List<MonthSpend> spend;
+/// The four figures, two by two.
+///
+/// A grid rather than one row of four: at three across the yearly total wraps
+/// on a narrow phone, and a wrapped figure beside three unwrapped ones is a row
+/// that looks broken rather than full.
+class _Tiles extends StatelessWidget {
+  const _Tiles({required this.subs, required this.week});
+
+  final List<Subscription> subs;
+  final DueWithin week;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final peak = heaviest(spend);
-    final most = peak?.cents ?? 0;
+    /*
+      ── Scout stands to the right of the grid, not above it ─────────────────
 
-    return SizedBox(
-      height: 150,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (final month in spend)
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
+      Two by two on the left, him on the right, filling the height of both
+      rows. The tiles give up the width rather than him being tucked into a
+      corner — the same arrangement as the Items screen, and for the same
+      reason: he is holding up the month these figures are about.
+    */
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 8, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    Text(
-                      month.cents == 0 ? '' : _money(month.cents),
-                      style: theme.textTheme.labelSmall,
+                    Expanded(
+                      child: _Tile(_money(totalMonthlyCents(subs)), 'A MONTH', lead: true),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: most == 0 ? 2 : 8 + (month.cents / most) * 78,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: month.cents == most && most > 0
-                            ? const Color(0xFFF2B33D)
-                            : theme.colorScheme.primary.withValues(alpha: 0.5),
+                    const SizedBox(width: 8),
+                    Expanded(child: _Tile(_money(totalYearlyCents(subs)), 'A YEAR')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Tile(
+                        '${subs.length}',
+                        subs.length == 1 ? 'SERVICE' : 'SERVICES',
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      // Months are 1-based in Dart and 0-based in the
-                      // TypeScript this came from — see `MonthSpend.month`.
-                      dayMonth(DateTime(month.year, month.month)).split(' ').first,
-                      style: theme.textTheme.labelSmall,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Tile(
+                        _money(week.cents),
+                        'DUE THIS WEEK',
+                        // Amber only when there is something to be due. A
+                        // coloured zero is an alarm about nothing.
+                        warn: week.count > 0,
+                      ),
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(left: 4),
+            child: Scout(
+              pose: ScoutPose.calendar,
+              height: 132,
+              motion: [ScoutMotion.breathe],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tile extends StatelessWidget {
+  const _Tile(this.value, this.label, {this.lead = false, this.warn = false});
+
+  final String value;
+  final String label;
+  final bool lead;
+  final bool warn;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Container(
+      // Smaller than they were: these four are a caption on the calendar under
+      // them, not the subject of the screen.
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
+      decoration: BoxDecoration(
+        color: lead ? c.washGoldSoft : c.slate700,
+        borderRadius: BorderRadius.circular(Radii.lg),
+        border: Border.all(color: lead ? c.washGoldLine : c.hairline),
+        boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: fontDisplay,
+                fontWeight: FontWeight.w200,
+                fontSize: 23,
+                letterSpacing: -0.8,
+                height: 1.05,
+                color: lead
+                    ? c.gold
+                    : warn
+                        ? c.honey
+                        : c.text,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
-          ],
-        ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.67,
+              color: c.muted,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _SubTile extends StatelessWidget {
-  const _SubTile({required this.sub, this.onTap});
+  const _SubTile({
+    required this.sub,
+    this.lit = false,
+    this.onTap,
+    this.onDelete,
+  });
 
   final Subscription sub;
+
+  /// Charged on the day picked in the calendar above.
+  final bool lit;
+
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final at = nextRenewal(sub);
-    final days = daysUntilRenewal(sub);
-    final due = reminderDue(sub);
+    final c = StashColors.of(context);
 
-    return ListTile(
+    if (onDelete == null) return _row(context, c);
+
+    return SwipeToDelete(
+      id: 'sub-${sub.id}',
+      name: sub.name,
+      // A tick when the row is far enough — see `SwipeToDelete`, which
+      // exists for that one buzz.
+      confirm: () => confirmDelete(context, name: sub.name),
+      onDelete: onDelete!,
+      child: _row(context, c),
+    );
+  }
+
+  Widget _row(BuildContext context, StashColors c) {
+    final at = nextRenewal(sub);
+    final due = reminderDue(sub);
+    final monthly = monthlyCents(sub);
+
+    return InkWell(
       onTap: onTap,
-      leading: CircleAvatar(
-        child: Text(sub.name.isEmpty ? '?' : sub.name[0].toUpperCase()),
-      ),
-      title: Text(sub.name),
-      subtitle: Text(
-        at == null
-            ? 'No renewal date'
-            : 'Renews ${dayMonth(at)} · ${cadenceLabel[sub.cadence]}',
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '${currencySymbol(sub.currency)}${(sub.amountCents / 100).toStringAsFixed(2)}',
-          ),
-          if (days != null)
-            Text(
-              days == 0 ? 'today' : '$days d',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    // A reminder is the only thing that lifts a renewal out of
-                    // the ordinary run of them.
-                    color: due ? const Color(0xFFF2B33D) : null,
-                  ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+        decoration: BoxDecoration(
+          // The chosen day's charges are washed gold, not moved to the top.
+          // See the note on `charged` — the list keeping its order is what
+          // makes the highlight readable as an answer rather than a reshuffle.
+          color: lit ? c.washGoldSoft : c.slate800,
+          border: Border(bottom: BorderSide(color: c.slate700)),
+        ),
+        child: Row(
+          children: [
+            /*
+              The initials on a coloured tile, in place of the logo the PWA
+              fetches from its service catalog. Deriving the colour from the
+              name means Netflix is the same red on every launch and on every
+              phone — a random palette would make the list look different every
+              time it was opened.
+            */
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _tint(sub.name),
+                borderRadius: BorderRadius.circular(Radii.sm),
+              ),
+              child: Text(
+                _initials(sub.name),
+                style: const TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
             ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    sub.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: c.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    at == null
+                        ? 'No renewal date'
+                        : '${cadenceLabel[sub.cadence]} · ${_ordinal(at.day)}',
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 11.5,
+                      color: due ? c.honey : c.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${currencySymbol(sub.currency)}'
+                  '${(sub.amountCents / 100).toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: c.text,
+                  ),
+                ),
+                // The monthly equivalent, but only when the cadence is not
+                // monthly. Printing "$15.50/mo" under a monthly charge of
+                // $15.50 is the same number twice.
+                if (sub.cadence != Cadence.monthly)
+                  Text(
+                    '\$${(monthly / 100).toStringAsFixed(2)}/mo',
+                    style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  static String _initials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    final words = trimmed.split(RegExp(r'\s+'));
+    if (words.length == 1) {
+      return trimmed.substring(0, math.min(2, trimmed.length)).toUpperCase();
+    }
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  /// A stable colour per name. Not random, and not from a palette the user
+  /// chose — the point is only that two services never look alike, and that
+  /// one service never changes.
+  static Color _tint(String name) {
+    var hash = 0;
+    for (final unit in name.trim().toLowerCase().codeUnits) {
+      hash = (hash * 31 + unit) & 0x7FFFFFFF;
+    }
+    return HSLColor.fromAHSL(1, (hash % 360).toDouble(), 0.62, 0.48).toColor();
   }
 }

@@ -62,13 +62,13 @@ class Figure extends StatelessWidget {
               style: TextStyle(
                 fontFamily: fontDisplay,
                 fontWeight: FontWeight.w200,
-                fontSize: 24,
-                letterSpacing: -0.72,
+                fontSize: 28,
+                letterSpacing: -0.84,
                 height: 1,
                 color: c.text,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -150,6 +150,37 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
+/// A card with a shadow under it.
+///
+/// Material's `Card` takes one elevation and derives a single shadow from it;
+/// this needs two layers at different blurs — see `cardShadow` for why. So the
+/// box is built rather than themed, and `clip` is offered because the recent
+/// strip puts a photograph against the rounded corner.
+class StashCard extends StatelessWidget {
+  const StashCard({required this.child, this.clip = false, super.key});
+
+  final Widget child;
+  final bool clip;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final radius = BorderRadius.circular(Radii.lg);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.slate700,
+        borderRadius: radius,
+        border: Border.all(color: c.hairline),
+        boxShadow: cardShadow(c, dark: dark),
+      ),
+      clipBehavior: clip ? Clip.antiAlias : Clip.none,
+      child: child,
+    );
+  }
+}
+
 /// The heading at the top of a tab.
 ///
 /// ── Every screen says what it is ──────────────────────────────────────────
@@ -180,7 +211,9 @@ class TabTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      // Right at the top. It had 14 above it, which on a screen whose first
+      // real content is a one-line figure left the heading floating.
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -211,26 +244,43 @@ class TabTitle extends StatelessWidget {
 /// the wordmark. Written as `it` in gold everywhere it appears, including the
 /// PWA's `.apptitle span`.
 class Wordmark extends StatelessWidget {
-  const Wordmark({this.fontSize = 27, super.key});
+  const Wordmark({this.fontSize = 42, super.key});
 
   final double fontSize;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final base = theme.textTheme.headlineSmall!.copyWith(fontSize: fontSize);
+    /*
+      ── `Text.rich`, not `RichText`, and this was a real bug ────────────────
 
-    return RichText(
-      text: TextSpan(
-        style: base,
+      Both draw a styled span. Only `Text` applies the device's text scale —
+      `RichText` renders at exactly the size it is given and ignores the
+      Accessibility → Font size setting entirely.
+
+      So the wordmark and the tab headings were both nominally 34, and on any
+      phone whose font size is not at the default they came out different: the
+      headings scaled with the setting and the masthead did not. On a device set
+      below default, "Stash it" is visibly the larger of the two — which is what
+      this was reported as.
+
+      Nothing else here changed. Same 34, same weight, same style object.
+    */
+    final base = Theme.of(context)
+        .textTheme
+        .headlineSmall!
+        .copyWith(fontSize: fontSize);
+
+    return Text.rich(
+      TextSpan(
         children: [
           const TextSpan(text: 'Stash '),
           TextSpan(
             text: 'it',
-            style: base.copyWith(color: StashColors.of(context).gold),
+            style: TextStyle(color: StashColors.of(context).gold),
           ),
         ],
       ),
+      style: base,
     );
   }
 }
@@ -375,8 +425,11 @@ class Ring extends StatelessWidget {
     final c = StashColors.of(context);
 
     return SizedBox(
-      height: 168,
-      width: 168,
+      // 176, the PWA's number. Smaller than the 208 it was drawn at when it
+      // stood alone — a big ring and a mascot worth looking at do not both fit
+      // across a phone, and a mascot too small to read is just clutter.
+      height: 176,
+      width: 176,
       child: CustomPaint(
         painter: _RingPainter(
           covered: inDate.toDouble(),
@@ -384,6 +437,8 @@ class Ring extends StatelessWidget {
           lapsed: lapsed.toDouble(),
           track: c.slate600,
           error: c.ember,
+          moss: c.moss,
+          honey: c.honey,
         ),
         child: Center(
           child: Column(
@@ -424,19 +479,25 @@ class Ring extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: fontDisplay,
                         fontWeight: FontWeight.w200,
-                        fontSize: 52,
-                        letterSpacing: -2.4,
+                        fontSize: 82,
+                        letterSpacing: -3.7,
                         height: 1,
                         color: c.text,
                       ),
                     ),
+                    // The unit is not the number: same weight, a third the
+                    // size, and muted — so the figure keeps the eye and the
+                    // sign only qualifies it.
                     Text(
                       '%',
                       style: TextStyle(
+                        // Held at a third of the figure, as it was — the sign
+                        // is the unit, and growing the two together would make
+                        // "%" a second number rather than a qualifier.
                         fontFamily: fontDisplay,
                         fontWeight: FontWeight.w200,
-                        fontSize: 19,
-                        color: c.text,
+                        fontSize: 27,
+                        color: c.muted,
                       ),
                     ),
                   ],
@@ -445,7 +506,12 @@ class Ring extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'still in date',
-                style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  color: c.muted,
+                ),
               ),
             ],
           ),
@@ -462,6 +528,8 @@ class _RingPainter extends CustomPainter {
     required this.lapsed,
     required this.track,
     required this.error,
+    required this.moss,
+    required this.honey,
   });
 
   final double covered;
@@ -470,44 +538,80 @@ class _RingPainter extends CustomPainter {
   final Color track;
   final Color error;
 
+  /// Taken from the theme rather than written here. The light palette darkens
+  /// every state colour to hold contrast on white — a ring painted with the
+  /// dark theme's moss would be a bright green line on a pale card.
+  final Color moss;
+  final Color honey;
+
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 16.0;
+    /*
+      ── Six on a hundred and seventy-six, which is the PWA's ring exactly ──
+
+      It was 16, which at a tenth of the diameter is a doughnut chart. Six is a
+      line drawn round the number rather than a band competing with it, and the
+      number is the point.
+
+      The colours read better thin too. A 16px wedge of amber is a block of
+      amber; a 6px one is a mark on a dial, which is what a one-item share of
+      thirty-two actually is.
+    */
+    const stroke = 6.0;
     final rect = Offset.zero & size;
-    final circle = Rect.fromCircle(
-      center: rect.center,
-      radius: (math.min(size.width, size.height) - stroke) / 2,
+    final radius = (math.min(size.width, size.height) - stroke) / 2;
+    final circle = Rect.fromCircle(center: rect.center, radius: radius);
+
+    canvas.drawArc(
+      circle,
+      0,
+      math.pi * 2,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = track,
     );
-
-    final base = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = track;
-
-    canvas.drawArc(circle, 0, math.pi * 2, false, base);
 
     final total = covered + soon + lapsed;
     if (total == 0) return;
 
+    /*
+      ── Round caps, and a gap cut to make room for them ────────────────────
+
+      A round cap adds half a stroke at each end, so three arcs drawn back to
+      back overlap and the joins turn into lumps. Each sweep gives up five
+      pixels of arc length to compensate.
+
+      Five, not three: at this weight a 3px gap read as a break in the ring
+      rather than as a division of it.
+    */
+    const gapPx = 5.0;
+    final circumference = 2 * math.pi * radius;
+    final gap = (gapPx / circumference) * 2 * math.pi;
+
     // Green, then amber, then red — worst last, so the eye lands on it as the
     // arc closes rather than meeting it first.
     var start = -math.pi / 2;
-    for (final wedge in [
-      (covered, const Color(0xFF5FBF7E)),
-      (soon, const Color(0xFFF2B33D)),
-      (lapsed, error),
-    ]) {
-      if (wedge.$1 == 0) continue;
+    for (final wedge in [(covered, moss), (soon, honey), (lapsed, error)]) {
       final sweep = (wedge.$1 / total) * math.pi * 2;
+      if (wedge.$1 == 0) {
+        start += sweep;
+        continue;
+      }
+
       canvas.drawArc(
         circle,
         start,
-        sweep,
+        // Never below zero: a single item out of thirty is a sweep narrower
+        // than the gap, and a negative sweep draws the arc backwards round the
+        // whole ring.
+        math.max(0.0001, sweep - gap),
         false,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke
-          ..strokeCap = StrokeCap.butt
+          ..strokeCap = StrokeCap.round
           ..color = wedge.$2,
       );
       start += sweep;

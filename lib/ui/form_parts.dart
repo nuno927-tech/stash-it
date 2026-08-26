@@ -8,6 +8,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'confirm_delete.dart';
+
 /// Why this cannot be saved, at the top where it will be read.
 ///
 /// One message at a time, in the order somebody would fix them. A form that
@@ -160,27 +162,11 @@ class DeleteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: () async {
-        final sure = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Delete $name?'),
-            content: const Text(
-              'It goes to the bin for 30 days, so you can change your mind.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Keep it'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        );
-
-        if (sure == true) await onConfirmed();
+        // One sheet for every delete in the app — see `confirmDelete`. It was
+        // an `AlertDialog` here and a second, differently worded one on the
+        // item form, which meant two answers to "what happens if I press this".
+        final sure = await confirmDelete(context, name: name);
+        if (sure) await onConfirmed();
       },
       icon: const Icon(Icons.delete_outline),
       label: const Text('Delete'),

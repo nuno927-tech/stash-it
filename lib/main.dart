@@ -15,6 +15,7 @@ import 'notify/sync.dart';
 import 'ui/feedback.dart';
 import 'ui/prefs_scope.dart';
 import 'ui/shell.dart';
+import 'ui/splash.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
@@ -67,12 +68,38 @@ Future<void> main() async {
     reminders, because a swept record must not be scheduled.
   */
   unawaited(
-    repo.purgeExpiredDeletes().then((_) => syncReminders(repo)),
+    repo.purgeExpiredDeletes().then((_) => _wakeReminders(repo)),
   );
 
   // Three rising notes, once. See `Cue.launch` — it is the only cue in the set
   // allowed to have a shape, because it is heard at most once per launch.
   feedback(Cue.launch);
+}
+
+/*
+  ── Asking for the notification permission, once ──────────────────────────
+
+  Reminders are on by default, and on Android 13 and later "on" is not a thing
+  the app can decide alone — the system has to be asked, and it only asks once
+  per install.
+
+  So the first launch asks, and the answer is written down whichever way it
+  goes. Not asked again after that: `notifyAskedAt` is the record that the
+  question has been put, and a prompt that returns is a prompt that gets
+  dismissed by muscle memory rather than answered.
+
+  After the first frame, deliberately. A permission dialog over a splash screen
+  is a dialog about an app somebody has not seen yet.
+*/
+Future<void> _wakeReminders(Repository repo) async {
+  final settings = await repo.settings();
+
+  if (settings.notifyAskedAt == null && settings.notifyEnabled != false) {
+    final granted = await notifications.ask();
+    await repo.setNotify(enabled: granted);
+  }
+
+  await syncReminders(repo);
 }
 
 class StashItApp extends StatelessWidget {
@@ -101,7 +128,7 @@ class StashItApp extends StatelessWidget {
           darkTheme: stashTheme(dark: true),
           themeMode: themeModeOf(prefs.theme),
 
-          home: Shell(repo: repo),
+          home: Splash(child: Shell(repo: repo)),
         ),
       ),
     );

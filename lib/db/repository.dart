@@ -123,6 +123,23 @@ class Repository {
     return rows.map(subscriptionOf).toList();
   }
 
+  /// One document, or null if it has been erased.
+  ///
+  /// Needed because the dashboard's timeline carries an id and a kind rather
+  /// than the record itself — the list is built from three tables at once and
+  /// holding all three would mean the screen kept a copy of everything.
+  Future<Paper?> paper(String id) async {
+    final row = await (db.select(db.papers)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : paperOf(row);
+  }
+
+  Future<Subscription?> subscription(String id) async {
+    final row = await (db.select(db.subscriptions)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : subscriptionOf(row);
+  }
+
   /// Attach a document to an item.
   ///
   /// Nothing in the app calls this yet — files arrive by restore, and adding
@@ -173,6 +190,109 @@ class Repository {
     final rows =
         await (db.select(db.docs)..where((t) => t.deletedAt.isNull())).get();
     return rows.map(docOf).toList();
+  }
+
+  /*
+    ── Everything, gone ────────────────────────────────────────────────────
+
+    Not a soft delete and not the bin: every row in every table, then the seed
+    rows written back so the app opens onto a working empty database rather
+    than one missing the property and settings rows it assumes exist.
+
+    In a transaction, because a half-erased database is worse than either
+    outcome — items pointing at rooms that no longer exist, blobs nothing
+    references, and no way for somebody to tell which half went.
+  */
+  Future<void> eraseEverything() => db.transaction(() async {
+        await db.delete(db.docs).go();
+        await db.delete(db.items).go();
+        await db.delete(db.papers).go();
+        await db.delete(db.subscriptions).go();
+        await db.delete(db.rooms).go();
+        await db.delete(db.blobs).go();
+
+        // The settings row is emptied rather than removed. Deleting it would
+        // take the notification permission record with it, and the app would
+        // ask again on the next launch as though it were a fresh install —
+        // which on Android 13 it only gets to do once.
+        await db.update(db.settingsTable).write(
+              const SettingsTableCompanion(
+                lastBackupAt: Value(null),
+                displayName: Value(null),
+                onboardedAt: Value(null),
+              ),
+            );
+
+        await db.into(db.rooms).insert(
+              RoomsCompanion.insert(
+                id: newId(),
+                propertyId: propertyId,
+                name: 'Home',
+                isSeed: const Value(true),
+              ),
+            );
+      });
+
+  /* ------------------------------------------------------------- rooms */
+
+  Future<String> createRoom(String name) async {
+    final id = newId();
+    final existing = await rooms();
+
+    await db.into(db.rooms).insert(
+          RoomsCompanion.insert(
+            id: id,
+            propertyId: propertyId,
+            name: name.trim(),
+            // On the end. A new room appearing in the middle of a list somebody
+            // has just spent time ordering is the list rearranging itself.
+            sortOrder: Value(existing.length),
+            // `isSeed` stays false: this one was typed, and a future version
+            // adjusting untouched seed rooms must not touch it.
+          ),
+        );
+    return id;
+  }
+
+  Future<void> renameRoom(String id, String name) =>
+      (db.update(db.rooms)..where((t) => t.id.equals(id)))
+          .write(RoomsCompanion(name: Value(name.trim()), isSeed: const Value(false)));
+
+  /// Writes the whole order at once.
+  ///
+  /// One transaction, because a half-applied reorder is a list with two rooms
+  /// claiming the same position — and the sort is stable, so it would not even
+  /// look broken, just wrong.
+  Future<void> reorderRooms(List<String> idsInOrder) => db.transaction(() async {
+        for (var i = 0; i < idsInOrder.length; i++) {
+          await (db.update(db.rooms)..where((t) => t.id.equals(idsInOrder[i])))
+              .write(RoomsCompanion(sortOrder: Value(i)));
+        }
+      });
+
+  /// Soft delete, and the items in it are moved out rather than removed.
+  ///
+  /// A room is a label on a shelf, not a container. Deleting the garage must
+  /// not delete the lawnmower — so every item pointing at it loses the label
+  /// and keeps everything else.
+  Future<int> deleteRoom(String id) async {
+    final orphaned = await (db.update(db.items)..where((t) => t.roomId.equals(id)))
+        .write(const ItemsCompanion(roomId: Value(null)));
+
+    await (db.update(db.rooms)..where((t) => t.id.equals(id)))
+        .write(RoomsCompanion(deletedAt: Value(DateTime.now())));
+
+    return orphaned;
+  }
+
+  /// How many live items are in each room, keyed by room id.
+  Future<Map<String, int>> itemsPerRoom() async {
+    final counts = <String, int>{};
+    for (final item in await activeItems()) {
+      final id = item.roomId;
+      if (id != null) counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
   }
 
   Future<List<Room>> rooms() async {
@@ -538,6 +658,17 @@ class Repository {
             mime: mime,
             byteLength: Value(bytes.length),
           ));
+
+  /// How many bytes of photographs and files the database is carrying.
+  ///
+  /// The blobs, not the file on disk. A `.db` includes SQLite's free pages and
+  /// SQLCipher's per-page overhead, and neither is a thing anybody can act on —
+  /// what somebody wants to know before pressing "Back up now" is roughly how
+  /// big the file will be, and that is the blobs plus a few kilobytes of JSON.
+  Future<int> storageBytes() async {
+    final rows = await db.select(db.blobs).get();
+    return rows.fold<int>(0, (n, b) => n + b.byteLength);
+  }
 
   Future<BlobRow?> blob(String id) =>
       (db.select(db.blobs)..where((t) => t.id.equals(id))).getSingleOrNull();

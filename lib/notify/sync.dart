@@ -32,7 +32,18 @@ final Notifications notifications = Notifications();
 Future<int> syncReminders(Repository repo) async {
   final settings = await repo.settings();
 
-  if (settings.notifyEnabled != true) {
+  /*
+    ── Null is on ──────────────────────────────────────────────────────────
+
+    Reminders ship enabled. The app's whole reason to exist is telling somebody
+    a date before it passes, and a warning switched off by default is a warning
+    nobody has.
+
+    Only an explicit `false` — somebody who went to Settings and turned it off —
+    cancels. Null is a record written before the field existed, which is not a
+    decision either way.
+  */
+  if (settings.notifyEnabled == false) {
     await notifications.cancelAll();
     return 0;
   }
@@ -48,5 +59,10 @@ Future<int> syncReminders(Repository repo) async {
     await repo.activePapers(),
   );
 
-  return notifications.reschedule(schedule);
+  // The chosen hour, or nine. See `defaultSendHour` — a reminder arriving at
+  // three in the morning is a reminder somebody switches off.
+  return notifications.reschedule(
+    schedule,
+    hour: settings.reminderHour ?? defaultSendHour,
+  );
 }

@@ -15,7 +15,6 @@ library;
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
-import '../logic/devmode.dart';
 import '../logic/swipe.dart';
 import 'add_button.dart';
 import 'feedback.dart';
@@ -24,7 +23,6 @@ import 'items_tab.dart';
 import 'nav_icons.dart';
 import 'papers_tab.dart';
 import 'parts.dart';
-import 'scout.dart';
 import 'settings_tab.dart';
 import 'subs_tab.dart';
 import 'theme.dart';
@@ -45,25 +43,47 @@ class _ShellState extends State<Shell> {
   /// Items watches a stream and does not need it; the other three read futures.
   int _generation = 0;
 
-  TapState _taps = noTaps;
-  String? _hint;
-
-  void _tapTitle() {
-    setState(() {
-      _taps = tap(_taps, DateTime.now());
-      _hint = tapHint(_taps);
-      if (unlocked(_taps)) {
-        rememberUnlocked(true);
-        // The Settings screen has to redraw to show what just appeared.
-        _generation++;
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
+    /*
+      ── The add button sits OVER the whole app, title bar and nav included ──
+
+      It has been moved twice. As a `floatingActionButton` it lived in the
+      Scaffold's own slot, sized to itself, so its scrim could dim the eighty
+      pixels it occupied and nothing else. Moved into the body it could dim the
+      screen but not the heading above it or the tab bar below — and a menu
+      that leaves two strips of the app fully lit is a menu that has not taken
+      over, which is the one thing it needs to look like.
+
+      So it stacks on top of the entire Scaffold. Everything is behind the
+      scrim because everything is behind it.
+    */
+    return Stack(
+      children: [
+        _scaffold(context, c),
+
+        /*
+          ── Not on Settings ────────────────────────────────────────────────
+
+          There is nothing on that screen to add one of. Every other tab is a
+          list the button puts things into; Settings is the one place where a
+          floating "Stash it" answers no question, and it sits over the version
+          card and the share button while doing it.
+        */
+        if (_tab != Tab.settings)
+          Positioned.fill(
+            child: StashItButton(
+              repo: widget.repo,
+              onDone: () => setState(() => _generation++),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _scaffold(BuildContext context, StashColors c) {
     return Scaffold(
       body: SafeArea(
         /*
@@ -100,7 +120,11 @@ class _ShellState extends State<Shell> {
               // drift. Home takes the wordmark — see `Wordmark`.
               if (_tab == Tab.home)
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  // The same 2 and 4 as `TabTitle`, so the wordmark and every
+                  // screen's name sit on exactly the same line. They are the
+                  // same object doing the same job, and a four-pixel drift
+                  // between tabs is visible the moment you swipe.
+                  padding: EdgeInsets.fromLTRB(16, 2, 16, 4),
                   child: Align(alignment: Alignment.centerLeft, child: Wordmark()),
                 )
               else
@@ -112,43 +136,31 @@ class _ShellState extends State<Shell> {
                     Tab.settings => 'Settings',
                     Tab.home => '',
                   },
-                  // Doing the job the screen is for: paperwork on Items, the
-                  // month on Subscriptions, a clipboard on Documents, the
-                  // control desk on Settings.
-                  pose: switch (_tab) {
-                    Tab.items => ScoutPose.receipt,
-                    Tab.subs => ScoutPose.calendar,
-                    Tab.papers => ScoutPose.clipboard,
-                    Tab.settings => ScoutPose.settings,
-                    Tab.home => null,
-                  },
                   /*
-                    Ten taps on the word "Settings", and the run resets if you
-                    pause. Not a secret worth keeping — it is that a switch
-                    which lifts the item cap has no business being one stray
-                    thumb away on somebody's settings screen.
+                    None. Every screen stands Scout beside its own content, at a
+                    size worth looking at — Settings included, now.
 
-                    The heading rather than the version row, which is where the
-                    port had put it: a title that does something when tapped is
-                    invisible to anybody not looking for it, and a version
-                    number that does is a version number people tap by accident
-                    while reading it.
+                    He was in this heading for Settings alone, and a pose here
+                    forces the row to align on its bottom edge, which pushed
+                    that one title a few pixels off the line every other tab
+                    sits on. A heading that moves between tabs is the one thing
+                    this widget exists to prevent.
                   */
-                  onTap: _tab == Tab.settings ? _tapTitle : null,
-                  trailing: _hint == null
-                      ? null
-                      : Padding(
-                          padding: const EdgeInsets.only(left: 8, bottom: 6),
-                          child: Text(_hint!, style: Theme.of(context).textTheme.bodySmall),
-                        ),
+                  pose: null,
+                  /*
+                    ── The album moved off this title ──────────────────────────
+
+                    Ten taps on the word "Settings" used to open Scout's album.
+                    It was well hidden and badly signposted: a heading is the
+                    one thing on a screen nobody suspects of doing anything, so
+                    in practice the only people who found it were told.
+
+                    It lives on Scout himself now, over in the Settings tab —
+                    see `_pokeScout`. Poking the animal is a thing people
+                    already do.
+                  */
                 ),
 
-              /*
-                The screen and the add button share one stack, so the button's
-                scrim can dim the screen. As a `floatingActionButton` it sat in
-                the Scaffold's own slot, sized to itself, and could only ever
-                have dimmed the eighty pixels it occupied.
-              */
               Expanded(
                 child: Stack(
                   children: [
@@ -162,12 +174,6 @@ class _ShellState extends State<Shell> {
                           Tab.papers => PapersTab(repo: widget.repo),
                           Tab.settings => SettingsTab(repo: widget.repo),
                         },
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: StashItButton(
-                        repo: widget.repo,
-                        onDone: () => setState(() => _generation++),
                       ),
                     ),
                   ],

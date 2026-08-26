@@ -13,6 +13,7 @@ import '../logic/paper_form.dart';
 import '../logic/papers.dart';
 import '../models/paper.dart';
 import '../notify/sync.dart';
+import 'feedback.dart';
 import 'form_parts.dart';
 
 class PaperFormScreen extends StatefulWidget {
@@ -55,6 +56,11 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
       }
 
       unawaited(syncReminders(widget.repo));
+
+      // The save cue: two rising notes. Items get it from the paper sheet that
+      // follows them; these two had nothing, so a save here was silent while
+      // the same action one tab over was not.
+      feedback(Cue.save);
 
       // A document cannot be saved without an expiry, so this is always true —
       // written out anyway, because the day someone relaxes that rule is the

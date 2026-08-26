@@ -190,6 +190,34 @@ const StashColors _light = StashColors(
   ),
 );
 
+/// The shadow under a card.
+///
+/// ── Two layers, both nearly invisible ─────────────────────────────────────
+/// A flat card on a plain surface relies entirely on its fill being a different
+/// colour from the page, and in the light theme that difference is #f1efe9
+/// against white — about four per cent. On a phone in daylight that is not a
+/// difference at all, and the screen reads as one undivided sheet.
+///
+/// One tight shadow to seat the card, one soft one to lift it. The moment you
+/// can point at the shadow it has stopped looking like a raised surface and
+/// started looking like a drop-shadow, which is the 2009 version of this idea —
+/// the same trap the `hairline` and `sheen` tokens are written about.
+///
+/// Darker in the dark theme, not lighter. A shadow on a near-black surface has
+/// almost nowhere to go, so it needs more opacity to register at all.
+List<BoxShadow> cardShadow(StashColors c, {required bool dark}) => [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, dark ? 0.34 : 0.05),
+        blurRadius: 3,
+        offset: const Offset(0, 1),
+      ),
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, dark ? 0.28 : 0.055),
+        blurRadius: 16,
+        offset: const Offset(0, 6),
+      ),
+    ];
+
 /// Radii, from the `:root` block of tokens.css.
 class Radii {
   static const double lg = 22;
@@ -264,11 +292,23 @@ ThemeData stashTheme({required bool dark}) {
       // The masthead and the section headings are the display face; everything
       // else is Inter. Mixing them per-widget is how a screen ends up with
       // three typefaces by accident.
+      /*
+        The masthead: the wordmark on Home and the screen's name on every other
+        tab, all one style.
+
+        42 against the PWA's 27. A phone screen is held closer than a desktop
+        browser window and the app has no page around it to give the heading a
+        frame — the extra pixels are what stop it reading as a label on the
+        list underneath rather than as the top of the screen.
+
+        One place, five screens. The wordmark on Home reads the same style, so
+        changing this number changes every heading in the app together.
+      */
       headlineSmall: TextStyle(
         fontFamily: fontDisplay,
         fontWeight: FontWeight.w800,
-        fontSize: 27,
-        letterSpacing: -0.68,
+        fontSize: 42,
+        letterSpacing: -1.05,
         height: 1.05,
         color: c.text,
       ),
@@ -298,12 +338,27 @@ ThemeData stashTheme({required bool dark}) {
       ),
     ),
 
+    /*
+      ── A shadow, and why it is this small ─────────────────────────────────
+
+      Flat cards on a plain surface rely entirely on their fill being a
+      different colour from the page, and in the light theme that difference is
+      #f1efe9 against white — about four per cent. On a phone in daylight that
+      is not a difference at all, and the screen reads as one undivided sheet.
+
+      Two elevations of blur at low opacity: one tight shadow to seat the card,
+      one soft one to lift it. The moment you can point at the shadow it has
+      stopped looking like a raised surface and started looking like a
+      drop-shadow, which is the 2009 version of this idea — the same trap the
+      `hairline` and `sheen` tokens are written about.
+    */
     cardTheme: CardThemeData(
       color: c.slate700,
       elevation: 0,
       margin: EdgeInsets.zero,
+      shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.md),
+        borderRadius: BorderRadius.circular(Radii.lg),
         side: BorderSide(color: c.hairline),
       ),
     ),
@@ -351,8 +406,18 @@ ThemeData stashTheme({required bool dark}) {
       backgroundColor: c.slate800,
       indicatorColor: c.washGold,
       surfaceTintColor: Colors.transparent,
-      labelTextStyle: WidgetStatePropertyAll(
-        TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+      // The label takes the colour of the pill above it. A gold icon on a gold
+      // wash over a grey word is the selected state saying two different things
+      // about the same tab.
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontFamily: fontBody,
+          fontSize: 11,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w400,
+          color: states.contains(WidgetState.selected) ? c.gold : c.muted,
+        ),
       ),
     ),
 
@@ -367,6 +432,22 @@ ThemeData stashTheme({required bool dark}) {
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.selected) ? c.gold : c.slate600,
+      ),
+    ),
+
+    /*
+      Kept for anything that still raises one, but the undo after a delete does
+      not — see lib/ui/undo_bar.dart, which owns its own clock because a
+      `SnackBar` in this app would not dismiss itself.
+    */
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 170),
+      backgroundColor: c.slate600,
+      contentTextStyle: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
+      actionTextColor: c.gold,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
       ),
     ),
 

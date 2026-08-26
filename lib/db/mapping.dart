@@ -127,6 +127,7 @@ Settings settingsOf(SettingsRow r) => Settings(
       biometricLock: r.biometricLock,
       notifyEnabled: r.notifyEnabled,
       notifyAskedAt: r.notifyAskedAt,
+      reminderHour: r.reminderHour,
     );
 
 /* -------------------------------------------------------------- writing */
@@ -243,9 +244,11 @@ SettingsTableCompanion settingsToRow(Settings s) => SettingsTableCompanion(
         and re-arm the offer dialog. Reminders belong to a handset and its
         notification tray, not to the records.
 
-        They are written by `Repository.setNotify`, which touches these two
-        columns and nothing else.
+        `reminderHour` is the exception among them: it IS a preference about
+        the records rather than about this handset, so it goes through
+        `saveSettings` like the rest.
       */
+      reminderHour: Value(s.reminderHour),
     );
 
 /* ----------------------------------------------------------------- json */

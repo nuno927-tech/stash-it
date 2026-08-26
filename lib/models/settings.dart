@@ -67,6 +67,7 @@ class Settings {
     this.biometricLock,
     this.notifyEnabled,
     this.notifyAskedAt,
+    this.reminderHour,
   });
 
   final Entitlements entitlements;
@@ -98,6 +99,14 @@ class Settings {
 
   /// When the offer was made, either way. Null means never.
   final DateTime? notifyAskedAt;
+
+  /// What time of day a reminder arrives, 0–23 local.
+  ///
+  /// Null is the default rather than midnight — see `defaultSendHour`. Stored
+  /// as an hour and not a `TimeOfDay` because nothing in the app needs a
+  /// minute, and offering one would invite somebody to set 09:07 and then
+  /// wonder why an inexact alarm did not honour it.
+  final int? reminderHour;
 
   /// How much notice to give before cover ends. A list because the web schema
   /// allowed several offsets; only the first is read, and always has been.
@@ -138,6 +147,7 @@ class Settings {
     bool? biometricLock,
     bool? notifyEnabled,
     DateTime? notifyAskedAt,
+    int? reminderHour,
   }) =>
       Settings(
         reminderOffsetsDays: reminderOffsetsDays ?? this.reminderOffsetsDays,
@@ -155,5 +165,6 @@ class Settings {
         biometricLock: biometricLock ?? this.biometricLock,
         notifyEnabled: notifyEnabled ?? this.notifyEnabled,
         notifyAskedAt: notifyAskedAt ?? this.notifyAskedAt,
+        reminderHour: reminderHour ?? this.reminderHour,
       );
 }

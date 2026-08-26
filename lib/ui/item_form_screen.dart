@@ -16,7 +16,9 @@ import '../logic/notify_offer.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
+import 'confirm_delete.dart';
 import 'scout.dart';
+import 'stash_the_paper.dart';
 
 class ItemFormScreen extends StatefulWidget {
   const ItemFormScreen({required this.repo, this.existing, super.key});
@@ -84,6 +86,17 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
         hasCover: _draft.realCoverages.any((c) => c.hasTerm),
       )) {
         armNotifyOffer();
+      }
+
+      /*
+        The paper reminder, on a new item only.
+
+        Not on an edit: the receipt was filed — or not — when the thing was
+        first saved, and being told to stash it again for changing a model
+        number is the kind of nagging that gets an app's own advice ignored.
+      */
+      if (_isNew && mounted) {
+        await showStashThePaper(context);
       }
 
       if (mounted) Navigator.of(context).pop(true);
@@ -361,28 +374,8 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   /// go to — see logic/bin.dart. The promise is kept here, so the wording can
   /// be specific.
   Future<void> _delete() async {
-    final sure = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete ${_draft.name}?'),
-        content: const Text(
-          'It goes to the bin for 30 days, so you can change your mind. '
-          'Anything attached to it goes too.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep it'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (sure != true || widget.existing == null) return;
+    final sure = await confirmDelete(context, name: _draft.name);
+    if (!sure || widget.existing == null) return;
 
     await widget.repo.softDeleteItem(widget.existing!.id);
     unawaited(syncReminders(widget.repo));

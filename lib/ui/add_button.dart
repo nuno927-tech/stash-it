@@ -158,8 +158,16 @@ class _StashItButtonState extends State<StashItButton>
                 ),
               ),
 
+            // Above the tab bar, which is 74 tall plus whatever the phone's
+            // gesture area adds. The button belongs to the app, not to the
+            // screen, so it clears the nav rather than sitting inside it.
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                90 + MediaQuery.of(context).padding.bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,

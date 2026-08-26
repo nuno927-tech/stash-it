@@ -15,6 +15,7 @@ import '../logic/subscriptions.dart';
 import '../logic/timeline.dart';
 import '../models/subscription.dart';
 import '../notify/sync.dart';
+import 'feedback.dart';
 import 'form_parts.dart';
 
 class SubFormScreen extends StatefulWidget {
@@ -58,6 +59,11 @@ class _SubFormScreenState extends State<SubFormScreen> {
       }
 
       unawaited(syncReminders(widget.repo));
+
+      // The save cue: two rising notes. Items get it from the paper sheet that
+      // follows them; these two had nothing, so a save here was silent while
+      // the same action one tab over was not.
+      feedback(Cue.save);
 
       /*
         Only when a reminder was actually asked for.

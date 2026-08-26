@@ -271,6 +271,10 @@ class SettingsTable extends Table {
   BoolColumn get notifyEnabled => boolean().nullable()();
   DateTimeColumn get notifyAskedAt => dateTime().nullable()();
 
+  /// The hour a reminder lands, 0–23 local. Null means the default — nine in
+  /// the morning, which is `defaultSendHour` and not repeated here.
+  IntColumn get reminderHour => integer().nullable()();
+
   /*
     Entitlements live here and are the one thing a restore must never write.
     See `_settingsOf` in logic/bundle.dart: the backup decoder does not read
@@ -306,7 +310,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -332,6 +336,9 @@ class StashDatabase extends _$StashDatabase {
           if (from < 2) {
             await m.addColumn(settingsTable, settingsTable.notifyEnabled);
             await m.addColumn(settingsTable, settingsTable.notifyAskedAt);
+          }
+          if (from < 3) {
+            await m.addColumn(settingsTable, settingsTable.reminderHour);
           }
         },
         beforeOpen: (details) async {

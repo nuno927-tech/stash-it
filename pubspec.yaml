@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.15.0
+version: 0.38.0
 
 environment:
   sdk: ^3.5.0
@@ -76,6 +76,16 @@ dependencies:
   # Material glyphs — see lib/ui/nav_icons.dart for why that matters here.
   flutter_svg: ^2.0.10
 
+  # The biometric lock. It guards the APP, not the data — see the note beside
+  # the switch in settings_tab.dart, which says so plainly rather than letting
+  # somebody assume otherwise.
+  local_auth: ^2.3.0
+
+  # Opening a mail app for the contact links, and a browser for the privacy
+  # policy. Nothing is posted anywhere: a `mailto:` needs no server, and a
+  # server is the one thing this app has spent its life not having.
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -106,6 +116,44 @@ flutter:
     # than redrawn — same renders, same alpha, same contact shadows, so the two
     # apps cannot drift apart by one of them being touched up.
     - assets/mascot/
+
+  # ── The two faces, bundled rather than fetched ─────────────────────────
+  #
+  # The PWA loads these from Google Fonts at runtime. This app has no network
+  # at all, so they ship inside it — and a first launch that falls back to the
+  # system face and then reflows is worse than a slightly larger download.
+  #
+  # BOTH ARE VARIABLE FONTS, which is why one file covers every weight. Flutter
+  # reads a variable font's default instance unless told otherwise, so each
+  # weight the app actually uses is declared against the same file: 200 for the
+  # figures, 800 for the wordmark, and the rest for body text.
+  #
+  # See assets/fonts/README.md for where the files come from.
+  fonts:
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 200
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 400
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 800
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+          weight: 300
+        - asset: assets/fonts/Inter.ttf
+          weight: 400
+        - asset: assets/fonts/Inter.ttf
+          weight: 500
+        - asset: assets/fonts/Inter.ttf
+          weight: 600
+        - asset: assets/fonts/Inter.ttf
+          weight: 700
 
 # ── The launcher icon ────────────────────────────────────────────────────
 #
