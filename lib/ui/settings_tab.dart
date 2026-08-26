@@ -39,7 +39,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.42.0';
+const appVersion = '0.42.1';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});

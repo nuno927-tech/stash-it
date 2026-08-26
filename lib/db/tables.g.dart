@@ -1845,6 +1845,24 @@ class $SubscriptionsTable extends Subscriptions
   late final GeneratedColumn<String> startedDate = GeneratedColumn<String>(
       'started_date', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sharedMeta = const VerificationMeta('shared');
+  @override
+  late final GeneratedColumn<bool> shared = GeneratedColumn<bool>(
+      'shared', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("shared" IN (0, 1))'));
+  static const VerificationMeta _payToMeta = const VerificationMeta('payTo');
+  @override
+  late final GeneratedColumn<String> payTo = GeneratedColumn<String>(
+      'pay_to', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _payHowMeta = const VerificationMeta('payHow');
+  @override
+  late final GeneratedColumn<String> payHow = GeneratedColumn<String>(
+      'pay_how', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _remindDaysMeta =
       const VerificationMeta('remindDays');
   @override
@@ -1880,6 +1898,9 @@ class $SubscriptionsTable extends Subscriptions
         amountCents,
         currency,
         startedDate,
+        shared,
+        payTo,
+        payHow,
         remindDays,
         notes,
         createdAt,
@@ -1954,6 +1975,18 @@ class $SubscriptionsTable extends Subscriptions
           startedDate.isAcceptableOrUnknown(
               data['started_date']!, _startedDateMeta));
     }
+    if (data.containsKey('shared')) {
+      context.handle(_sharedMeta,
+          shared.isAcceptableOrUnknown(data['shared']!, _sharedMeta));
+    }
+    if (data.containsKey('pay_to')) {
+      context.handle(
+          _payToMeta, payTo.isAcceptableOrUnknown(data['pay_to']!, _payToMeta));
+    }
+    if (data.containsKey('pay_how')) {
+      context.handle(_payHowMeta,
+          payHow.isAcceptableOrUnknown(data['pay_how']!, _payHowMeta));
+    }
     if (data.containsKey('remind_days')) {
       context.handle(
           _remindDaysMeta,
@@ -2001,6 +2034,12 @@ class $SubscriptionsTable extends Subscriptions
           .read(DriftSqlType.string, data['${effectivePrefix}currency'])!,
       startedDate: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}started_date']),
+      shared: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}shared']),
+      payTo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}pay_to']),
+      payHow: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}pay_how']),
       remindDays: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}remind_days']),
       notes: attachedDatabase.typeMapping
@@ -2033,6 +2072,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
   final int amountCents;
   final String currency;
   final String? startedDate;
+  final bool? shared;
+  final String? payTo;
+  final String? payHow;
 
   /// 0, 1, 3 or 7. Null or zero means no reminder, and is the default.
   final int? remindDays;
@@ -2050,6 +2092,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       required this.amountCents,
       required this.currency,
       this.startedDate,
+      this.shared,
+      this.payTo,
+      this.payHow,
       this.remindDays,
       this.notes,
       this.createdAt,
@@ -2072,6 +2117,15 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
     map['currency'] = Variable<String>(currency);
     if (!nullToAbsent || startedDate != null) {
       map['started_date'] = Variable<String>(startedDate);
+    }
+    if (!nullToAbsent || shared != null) {
+      map['shared'] = Variable<bool>(shared);
+    }
+    if (!nullToAbsent || payTo != null) {
+      map['pay_to'] = Variable<String>(payTo);
+    }
+    if (!nullToAbsent || payHow != null) {
+      map['pay_how'] = Variable<String>(payHow);
     }
     if (!nullToAbsent || remindDays != null) {
       map['remind_days'] = Variable<int>(remindDays);
@@ -2106,6 +2160,12 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       startedDate: startedDate == null && nullToAbsent
           ? const Value.absent()
           : Value(startedDate),
+      shared:
+          shared == null && nullToAbsent ? const Value.absent() : Value(shared),
+      payTo:
+          payTo == null && nullToAbsent ? const Value.absent() : Value(payTo),
+      payHow:
+          payHow == null && nullToAbsent ? const Value.absent() : Value(payHow),
       remindDays: remindDays == null && nullToAbsent
           ? const Value.absent()
           : Value(remindDays),
@@ -2134,6 +2194,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       amountCents: serializer.fromJson<int>(json['amountCents']),
       currency: serializer.fromJson<String>(json['currency']),
       startedDate: serializer.fromJson<String?>(json['startedDate']),
+      shared: serializer.fromJson<bool?>(json['shared']),
+      payTo: serializer.fromJson<String?>(json['payTo']),
+      payHow: serializer.fromJson<String?>(json['payHow']),
       remindDays: serializer.fromJson<int?>(json['remindDays']),
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
@@ -2154,6 +2217,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       'amountCents': serializer.toJson<int>(amountCents),
       'currency': serializer.toJson<String>(currency),
       'startedDate': serializer.toJson<String?>(startedDate),
+      'shared': serializer.toJson<bool?>(shared),
+      'payTo': serializer.toJson<String?>(payTo),
+      'payHow': serializer.toJson<String?>(payHow),
       'remindDays': serializer.toJson<int?>(remindDays),
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
@@ -2172,6 +2238,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
           int? amountCents,
           String? currency,
           Value<String?> startedDate = const Value.absent(),
+          Value<bool?> shared = const Value.absent(),
+          Value<String?> payTo = const Value.absent(),
+          Value<String?> payHow = const Value.absent(),
           Value<int?> remindDays = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           Value<DateTime?> createdAt = const Value.absent(),
@@ -2187,6 +2256,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
         amountCents: amountCents ?? this.amountCents,
         currency: currency ?? this.currency,
         startedDate: startedDate.present ? startedDate.value : this.startedDate,
+        shared: shared.present ? shared.value : this.shared,
+        payTo: payTo.present ? payTo.value : this.payTo,
+        payHow: payHow.present ? payHow.value : this.payHow,
         remindDays: remindDays.present ? remindDays.value : this.remindDays,
         notes: notes.present ? notes.value : this.notes,
         createdAt: createdAt.present ? createdAt.value : this.createdAt,
@@ -2209,6 +2281,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       currency: data.currency.present ? data.currency.value : this.currency,
       startedDate:
           data.startedDate.present ? data.startedDate.value : this.startedDate,
+      shared: data.shared.present ? data.shared.value : this.shared,
+      payTo: data.payTo.present ? data.payTo.value : this.payTo,
+      payHow: data.payHow.present ? data.payHow.value : this.payHow,
       remindDays:
           data.remindDays.present ? data.remindDays.value : this.remindDays,
       notes: data.notes.present ? data.notes.value : this.notes,
@@ -2230,6 +2305,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
           ..write('amountCents: $amountCents, ')
           ..write('currency: $currency, ')
           ..write('startedDate: $startedDate, ')
+          ..write('shared: $shared, ')
+          ..write('payTo: $payTo, ')
+          ..write('payHow: $payHow, ')
           ..write('remindDays: $remindDays, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
@@ -2250,6 +2328,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
       amountCents,
       currency,
       startedDate,
+      shared,
+      payTo,
+      payHow,
       remindDays,
       notes,
       createdAt,
@@ -2268,6 +2349,9 @@ class SubscriptionRow extends DataClass implements Insertable<SubscriptionRow> {
           other.amountCents == this.amountCents &&
           other.currency == this.currency &&
           other.startedDate == this.startedDate &&
+          other.shared == this.shared &&
+          other.payTo == this.payTo &&
+          other.payHow == this.payHow &&
           other.remindDays == this.remindDays &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
@@ -2285,6 +2369,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
   final Value<int> amountCents;
   final Value<String> currency;
   final Value<String?> startedDate;
+  final Value<bool?> shared;
+  final Value<String?> payTo;
+  final Value<String?> payHow;
   final Value<int?> remindDays;
   final Value<String?> notes;
   final Value<DateTime?> createdAt;
@@ -2301,6 +2388,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
     this.amountCents = const Value.absent(),
     this.currency = const Value.absent(),
     this.startedDate = const Value.absent(),
+    this.shared = const Value.absent(),
+    this.payTo = const Value.absent(),
+    this.payHow = const Value.absent(),
     this.remindDays = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2318,6 +2408,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
     this.amountCents = const Value.absent(),
     this.currency = const Value.absent(),
     this.startedDate = const Value.absent(),
+    this.shared = const Value.absent(),
+    this.payTo = const Value.absent(),
+    this.payHow = const Value.absent(),
     this.remindDays = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2339,6 +2432,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
     Expression<int>? amountCents,
     Expression<String>? currency,
     Expression<String>? startedDate,
+    Expression<bool>? shared,
+    Expression<String>? payTo,
+    Expression<String>? payHow,
     Expression<int>? remindDays,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
@@ -2356,6 +2452,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
       if (amountCents != null) 'amount_cents': amountCents,
       if (currency != null) 'currency': currency,
       if (startedDate != null) 'started_date': startedDate,
+      if (shared != null) 'shared': shared,
+      if (payTo != null) 'pay_to': payTo,
+      if (payHow != null) 'pay_how': payHow,
       if (remindDays != null) 'remind_days': remindDays,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
@@ -2375,6 +2474,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
       Value<int>? amountCents,
       Value<String>? currency,
       Value<String?>? startedDate,
+      Value<bool?>? shared,
+      Value<String?>? payTo,
+      Value<String?>? payHow,
       Value<int?>? remindDays,
       Value<String?>? notes,
       Value<DateTime?>? createdAt,
@@ -2391,6 +2493,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
       amountCents: amountCents ?? this.amountCents,
       currency: currency ?? this.currency,
       startedDate: startedDate ?? this.startedDate,
+      shared: shared ?? this.shared,
+      payTo: payTo ?? this.payTo,
+      payHow: payHow ?? this.payHow,
       remindDays: remindDays ?? this.remindDays,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
@@ -2432,6 +2537,15 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
     if (startedDate.present) {
       map['started_date'] = Variable<String>(startedDate.value);
     }
+    if (shared.present) {
+      map['shared'] = Variable<bool>(shared.value);
+    }
+    if (payTo.present) {
+      map['pay_to'] = Variable<String>(payTo.value);
+    }
+    if (payHow.present) {
+      map['pay_how'] = Variable<String>(payHow.value);
+    }
     if (remindDays.present) {
       map['remind_days'] = Variable<int>(remindDays.value);
     }
@@ -2463,6 +2577,9 @@ class SubscriptionsCompanion extends UpdateCompanion<SubscriptionRow> {
           ..write('amountCents: $amountCents, ')
           ..write('currency: $currency, ')
           ..write('startedDate: $startedDate, ')
+          ..write('shared: $shared, ')
+          ..write('payTo: $payTo, ')
+          ..write('payHow: $payHow, ')
           ..write('remindDays: $remindDays, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
@@ -5542,6 +5659,9 @@ typedef $$SubscriptionsTableCreateCompanionBuilder = SubscriptionsCompanion
   Value<int> amountCents,
   Value<String> currency,
   Value<String?> startedDate,
+  Value<bool?> shared,
+  Value<String?> payTo,
+  Value<String?> payHow,
   Value<int?> remindDays,
   Value<String?> notes,
   Value<DateTime?> createdAt,
@@ -5560,6 +5680,9 @@ typedef $$SubscriptionsTableUpdateCompanionBuilder = SubscriptionsCompanion
   Value<int> amountCents,
   Value<String> currency,
   Value<String?> startedDate,
+  Value<bool?> shared,
+  Value<String?> payTo,
+  Value<String?> payHow,
   Value<int?> remindDays,
   Value<String?> notes,
   Value<DateTime?> createdAt,
@@ -5605,6 +5728,15 @@ class $$SubscriptionsTableFilterComposer
 
   ColumnFilters<String> get startedDate => $composableBuilder(
       column: $table.startedDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get shared => $composableBuilder(
+      column: $table.shared, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payTo => $composableBuilder(
+      column: $table.payTo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payHow => $composableBuilder(
+      column: $table.payHow, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get remindDays => $composableBuilder(
       column: $table.remindDays, builder: (column) => ColumnFilters(column));
@@ -5658,6 +5790,15 @@ class $$SubscriptionsTableOrderingComposer
   ColumnOrderings<String> get startedDate => $composableBuilder(
       column: $table.startedDate, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get shared => $composableBuilder(
+      column: $table.shared, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payTo => $composableBuilder(
+      column: $table.payTo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payHow => $composableBuilder(
+      column: $table.payHow, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get remindDays => $composableBuilder(
       column: $table.remindDays, builder: (column) => ColumnOrderings(column));
 
@@ -5710,6 +5851,15 @@ class $$SubscriptionsTableAnnotationComposer
   GeneratedColumn<String> get startedDate => $composableBuilder(
       column: $table.startedDate, builder: (column) => column);
 
+  GeneratedColumn<bool> get shared =>
+      $composableBuilder(column: $table.shared, builder: (column) => column);
+
+  GeneratedColumn<String> get payTo =>
+      $composableBuilder(column: $table.payTo, builder: (column) => column);
+
+  GeneratedColumn<String> get payHow =>
+      $composableBuilder(column: $table.payHow, builder: (column) => column);
+
   GeneratedColumn<int> get remindDays => $composableBuilder(
       column: $table.remindDays, builder: (column) => column);
 
@@ -5760,6 +5910,9 @@ class $$SubscriptionsTableTableManager extends RootTableManager<
             Value<int> amountCents = const Value.absent(),
             Value<String> currency = const Value.absent(),
             Value<String?> startedDate = const Value.absent(),
+            Value<bool?> shared = const Value.absent(),
+            Value<String?> payTo = const Value.absent(),
+            Value<String?> payHow = const Value.absent(),
             Value<int?> remindDays = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<DateTime?> createdAt = const Value.absent(),
@@ -5777,6 +5930,9 @@ class $$SubscriptionsTableTableManager extends RootTableManager<
             amountCents: amountCents,
             currency: currency,
             startedDate: startedDate,
+            shared: shared,
+            payTo: payTo,
+            payHow: payHow,
             remindDays: remindDays,
             notes: notes,
             createdAt: createdAt,
@@ -5794,6 +5950,9 @@ class $$SubscriptionsTableTableManager extends RootTableManager<
             Value<int> amountCents = const Value.absent(),
             Value<String> currency = const Value.absent(),
             Value<String?> startedDate = const Value.absent(),
+            Value<bool?> shared = const Value.absent(),
+            Value<String?> payTo = const Value.absent(),
+            Value<String?> payHow = const Value.absent(),
             Value<int?> remindDays = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<DateTime?> createdAt = const Value.absent(),
@@ -5811,6 +5970,9 @@ class $$SubscriptionsTableTableManager extends RootTableManager<
             amountCents: amountCents,
             currency: currency,
             startedDate: startedDate,
+            shared: shared,
+            payTo: payTo,
+            payHow: payHow,
             remindDays: remindDays,
             notes: notes,
             createdAt: createdAt,

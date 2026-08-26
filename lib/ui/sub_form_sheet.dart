@@ -510,7 +510,7 @@ class _SubFormSheetState extends State<_SubFormSheet> {
           switch (days) {
             0 => 'No reminder. You can turn one on later.',
             1 => 'A notification the day before it renews.',
-            int d => 'A notification $d days before it renews.',
+            final int d => 'A notification $d days before it renews.',
           },
           style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
