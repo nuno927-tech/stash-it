@@ -29,10 +29,10 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 
-enum Cue { tap, nav, expand, collapse, save, delete, error, attach, launch }
+enum Cue { tap, nav, expand, collapse, save, delete, error, attach, launch, unlock }
 
 class _Voice {
-  const _Voice(this.notes, this.step, this.wave, this.gain);
+  const _Voice(this.notes, this.step, this.wave, this.gain, {this.holdLast = 1});
 
   /// Frequencies in hertz, played in sequence.
   final List<double> notes;
@@ -42,6 +42,18 @@ class _Voice {
 
   final _Wave wave;
   final double gain;
+
+  /// How many steps the **last** note is held for.
+  ///
+  /// ── Why a phrase needs one long note ────────────────────────────────────
+  /// Every cue here used to be a string of equal notes, which is why the two-
+  /// note ones read as beeps: a run of identical lengths has no shape, so the
+  /// ear hears a list rather than a phrase. Landing on a note and letting it
+  /// ring is the difference between "beep beep" and an arrival.
+  ///
+  /// Left at 1 for the eight cues that fire constantly. A cue you hear forty
+  /// times a day must not have an ending worth listening to.
+  final int holdLast;
 }
 
 enum _Wave { sine, triangle, square }
@@ -71,6 +83,29 @@ const Map<Cue, _Voice> _voices = {
   // before the dashboard has settled. Heard at most once per launch, which is
   // the only reason it is allowed to have a shape at all.
   Cue.launch: _Voice([523.25, 659.25, 880], 0.062, _Wave.sine, 0.05),
+
+  /*
+    ── Finding Scout's album ────────────────────────────────────────────────
+
+    The only cue in the set allowed to be a tune, because it is the only one
+    most people will hear exactly once. Everything else in this table is
+    designed not to wear out; this one has no chance to.
+
+    G–C–E–G–C: a major triad climbing an octave and a half, which is the shape
+    every fanfare ever written has, and then the top C held for six steps so
+    it rings out under the confetti rather than stopping with it.
+
+    Triangle rather than sine. The extra harmonics are what make it read as
+    brass instead of a test tone, and at a third of a second of ring the
+    difference is the entire effect.
+  */
+  Cue.unlock: _Voice(
+    [392, 523.25, 659.25, 784, 1046.5],
+    0.058,
+    _Wave.triangle,
+    0.075,
+    holdLast: 6,
+  ),
 };
 
 /*
@@ -105,6 +140,22 @@ Future<void> _buzz(Cue cue) async {
     // two that get it are the two that undo something.
     case Cue.delete:
     case Cue.error:
+      await HapticFeedback.heavyImpact();
+
+    /*
+      The only buzz in the set with a rhythm.
+
+      A single pulse under a five-note fanfare feels like the phone missed the
+      moment. Three, climbing and spaced to sit under the rise, land as one
+      gesture rather than three taps — and this is the one cue where spending
+      a quarter of a second on a vibration is affordable, because nobody is
+      waiting to do something else.
+    */
+    case Cue.unlock:
+      await HapticFeedback.mediumImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 95));
+      await HapticFeedback.lightImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 75));
       await HapticFeedback.heavyImpact();
   }
 }
@@ -155,12 +206,25 @@ const int _rate = 44100;
 /// A voice as a mono 16-bit WAV.
 Uint8List _wav(_Voice voice) {
   final perNote = (voice.step * _rate).round();
-  final samples = Int16List(perNote * voice.notes.length);
+  final last = voice.notes.length - 1;
+
+  // Every note is one step except the last, which may be held. Written as a
+  // list rather than assumed, because the decay below divides by whatever
+  // length the note it is in actually has — a held note has to fade over its
+  // own duration or it stops dead at the point the short ones would have.
+  final lengths = [
+    for (var n = 0; n < voice.notes.length; n++)
+      n == last ? perNote * voice.holdLast : perNote,
+  ];
+
+  final samples = Int16List(lengths.fold(0, (sum, n) => sum + n));
+  var at = 0;
 
   for (var n = 0; n < voice.notes.length; n++) {
     final freq = voice.notes[n];
+    final length = lengths[n];
 
-    for (var i = 0; i < perNote; i++) {
+    for (var i = 0; i < length; i++) {
       final t = i / _rate;
       final phase = 2 * math.pi * freq * t;
 
@@ -179,12 +243,14 @@ Uint8List _wav(_Voice voice) {
         before the note ends.
       */
       final attack = math.min(1.0, t / 0.008);
-      final tail = (perNote - i) / perNote;
+      final tail = (length - i) / length;
       final decay = math.pow(tail, 2.2).toDouble();
 
-      samples[n * perNote + i] =
+      samples[at + i] =
           (shape * voice.gain * attack * decay * 32767).round().clamp(-32768, 32767);
     }
+
+    at += length;
   }
 
   return _riff(samples);

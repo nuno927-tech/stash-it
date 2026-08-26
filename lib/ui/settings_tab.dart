@@ -39,7 +39,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.38.0';
+const appVersion = '0.41.1';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -54,6 +54,39 @@ class _SettingsTabState extends State<SettingsTab> {
   String? _status;
   bool _busy = false;
 
+  /*
+    ── The status line expires ─────────────────────────────────────────────
+
+    It used to sit there until something else replaced it, which meant a
+    message about a spreadsheet exported ten minutes ago was still under the
+    version card while somebody was backing out of Erase everything — a line
+    that had nothing to do with what they had just done, at the exact moment
+    they most wanted to know what they had just done.
+
+    A confirmation is an event. Rendered as permanent page furniture it stops
+    being a confirmation and becomes a claim about the present, and the claim
+    goes stale within seconds.
+  */
+  Timer? _expiry;
+
+  void _say(String? words) {
+    if (!mounted) return;
+
+    _expiry?.cancel();
+    setState(() => _status = words);
+    if (words == null) return;
+
+    _expiry = Timer(const Duration(seconds: 9), () {
+      if (mounted) setState(() => _status = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _expiry?.cancel();
+    super.dispose();
+  }
+
   /// The run of taps on the version number, which opens the developer tools.
   TapState _taps = noTaps;
 
@@ -65,9 +98,10 @@ class _SettingsTabState extends State<SettingsTab> {
   void _pokeScout() {
     setState(() => _pokes = tap(_pokes, DateTime.now()));
 
-    // A tick on every one, and the save cue on the tenth. Somebody who taps him
-    // twice has felt the app notice, which is the only hint offered.
-    feedback(unlocked(_pokes) ? Cue.save : Cue.tap);
+    // A tick on every one, and the fanfare on the tenth. Somebody who taps him
+    // twice has felt the app notice, which is the only hint offered — and the
+    // payoff has to sound like a payoff, not like a file saving.
+    feedback(unlocked(_pokes) ? Cue.unlock : Cue.tap);
 
     if (!unlocked(_pokes)) return;
 
@@ -103,10 +137,8 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _restore() async {
-    setState(() {
-      _busy = true;
-      _status = null;
-    });
+    _say(null);
+    setState(() => _busy = true);
 
     try {
       /*
@@ -124,15 +156,13 @@ class _SettingsTabState extends State<SettingsTab> {
       final bundle = parseBackupBytes(bytes);
       final result = await restoreInto(widget.repo.db, bundle);
 
-      setState(() {
-        _status = 'Restored ${result.items} items, ${result.papers} documents, '
-            '${result.subscriptions} subscriptions and ${result.blobs} files.';
-      });
+      _say('Restored ${result.items} items, ${result.papers} documents, '
+          '${result.subscriptions} subscriptions and ${result.blobs} files.');
     } on BundleError catch (e) {
       // Every refusal already carries a sentence written for a person.
-      setState(() => _status = e.message);
+      _say(e.message);
     } catch (e) {
-      setState(() => _status = 'That did not work: $e');
+      _say('That did not work: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -149,10 +179,8 @@ class _SettingsTabState extends State<SettingsTab> {
   /// The whole point is that the backup ends up somewhere that is **not this
   /// phone**, so the flow should end in an app that can do that.
   Future<void> _backUp() async {
-    setState(() {
-      _busy = true;
-      _status = null;
-    });
+    _say(null);
+    setState(() => _busy = true);
 
     try {
       final bytes = await exportBackup(widget.repo.db);
@@ -169,13 +197,11 @@ class _SettingsTabState extends State<SettingsTab> {
         subject: 'Stash it backup',
       );
 
-      setState(() {
-        final kb = (bytes.length / 1024).round();
-        _status = 'Made ${backupFileName()} — $kb KB. '
-            'Keep it somewhere that is not this phone.';
-      });
+      final kb = (bytes.length / 1024).round();
+      _say('Made ${backupFileName()} — $kb KB. '
+          'Keep it somewhere that is not this phone.');
     } catch (e) {
-      setState(() => _status = 'That did not work: $e');
+      _say('That did not work: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -257,12 +283,10 @@ class _SettingsTabState extends State<SettingsTab> {
       // The one place a reschedule is actually warranted: the switch that
       // decides whether there is a schedule at all.
       _refresh(reminders: true);
-      setState(() {
-        _status = wanted && !enabled
-            ? 'Android is holding notifications for Stash it. Turn them on in '
-                'the phone\'s app settings and this switch will follow.'
-            : null;
-      });
+      _say(wanted && !enabled
+          ? 'Android is holding notifications for Stash it. Turn them on in '
+              'the phone\'s app settings and this switch will follow.'
+          : null);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -309,19 +333,17 @@ class _SettingsTabState extends State<SettingsTab> {
         options: const AuthenticationOptions(stickyAuth: true),
       );
       if (!ok) {
-        setState(() => _status = 'The device did not confirm. The lock is still off.');
+        _say('The device did not confirm. The lock is still off.');
         return;
       }
     } catch (e) {
-      setState(() => _status = 'This phone would not run the check: $e');
+      _say('This phone would not run the check: $e');
       return;
     }
 
     await _saveSettings((s) => s.copyWith(biometricLock: true));
     feedback(Cue.save);
-    if (mounted) {
-      setState(() => _status = 'Locked. You will be asked next time the app opens.');
-    }
+    _say('Locked. You will be asked next time the app opens.');
   }
 
   /// Read, change, write. Every setting on this screen goes through here so
@@ -337,9 +359,7 @@ class _SettingsTabState extends State<SettingsTab> {
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
-      if (mounted) {
-        setState(() => _status = 'No app on this phone could open that.');
-      }
+      _say('No app on this phone could open that.');
     }
   }
 
@@ -372,10 +392,8 @@ class _SettingsTabState extends State<SettingsTab> {
   /// Not a backup and not offered as one — see lib/io/csv.dart. This is the
   /// version an insurer or a solicitor can open.
   Future<void> _exportCsv() async {
-    setState(() {
-      _busy = true;
-      _status = null;
-    });
+    _say(null);
+    setState(() => _busy = true);
 
     try {
       final dir = await getTemporaryDirectory();
@@ -399,9 +417,9 @@ class _SettingsTabState extends State<SettingsTab> {
       // photographs and cannot be restored, so counting it as a backup would
       // silence the reminder on the strength of a file that does not do the
       // job the reminder is about.
-      setState(() => _status = 'Three files: items, documents, subscriptions.');
+      _say('Three files: items, documents, subscriptions.');
     } catch (e) {
-      setState(() => _status = 'That did not work: \$e');
+      _say('That did not work: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -419,6 +437,8 @@ class _SettingsTabState extends State<SettingsTab> {
     reached by two taps in the same place.
   */
   Future<void> _erase() async {
+    _say(null);
+
     final sure = await confirmDelete(
       context,
       name: 'everything in Stash it',
@@ -434,10 +454,8 @@ class _SettingsTabState extends State<SettingsTab> {
     await syncReminders(widget.repo);
 
     if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _status = 'Erased. Restore from a backup if you have one.';
-    });
+    setState(() => _busy = false);
+    _say('Erased. Restore from a backup if you have one.');
     _refresh();
   }
 

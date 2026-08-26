@@ -195,10 +195,17 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Add something'), findsOneWidget);
-    // Name is the only field the app insists on, so it is the one that opens
-    // focused — see `whyNotSaveable`.
-    expect(find.text('Call it'), findsOneWidget);
+    /*
+      The form is a sheet now rather than a pushed screen, so there is no app
+      bar to name it. What identifies it is the first card.
+    */
+    expect(find.text('Product information'), findsOneWidget);
+    expect(find.text('Product name'), findsOneWidget);
+
+    // Name is the only field the app insists on, so the footer says so before
+    // the button is pressed rather than after — see `whyNotSaveable`.
+    expect(find.textContaining('Give it a name'), findsOneWidget);
+    expect(find.text('Save item'), findsOneWidget);
 
     await db.close();
   });

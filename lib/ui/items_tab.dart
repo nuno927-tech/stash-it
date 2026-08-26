@@ -25,9 +25,10 @@ import 'bin_screen.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'item_detail_screen.dart';
-import 'item_form_screen.dart';
+import 'item_form_sheet.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
+import 'room_icon.dart';
 import 'scout.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
@@ -507,13 +508,15 @@ class _ItemsTabState extends State<ItemsTab> {
   /// The plus button still goes straight to the form — there is nothing to
   /// read about a record that does not exist yet.
   Future<void> _open(Item? item) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => item == null
-            ? ItemFormScreen(repo: widget.repo)
-            : ItemDetailScreen(repo: widget.repo, item: item),
-      ),
-    );
+    if (item == null) {
+      await showItemForm(context, repo: widget.repo);
+    } else {
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) => ItemDetailScreen(repo: widget.repo, item: item),
+        ),
+      );
+    }
     if (!mounted) return;
     await maybeOfferNotifications(context, widget.repo);
   }
@@ -606,30 +609,63 @@ class _RoomHeader extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         color: c.slate700,
         child: Row(
           children: [
-            AnimatedRotation(
-              turns: shut ? -0.25 : 0,
-              duration: const Duration(milliseconds: 180),
-              child: Icon(Icons.expand_more, size: 20, color: c.muted),
+            /*
+              The glyph, in a tinted square.
+
+              A bare icon on a coloured band reads as part of the text; the
+              square gives it an edge to sit against, and it is what makes the
+              header a place rather than a label. Matched on the name — see
+              logic/room_icon.dart for why it is not a stored field.
+            */
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: c.slate600,
+                borderRadius: BorderRadius.circular(Radii.sm),
+              ),
+              child: Center(child: RoomIcon(name, color: c.gold, size: 21)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 name,
                 style: TextStyle(
-                  fontFamily: fontBody,
-                  fontSize: 13.5,
+                  fontFamily: fontDisplay,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
                   color: c.text,
                 ),
               ),
             ),
+            /*
+              This printed the four characters "$count" for one release. The
+              dollar was escaped in a plain string that was never a template,
+              so nothing complained — the analyzer's job is to catch a name
+              that does not exist, and `\$count` is not a name, it is the text.
+
+              A wrong number would have been noticed by the arithmetic. Text
+              that is quietly not an expression can only be caught by looking.
+            */
             Text(
-              '\$count',
-              style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+              '$count',
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: c.muted,
+              ),
+            ),
+            const SizedBox(width: 6),
+            AnimatedRotation(
+              turns: shut ? -0.25 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Icon(Icons.expand_more, size: 22, color: c.muted),
             ),
           ],
         ),

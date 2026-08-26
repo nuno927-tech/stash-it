@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Identical to values/styles.xml, and see the note there for why. -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- See ../values/styles.xml on why there is no icon on the splash. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/launch_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@null</item>
     </style>
 
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">

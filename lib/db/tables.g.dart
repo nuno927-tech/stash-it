@@ -3809,6 +3809,12 @@ class $SettingsTableTable extends SettingsTable
   late final GeneratedColumn<DateTime> notifyAskedAt =
       GeneratedColumn<DateTime>('notify_asked_at', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _reminderHourMeta =
+      const VerificationMeta('reminderHour');
+  @override
+  late final GeneratedColumn<int> reminderHour = GeneratedColumn<int>(
+      'reminder_hour', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _proUnlockMeta =
       const VerificationMeta('proUnlock');
   @override
@@ -3858,6 +3864,7 @@ class $SettingsTableTable extends SettingsTable
         biometricLock,
         notifyEnabled,
         notifyAskedAt,
+        reminderHour,
         proUnlock,
         reportUnlock,
         entitlementSource,
@@ -3951,6 +3958,12 @@ class $SettingsTableTable extends SettingsTable
           notifyAskedAt.isAcceptableOrUnknown(
               data['notify_asked_at']!, _notifyAskedAtMeta));
     }
+    if (data.containsKey('reminder_hour')) {
+      context.handle(
+          _reminderHourMeta,
+          reminderHour.isAcceptableOrUnknown(
+              data['reminder_hour']!, _reminderHourMeta));
+    }
     if (data.containsKey('pro_unlock')) {
       context.handle(_proUnlockMeta,
           proUnlock.isAcceptableOrUnknown(data['pro_unlock']!, _proUnlockMeta));
@@ -4013,6 +4026,8 @@ class $SettingsTableTable extends SettingsTable
           .read(DriftSqlType.bool, data['${effectivePrefix}notify_enabled']),
       notifyAskedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}notify_asked_at']),
+      reminderHour: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}reminder_hour']),
       proUnlock: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}pro_unlock'])!,
       reportUnlock: attachedDatabase.typeMapping
@@ -4052,6 +4067,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final bool? biometricLock;
   final bool? notifyEnabled;
   final DateTime? notifyAskedAt;
+
+  /// The hour a reminder lands, 0–23 local. Null means the default — nine in
+  /// the morning, which is `defaultSendHour` and not repeated here.
+  final int? reminderHour;
   final bool proUnlock;
   final bool reportUnlock;
   final String? entitlementSource;
@@ -4072,6 +4091,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       this.biometricLock,
       this.notifyEnabled,
       this.notifyAskedAt,
+      this.reminderHour,
       required this.proUnlock,
       required this.reportUnlock,
       this.entitlementSource,
@@ -4114,6 +4134,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     }
     if (!nullToAbsent || notifyAskedAt != null) {
       map['notify_asked_at'] = Variable<DateTime>(notifyAskedAt);
+    }
+    if (!nullToAbsent || reminderHour != null) {
+      map['reminder_hour'] = Variable<int>(reminderHour);
     }
     map['pro_unlock'] = Variable<bool>(proUnlock);
     map['report_unlock'] = Variable<bool>(reportUnlock);
@@ -4162,6 +4185,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       notifyAskedAt: notifyAskedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(notifyAskedAt),
+      reminderHour: reminderHour == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderHour),
       proUnlock: Value(proUnlock),
       reportUnlock: Value(reportUnlock),
       entitlementSource: entitlementSource == null && nullToAbsent
@@ -4193,6 +4219,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       biometricLock: serializer.fromJson<bool?>(json['biometricLock']),
       notifyEnabled: serializer.fromJson<bool?>(json['notifyEnabled']),
       notifyAskedAt: serializer.fromJson<DateTime?>(json['notifyAskedAt']),
+      reminderHour: serializer.fromJson<int?>(json['reminderHour']),
       proUnlock: serializer.fromJson<bool>(json['proUnlock']),
       reportUnlock: serializer.fromJson<bool>(json['reportUnlock']),
       entitlementSource:
@@ -4221,6 +4248,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'biometricLock': serializer.toJson<bool?>(biometricLock),
       'notifyEnabled': serializer.toJson<bool?>(notifyEnabled),
       'notifyAskedAt': serializer.toJson<DateTime?>(notifyAskedAt),
+      'reminderHour': serializer.toJson<int?>(reminderHour),
       'proUnlock': serializer.toJson<bool>(proUnlock),
       'reportUnlock': serializer.toJson<bool>(reportUnlock),
       'entitlementSource': serializer.toJson<String?>(entitlementSource),
@@ -4245,6 +4273,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           Value<bool?> biometricLock = const Value.absent(),
           Value<bool?> notifyEnabled = const Value.absent(),
           Value<DateTime?> notifyAskedAt = const Value.absent(),
+          Value<int?> reminderHour = const Value.absent(),
           bool? proUnlock,
           bool? reportUnlock,
           Value<String?> entitlementSource = const Value.absent(),
@@ -4270,6 +4299,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
             notifyEnabled.present ? notifyEnabled.value : this.notifyEnabled,
         notifyAskedAt:
             notifyAskedAt.present ? notifyAskedAt.value : this.notifyAskedAt,
+        reminderHour:
+            reminderHour.present ? reminderHour.value : this.reminderHour,
         proUnlock: proUnlock ?? this.proUnlock,
         reportUnlock: reportUnlock ?? this.reportUnlock,
         entitlementSource: entitlementSource.present
@@ -4312,6 +4343,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       notifyAskedAt: data.notifyAskedAt.present
           ? data.notifyAskedAt.value
           : this.notifyAskedAt,
+      reminderHour: data.reminderHour.present
+          ? data.reminderHour.value
+          : this.reminderHour,
       proUnlock: data.proUnlock.present ? data.proUnlock.value : this.proUnlock,
       reportUnlock: data.reportUnlock.present
           ? data.reportUnlock.value
@@ -4343,6 +4377,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('biometricLock: $biometricLock, ')
           ..write('notifyEnabled: $notifyEnabled, ')
           ..write('notifyAskedAt: $notifyAskedAt, ')
+          ..write('reminderHour: $reminderHour, ')
           ..write('proUnlock: $proUnlock, ')
           ..write('reportUnlock: $reportUnlock, ')
           ..write('entitlementSource: $entitlementSource, ')
@@ -4368,6 +4403,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       biometricLock,
       notifyEnabled,
       notifyAskedAt,
+      reminderHour,
       proUnlock,
       reportUnlock,
       entitlementSource,
@@ -4391,6 +4427,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.biometricLock == this.biometricLock &&
           other.notifyEnabled == this.notifyEnabled &&
           other.notifyAskedAt == this.notifyAskedAt &&
+          other.reminderHour == this.reminderHour &&
           other.proUnlock == this.proUnlock &&
           other.reportUnlock == this.reportUnlock &&
           other.entitlementSource == this.entitlementSource &&
@@ -4413,6 +4450,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<bool?> biometricLock;
   final Value<bool?> notifyEnabled;
   final Value<DateTime?> notifyAskedAt;
+  final Value<int?> reminderHour;
   final Value<bool> proUnlock;
   final Value<bool> reportUnlock;
   final Value<String?> entitlementSource;
@@ -4434,6 +4472,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.biometricLock = const Value.absent(),
     this.notifyEnabled = const Value.absent(),
     this.notifyAskedAt = const Value.absent(),
+    this.reminderHour = const Value.absent(),
     this.proUnlock = const Value.absent(),
     this.reportUnlock = const Value.absent(),
     this.entitlementSource = const Value.absent(),
@@ -4456,6 +4495,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.biometricLock = const Value.absent(),
     this.notifyEnabled = const Value.absent(),
     this.notifyAskedAt = const Value.absent(),
+    this.reminderHour = const Value.absent(),
     this.proUnlock = const Value.absent(),
     this.reportUnlock = const Value.absent(),
     this.entitlementSource = const Value.absent(),
@@ -4478,6 +4518,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<bool>? biometricLock,
     Expression<bool>? notifyEnabled,
     Expression<DateTime>? notifyAskedAt,
+    Expression<int>? reminderHour,
     Expression<bool>? proUnlock,
     Expression<bool>? reportUnlock,
     Expression<String>? entitlementSource,
@@ -4502,6 +4543,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (biometricLock != null) 'biometric_lock': biometricLock,
       if (notifyEnabled != null) 'notify_enabled': notifyEnabled,
       if (notifyAskedAt != null) 'notify_asked_at': notifyAskedAt,
+      if (reminderHour != null) 'reminder_hour': reminderHour,
       if (proUnlock != null) 'pro_unlock': proUnlock,
       if (reportUnlock != null) 'report_unlock': reportUnlock,
       if (entitlementSource != null) 'entitlement_source': entitlementSource,
@@ -4527,6 +4569,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       Value<bool?>? biometricLock,
       Value<bool?>? notifyEnabled,
       Value<DateTime?>? notifyAskedAt,
+      Value<int?>? reminderHour,
       Value<bool>? proUnlock,
       Value<bool>? reportUnlock,
       Value<String?>? entitlementSource,
@@ -4549,6 +4592,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       biometricLock: biometricLock ?? this.biometricLock,
       notifyEnabled: notifyEnabled ?? this.notifyEnabled,
       notifyAskedAt: notifyAskedAt ?? this.notifyAskedAt,
+      reminderHour: reminderHour ?? this.reminderHour,
       proUnlock: proUnlock ?? this.proUnlock,
       reportUnlock: reportUnlock ?? this.reportUnlock,
       entitlementSource: entitlementSource ?? this.entitlementSource,
@@ -4607,6 +4651,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     if (notifyAskedAt.present) {
       map['notify_asked_at'] = Variable<DateTime>(notifyAskedAt.value);
     }
+    if (reminderHour.present) {
+      map['reminder_hour'] = Variable<int>(reminderHour.value);
+    }
     if (proUnlock.present) {
       map['pro_unlock'] = Variable<bool>(proUnlock.value);
     }
@@ -4644,6 +4691,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('biometricLock: $biometricLock, ')
           ..write('notifyEnabled: $notifyEnabled, ')
           ..write('notifyAskedAt: $notifyAskedAt, ')
+          ..write('reminderHour: $reminderHour, ')
           ..write('proUnlock: $proUnlock, ')
           ..write('reportUnlock: $reportUnlock, ')
           ..write('entitlementSource: $entitlementSource, ')
@@ -6414,6 +6462,7 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<bool?> biometricLock,
   Value<bool?> notifyEnabled,
   Value<DateTime?> notifyAskedAt,
+  Value<int?> reminderHour,
   Value<bool> proUnlock,
   Value<bool> reportUnlock,
   Value<String?> entitlementSource,
@@ -6437,6 +6486,7 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<bool?> biometricLock,
   Value<bool?> notifyEnabled,
   Value<DateTime?> notifyAskedAt,
+  Value<int?> reminderHour,
   Value<bool> proUnlock,
   Value<bool> reportUnlock,
   Value<String?> entitlementSource,
@@ -6500,6 +6550,9 @@ class $$SettingsTableTableFilterComposer
 
   ColumnFilters<DateTime> get notifyAskedAt => $composableBuilder(
       column: $table.notifyAskedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reminderHour => $composableBuilder(
+      column: $table.reminderHour, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get proUnlock => $composableBuilder(
       column: $table.proUnlock, builder: (column) => ColumnFilters(column));
@@ -6577,6 +6630,10 @@ class $$SettingsTableTableOrderingComposer
       column: $table.notifyAskedAt,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get reminderHour => $composableBuilder(
+      column: $table.reminderHour,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get proUnlock => $composableBuilder(
       column: $table.proUnlock, builder: (column) => ColumnOrderings(column));
 
@@ -6647,6 +6704,9 @@ class $$SettingsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get notifyAskedAt => $composableBuilder(
       column: $table.notifyAskedAt, builder: (column) => column);
 
+  GeneratedColumn<int> get reminderHour => $composableBuilder(
+      column: $table.reminderHour, builder: (column) => column);
+
   GeneratedColumn<bool> get proUnlock =>
       $composableBuilder(column: $table.proUnlock, builder: (column) => column);
 
@@ -6702,6 +6762,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<bool?> biometricLock = const Value.absent(),
             Value<bool?> notifyEnabled = const Value.absent(),
             Value<DateTime?> notifyAskedAt = const Value.absent(),
+            Value<int?> reminderHour = const Value.absent(),
             Value<bool> proUnlock = const Value.absent(),
             Value<bool> reportUnlock = const Value.absent(),
             Value<String?> entitlementSource = const Value.absent(),
@@ -6724,6 +6785,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             biometricLock: biometricLock,
             notifyEnabled: notifyEnabled,
             notifyAskedAt: notifyAskedAt,
+            reminderHour: reminderHour,
             proUnlock: proUnlock,
             reportUnlock: reportUnlock,
             entitlementSource: entitlementSource,
@@ -6746,6 +6808,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<bool?> biometricLock = const Value.absent(),
             Value<bool?> notifyEnabled = const Value.absent(),
             Value<DateTime?> notifyAskedAt = const Value.absent(),
+            Value<int?> reminderHour = const Value.absent(),
             Value<bool> proUnlock = const Value.absent(),
             Value<bool> reportUnlock = const Value.absent(),
             Value<String?> entitlementSource = const Value.absent(),
@@ -6768,6 +6831,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             biometricLock: biometricLock,
             notifyEnabled: notifyEnabled,
             notifyAskedAt: notifyAskedAt,
+            reminderHour: reminderHour,
             proUnlock: proUnlock,
             reportUnlock: reportUnlock,
             entitlementSource: entitlementSource,

@@ -29,7 +29,7 @@ import '../logic/format.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
-import 'item_form_screen.dart';
+import 'item_form_sheet.dart';
 import 'parts.dart';
 
 class ItemDetailScreen extends StatefulWidget {
@@ -47,11 +47,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   late Future<List<Doc>> _docs = widget.repo.docsForItem(_item.id);
 
   Future<void> _edit() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => ItemFormScreen(repo: widget.repo, existing: _item),
-      ),
-    );
+    await showItemForm(context, repo: widget.repo, existing: _item);
     if (!mounted) return;
 
     // The item may have been deleted rather than edited, in which case there is

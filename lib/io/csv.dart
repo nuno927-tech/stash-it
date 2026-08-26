@@ -16,6 +16,7 @@
 /// sort or total.
 library;
 
+import '../logic/subscriptions.dart';
 import '../logic/warranty.dart';
 import '../models/paper.dart';
 import '../models/subscription.dart';

@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.38.0
+version: 0.41.1
 
 environment:
   sdk: ^3.5.0
@@ -46,8 +46,19 @@ dependencies:
   # see the note in lib/db/open_flutter.dart.
   flutter_secure_storage: ^9.2.2
 
-  # Choosing a .stashit file to restore from.
+  # Choosing a .stashit file to restore from, and a document to attach to an
+  # item.
   file_picker: ^8.1.2
+
+  # Photographing a receipt, and choosing one already taken.
+  #
+  # Separate from file_picker rather than duplicating it: the file picker's
+  # "take a photo" option exists on some devices and silently goes straight to
+  # the gallery on others, which loses the camera entirely. The PWA hit the
+  # same thing with `capture` on an <input> — see the note on DocTiles. A
+  # camera corner that only sometimes opens a camera is worse than not
+  # offering one.
+  image_picker: ^1.1.2
 
   # And handing one back out. The backup goes to the share sheet rather than to
   # Downloads, because the point is that it ends up somewhere that is **not

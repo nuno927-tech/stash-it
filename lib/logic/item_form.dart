@@ -275,3 +275,72 @@ ItemDraft draftOf(Item item) => ItemDraft(
           ),
       ],
     );
+
+/* ------------------------------------------------- the coverage vocabulary */
+
+/*
+  ── Chosen, not typed ───────────────────────────────────────────────────────
+
+  Ported from `COVERAGE_LABELS` in `src/lib/addItem.ts`, in order, because the
+  order is the layout: the first three are the kind of policy it is, the last
+  three are what it does for you, and the form draws them as two rows.
+
+  A free-text box asked people to invent the vocabulary and got back
+  "warranty", "Warranty" and "3yr warr" for the same idea — three different
+  policies as far as any grouping or search is concerned. Six buttons and a
+  Custom escape hatch produce one spelling, and the escape hatch asks properly
+  rather than leaving an empty field in front of everybody who did not need it.
+
+  Six rather than the seven the PWA's array implies: Custom is not a label, it
+  is the way to write one.
+*/
+const List<String> coverageLabels = [
+  'Warranty',
+  'Limited warranty',
+  'Extended warranty',
+  'Parts and labor',
+  'Money back',
+  'Free service',
+];
+
+/// True when the label is something the person wrote rather than one on offer.
+///
+/// Blank counts as one of the offered ones, not a custom name — an untouched
+/// policy has not had anything invented for it yet.
+bool isCustomLabel(String label) {
+  final text = label.trim();
+  return text.isNotEmpty && !coverageLabels.contains(text);
+}
+
+/*
+  ── The quick numbers ───────────────────────────────────────────────────────
+
+  `WARRANTY_PRESETS`, unit for unit. These are not round numbers, they are the
+  numbers actually printed on warranties: 90 days, 18 months, 5 years. A row of
+  10/20/30 would be tidy and would be a number nobody has to enter.
+
+  Lifetime has none, because there is nothing to count.
+*/
+const Map<CoverageUnit, List<int>> coveragePresets = {
+  CoverageUnit.days: [14, 30, 60, 90, 180],
+  CoverageUnit.months: [3, 6, 12, 18, 24],
+  CoverageUnit.years: [1, 2, 3, 5, 10],
+  CoverageUnit.lifetime: [],
+};
+
+/// True when the typed length is not one of the buttons — so the form knows to
+/// show the number it has rather than a row with nothing selected.
+bool isCustomTerm(CoverageUnit unit, String amountText) {
+  final text = amountText.trim();
+  if (text.isEmpty || unit == CoverageUnit.lifetime) return false;
+
+  final amount = int.tryParse(text);
+  return amount == null || !coveragePresets[unit]!.contains(amount);
+}
+
+const Map<CoverageUnit, String> coverageUnitLabels = {
+  CoverageUnit.days: 'Days',
+  CoverageUnit.months: 'Months',
+  CoverageUnit.years: 'Years',
+  CoverageUnit.lifetime: 'Lifetime',
+};

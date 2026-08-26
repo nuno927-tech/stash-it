@@ -30,7 +30,7 @@ import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
 import 'feedback.dart';
-import 'item_form_screen.dart';
+import 'item_form_sheet.dart';
 import 'paper_form_screen.dart';
 import 'sub_form_screen.dart';
 import 'theme.dart';
@@ -96,20 +96,31 @@ class _StashItButtonState extends State<StashItButton>
     setState(() {});
   }
 
+  Future<void> _push(Widget screen) =>
+      Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => screen));
+
   Future<void> _pick(AddKind kind) async {
     feedback(Cue.tap);
     _c.reverse();
     setState(() {});
 
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => switch (kind) {
-          AddKind.item => ItemFormScreen(repo: widget.repo),
-          AddKind.subscription => SubFormScreen(repo: widget.repo),
-          AddKind.paper => PaperFormScreen(repo: widget.repo),
-        },
-      ),
-    );
+    /*
+      The item form is a sheet; the other two are still screens.
+
+      Not an inconsistency worth hiding — an item has five cards and a
+      photograph and the other two have a handful of fields each, so the same
+      container would either crush one or waste the other. The item form is
+      also the one people open most, and a sheet keeps the list they came from
+      visible behind it.
+    */
+    switch (kind) {
+      case AddKind.item:
+        await showItemForm(context, repo: widget.repo);
+      case AddKind.subscription:
+        await _push(SubFormScreen(repo: widget.repo));
+      case AddKind.paper:
+        await _push(PaperFormScreen(repo: widget.repo));
+    }
 
     widget.onDone?.call();
   }

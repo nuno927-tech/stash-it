@@ -20,6 +20,39 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
+        The biometric prompt. Not a runtime permission — the system dialog does
+        the asking — but the app has to declare that it uses one at all, or
+        `canCheckBiometrics` reports false on a phone with a perfectly good
+        fingerprint reader.
+
+        See MainActivity.kt for the other half of this: the prompt is a Fragment
+        and needs an activity that can host one.
+    -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!--
+        Photographing a receipt.
+
+        CAMERA is declared, not requested by us: image_picker hands the job to
+        whatever camera app is installed, which takes the picture under its own
+        permission and returns a file. Android still wants the declaration on
+        an app that fires the intent.
+
+        Deliberately absent: READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE. The
+        photo picker and the document picker both run in their own process and
+        return exactly the file the person chose, so an app that only ever
+        wants one file at a time never needs to be able to read the gallery.
+        Asking for it would be asking to see everything in order to be given
+        one thing — and it is the permission most likely to be questioned in
+        review for an app whose entire pitch is that the data stays put.
+
+        `required="false"` so the app still installs on a device with no
+        camera; the tiles fall back to the file picker there.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!--
         Backup is off, and it has to be.
 
         Android's auto-backup would copy the database to Google Drive and

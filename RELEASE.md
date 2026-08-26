@@ -136,12 +136,44 @@ Console. They need the Google account that their phone uses.
 
 ---
 
-## 5. Still to do before submitting
+## 5. The two URLs that do not resolve yet
+
+Both are written into the app and both currently point at nothing. Neither
+breaks a build, which is exactly why they need a checklist line.
+
+### The Play Store link
+
+`storeUrl` in `lib/ui/settings_tab.dart`, used by **Share Stash it**.
+
+    https://play.google.com/store/apps/details?id=app.stashit
+
+The address is predictable from the application id — `app.stashit`, set in
+`android/app/build.gradle.kts` and permanent after the first publish — so it
+will be correct the moment the listing goes live. Until then every share sends
+somebody to a page that does not exist.
+
+**Check it resolves before the closed test goes out.** Testers are the first
+people who will press that button, and a dead link is what they will remember.
+
+### The privacy policy page
+
+`privacyUrl` in the same file. The policy people read is inside the app —
+Settings → Privacy policy — but Play requires a public URL for the listing, and
+the share text does not currently use this one.
+
+The words to put on that page are in `lib/ui/privacy.dart`. **They are not the
+same as the web app's policy**: there is no push server here and the database is
+encrypted at rest, and the PWA's policy says the opposite of both.
+
+---
+
+## 6. Still to do before submitting
 
 - [x] App icon and launch screen — `dart run flutter_launcher_icons` after any
       change to `assets/icon/`. The 512×512 the Play listing wants is already
       at `assets/icon/play-store-512.png`.
-- [ ] Privacy policy URL
+- [ ] Privacy policy URL — see section 5
+- [ ] `storeUrl` verified to resolve — see section 5
 - [ ] Screenshots from a real device with real data
 - [ ] `flutter build appbundle --release` verified to open, restore and back up
       on a phone that has never had a debug build installed
