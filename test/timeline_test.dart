@@ -210,6 +210,50 @@ void main() {
       expect(whenLabel(Urgency.now, 0), 'now');
     });
 
+    /*
+      ── Two forms of one answer ───────────────────────────────────────────
+
+      The dashboard sets the number large and the unit small, which needs them
+      apart — a column of "14 days" at one size is a column of phrases, and
+      the whole point of it is being compared down the page at a glance.
+
+      Split in the logic rather than in the widget so they cannot drift.
+      Anything `whenParts` says has to reassemble into what `whenLabel` says,
+      which is what this checks rather than checking each in isolation.
+    */
+    test('whenParts reassembles into whenLabel', () {
+      const cases = [
+        (Urgency.overdue, -38),
+        (Urgency.overdue, -1),
+        (Urgency.now, -62),
+        (Urgency.soon, 0),
+        (Urgency.soon, 1),
+        (Urgency.soon, 5),
+        (Urgency.later, 90),
+      ];
+
+      for (final (urgency, days) in cases) {
+        final (big, unit) = whenParts(urgency, days);
+        final joined = unit == null ? big : '$big $unit';
+        expect(joined, whenLabel(urgency, days), reason: '$urgency $days');
+      }
+    });
+
+    /*
+      The wordy cases have no number, and must not pretend to. "now" is a
+      state rather than a duration — see the note on `whenLabel` — and setting
+      it in 21pt digits would be inventing a measurement.
+    */
+    test('and the wordy answers carry no unit', () {
+      expect(whenParts(Urgency.now, -62).$2, isNull);
+      expect(whenParts(Urgency.soon, 0).$2, isNull);
+      expect(whenParts(Urgency.soon, 1).$2, isNull);
+    });
+
+    test('one day late is singular', () {
+      expect(whenParts(Urgency.overdue, -1), ('1', 'day late'));
+    });
+
     test('and a real passport takes that path', () {
       final l = buildTimeline([], [], [paper(id: 'w', holder: 'Nuno')], now);
       expect(l.first.days, lessThan(0), reason: 'the renew-by really has passed');

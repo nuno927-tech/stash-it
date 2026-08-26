@@ -33,6 +33,8 @@ class StashColors extends ThemeExtension<StashColors> {
     required this.slate800,
     required this.slate700,
     required this.slate600,
+    required this.card,
+    required this.field,
     required this.line,
     required this.gold,
     required this.moss,
@@ -58,6 +60,28 @@ class StashColors extends ThemeExtension<StashColors> {
   final Color slate800;
   final Color slate700;
   final Color slate600;
+
+  /*
+    ── Card and field, and why they are not slate700 and slate800 ────────────
+
+    Every card in the app was `slate700` with a hairline border round it, and
+    every field inside one was `slate800`. Three separate devices — a fill, an
+    outline and a shadow — all saying the same thing, which is why the borders
+    could come off without anything looking unfinished.
+
+    Taking the outline away leaves the fill doing the work alone, so the fill
+    has to be worth looking at. `card` is one step brighter than `slate700` and
+    `field` one step darker than the page, which turns the pair into a raised
+    thing with a recess in it. That reads at arm's length; a 4% difference with
+    a 12%-white line around it does not.
+
+    Separate tokens rather than retuning `slate700` because that colour is also
+    the sheet background, the bin rows and the segmented control's track, and
+    those want to stay where they are.
+  */
+  final Color card;
+  final Color field;
+
   final Color line;
 
   /// Brand, and the three warranty states.
@@ -127,6 +151,8 @@ const StashColors _dark = StashColors(
   slate800: Color(0xFF15181D),
   slate700: Color(0xFF1F242B),
   slate600: Color(0xFF2C333C),
+  card: Color(0xFF232932),
+  field: Color(0xFF12151A),
   line: Color(0xFF39414B),
   gold: Color(0xFFF2B33D),
   moss: Color(0xFF5FBF7E),
@@ -161,6 +187,11 @@ const StashColors _light = StashColors(
   slate800: Color(0xFFFFFFFF),
   slate700: Color(0xFFF1EFE9),
   slate600: Color(0xFFE4E1D8),
+  // Paper inverts the trick: the card is the white one and the field is the
+  // tint, because on a light theme a recess is darker than what surrounds it
+  // and a raised thing is lighter.
+  card: Color(0xFFFFFFFF),
+  field: Color(0xFFF4F2ED),
   line: Color(0xFFD5D1C6),
   gold: Color(0xFF9A6B0F),
   moss: Color(0xFF2F7D4F),
@@ -218,11 +249,23 @@ List<BoxShadow> cardShadow(StashColors c, {required bool dark}) => [
       ),
     ];
 
-/// Radii, from the `:root` block of tokens.css.
+/*
+  ── Radii ───────────────────────────────────────────────────────────────────
+
+  These came from the `:root` block of tokens.css, which was written for a web
+  app in a browser window. On a phone the app is the whole screen and the only
+  frame is the handset's own rounded corner, which is nearer 44 than 22 — a
+  card at 22 inside a screen at 44 reads as a slightly-softened rectangle
+  rather than as something that belongs to the device.
+
+  Raised across the board, and the ratio between them kept: a field inside a
+  card should be visibly rounder than a box, and visibly less round than the
+  card holding it.
+*/
 class Radii {
-  static const double lg = 22;
-  static const double md = 16;
-  static const double sm = 12;
+  static const double lg = 26;
+  static const double md = 18;
+  static const double sm = 14;
   static const double pill = 99;
 }
 
@@ -241,6 +284,56 @@ class Radii {
 const String fontDisplay = 'BricolageGrotesque';
 const String fontBody = 'Inter';
 const String fontMono = 'JetBrainsMono';
+
+/*
+  ── The scale ───────────────────────────────────────────────────────────────
+
+  Everything on a card used to sit between 11.5 and 15, at weights 500 to 700 —
+  a label, its value and a hint underneath were within two points of each
+  other. Nothing was wrong with any single one, and the effect of all of them
+  together was a screen with no hierarchy: the eye has nowhere to land, so it
+  reads top to bottom like a form rather than jumping to the answer.
+
+  Three roles, deliberately far apart:
+
+    Field   11, tracked out, uppercase, muted. Small enough that it reads as
+            an annotation on the value rather than as a thing to read.
+    Figure  22, display face, negative tracking. Big enough to be the thing
+            you see first.
+    Hint    12.5, muted, and nothing else on a card is this size.
+
+  A tracked-out uppercase label at 11 is legible where 13.5 sentence case was
+  merely small — capitals have no descenders and letterspacing buys back what
+  the size costs. It is also the one typographic move that unmistakably says
+  "this is a label", which is what lets the value grow without the pair
+  becoming ambiguous.
+*/
+TextStyle fieldLabelStyle(StashColors c) => TextStyle(
+      fontFamily: fontBody,
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.75,
+      color: c.muted,
+    );
+
+/// The answer to a labelled field. Display face, because at this size Inter
+/// starts to look like a paragraph and Bricolage looks like a number.
+TextStyle figureStyle(StashColors c, {double size = 22}) => TextStyle(
+      fontFamily: fontDisplay,
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.45,
+      height: 1.15,
+      color: c.text,
+    );
+
+/// The sentence under a control that explains it.
+TextStyle hintStyle(StashColors c) => TextStyle(
+      fontFamily: fontBody,
+      fontSize: 12.5,
+      height: 1.45,
+      color: c.muted,
+    );
 
 ThemeData stashTheme({required bool dark}) {
   final c = dark ? _dark : _light;
@@ -353,13 +446,17 @@ ThemeData stashTheme({required bool dark}) {
       `hairline` and `sheen` tokens are written about.
     */
     cardTheme: CardThemeData(
-      color: c.slate700,
+      color: c.card,
       elevation: 0,
       margin: EdgeInsets.zero,
       shadowColor: Colors.transparent,
+      /*
+        No side. The hairline was doing the job the fill should be doing, and
+        an outline plus a shadow plus a fill is three ways of saying the same
+        thing — see the note on `card`.
+      */
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.lg),
-        side: BorderSide(color: c.hairline),
       ),
     ),
 

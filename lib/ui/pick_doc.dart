@@ -13,9 +13,121 @@ import 'package:image_picker/image_picker.dart';
 
 import '../logic/attachments.dart';
 import '../models/types.dart';
-import 'doc_tiles.dart';
 import 'feedback.dart';
+import 'form_sheet_parts.dart';
 import 'theme.dart';
+
+enum PickSource { camera, files, remove }
+
+/*
+  ── Asked after the tap, not aimed at before it ─────────────────────────────
+
+  Both the item's photograph and the six attachment tiles used to be split
+  controls: a body that opened the file picker and a fifteen-pixel corner that
+  opened the camera. Seven of them on one form, fourteen tap targets, and no
+  way to tell from looking which half of a tile you were about to hit.
+
+  One target each now, and this asks afterwards. That is also the honest order
+  — the decision is "file a receipt", and where the bytes come from is a detail
+  of that.
+
+  `image_picker` rather than trusting the file picker's own "take a photo": it
+  exists on some devices and goes straight to the gallery on others, which
+  loses the camera entirely on exactly the phones where photographing a receipt
+  is the only way it would ever get filed.
+*/
+Future<PickSource?> askPickSource(
+  BuildContext context, {
+  required String title,
+
+  /// Offered only when there is something to take away. A greyed-out row is a
+  /// row you still have to read.
+  bool canRemove = false,
+  String removeLabel = 'Remove it',
+  String removeNote = 'Everything else is kept',
+}) {
+  final c = StashColors.of(context);
+
+  Widget row(IconData icon, String label, String note, PickSource value, Color ink) {
+    return InkWell(
+      onTap: () {
+        feedback(Cue.tap);
+        Navigator.of(context).pop(value);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: ink),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    note,
+                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  return showModalBottomSheet<PickSource>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    backgroundColor: c.slate700,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+    ),
+    builder: (context) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontFamily: fontDisplay,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: c.text,
+              ),
+            ),
+          ),
+          row(Icons.photo_camera_outlined, 'Take a photo', 'Opens the camera',
+              PickSource.camera, c.text),
+          Container(height: 1, color: c.line),
+          row(Icons.folder_outlined, 'Choose a file', 'Something already on this phone',
+              PickSource.files, c.text),
+          if (canRemove) ...[
+            Container(height: 1, color: c.line),
+            row(Icons.delete_outline, removeLabel, removeNote, PickSource.remove, c.ember),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}
 
 /*
   ── Read here, not by the picker ────────────────────────────────────────────
@@ -28,8 +140,8 @@ import 'theme.dart';
   A receipt is small enough that it would never have hit that. A forty-page
   scanned manual is not, and the two arrive through the same tile.
 */
-Future<List<PendingDoc>> pickDocs(DocKind kind, DocSource source) async {
-  if (source == DocSource.camera) return _photograph(kind);
+Future<List<PendingDoc>> pickDocs(DocKind kind, PickSource source) async {
+  if (source == PickSource.camera) return _photograph(kind);
 
   final picked = await FilePicker.platform.pickFiles(allowMultiple: true);
   final files = picked?.files ?? const <PlatformFile>[];
@@ -137,29 +249,13 @@ Future<PendingDoc?> askForLink(BuildContext context) async {
             autofocus: true,
             keyboardType: TextInputType.url,
             style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration: InputDecoration(
-              hintText: 'example.com/my-receipt',
-              filled: true,
-              fillColor: c.slate600,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            decoration: sunkenInput(hint: 'example.com/my-receipt', fill: c.slate600),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: title,
             style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration: InputDecoration(
-              hintText: 'What to call it (optional)',
-              filled: true,
-              fillColor: c.slate600,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            decoration: sunkenInput(hint: 'What to call it (optional)', fill: c.slate600),
           ),
           const SizedBox(height: 18),
           FilledButton(

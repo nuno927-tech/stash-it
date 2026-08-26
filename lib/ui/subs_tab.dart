@@ -23,6 +23,7 @@ import 'parts.dart';
 import 'renewal_calendar.dart';
 import 'scout.dart';
 import 'service_mark.dart';
+import 'status_pill.dart';
 import 'spend_line.dart';
 import 'sub_form_sheet.dart';
 import 'swipe_to_delete.dart';
@@ -292,7 +293,7 @@ class _Tile extends StatelessWidget {
       decoration: BoxDecoration(
         color: lead ? c.washGoldSoft : c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: lead ? c.washGoldLine : c.hairline),
+        border: Border.all(color: lead ? c.washGoldLine : Colors.transparent),
         boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
@@ -373,6 +374,14 @@ class _SubTile extends StatelessWidget {
     final due = reminderDue(sub);
     final monthly = monthlyCents(sub);
 
+    /*
+      A subscription has only two states worth colouring: renewing inside its
+      reminder window, or not. There is no "overdue" — the money leaves
+      whether anybody was told or not, which is the whole reason the reminder
+      is off by default. See the note on `remindDays`.
+    */
+    final status = due ? StashStatus.soon : StashStatus.settled;
+
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -382,6 +391,9 @@ class _SubTile extends StatelessWidget {
           // See the note on `charged` — the list keeping its order is what
           // makes the highlight readable as an answer rather than a reshuffle.
           color: lit ? c.washGoldSoft : c.slate800,
+          // The calendar's own highlight wins when both apply: the person
+          // tapped a day and is looking for that answer, not this one.
+          gradient: lit ? null : statusWash(c, status),
           border: Border(bottom: BorderSide(color: c.slate700)),
         ),
         child: Row(
@@ -408,21 +420,34 @@ class _SubTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: fontBody,
-                      fontSize: 14.5,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w600,
+                      letterSpacing: -0.15,
                       color: c.text,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    at == null
-                        ? 'No renewal date'
-                        : '${cadenceLabel[sub.cadence]} · ${_ordinal(at.day)}',
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 11.5,
-                      color: due ? c.honey : c.muted,
-                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (due) ...[
+                        const StatusPill(status: StashStatus.soon, label: 'Renewing'),
+                        const SizedBox(width: 7),
+                      ],
+                      Flexible(
+                        child: Text(
+                          at == null
+                              ? 'No renewal date'
+                              : '${cadenceLabel[sub.cadence]} · ${_ordinal(at.day)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: fontBody,
+                            fontSize: 11.5,
+                            color: c.muted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -434,12 +459,19 @@ class _SubTile extends StatelessWidget {
                 Text(
                   '${currencySymbol(sub.currency)}'
                   '${(sub.amountCents / 100).toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontFamily: fontBody,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: c.text,
-                  ),
+                  /*
+                    Gold, like the countdown on the dashboard's "Coming up".
+
+                    Three lists, three right-hand columns, and each was picking
+                    its own colour: this one was plain text, the timeline was
+                    gold, the documents tab was muted grey. They all answer the
+                    same shape of question — "here is the number for this row"
+                    — so they read as one idea now rather than three.
+
+                    The display face at 18 against the name's 15.5 — see the
+                    scale note in theme.dart.
+                  */
+                  style: figureStyle(c, size: 18).copyWith(color: c.gold),
                 ),
                 // The monthly equivalent, but only when the cadence is not
                 // monthly. Printing "$15.50/mo" under a monthly charge of

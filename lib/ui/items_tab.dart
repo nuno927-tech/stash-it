@@ -30,11 +30,50 @@ import 'notify_offer_dialog.dart';
 import 'parts.dart';
 import 'room_icon.dart';
 import 'scout.dart';
+import 'status_pill.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
 import 'undo_bar.dart';
 import 'thumb.dart';
 import 'warranty_ring.dart';
+
+/// Which slice of the collection the list is showing.
+///
+/// **Null is the fourth state and the default**: everything except lapsed.
+/// Named states are exclusive slices — only lapsed, or only the ones with no
+/// term entered — and tapping the chip that is already on returns to null.
+///
+/// ── What this replaced, and what it gave up ───────────────────────────────
+/// Two independent booleans, `_showLapsed` and `_onlyNoTerm`, which between
+/// them could express "everything including lapsed" — a view that has quietly
+/// gone. It was the least useful of the four: a list sorted by what expires
+/// soonest with every dead warranty mixed back into it is the pile the sort
+/// exists to unmake.
+///
+/// What it buys is that the dashboard can now say "lapsed" and mean it. A
+/// figure that reads 6 has to land on six rows; landing on the whole list
+/// with six of them somewhere in it is a link that technically worked.
+enum ItemFilter { lapsed, noTerm }
+
+/*
+  ── Third notifier of this shape ────────────────────────────────────────────
+
+  `pendingLink` carries a notification tap, `settingsJump` carries the
+  dashboard's backup line, and this carries a dashboard figure. All three
+  exist because the widget that knows where to go and the widget that can go
+  there are two tabs apart with a shell between them.
+
+  Three is the point at which this should become one mechanism rather than
+  three notifiers with three sets of the same listener-plus-post-frame
+  boilerplate. It has not been done here because it is a refactor and this is
+  a feature, but it is now overdue rather than hypothetical.
+
+  Set before the tab changes, so — as with the other two — a listener alone is
+  not enough. A `ValueNotifier` does not replay to somebody who was not
+  listening when it was written, and the Items tab is often built for the
+  first time a frame AFTER the value is set.
+*/
+final ValueNotifier<ItemFilter?> itemsFilter = ValueNotifier<ItemFilter?>(null);
 
 class ItemsTab extends StatefulWidget {
   const ItemsTab({required this.repo, super.key});
@@ -64,23 +103,19 @@ class _ItemsTabState extends State<ItemsTab> {
   _Sort _sort = _Sort.expiry;
 
   /*
-    Lapsed hidden by default.
+    Null by default, which means lapsed is hidden.
 
     A collection accumulates dead warranties for ever — they never leave, and
-    on a list sorted by what expires soonest they all pile up at the bottom
-    where they push the live ones off the screen. The toggle says what tapping
-    it DOES rather than what is currently true: as a state — "Lapsed shown" —
-    it read as a label, and you had to work out the inverse to know what would
-    happen.
-  */
-  bool _showLapsed = false;
+    on a list sorted by what expires soonest they pile up at the bottom where
+    they push the live ones off the screen. So the default view is the live
+    one, and lapsed is a place you go deliberately.
 
-  /// The one filter kept from the port's own chip row.
-  ///
-  /// It survives because it answers a question the sorts cannot: "what have I
-  /// not finished entering". The four it replaced — All, Ending soon, Covered,
-  /// Lapsed — were all restatements of the order the list is already in.
-  bool _onlyNoTerm = false;
+    The chips say what they select rather than what tapping them does. "Show
+    Lapsed 12" / "Hide Lapsed 12" was a button label pretending to be a filter,
+    and it could not express the state the dashboard needs — only lapsed, and
+    nothing else.
+  */
+  ItemFilter? _filter;
 
   /*
     ── Room grouping, and the setting that was inert without it ─────────────
@@ -99,6 +134,29 @@ class _ItemsTabState extends State<ItemsTab> {
   void initState() {
     super.initState();
     _readRooms();
+
+    // Listener AND one read now, for the reason in the note on `itemsFilter`.
+    itemsFilter.addListener(_takeFilter);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeFilter());
+  }
+
+  @override
+  void dispose() {
+    itemsFilter.removeListener(_takeFilter);
+    super.dispose();
+  }
+
+  /// Takes whatever the dashboard left, and clears it.
+  ///
+  /// Cleared by the reader rather than the writer, the same rule `pendingLink`
+  /// follows: a value set a frame before this widget exists has to survive
+  /// until somebody has actually acted on it.
+  void _takeFilter() {
+    final wanted = itemsFilter.value;
+    if (wanted == null || !mounted) return;
+
+    itemsFilter.value = null;
+    setState(() => _filter = wanted);
   }
 
   List<Room> _rooms = const [];
@@ -134,13 +192,20 @@ class _ItemsTabState extends State<ItemsTab> {
 
         final lapsed = all.where((i) => warrantyState(i) == WarrantyState.expired).length;
 
-        var shown = all;
-        if (_onlyNoTerm) {
-          shown = shown.where((i) => warrantyState(i) == WarrantyState.unknown).toList();
-        }
-        if (!_showLapsed) {
-          shown = shown.where((i) => warrantyState(i) != WarrantyState.expired).toList();
-        }
+        /*
+          One switch, four outcomes, and the default is the one with no chip
+          lit. Written as a switch rather than a chain of ifs so the states
+          cannot overlap — the previous pair of booleans allowed "only no-term
+          AND lapsed hidden", which is a filter combination nobody chose and
+          nothing on screen explained.
+        */
+        var shown = switch (_filter) {
+          ItemFilter.lapsed =>
+            all.where((i) => warrantyState(i) == WarrantyState.expired).toList(),
+          ItemFilter.noTerm =>
+            all.where((i) => warrantyState(i) == WarrantyState.unknown).toList(),
+          null => all.where((i) => warrantyState(i) != WarrantyState.expired).toList(),
+        };
 
         /*
           Search runs over the whole collection, not the filtered view, and it
@@ -305,7 +370,7 @@ class _ItemsTabState extends State<ItemsTab> {
           // A pill, like the chips under it. A square field above a row of
           // rounded buttons reads as two different kinds of control.
           borderRadius: BorderRadius.circular(Radii.pill),
-          border: Border.all(color: c.hairline),
+          
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
@@ -334,46 +399,73 @@ class _ItemsTabState extends State<ItemsTab> {
     );
   }
 
+  /*
+    ── Two rows, and they are two rows because they are two questions ────────
+
+    All six chips were in one `Wrap` and fell into three ragged lines, with
+    "No term" stranded on the third by itself — which read as an afterthought
+    rather than as the pair it belongs to.
+
+    They are now two explicit rows, and the split is not cosmetic: the top row
+    answers "in what order", the bottom answers "which ones". Sorts are
+    exclusive and one is always on. Filters are exclusive of each other and
+    can all be off, which is the default view — so tapping a lit filter turns
+    it off rather than doing nothing, and that is the whole reason the
+    dashboard can link here at all.
+  */
   Widget _chips(int lapsed, StashColors c) {
+    void pick(ItemFilter f) {
+      feedback(Cue.tap);
+      setState(() => _filter = _filter == f ? null : f);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(left: 16),
-      child: Wrap(
-        spacing: 7,
-        runSpacing: 7,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final sort in _Sort.values)
-            _Chip(
-              label: _sortLabel[sort]!,
-              on: _sort == sort,
-              onTap: () {
-                feedback(Cue.tap);
-                setState(() => _sort = sort);
-              },
-            ),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final sort in _Sort.values)
+                _Chip(
+                  label: _sortLabel[sort]!,
+                  on: _sort == sort,
+                  onTap: () {
+                    feedback(Cue.tap);
+                    setState(() => _sort = sort);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              /*
+                Offered only when there is something to look at. A filter for a
+                category you own nothing in is a control that does nothing,
+                sitting where a useful one could be — and tapping it would give
+                an empty screen as the answer to a question with no wrong
+                answer.
+              */
+              if (lapsed > 0)
+                _Chip(
+                  label: 'Lapsed $lapsed',
+                  on: _filter == ItemFilter.lapsed,
+                  tone: c.ember,
+                  onTap: () => pick(ItemFilter.lapsed),
+                ),
 
-          /*
-            Offered only when there is something to hide. A toggle for a
-            category you own nothing in is a control that does nothing, sitting
-            where a useful one could be.
-          */
-          if (lapsed > 0)
-            _Chip(
-              label: _showLapsed ? 'Hide Lapsed $lapsed' : 'Show Lapsed $lapsed',
-              on: !_showLapsed,
-              onTap: () {
-                feedback(Cue.tap);
-                setState(() => _showLapsed = !_showLapsed);
-              },
-            ),
-
-          _Chip(
-            label: 'No term',
-            on: _onlyNoTerm,
-            tone: c.line,
-            onTap: () {
-              feedback(Cue.tap);
-              setState(() => _onlyNoTerm = !_onlyNoTerm);
-            },
+              _Chip(
+                label: 'No term',
+                on: _filter == ItemFilter.noTerm,
+                tone: c.line,
+                onTap: () => pick(ItemFilter.noTerm),
+              ),
+            ],
           ),
         ],
       ),
@@ -716,7 +808,7 @@ class _BinLink extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Radii.md),
-                  border: Border.all(color: c.hairline),
+                  
                 ),
                 child: Row(
                   children: [
@@ -802,15 +894,30 @@ class _ItemTile extends StatelessWidget {
     */
     final second = coverSummary(item) ?? _subtitle(item, state, end);
 
+    final status = switch (state) {
+      WarrantyState.expired => StashStatus.overdue,
+      WarrantyState.endingSoon => StashStatus.soon,
+      WarrantyState.unknown => StashStatus.unknown,
+      _ => StashStatus.settled,
+    };
+
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-        // A hairline between rows rather than nothing. Twenty-five rows of
-        // photograph, name and number with no rule between them read as one
-        // block of texture — the line is what makes each one a row.
+        padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+        /*
+          A hairline between rows rather than nothing. Twenty-five rows of
+          photograph, name and number with no rule between them read as one
+          block of texture — the line is what makes each one a row.
+
+          The wash sits on top of the fill and fades out by the middle, so the
+          name and the countdown stay on the page colour where they are
+          legible. Nothing is drawn for a covered item: green on thirty-eight
+          rows is wallpaper, not good news. See status_pill.dart.
+        */
         decoration: BoxDecoration(
           color: c.slate800,
+          gradient: statusWash(c, status),
           border: Border(bottom: BorderSide(color: c.slate700)),
         ),
         child: Row(
@@ -830,19 +937,36 @@ class _ItemTile extends StatelessWidget {
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    // 15.5 against the 11.5 underneath it. They were 14.5 and
+                    // 12 — near enough that neither was clearly the name.
                     style: TextStyle(
                       fontFamily: fontBody,
-                      fontSize: 14.5,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w600,
+                      letterSpacing: -0.15,
                       color: c.text,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    second,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (status != StashStatus.settled) ...[
+                        StatusPill(status: status, label: _word(status)),
+                        const SizedBox(width: 7),
+                      ],
+                      Flexible(
+                        child: Text(
+                          second,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: fontBody,
+                            fontSize: 11.5,
+                            color: c.muted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -858,6 +982,16 @@ class _ItemTile extends StatelessWidget {
       ),
     );
   }
+
+  /// One word for the pill. Not the same words as the sentence beside it —
+  /// "Lapsed" next to "Cover ended 4 March" says the state and then the date,
+  /// where repeating "Cover ended" twice would say nothing twice.
+  String _word(StashStatus status) => switch (status) {
+        StashStatus.overdue => 'Lapsed',
+        StashStatus.soon => 'Ending',
+        StashStatus.unknown => 'No term',
+        StashStatus.settled => 'Covered',
+      };
 
   String _subtitle(Item item, WarrantyState state, DateTime? end) {
     if (state == WarrantyState.unknown) return 'No warranty length recorded';

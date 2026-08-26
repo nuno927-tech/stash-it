@@ -456,6 +456,27 @@ class Repository {
   /// phone's relationship with its own notification tray. Both columns move
   /// together: enabling without recording the ask would leave the offer dialog
   /// waiting to fire again.
+  /*
+    ── Writing the unlock, and why it gets its own door ────────────────────
+
+    Same reason as `setNotify`, and the reason matters more here. A restore
+    goes through `saveSettings`, and `settingsToRow` structurally cannot write
+    the entitlement columns — so a `.stashit` file cannot carry an unlock into
+    a phone that has not bought one. That is not a policy check that could be
+    forgotten; it is that the function has no way to express it.
+
+    This is the only path in. It takes the source Play reported rather than
+    inventing one, so a row that says `play` was written by a purchase and a
+    row that says anything else was not.
+  */
+  Future<void> grantUnlock(String source) => db.update(db.settingsTable).write(
+        SettingsTableCompanion(
+          proUnlock: const Value(true),
+          entitlementSource: Value(source),
+          entitlementVerifiedAt: Value(DateTime.now()),
+        ),
+      );
+
   Future<void> setNotify({required bool enabled, DateTime? askedAt}) =>
       db.update(db.settingsTable).write(
             SettingsTableCompanion(
@@ -475,8 +496,8 @@ class Repository {
   ///
   /// The check is not paranoia. Deleting frees a slot the moment you do it, so
   /// an unchecked restore is a hole you could drive the whole tier through:
-  /// fill up, delete the lot, fill up again, restore the lot. Fifty items on a
-  /// twenty-five item tier, by pressing undo.
+  /// fill up, delete the lot, fill up again, restore the lot. Forty things on
+  /// a twenty-thing tier, by pressing undo.
   ///
   /// Nothing is lost when it refuses. The item stays in the bin and its own
   /// countdown is the only thing that can remove it.

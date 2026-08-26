@@ -218,7 +218,7 @@ void main() {
 
       final back = paperOf(row);
       expect(back.kind, PaperKind.licence);
-      expect(kindLabel[back.kind], 'Driving license');
+      expect(kindLabel[back.kind], 'Drivers license');
       expect(back.holder, 'Nuno');
       expect(back.leadDays, 60);
       expect(renewBy(back), DateTime(2027, 3, 2));

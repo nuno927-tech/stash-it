@@ -17,6 +17,7 @@
 library;
 
 import 'package:stash_it/logic/dates.dart';
+import 'package:stash_it/logic/deep_link.dart';
 import 'package:stash_it/logic/reminders.dart';
 import 'package:stash_it/logic/warranty.dart';
 import 'package:stash_it/models/paper.dart';
@@ -170,16 +171,44 @@ void main() {
   });
 
   group('the words', () {
-    test('one thing is named, and says where to look', () {
-      final n = compose(['Passport — Nuno']);
+    Due due(String label, [String why = 'expires Feb 11']) =>
+        Due(label, why, const DeepLink.home());
+
+    test('one thing is named, and says what is happening to it', () {
+      final n = compose([due('Passport — Nuno', 'expires Feb 11')]);
       expect(n.title, 'Passport — Nuno');
-      expect(n.body, 'Needs a look in Stash it.');
+      // It used to say "Needs a look in Stash it." on every single one. See
+      // the note on `compose` for why the detail can live here now.
+      expect(n.body, 'Expires Feb 11.');
     });
 
     test('two are counted and both named', () {
-      final n = compose(['Inspection — Golf', 'Passport — Nuno']);
+      final n = compose([due('Inspection — Golf'), due('Passport — Nuno')]);
       expect(n.title, '2 things need you');
       expect(n.body, 'Inspection — Golf and Passport — Nuno');
+    });
+
+    /*
+      ── The expanded body is where the detail goes ────────────────────────
+
+      Collapsed is one truncated line and has to survive being cut off.
+      Expanded is what somebody sees after deliberately pulling the
+      notification down, which is a different audience: whoever is holding
+      the phone.
+    */
+    test('and the expanded body lists every one with its reason', () {
+      final n = compose([
+        due('Inspection — Golf', 'expires Mar 2'),
+        due('Passport — Nuno', 'expires Feb 11'),
+      ]);
+
+      expect(n.detail, 'Inspection — Golf · expires Mar 2\n'
+          'Passport — Nuno · expires Feb 11');
+    });
+
+    test('a single one expands too, rather than repeating its own title', () {
+      final n = compose([due('Passport — Nuno', 'expires Feb 11')]);
+      expect(n.detail, 'Passport — Nuno · expires Feb 11');
     });
 
     /*
@@ -188,12 +217,15 @@ void main() {
       more" deliberately.
     */
     test('five are two and a count', () {
-      expect(compose(['E', 'D', 'C', 'B', 'A']).body, 'A, B and 3 more');
+      expect(
+        compose([due('E'), due('D'), due('C'), due('B'), due('A')]).body,
+        'A, B and 3 more',
+      );
     });
 
     test('sorted, so the same day reads the same twice', () {
-      expect(compose(['B', 'A']).body, compose(['A', 'B']).body);
-      expect(compose(['B', 'A']).body, 'A and B');
+      expect(compose([due('B'), due('A')]).body, compose([due('A'), due('B')]).body);
+      expect(compose([due('B'), due('A')]).body, 'A and B');
     });
 
     test('and an empty day still has something to say', () {
@@ -203,11 +235,6 @@ void main() {
       expect(compose([]).title, isNotEmpty);
     });
 
-    /*
-      NAMES, NOT DETAIL. A lock screen is readable by anyone holding the phone,
-      so the notification says which thing and not what about it. Everything
-      else is one tap into an app that can ask for a fingerprint first.
-    */
     test('a document is named with its holder', () {
       final s = reminderSchedule(
         [],
@@ -218,14 +245,85 @@ void main() {
       expect(s.first.title, 'Passport — Nuno');
     });
 
-    test('and carries no date in the text', () {
+    /*
+      ── This test used to assert the opposite ─────────────────────────────
+
+      It checked that no digit appeared anywhere in the notification, because
+      the design said names and nothing else — a lock screen is readable by
+      anybody holding the phone.
+
+      That reasoning was right about the lock screen and wrong about
+      everything else: it also stripped the detail from the notification shade
+      on an UNLOCKED phone, where nobody but the owner is looking. The lock
+      screen is handled by `NotificationVisibility.private` now, which is what
+      should have been doing the job all along; vaguer text was standing in
+      for a setting.
+
+      So the assertion inverts: the date has to be there.
+    */
+    test('and says when, now that the lock screen is redacted properly', () {
       final s = reminderSchedule(
         [],
         [],
         [paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno')],
         now,
       );
-      expect(RegExp(r'\d').hasMatch(s.first.title + s.first.body), isFalse);
+
+      expect(s.first.body, contains('Oct'));
+      expect(s.first.detail, contains('Passport — Nuno'));
+      expect(s.first.detail, contains('Oct'));
+    });
+  });
+
+  /*
+    ── Where the tap lands ───────────────────────────────────────────────────
+
+    A day holding one record can open that record. A day holding four cannot:
+    the notification is a summary, and opening the alphabetically-first of them
+    would be arbitrary in a way somebody would notice — it was named first for
+    a reason that has nothing to do with which one they care about.
+  */
+  group('where a reminder points', () {
+    test('a lone record on a day opens that record', () {
+      final s = reminderSchedule(
+        [],
+        [],
+        [paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno')],
+        now,
+      );
+
+      final link = parseLink(s.first.payload);
+      expect(link?.kind, LinkKind.paper);
+      expect(link?.id, isNotEmpty);
+    });
+
+    test('a day with several opens the dashboard', () {
+      // Two documents sharing a start date.
+      final s = reminderSchedule(
+        [],
+        [],
+        [
+          paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno'),
+          paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Ana'),
+        ],
+        now,
+      );
+
+      expect(s, hasLength(1), reason: 'same day, so one notification');
+      expect(parseLink(s.first.payload), const DeepLink.home());
+    });
+
+    test('and every wake carries something readable', () {
+      final s = reminderSchedule(
+        [warranted('Headphones', 24, 690)],
+        [sub(name: 'Netflix', remindDays: 3)],
+        [paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno')],
+        now,
+      );
+
+      for (final wake in s) {
+        expect(parseLink(wake.payload), isNotNull, reason: wake.on);
+      }
     });
   });
 

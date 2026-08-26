@@ -175,11 +175,12 @@ void main() {
 
   group('naming from the tile', () {
     test('a tile names itself', () {
-      expect(renameForKind(PaperKind.licence, '', PaperKind.passport), 'Driving license');
+      expect(renameForKind(PaperKind.licence, '', PaperKind.passport), 'Drivers license');
     });
 
     test('and replaces the previous tile’s name', () {
-      expect(renameForKind(PaperKind.licence, 'Passport', PaperKind.passport), 'Driving license');
+      expect(
+          renameForKind(PaperKind.licence, 'Passport', PaperKind.passport), 'Drivers license');
     });
 
     /*

@@ -20,7 +20,9 @@ import '../models/paper.dart';
 import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
-import 'paper_form_screen.dart';
+import 'paper_form_sheet.dart';
+import 'paper_icon.dart';
+import 'status_pill.dart';
 import 'parts.dart';
 import 'scout.dart';
 import 'swipe_to_delete.dart';
@@ -110,11 +112,7 @@ class _PapersTabState extends State<PapersTab> {
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
   Future<void> open(Paper? paper) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => PaperFormScreen(repo: widget.repo, existing: paper),
-      ),
-    );
+    await showPaperForm(context, repo: widget.repo, existing: paper);
     if (!mounted) return;
     setState(() {});
     await maybeOfferNotifications(context, widget.repo);
@@ -304,7 +302,7 @@ class _Tile extends StatelessWidget {
         decoration: BoxDecoration(
           color: tone == null ? c.slate700 : c.washGoldSoft,
           borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(color: tone == null ? c.hairline : c.washGoldLine),
+          border: Border.all(color: tone == null ? Colors.transparent : c.washGoldLine),
           boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
         ),
         child: Column(
@@ -391,6 +389,12 @@ class _PaperTile extends StatelessWidget {
     final holder = paper.holder?.trim();
     final acts = state != PaperState.valid;
 
+    final status = switch (state) {
+      PaperState.expired => StashStatus.overdue,
+      PaperState.renew => StashStatus.soon,
+      PaperState.valid => StashStatus.settled,
+    };
+
     final body = Row(
       children: [
         /*
@@ -401,11 +405,15 @@ class _PaperTile extends StatelessWidget {
         Container(
           width: 36,
           height: 36,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: acts ? tone : Colors.transparent, width: 2),
           ),
-          child: Icon(Icons.description_outlined, size: 18, color: tone),
+          // The kind's own mark, not the same sheet of paper thirteen times.
+          // A passport, a paw and a car are told apart before the label under
+          // them is read, which is the whole reason a list has icons.
+          child: PaperGlyph(paper.kind, color: tone, size: 19),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -421,29 +429,63 @@ class _PaperTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: fontBody,
-                  fontSize: 14.5,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.15,
                   color: c.text,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _line(state, expiry, start),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: fontBody,
-                  fontSize: 11.5,
-                  color: acts ? tone : c.muted,
-                ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  if (acts) ...[
+                    StatusPill(
+                      status: status,
+                      // "Expired" and "Renew" — the state, where the sentence
+                      // beside it carries the date. Saying both twice would be
+                      // saying nothing twice.
+                      label: state == PaperState.expired ? 'Expired' : 'Renew',
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  Flexible(
+                    child: Text(
+                      _line(state, expiry, start),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 11.5,
+                        color: c.muted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
         const SizedBox(width: 8),
+        /*
+          The kind, in the same gold as the other two lists' right-hand
+          columns. It is not a number, but it is the same slot answering the
+          same shape of question, and a muted 11pt label in the place where
+          the other two screens put their answer read as a leftover.
+        */
         Text(
           kindLabel[paper.kind]!,
-          style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+          textAlign: TextAlign.right,
+          // The display face, like every other right-hand answer in the app —
+          // the item countdown, the subscription amount, the timeline's
+          // number. Inter was the odd one out in a column that is meant to
+          // read as the same thing four times.
+          style: TextStyle(
+            fontFamily: fontDisplay,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+            color: c.gold,
+          ),
         ),
       ],
     );
@@ -461,7 +503,7 @@ class _PaperTile extends StatelessWidget {
       return InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
+          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
           decoration: BoxDecoration(
             color: lit ? c.washGoldSoft : c.slate800,
             border: Border(bottom: BorderSide(color: c.slate700)),
@@ -480,10 +522,17 @@ class _PaperTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(Radii.md),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(11),
+            /*
+              The wash replaces the outline. A border around a row that already
+              carries a coloured circle and a coloured word was the third way
+              of saying one thing — and four boxed rows together stopped
+              reading as urgent and started reading as a table.
+            */
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.md),
-              border: Border.all(color: lit ? c.washGoldLine : c.line),
+              gradient: lit ? null : statusWash(c, status),
+              border: lit ? Border.all(color: c.washGoldLine) : null,
             ),
             child: body,
           ),

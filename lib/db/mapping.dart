@@ -128,6 +128,7 @@ Settings settingsOf(SettingsRow r) => Settings(
       roomsView:
           r.roomsView == null ? null : enumOf(r.roomsView, RoomsView.values, RoomsView.collapsed),
       biometricLock: r.biometricLock,
+      lockPortrait: r.lockPortrait,
       notifyEnabled: r.notifyEnabled,
       notifyAskedAt: r.notifyAskedAt,
       reminderHour: r.reminderHour,
@@ -239,6 +240,7 @@ SettingsTableCompanion settingsToRow(Settings s) => SettingsTableCompanion(
       haptics: Value(s.haptics),
       roomsView: Value(s.roomsView?.name),
       biometricLock: Value(s.biometricLock),
+      lockPortrait: Value(s.lockPortrait),
       /*
         `notifyEnabled` and `notifyAskedAt` are deliberately absent, for the
         same structural reason the entitlements are: this function is the only

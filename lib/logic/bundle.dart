@@ -542,6 +542,7 @@ Settings? _settingsOf(Object? v) {
     theme: j['theme'] == null ? null : enumOf(j['theme'], ThemeChoice.values, ThemeChoice.system),
     sounds: boolOf(j['sounds']),
     haptics: boolOf(j['haptics']),
+    lockPortrait: boolOf(j['lockPortrait']),
     roomsView:
         j['roomsView'] == null ? null : enumOf(j['roomsView'], RoomsView.values, RoomsView.collapsed),
     biometricLock: null,

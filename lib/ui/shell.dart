@@ -12,11 +12,18 @@ library;
 // the enum in logic/swipe.dart, which is the app's five destinations. Material
 // is the one hidden, because this app has no TabBar and every mention of `Tab`
 // in these files means a destination.
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
+import '../logic/deep_link.dart';
 import '../logic/swipe.dart';
+import '../notify/pending_link.dart';
 import 'add_button.dart';
+import 'item_detail_screen.dart';
+import 'paper_form_sheet.dart';
+import 'sub_form_sheet.dart';
 import 'feedback.dart';
 import 'home_tab.dart';
 import 'items_tab.dart';
@@ -42,6 +49,107 @@ class _ShellState extends State<Shell> {
   /// Bumped to force the visible tab to rebuild after the add sheet closes.
   /// Items watches a stream and does not need it; the other three read futures.
   int _generation = 0;
+
+  /*
+    ── The shell answers notification taps ─────────────────────────────────
+
+    Here rather than on a tab, because a link can name a record on any of
+    three of them and because this is the widget that outlives all of them.
+    A tap that arrives while somebody is in Settings has to work as well as
+    one that arrives on the dashboard.
+  */
+  bool _opening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    pendingLink.addListener(_handleLink);
+
+    /*
+      And one read straight away, for the tap that WAS the launch.
+
+      The two paths cover different races and both are needed. `init` runs off
+      the first frame rather than before it — the time zone lookup and the
+      plugin handshake are not worth delaying the splash for — so a link can
+      be set either side of this widget existing:
+
+        Set BEFORE the listener was attached, and a ValueNotifier does not
+        replay. Only this post-frame read finds it.
+
+        Set AFTER, which is the likelier order. Only the listener finds it.
+
+      Neither alone is enough, and which one fires is a matter of how long the
+      platform took to answer — that is, not something to design around.
+    */
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleLink());
+  }
+
+  @override
+  void dispose() {
+    pendingLink.removeListener(_handleLink);
+    super.dispose();
+  }
+
+  Future<void> _handleLink() async {
+    final link = pendingLink.value;
+    if (link == null || _opening || !mounted) return;
+
+    /*
+      Cleared before the trip rather than after.
+
+      Opening a record is an await, and a second tap arriving mid-flight
+      would otherwise queue a second screen on top of the first. The guard
+      and the clear together mean one tap opens one thing, and a link that
+      fails to resolve — a record deleted since the reminder was scheduled —
+      is dropped rather than retried for ever.
+    */
+    pendingLink.value = null;
+    _opening = true;
+
+    try {
+      final repo = widget.repo;
+
+      switch (link.kind) {
+        case LinkKind.home:
+          setState(() => _tab = Tab.home);
+
+        case LinkKind.item:
+          final item = await repo.item(link.id!);
+          if (!mounted) return;
+          // Deleted since the reminder was scheduled. Sixty days is plenty of
+          // time for that, so it is a normal outcome rather than an error —
+          // the dashboard is the honest place to land.
+          if (item == null) {
+            setState(() => _tab = Tab.home);
+            return;
+          }
+          setState(() => _tab = Tab.items);
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ItemDetailScreen(repo: repo, item: item),
+            ),
+          );
+
+        case LinkKind.paper:
+          final paper = await repo.paper(link.id!);
+          if (!mounted) return;
+          setState(() => _tab = Tab.papers);
+          if (paper == null) return;
+          await showPaperForm(context, repo: repo, existing: paper);
+
+        case LinkKind.sub:
+          final sub = await repo.subscription(link.id!);
+          if (!mounted) return;
+          setState(() => _tab = Tab.subs);
+          if (sub == null) return;
+          await showSubForm(context, repo: repo, existing: sub);
+      }
+    } finally {
+      _opening = false;
+      // Something may have arrived while that one was open.
+      if (mounted && pendingLink.value != null) unawaited(_handleLink());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

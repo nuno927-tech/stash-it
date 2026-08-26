@@ -161,6 +161,7 @@ Map<String, Object?> settingsToJson(Settings s) => _tidy({
       'theme': s.theme?.name,
       'sounds': s.sounds,
       'haptics': s.haptics,
+      'lockPortrait': s.lockPortrait,
       'roomsView': s.roomsView?.name,
     });
 

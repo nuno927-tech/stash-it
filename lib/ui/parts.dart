@@ -168,11 +168,18 @@ class StashCard extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final radius = BorderRadius.circular(Radii.lg);
 
+    /*
+      No border.
+
+      It used to carry a hairline as well as a fill and a shadow — three
+      devices saying "this is a raised surface", which is two more than the
+      idea needs. The fill is `card` now, one step brighter than the page, and
+      the shadow seats it. See the note on `StashColors.card`.
+    */
     return Container(
       decoration: BoxDecoration(
-        color: c.slate700,
+        color: c.card,
         borderRadius: radius,
-        border: Border.all(color: c.hairline),
         boxShadow: cardShadow(c, dark: dark),
       ),
       clipBehavior: clip ? Clip.antiAlias : Clip.none,

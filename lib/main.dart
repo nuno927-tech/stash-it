@@ -6,9 +6,12 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'billing/current.dart';
+import 'billing/play_billing.dart';
 import 'db/open_flutter.dart';
 import 'db/repository.dart';
 import 'notify/sync.dart';
@@ -41,6 +44,22 @@ Future<void> main() async {
   */
   final prefs = PrefsController(repo);
   await prefs.load();
+
+  /*
+    ── The store, connected before the first frame ────────────────────────────
+
+    Not awaited beyond construction: the connection itself is lazy and the
+    paywall asks for a price when somebody opens it. What has to happen early
+    is the purchase stream being listened to, because Play delivers a purchase
+    that completed while the app was shut as an event on launch — and an
+    unacknowledged purchase is refunded automatically after three days.
+
+    Android only. Everywhere else `appBilling` stays `NoBilling`, which is the
+    truthful answer rather than a stub that pretends.
+  */
+  if (Platform.isAndroid) {
+    startBilling(PlayBilling(onUnlocked: repo.grantUnlock));
+  }
 
   runApp(StashItApp(repo: repo, prefs: prefs));
 

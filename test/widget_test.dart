@@ -96,7 +96,9 @@ void main() {
 
     // Nothing to do is a state worth saying out loud, not a blank screen.
     expect(find.text('Nothing needs you.'), findsOneWidget);
-    expect(find.text('Items and documents'), findsOneWidget);
+    // Uppercased by `_Label` now — section headings on Home use the same
+    // tracked-out annotation style the form labels do. See theme.dart.
+    expect(find.text('ITEMS AND DOCUMENTS'), findsOneWidget);
 
     await db.close();
   });
@@ -200,7 +202,11 @@ void main() {
       bar to name it. What identifies it is the first card.
     */
     expect(find.text('Product information'), findsOneWidget);
-    expect(find.text('Product name'), findsOneWidget);
+
+    // Uppercased by `FieldLabel`. Every field label on the three sheets is
+    // written sentence case in the source and drawn as a tracked-out
+    // annotation — see the scale note in theme.dart.
+    expect(find.text('PRODUCT NAME'), findsOneWidget);
 
     // Name is the only field the app insists on, so the footer says so before
     // the button is pressed rather than after — see `whyNotSaveable`.

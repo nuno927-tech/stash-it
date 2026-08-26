@@ -254,11 +254,24 @@ class TimeLeft extends StatelessWidget {
           Text(
             left.value,
             textAlign: TextAlign.right,
+            /*
+              ── Weight, not just size ────────────────────────────────────────
+
+              This was 200 — the thinnest weight Bricolage has — at 27px. Large
+              and pale is a combination that reads as decorative: the number
+              was the biggest thing on the row and still not the first thing
+              seen, because a hairline stroke in moss green on a dark row has
+              almost no contrast to carry that size.
+
+              800 at the same size is the same information with something
+              behind it. The unit under it stays light, which is what keeps the
+              pair from becoming a block.
+            */
             style: TextStyle(
               fontFamily: fontDisplay,
-              fontWeight: FontWeight.w200,
+              fontWeight: FontWeight.w800,
               fontSize: wordy ? 17 : 27,
-              letterSpacing: -1.0,
+              letterSpacing: -1.2,
               height: 1.05,
               color: colour,
               fontFeatures: const [FontFeature.tabularFigures()],

@@ -19,6 +19,7 @@ class Prefs {
     required this.haptics,
     required this.roomsView,
     required this.biometricLock,
+    required this.lockPortrait,
     required this.displayName,
   });
 
@@ -29,6 +30,9 @@ class Prefs {
 
   /// Ask for a fingerprint or face check before the app opens.
   final bool biometricLock;
+
+  /// Pin the screen upright.
+  final bool lockPortrait;
 
   /// What the greeting calls you. Empty is a valid answer.
   final String displayName;
@@ -61,6 +65,22 @@ const Prefs defaultPrefs = Prefs(
   // Off until asked for. Switching it on costs an enrolment prompt, and a lock
   // nobody chose is a lock they will be surprised by at the worst moment.
   biometricLock: false,
+
+  /*
+    Portrait on, and it is the one default here that is on rather than off.
+
+    Every screen in the app is a column, and none of them gain anything from
+    being turned sideways: a list gets shorter, a form gets shorter, and the
+    add sheets — which open to just under the tab heading — become a keyboard
+    with two fields above it. Rotation is not a feature this app has, it is a
+    thing phones do that this app has to survive.
+
+    Offered as a switch rather than baked into the build because a phone in a
+    car mount or a keyboard case is landscape whether the app likes it or not,
+    and an app that refuses to turn on a device already sideways is one
+    somebody cannot read at all.
+  */
+  lockPortrait: true,
   displayName: '',
 );
 
@@ -70,6 +90,7 @@ Prefs prefsFrom(Settings? settings) => Prefs(
       haptics: settings?.haptics ?? defaultPrefs.haptics,
       roomsView: settings?.roomsView ?? defaultPrefs.roomsView,
       biometricLock: settings?.biometricLock ?? defaultPrefs.biometricLock,
+      lockPortrait: settings?.lockPortrait ?? defaultPrefs.lockPortrait,
       displayName: settings?.displayName ?? defaultPrefs.displayName,
     );
 
@@ -105,11 +126,24 @@ const List<Choice> reminderChoices = [
 /// warranty on something installed is a job — a quote, a tradesman, a date in a
 /// diary — and thirty days does not cover any of it. A roof wants a year.
 ///
-/// **Null is the first option and the default: follow the setting.** It has to
-/// be a real, selectable choice rather than an absence, or there is no way back
-/// once someone has picked a number.
+/// ── Five numbers, and no "Default" ────────────────────────────────────────
+/// There used to be a sixth option meaning "follow the global setting", and it
+/// was the one selected when the form opened. It is gone, and the row opens on
+/// two weeks instead.
+///
+/// The reason is that "Default" answers a question about the app's settings
+/// while every other button answers a question about the thing in your hand.
+/// Somebody adding a kettle has an opinion about how much warning a kettle
+/// wants; nobody has an opinion about whether to inherit a preference they set
+/// once and have not looked at since.
+///
+/// Two weeks because that is the shortest useful notice — long enough to find
+/// the receipt, short enough not to be forgotten again before the date.
+///
+/// `Item.leadDays` is still nullable and null still means "follow the setting"
+/// — records written before this exist, and `leadFor` reads them correctly.
+/// The form simply no longer offers it as something to choose.
 const List<Choice> itemLeadChoices = [
-  Choice(null, 'Default'),
   Choice(14, '2 weeks'),
   Choice(30, '1 month'),
   Choice(90, '3 months'),

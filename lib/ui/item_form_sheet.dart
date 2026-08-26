@@ -21,10 +21,13 @@
 library;
 
 import 'dart:async';
+// For `Uint8List` — the staged photograph. Was coming in via
+// `flutter/services.dart`, which this file no longer needs for anything else.
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../billing/current.dart';
 import '../db/repository.dart';
 import '../logic/attachments.dart';
 import '../logic/format.dart';
@@ -33,13 +36,18 @@ import '../logic/notify_offer.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
+import '../logic/auto_advance.dart';
+import 'auto_advance.dart';
 import 'confirm_delete.dart';
 import 'doc_tiles.dart';
 import 'feedback.dart';
+import 'form_sheet_parts.dart';
 import 'pick_doc.dart';
 import 'scout.dart';
 import 'stash_the_paper.dart';
 import 'theme.dart';
+import 'thumb.dart';
+import 'unlock_sheet.dart';
 
 /// Opens the form. Resolves true when something was saved.
 Future<bool?> showItemForm(
@@ -104,6 +112,16 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /// added policy has no id yet.
   final Set<int> _detailed = {};
 
+  final GlobalKey _roomCardKey = GlobalKey();
+  final GlobalKey _warrantyCardKey = GlobalKey();
+  final GlobalKey _attachmentsCardKey = GlobalKey();
+  final GlobalKey _warningCardKey = GlobalKey();
+
+  late final AutoAdvance _toRoom = AutoAdvance(_roomCardKey);
+  late final AutoAdvance _toWarranty = AutoAdvance(_warrantyCardKey);
+  late final AutoAdvance _toAttachments = AutoAdvance(_attachmentsCardKey);
+  late final AutoAdvance _toWarning = AutoAdvance(_warningCardKey);
+
   bool get _isNew => widget.existing == null;
 
   @override
@@ -124,6 +142,29 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     if (_draft.coverages.isEmpty) {
       _draft.coverages.add(CoverageDraft(label: 'Warranty', unit: CoverageUnit.months));
     }
+
+    /*
+      And two weeks of warning, unless this item already says otherwise.
+
+      The row used to offer "Default" — follow the global setting — and open on
+      it. That option is gone, so a draft carrying null would open with nothing
+      lit at all, which is worse than either. Every item now leaves this form
+      with a real number on it.
+
+      This does pin an older item that was following the setting, the first
+      time it is edited. Accepted deliberately: the alternative is a lit button
+      that does not match what is stored.
+    */
+    _draft.leadDays ??= itemLeadChoices.first.days;
+  }
+
+  @override
+  void dispose() {
+    _toRoom.dispose();
+    _toWarranty.dispose();
+    _toAttachments.dispose();
+    _toWarning.dispose();
+    super.dispose();
   }
 
   /* ------------------------------------------------------------- saving */
@@ -194,7 +235,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         armNotifyOffer();
       }
 
-      feedback(Cue.save);
+      // Not `save` — that is what a settings toggle gets. This is the app
+      // doing the one thing it is for. See the note on `Cue.stashed`.
+      feedback(Cue.stashed);
 
       /*
         The paper reminder, on a new item only, and only when nothing was
@@ -211,7 +254,30 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
       if (mounted) Navigator.of(context).pop(true);
     } on CapReached catch (e) {
+      /*
+        The wall, and the way through it, in the same moment.
+
+        Showing the sentence alone leaves somebody holding a filled-in form
+        with nowhere to go — and the form is still filled in behind this
+        sheet, so unlocking and pressing Save again works with nothing
+        retyped. That is the whole reason the offer opens here rather than
+        sending them to Settings.
+      */
       setState(() => _problem = e.message);
+      if (!mounted) return;
+
+      final unlocked = await showUnlock(
+        context,
+        repo: widget.repo,
+        billing: appBilling,
+        count: e.count,
+      );
+
+      // Straight back into the save they were already trying to make.
+      if (unlocked && mounted) {
+        setState(() => _problem = null);
+        await _save();
+      }
     } catch (e) {
       setState(() => _problem = 'That did not save: $e');
     } finally {
@@ -249,7 +315,14 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
   /* ---------------------------------------------------------- attaching */
 
-  Future<void> _attach(DocKind kind, DocSource source) async {
+  Future<void> _attach(DocKind kind) async {
+    // The tile said what kind of thing this is; this asks where it comes from.
+    final source = await askPickSource(
+      context,
+      title: 'Add a ${docKindLabels[kind]!.toLowerCase()}',
+    );
+    if (source == null || source == PickSource.remove || !mounted) return;
+
     final picked = await pickDocs(kind, source);
     if (picked.isEmpty || !mounted) return;
 
@@ -278,15 +351,49 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     if (mounted) setState(() => _filed = widget.repo.docsForItem(widget.existing!.id));
   }
 
+  /*
+    Asked after the tap, not before it.
+
+    The tile used to be two controls in one shape — the body opened the file
+    picker and a corner opened the camera — which meant guessing which of two
+    identical camera glyphs did which. One target, then one question.
+  */
+  Future<void> _pickPhoto() async {
+    final source = await askPickSource(
+      context,
+      title: 'Take or upload photo',
+      canRemove: _photo != null || _draft.thumbBlobId != null,
+      removeLabel: 'Remove the photo',
+      removeNote: 'The item keeps everything else',
+    );
+    if (source == null || !mounted) return;
+
+    switch (source) {
+      case PickSource.camera:
+        await _takePhoto();
+      case PickSource.files:
+        await _choosePhoto();
+      case PickSource.remove:
+        setState(() {
+          _photo = null;
+          // Both, because they are the same blob — see `_save`. Clearing one
+          // would leave the list drawing a thumbnail for a photograph the
+          // detail screen no longer has.
+          _draft.photoBlobId = null;
+          _draft.thumbBlobId = null;
+        });
+    }
+  }
+
   Future<void> _takePhoto() async {
-    final shots = await pickDocs(DocKind.photo, DocSource.camera);
+    final shots = await pickDocs(DocKind.photo, PickSource.camera);
     if (shots.isEmpty || shots.first.bytes == null || !mounted) return;
 
     setState(() => _photo = shots.first.bytes);
   }
 
   Future<void> _choosePhoto() async {
-    final picked = await pickDocs(DocKind.photo, DocSource.files);
+    final picked = await pickDocs(DocKind.photo, PickSource.files);
 
     // Only a picture. The file picker will happily return a PDF, and a PDF as
     // an item's thumbnail is a grey box on every row it appears on.
@@ -340,14 +447,67 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
+    /*
+      Just under the tab heading — see `sheetTop`.
+
+      This one was missed when the other two were changed: it had a comment
+      sitting between `minChildSize` and `maxChildSize` that the other two did
+      not, so the edit that found them by their exact shape walked straight
+      past it. Three files that should say the same thing, and the only reason
+      two matched was that they had been typed the same way.
+    */
+    final top = sheetTop(context);
+
+    /*
+      ── Four hand-offs, and the first will hardly ever fire ─────────────────
+
+      Product information lists nine things, one of which is a Notes box
+      nobody fills in. That card will almost never advance, and that is the
+      design rather than a shortfall — see `cardFilled`. Watching only the name
+      would throw somebody past the price, the date and the serial number the
+      moment they typed "Kettle".
+
+      The three after it are short enough to complete in passing, which is
+      where this earns its keep.
+    */
+    _toRoom.update(
+      context,
+      complete: cardFilled([
+        _draft.name,
+        _draft.purchaseDate,
+        _draft.priceText,
+        _draft.brand,
+        _draft.model,
+        _draft.serial,
+        _draft.retailer,
+        _draft.notes,
+        _photo ?? _draft.thumbBlobId,
+      ]),
+    );
+
+    _toWarranty.update(context, complete: cardFilled([_draft.roomId]));
+
+    // Every policy on the card, not just the first: adding a second one means
+    // the card is unfinished again until it has a length too.
+    _toAttachments.update(
+      context,
+      complete: _draft.coverages.isNotEmpty &&
+          _draft.coverages.every((cov) => cardFilled([
+                cov.label,
+                if (cov.unit != CoverageUnit.lifetime) cov.amountText,
+              ])),
+    );
+
+    // Attachments has no fields, so "finished" is "something was attached".
+    // Nothing is required here — the card is skippable and usually skipped —
+    // so this only ever helps the person who did stop to file a receipt.
+    _toWarning.update(context, complete: _pending.isNotEmpty);
+
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.66,
+      initialChildSize: top,
       minChildSize: 0.4,
-      // Not 1.0. A sheet that reaches the very top stops looking like a sheet,
-      // and the strip of app still showing is what says the screen underneath
-      // is waiting rather than gone.
-      maxChildSize: 0.94,
+      maxChildSize: top,
       builder: (context, scroll) => Column(
         children: [
           Expanded(
@@ -357,13 +517,13 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               children: [
                 _productCard(c),
                 const SizedBox(height: 14),
-                _roomCard(c),
+                KeyedSubtree(key: _roomCardKey, child: _roomCard(c)),
                 const SizedBox(height: 14),
-                _warrantyCard(c),
+                KeyedSubtree(key: _warrantyCardKey, child: _warrantyCard(c)),
                 const SizedBox(height: 14),
-                _attachmentsCard(c),
+                KeyedSubtree(key: _attachmentsCardKey, child: _attachmentsCard(c)),
                 const SizedBox(height: 14),
-                _warningCard(c),
+                KeyedSubtree(key: _warningCardKey, child: _warningCard(c)),
 
                 if (!_isNew) ...[
                   const SizedBox(height: 18),
@@ -390,7 +550,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* ------------------------------------------------- product information */
 
   Widget _productCard(StashColors c) {
-    return _Card(
+    return SheetCard(
       title: 'Product information',
       // Glasses on, taking it down. Top right, out of the way of the fields.
       trailing: const Scout(
@@ -402,18 +562,27 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _PhotoTile(
-              bytes: _photo,
-              onTap: _choosePhoto,
-              onCamera: _takePhoto,
-            ),
+            /*
+              The staged bytes win over the saved blob, because they are what
+              will be written on save. Without the FutureBuilder an edit opened
+              on an empty tile for an item that plainly had a photograph, which
+              reads as the app having lost it.
+            */
+            if (_photo != null)
+              _PhotoTile(image: MemoryImage(_photo!), onTap: _pickPhoto)
+            else
+              FutureBuilder<ImageProvider?>(
+                future: thumbFor(widget.repo, _draft.thumbBlobId),
+                builder: (context, snap) =>
+                    _PhotoTile(image: snap.data, onTap: _pickPhoto),
+              ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Label('Product name'),
-                  _Box(
+                  const FieldLabel('Product name'),
+                  TextBox(
                     initial: _draft.name,
                     hint: 'What is it?',
                     autofocus: _isNew,
@@ -427,8 +596,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         ),
         const SizedBox(height: 12),
 
-        const _Label('When did you buy it?'),
-        _DateBox(value: _draft.purchaseDate, onTap: _pickDate),
+        const FieldLabel('When did you buy it?'),
+        DateBox(value: _draft.purchaseDate, onTap: _pickDate),
         const SizedBox(height: 12),
 
         Row(
@@ -438,8 +607,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Label('Price'),
-                  _Box(
+                  const FieldLabel('Price'),
+                  TextBox(
                     initial: _draft.priceText,
                     hint: '0.00',
                     keyboard: const TextInputType.numberWithOptions(decimal: true),
@@ -457,8 +626,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Label('Brand'),
-                  _Box(
+                  const FieldLabel('Brand'),
+                  TextBox(
                     initial: _draft.brand,
                     hint: 'Optional',
                     onChanged: (v) => _draft.brand = v,
@@ -477,8 +646,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Label('Model'),
-                  _Box(
+                  const FieldLabel('Model'),
+                  TextBox(
                     initial: _draft.model,
                     hint: 'Optional',
                     onChanged: (v) => _draft.model = v,
@@ -498,8 +667,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                     a torch, and the search matches on any four characters of
                     it — see logic/search.dart.
                   */
-                  const _Label('Serial number'),
-                  _Box(
+                  const FieldLabel('Serial number'),
+                  TextBox(
                     initial: _draft.serial,
                     hint: 'Optional',
                     onChanged: (v) => _draft.serial = v,
@@ -511,16 +680,16 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         ),
         const SizedBox(height: 12),
 
-        const _Label('Retailer'),
-        _Box(
+        const FieldLabel('Retailer'),
+        TextBox(
           initial: _draft.retailer,
           hint: 'Optional',
           onChanged: (v) => _draft.retailer = v,
         ),
         const SizedBox(height: 12),
 
-        const _Label('Notes'),
-        _Box(
+        const FieldLabel('Notes'),
+        TextBox(
           initial: _draft.notes,
           hint: 'Optional',
           lines: 4,
@@ -533,7 +702,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* --------------------------------------------------------------- room */
 
   Widget _roomCard(StashColors c) {
-    return _Card(
+    return SheetCard(
       title: 'Room',
       action: _Pill(label: 'New room', onTap: _newRoom),
       children: [
@@ -546,7 +715,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             // handed to the dropdown — it throws rather than showing blank.
             final known = rooms.any((r) => r.id == _draft.roomId);
 
-            return _Field(
+            return WhiteField(
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String?>(
                   value: known ? _draft.roomId : null,
@@ -581,7 +750,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* ----------------------------------------------------------- warranty */
 
   Widget _warrantyCard(StashColors c) {
-    return _Card(
+    return SheetCard(
       title: 'Warranty information',
       children: [
         for (var i = 0; i < _draft.coverages.length; i++) ...[
@@ -657,7 +826,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           rather than leaving an empty field in front of everybody who did not
           need one.
         */
-        _Seg<String?>(
+        SegRow<String?>(
           // Null when the name came from Custom, so neither row lights up
           // something the person did not choose.
           value: custom ? null : cov.label,
@@ -667,7 +836,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           onPick: (v) => setState(() => cov.label = v!),
         ),
         const SizedBox(height: 8),
-        _Seg<String>(
+        SegRow<String>(
           value: custom ? '' : cov.label,
           options: [
             for (final name in coverageLabels.skip(3)) (name, name),
@@ -693,7 +862,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         ),
         const SizedBox(height: 8),
 
-        _Seg<CoverageUnit>(
+        SegRow<CoverageUnit>(
           value: cov.unit,
           options: [
             for (final unit in CoverageUnit.values) (unit, coverageUnitLabels[unit]!),
@@ -768,8 +937,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
         if (_detailed.contains(i) || _hasDetails(cov)) ...[
           const SizedBox(height: 12),
-          const _Label('What it covers'),
-          _Box(
+          const FieldLabel('What it covers'),
+          TextBox(
             initial: cov.covers,
             hint: 'Parts and labor, not accidental damage',
             onChanged: (v) => cov.covers = v,
@@ -782,8 +951,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Label('Who covers it'),
-                    _Box(
+                    const FieldLabel('Who covers it'),
+                    TextBox(
                       initial: cov.provider,
                       hint: 'Optional',
                       onChanged: (v) => cov.provider = v,
@@ -796,8 +965,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Label('Policy number'),
-                    _Box(
+                    const FieldLabel('Policy number'),
+                    TextBox(
                       initial: cov.policyNumber,
                       hint: 'Optional',
                       onChanged: (v) => cov.policyNumber = v,
@@ -820,7 +989,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* -------------------------------------------------------- attachments */
 
   Widget _attachmentsCard(StashColors c) {
-    return _Card(
+    return SheetCard(
       title: 'Attachments',
       children: [
         Text(
@@ -873,7 +1042,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* ------------------------------------------------------------ warning */
 
   Widget _warningCard(StashColors c) {
-    return _Card(
+    return SheetCard(
       title: 'How much warning',
       children: [
         /*
@@ -884,11 +1053,12 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           "Default" is a real, selectable option rather than an absence, or
           there is no way back once somebody has picked a number.
         */
-        _Seg<int?>(
+        SegRow<int?>(
           value: _draft.leadDays,
           options: [
             for (final choice in itemLeadChoices) (choice.days, choice.label),
           ],
+          lines: 1,
           onPick: (v) => setState(() => _draft.leadDays = v),
         ),
         const SizedBox(height: 12),
@@ -903,334 +1073,26 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
   /* ------------------------------------------------------------- footer */
 
-  Widget _footer(StashColors c) {
-    /*
-      ── The button never scrolls away ──────────────────────────────────────
+  Widget _footer(StashColors c) => SheetFooter(
+        label: _isNew ? 'Save item' : 'Save changes',
+        // Said before the button is pressed rather than after. The one refusal
+        // this form makes, in the one place somebody is already looking.
+        problem: _problem ?? whyNotSaveable(_draft),
+        onSave: _saving ? null : _save,
+      );
 
-      A form five cards long with Save at the bottom is a form where saving
-      means scrolling back to a place you have already been. The hint above it
-      is the same line the PWA shows: the one refusal this form makes, said
-      before the button is pressed rather than after.
-    */
-    final problem = _problem ?? whyNotSaveable(_draft);
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        14,
-        10,
-        14,
-        14 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      decoration: BoxDecoration(
-        color: c.slate900,
-        border: Border(top: BorderSide(color: c.hairline)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (problem != null) ...[
-            Text(
-              problem,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: c.gold,
-                foregroundColor: c.onGold,
-                disabledBackgroundColor: c.gold,
-                padding: const EdgeInsets.symmetric(vertical: 17),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.md),
-                ),
-              ),
-              child: Text(
-                _isNew ? 'Save item' : 'Save changes',
-                style: TextStyle(
-                  fontFamily: fontDisplay,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                  color: c.onGold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /* ------------------------------------------------------------- the pieces */
 
 /// A titled card, with an optional control or a squirrel in the corner.
-class _Card extends StatelessWidget {
-  const _Card({required this.title, required this.children, this.action, this.trailing});
 
-  final String title;
-  final List<Widget> children;
-
-  /// A control on the title row — "New room".
-  final Widget? action;
-
-  /// Scout, who is not a control and must not be laid out like one.
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: c.slate700,
-        borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: c.hairline),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: fontDisplay,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                      color: c.text,
-                    ),
-                  ),
-                ),
-              ),
-              if (action != null) action!,
-              if (trailing != null) trailing!,
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: fontBody,
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: c.muted,
-        ),
-      ),
-    );
-  }
-}
 
 /// The white rounded shape every input sits in.
-class _Field extends StatelessWidget {
-  const _Field({required this.child, this.padding});
 
-  final Widget child;
-  final EdgeInsets? padding;
 
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        border: Border.all(color: c.hairline),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _Box extends StatelessWidget {
-  const _Box({
-    required this.initial,
-    required this.onChanged,
-    this.hint,
-    this.lines = 1,
-    this.keyboard,
-    this.format,
-    this.autofocus = false,
-    this.big = false,
-  });
-
-  final String initial;
-  final ValueChanged<String> onChanged;
-  final String? hint;
-  final int lines;
-  final TextInputType? keyboard;
-  final String Function(String)? format;
-  final bool autofocus;
-
-  /// The product name, which is the one field on this form that is the point.
-  final bool big;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return _Field(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: lines > 1 ? 10 : 2),
-      child: TextFormField(
-        initialValue: initial,
-        autofocus: autofocus,
-        maxLines: lines,
-        keyboardType: keyboard,
-        style: TextStyle(
-          fontFamily: fontBody,
-          fontSize: big ? 19 : 15,
-          color: c.text,
-        ),
-        cursorColor: c.gold,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            fontFamily: fontBody,
-            fontSize: big ? 19 : 15,
-            color: c.muted,
-          ),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: lines > 1 ? 2 : 14),
-        ),
-        inputFormatters: format == null
-            ? null
-            : [
-                TextInputFormatter.withFunction((old, now) {
-                  final formatted = format!(now.text);
-                  return TextEditingValue(
-                    text: formatted,
-                    selection: TextSelection.collapsed(offset: formatted.length),
-                  );
-                }),
-              ],
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _DateBox extends StatelessWidget {
-  const _DateBox({required this.value, required this.onTap});
-
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: _Field(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value.isEmpty ? 'Optional' : value,
-                style: TextStyle(
-                  fontFamily: value.isEmpty ? fontBody : fontMono,
-                  fontSize: 15,
-                  color: value.isEmpty ? c.muted : c.text,
-                ),
-              ),
-            ),
-            Icon(Icons.calendar_today_outlined, size: 18, color: c.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// A row of choices in one pill, one of them lit.
-class _Seg<T> extends StatelessWidget {
-  const _Seg({required this.value, required this.options, required this.onPick});
-
-  final T value;
-  final List<(T, String)> options;
-  final ValueChanged<T> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: c.hairline),
-      ),
-      child: Row(
-        children: [
-          for (final (key, label) in options)
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  feedback(Cue.tap);
-                  onPick(key);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: key == value ? c.slate600 : Colors.transparent,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 12.5,
-                      fontWeight: key == value ? FontWeight.w700 : FontWeight.w500,
-                      color: key == value ? c.text : c.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 /// One of the quick lengths. Bare text, not a button — the row is a scale, and
 /// six outlined boxes would weigh more than the field they are filling in.
@@ -1311,73 +1173,68 @@ class _Pill extends StatelessWidget {
 
 /// The item's own picture. Dashed while empty, because an empty dashed box is
 /// the one shape everybody already reads as "put something here".
+/// The item's own picture.
+///
+/// ── One camera, one tap ───────────────────────────────────────────────────
+/// This had two: a camera in the middle of the tile that opened the file
+/// picker, and a second camera in the corner that opened the actual camera.
+/// Two identical glyphs doing different things is worse than either one alone,
+/// and the one that looked most like "take a photo" was the one that did not.
+///
+/// So the tile is a single target and the question is asked afterwards, which
+/// is also the honest order: the decision is "put a picture here", and where
+/// it comes from is a detail of that.
+///
+/// Deliberately unlike the attachment tiles below, which keep their split
+/// control — those are six tiles and asking twice per tile would be twelve
+/// taps of overhead. This is one.
 class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({required this.bytes, required this.onTap, required this.onCamera});
+  const _PhotoTile({required this.image, required this.onTap});
 
-  final Uint8List? bytes;
+  /// The staged bytes, or the saved photograph on an edit. Null for neither.
+  final ImageProvider? image;
+
   final VoidCallback onTap;
-  final VoidCallback onCamera;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return SizedBox(
-      width: 104,
-      height: 104,
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: 104,
-              height: 104,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: c.slate800,
-                borderRadius: BorderRadius.circular(Radii.sm),
-                border: Border.all(color: c.line),
-              ),
-              child: bytes == null
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.photo_camera_outlined, size: 24, color: c.muted),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Upload photo',
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 12,
-                            color: c.muted,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Image.memory(bytes!, fit: BoxFit.cover),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: onCamera,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(7),
-                child: Icon(
-                  Icons.photo_camera,
-                  size: 16,
-                  // Over a photograph the muted grey disappears. Gold reads on
-                  // both, and this is the only control drawn on top of a
-                  // picture in the app.
-                  color: bytes == null ? c.muted : c.gold,
-                ),
-              ),
-            ),
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 104,
+        height: 104,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: c.slate800,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(color: c.line),
+        ),
+        child: image == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined, size: 24, color: c.muted),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Take or upload photo',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 11,
+                        height: 1.25,
+                        color: c.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Image(image: image!, fit: BoxFit.cover),
       ),
     );
   }
@@ -1492,15 +1349,9 @@ Future<String?> _askName(
                 number ? TextCapitalization.none : TextCapitalization.sentences,
             style: TextStyle(fontFamily: fontBody, fontSize: 16, color: c.text),
             onSubmitted: (_) => Navigator.of(context).pop(true),
-            decoration: InputDecoration(
-              hintText: hint,
-              filled: true,
-              fillColor: c.slate600,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            // Filled, and nothing else. Setting only `border` leaves the
+            // theme's `enabledBorder` in place — see `bareInput`.
+            decoration: sunkenInput(hint: hint, fill: c.slate600),
           ),
           const SizedBox(height: 16),
           FilledButton(

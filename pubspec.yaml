@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.42.1
+version: 0.61.1
 
 environment:
   sdk: ^3.5.0
@@ -92,6 +92,12 @@ dependencies:
   # somebody assume otherwise.
   local_auth: ^2.3.0
 
+  # Google Play's billing, for the one-time unlock.
+  #
+  # The price is NOT set here — it is set in the Play Console and read back
+  # from the store, localised. See lib/billing/play_billing.dart.
+  in_app_purchase: ^3.2.0
+
   # Opening a mail app for the contact links, and a browser for the privacy
   # policy. Nothing is posted anywhere: a `mailto:` needs no server, and a
   # server is the one thing this app has spent its life not having.
@@ -127,6 +133,11 @@ flutter:
     # than redrawn — same renders, same alpha, same contact shadows, so the two
     # apps cannot drift apart by one of them being touched up.
     - assets/mascot/
+
+    # The maker's plate at the foot of Settings. One image, cropped from the
+    # original — the torn paper edge and the generator's watermark are both
+    # outside the crop rather than painted over.
+    - assets/brand/
 
   # ── The two faces, bundled rather than fetched ─────────────────────────
   #

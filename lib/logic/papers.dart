@@ -18,7 +18,7 @@ import 'dates.dart';
 const Map<PaperKind, String> kindLabel = {
   PaperKind.passport: 'Passport',
   PaperKind.id: 'ID card',
-  PaperKind.licence: 'Driving license',
+  PaperKind.licence: 'Drivers license',
   PaperKind.visa: 'Visa or permit',
   PaperKind.vehicle: 'Vehicle',
   PaperKind.insurance: 'Insurance',

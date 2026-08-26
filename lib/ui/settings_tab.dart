@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,9 @@ import '../db/restore.dart';
 import '../io/bundle_file.dart';
 import '../logic/bin.dart';
 import '../logic/bundle.dart';
+import '../billing/current.dart';
 import '../logic/contact.dart';
+import '../logic/limits.dart';
 import '../logic/devmode.dart';
 import '../io/csv.dart';
 import '../logic/prefs.dart';
@@ -29,17 +32,38 @@ import '../notify/sync.dart';
 import 'bin_screen.dart';
 import 'confetti.dart';
 import 'confirm_delete.dart';
+import 'diagnostics.dart';
 import 'feedback.dart';
 import 'parts.dart';
 import 'prefs_scope.dart';
 import 'privacy.dart';
 import 'tour_screen.dart';
+import 'unlock_sheet.dart';
 import 'rooms_screen.dart';
 import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.42.1';
+const appVersion = '0.61.1';
+
+/*
+  ── Asking Settings to go somewhere ─────────────────────────────────────────
+
+  The dashboard's backup line offers a fix — "Back up" — and switching to
+  Settings only got somebody as far as the room the fix is in. On a page of
+  eight cards that is most of the way to the answer and none of the way to
+  the thing they pressed for.
+
+  A notifier rather than a constructor argument, because the widget that knows
+  where to go and the widget that can scroll are two tabs apart, with a shell
+  in between that rebuilds its children by key. Same shape as `pendingLink`
+  for notification taps, and for the same reason: the answer has to survive
+  being set before anything able to act on it exists.
+*/
+enum SettingsAnchor { backup }
+
+final ValueNotifier<SettingsAnchor?> settingsJump =
+    ValueNotifier<SettingsAnchor?>(null);
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({required this.repo, super.key});
@@ -82,7 +106,49 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    settingsJump.addListener(_jump);
+
+    /*
+      And once after the first frame, for the commoner order: the dashboard
+      sets the anchor and switches tab in the same breath, so the value is
+      already there before this widget exists — and a ValueNotifier does not
+      replay. Same two paths as the notification link in `shell.dart`.
+    */
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jump());
+  }
+
+  void _jump() {
+    if (settingsJump.value != SettingsAnchor.backup || !mounted) return;
+    settingsJump.value = null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final node = _backupKey.currentContext;
+      if (node == null || !mounted) return;
+
+      Scrollable.ensureVisible(
+        node,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        // A little off the top rather than flush against it, so the card does
+        // not read as the first thing on the page and hide that there is more
+        // above it.
+        alignment: 0.08,
+      );
+
+      setState(() => _lit = true);
+      _unlight?.cancel();
+      _unlight = Timer(const Duration(milliseconds: 1400), () {
+        if (mounted) setState(() => _lit = false);
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    settingsJump.removeListener(_jump);
+    _unlight?.cancel();
     _expiry?.cancel();
     super.dispose();
   }
@@ -223,12 +289,26 @@ class _SettingsTabState extends State<SettingsTab> {
   late Future<String> _bin = _readBinLine();
   late Future<String> _size = _readSize();
 
+  /// How many things are saved, for the free-tier row.
+  late Future<int> _count = widget.repo.cappedCount();
+
+  /// Where "Back up" from the dashboard lands.
+  final GlobalKey _backupKey = GlobalKey();
+
+  /// Briefly washed gold after a jump, so the eye knows where it arrived.
+  /// Landing mid-page with nothing marked is a scroll that reads as an
+  /// accident rather than an answer.
+  bool _lit = false;
+
+  Timer? _unlight;
+
   void _refresh({bool reminders = false}) {
     if (!mounted) return;
     setState(() {
       _settings = widget.repo.settings();
       _bin = _readBinLine();
       _size = _readSize();
+      _count = widget.repo.cappedCount();
     });
 
     /*
@@ -573,6 +653,159 @@ class _SettingsTabState extends State<SettingsTab> {
       */
       padding: const EdgeInsets.only(bottom: 24),
       children: [
+            /* ---------------------------------------------------- go pro */
+
+            /*
+              ── Why this is first, and why it looks different ─────────────
+
+              It was ninth of ten, styled as a card like every other card,
+              titled "Free tier" — a status row about a limit rather than an
+              offer. Somebody who wanted to pay had to scroll past theme,
+              sounds, notifications, the lock, reminders, backup and the bin
+              to find out how, and nothing on the way down suggested there
+              was anything to find.
+
+              So it moved to the top and stopped pretending to be a setting.
+              Gold fill, gold edge, and the only button on this screen that
+              is not a row — because it is the one thing here that is not a
+              preference, and a page of identical cards is a page where the
+              one that matters is invisible.
+
+              It disappears entirely once unlocked. A card saying "unlimited"
+              to somebody who has already paid is a receipt, and a receipt is
+              what the Play Store is for.
+            */
+            FutureBuilder<Settings>(
+              future: _settings,
+              builder: (context, settingsSnap) {
+                final entitlements = settingsSnap.data?.entitlements;
+                if (entitlements == null || entitlements.proUnlock) {
+                  return const SizedBox.shrink();
+                }
+
+                return FutureBuilder<int>(
+                  future: _count,
+                  builder: (context, countSnap) {
+                    final count = countSnap.data;
+                    if (count == null) return const SizedBox.shrink();
+
+                    final left = remainingFree(count, entitlements) ?? 0;
+                    final full = left == 0;
+
+                    return Container(
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+                      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+                      decoration: BoxDecoration(
+                        color: c.washGold,
+                        borderRadius: BorderRadius.circular(Radii.lg),
+                        border: Border.all(color: c.gold.withValues(alpha: 0.45)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(Icons.workspace_premium_outlined,
+                                  size: 20, color: c.gold),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Go Pro',
+                                  style: TextStyle(
+                                    fontFamily: fontDisplay,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.6,
+                                    color: c.text,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'One payment',
+                                style: TextStyle(
+                                  fontFamily: fontBody,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: c.gold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('$count', style: figureStyle(c, size: 34)),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4, left: 5),
+                                child: Text(
+                                  'of $freeItemLimit saved',
+                                  style: TextStyle(
+                                    fontFamily: fontBody,
+                                    fontSize: 14,
+                                    color: c.muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          /*
+                            A bar, because "14 of 20" is a fact and a bar is a
+                            feeling — and the feeling is the useful half of the
+                            answer here. It turns amber inside the last five,
+                            the same threshold `shouldMentionCap` uses, so the
+                            colour and the wording can never disagree about
+                            what "nearly full" means.
+                          */
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                            child: LinearProgressIndicator(
+                              value: (count / freeItemLimit).clamp(0.0, 1.0),
+                              minHeight: 7,
+                              backgroundColor: c.field,
+                              valueColor: AlwaysStoppedAnimation(
+                                full ? c.ember : (left <= warnWhenLeft ? c.honey : c.gold),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          Text(
+                            full
+                                ? 'Full. Nothing is lost and nothing is hidden — '
+                                    'the limit only stops new ones.'
+                                : 'Unlimited items, documents and subscriptions '
+                                    'for one payment. No subscription, no ads, '
+                                    'and nothing leaves your phone.',
+                            style: hintStyle(c),
+                          ),
+                          const SizedBox(height: 14),
+
+                          _BigButton(
+                            label: 'Go Pro',
+                            icon: Icons.lock_open_outlined,
+                            onTap: () async {
+                              final unlocked = await showUnlock(
+                                context,
+                                repo: widget.repo,
+                                billing: appBilling,
+                                count: count,
+                              );
+                              if (unlocked) _refresh();
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+
             /* ------------------------------------------------ appearance */
 
             _Card(
@@ -607,6 +840,30 @@ class _SettingsTabState extends State<SettingsTab> {
                     prefs.set(haptics: on);
                     if (on) previewCue(Cue.delete, sounds: false, haptics: true);
                   },
+                ),
+                _Rule(c),
+
+                /*
+                  ── On by default, and offered anyway ────────────────────
+
+                  Every screen in this app is a column — a list of items, a
+                  form, a settings page. Turned sideways they get shorter and
+                  no wider in any way that helps, and the add sheets, which
+                  open to just under the tab heading, become a keyboard with
+                  two fields above it.
+
+                  So portrait is the right default. It is a switch rather
+                  than a decision baked into the build because a phone in a
+                  car mount or a keyboard case is landscape whether the app
+                  likes it or not, and an app that refuses to turn on a
+                  device that is already sideways is an app somebody cannot
+                  use at all.
+                */
+                _SwitchRow(
+                  label: 'Lock to portrait',
+                  note: 'Stops the screen turning when you tilt the phone.',
+                  value: prefs.lockPortrait,
+                  onChanged: (on) => prefs.set(lockPortrait: on),
                 ),
               ],
             ),
@@ -751,7 +1008,41 @@ class _SettingsTabState extends State<SettingsTab> {
 
             /* ---------------------------------------------------- backup */
 
-            _Card(
+            /*
+              Keyed and washable, because the dashboard's backup line sends
+              people straight here — see `settingsJump`. The wash fades after
+              a beat: it says "this is the one" and then gets out of the way,
+              rather than leaving a highlight somebody has to work out how to
+              clear.
+            */
+            KeyedSubtree(
+              key: _backupKey,
+              /*
+                ── The twelve pixels the wash costs ────────────────────────
+
+                The wrapper's margin and the card's own inset ADD. Left as
+                12 and 16 this card sat 28 from the edge while every other
+                card sat at 16 — visibly narrower, and the sort of thing you
+                see immediately and cannot name.
+
+                So the twelve comes out of the card instead: 12 outside plus
+                4 inside is the same 16, and the difference is a ring of gold
+                in the gap rather than a band across the page.
+              */
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 320),
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                // Gold above comes free from the card's own 10px top padding.
+                // Below there is none, so it is added here — as padding, which
+                // grows the wash, rather than as margin, which would move the
+                // card.
+                padding: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: _lit ? c.washGold : Colors.transparent,
+                  borderRadius: BorderRadius.circular(Radii.lg + 6),
+                ),
+                child: _Card(
+              inset: 4,
               title: 'Backup',
               trailing: Text(
                 settings.lastBackupAt == null
@@ -819,10 +1110,15 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
               ],
             ),
+              ),
+            ),
 
             /* --------------------------------------------------- notices */
 
             /* -------------------------------------------------- stash it */
+
+            // The Go Pro card used to sit here, ninth of ten. It is now the
+            // first thing on the page — see `_GoPro` at the top of the list.
 
             _Card(
               title: 'Stash it',
@@ -841,20 +1137,76 @@ class _SettingsTabState extends State<SettingsTab> {
                   onTap: () => showPrivacy(context),
                 ),
                 _Rule(c),
-                _LinkRow(
-                  label: 'Ask a question',
-                  note: 'Opens your mail app.',
-                  onTap: () => _open(contactUri(ContactKind.question, appVersion)),
+
+                /*
+                  ── One heading, three buttons ────────────────────────────────
+
+                  These were three rows in the same list as Take the tour and
+                  Privacy policy, each with its own chevron, all of them doing
+                  the identical thing: open the mail app addressed to the same
+                  person. Three rows that differ only in the subject line read
+                  as three destinations, and the row above them — a tour —
+                  reads as a fourth of the same kind.
+
+                  A heading says who they reach once, and the three buttons say
+                  what to write about. Which is what the choice actually is.
+                */
+                const SizedBox(height: 6),
+                Text(
+                  'Contact the developer',
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: c.text,
+                  ),
                 ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Suggest a feature',
-                  onTap: () => _open(contactUri(ContactKind.idea, appVersion)),
+                const SizedBox(height: 3),
+                Text(
+                  'Opens your mail app.',
+                  style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                 ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Report something broken',
-                  onTap: () => _open(contactUri(ContactKind.bug, appVersion)),
+                const SizedBox(height: 12),
+
+                /*
+                  ── One line, three equal shares ──────────────────────────────
+
+                  A Wrap was tried first and the labels defeated it: "Suggest a
+                  feature" and "Something's broken" will not share a line at any
+                  text scale, so the row became two and the three stopped
+                  reading as one set of choices.
+
+                  Shortening the labels is the fix rather than the compromise.
+                  Question, Idea, Problem — one word each, and the heading above
+                  already says what they do, so a longer label was only ever
+                  repeating "contact the developer about" three times.
+
+                  `Expanded` so all three are the same width whatever the words
+                  are, and a Row is safe now that the widest is seven letters.
+                */
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ContactChip(
+                        label: 'Question',
+                        onTap: () => _open(contactUri(ContactKind.question, appVersion)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ContactChip(
+                        label: 'Idea',
+                        onTap: () => _open(contactUri(ContactKind.idea, appVersion)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ContactChip(
+                        label: 'Problem',
+                        onTap: () => _open(contactUri(ContactKind.bug, appVersion)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -951,6 +1303,75 @@ class _SettingsTabState extends State<SettingsTab> {
                     style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
                   ),
                   _Rule(c),
+
+                  /*
+                    ── Read-only, and that is why it ships ──────────────────────
+
+                    Nothing on the diagnostics sheet writes a record, grants
+                    anything or changes a setting, and nothing on it is private
+                    — counts, sizes, versions and a time zone, with no names
+                    and no dates out of anybody's records.
+
+                    That constraint is what makes it safe outside a debug
+                    build, and it is also what makes it useful: the point is
+                    that somebody can paste it to a stranger without reading it
+                    carefully first.
+                  */
+                  _LinkRow(
+                    label: 'Diagnostics',
+                    note: 'Counts and versions, copyable. Nothing private.',
+                    onTap: () => showDiagnostics(context, widget.repo),
+                  ),
+                  _Rule(c),
+
+                  /*
+                    ── Debug builds only, and that is not a detail ──────────────
+
+                    This grants the unlock, and for one version it shipped
+                    behind nothing but ten taps on the version number. That is
+                    not a secret: ten taps on a version number is how Android's
+                    own developer options work, which means it is a convention
+                    somebody finds by accident rather than a lock somebody has
+                    to pick. The paywall was one gesture deep for every person
+                    who installed the app.
+
+                    `kDebugMode` is a compile-time constant, so in a release
+                    build this whole subtree folds away and is tree-shaken out.
+                    It is not hidden in the shipped APK; it is not in it.
+
+                    What this still is NOT, and cannot be: proof against
+                    somebody who decompiles and patches. The app has no server
+                    by design, so the entitlement is a boolean on the handset
+                    and anybody determined enough can set it. The goal is that
+                    a casual user cannot stumble in — see the note in
+                    RELEASE.md on what a client-side check is worth.
+
+                    Testers get Play promo codes: real purchases, revocable,
+                    and they exercise the buy path so a broken one is found
+                    before release rather than after.
+                  */
+                  if (kDebugMode) FutureBuilder<Settings>(
+                    future: _settings,
+                    builder: (context, snap) {
+                      final on = snap.data?.entitlements;
+                      if (on == null) return const SizedBox.shrink();
+
+                      return _LinkRow(
+                        label: on.proUnlock ? 'Unlocked' : 'Grant unlock (debug build)',
+                        note: on.proUnlock
+                            ? 'Source: ${on.source ?? 'unknown'}'
+                            : 'Not compiled into release builds. Testers get promo codes.',
+                        onTap: on.proUnlock
+                            ? null
+                            : () async {
+                                await widget.repo.grantUnlock('dev');
+                                feedback(Cue.unlock);
+                                _refresh();
+                              },
+                      );
+                    },
+                  ),
+                  _Rule(c),
                   _LinkRow(
                     label: 'Hide developer tools',
                     onTap: () => setState(() {
@@ -963,6 +1384,49 @@ class _SettingsTabState extends State<SettingsTab> {
                 ],
               ),
           ],
+
+        /*
+          ── The maker's plate ─────────────────────────────────────────────────
+
+          Last thing on the page, under the version and under the developer
+          tools when they are showing. It is not a control and does not want to
+          be near one.
+
+          Half the column width, centred. Full width made it the largest thing
+          on a page of settings — a maker's mark that outweighs the app's own
+          version number is a signature in the wrong hand. At half it reads as
+          what it is: a credit at the bottom.
+
+          ── PNG, not JPEG ─────────────────────────────────────────────────────
+          The background is pure white and the type is sharp-edged black on it,
+          which is the exact case JPEG handles worst: it rings around hard
+          edges and mottles flat areas, so "pure white" would come back as a
+          field of 253s with a faint halo round every letter.
+
+          The file is 520 wide, which covers this render at 3x with a little to
+          spare — halving the display size halved the pixels needed, so the
+          asset went 886 to 520 and 201KB to 88KB rather than shipping four
+          times the resolution anybody will see.
+
+          A smaller radius with it. 26 was proportionate on a full-width plate
+          and would be a lozenge at half the size.
+        */
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 8),
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.md),
+                child: Image.asset(
+                  'assets/brand/flux-studios.png',
+                  fit: BoxFit.contain,
+                  width: double.infinity,
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1078,18 +1542,32 @@ bool biometricLockOf(Settings s) => prefsFrom(s).biometricLock;
 /// sits outside the panel so it reads as a label on the group rather than as
 /// its first row.
 class _Card extends StatelessWidget {
-  const _Card({required this.title, required this.children, this.trailing});
+  const _Card({
+    required this.title,
+    required this.children,
+    this.trailing,
+    this.inset = 16,
+  });
 
   final String title;
   final List<Widget> children;
   final Widget? trailing;
+
+  /// How far the panel sits from the edge of the page.
+  ///
+  /// Sixteen everywhere, and it is not a thing to vary for taste — a column of
+  /// cards at two different widths reads as a mistake before it reads as
+  /// emphasis. It exists for one case: the Backup card is wrapped in a wash
+  /// that needs room of its own, and that room has to come out of this number
+  /// rather than be added outside it. See the note at the wrapper.
+  final double inset;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: EdgeInsets.fromLTRB(inset, 10, inset, 0),
       child: StashCard(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
@@ -1246,9 +1724,16 @@ class _SwitchRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.note,
   });
 
   final String label;
+
+  /// A second line, for a switch whose label does not say what it does.
+  /// Most do not need one; a switch that needs a paragraph is the wrong
+  /// control.
+  final String? note;
+
   final bool value;
   final ValueChanged<bool>? onChanged;
 
@@ -1273,6 +1758,11 @@ class _SwitchRow extends StatelessWidget {
                     color: c.text,
                   ),
                 ),
+                if (note != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, right: 4),
+                    child: Text(note!, style: hintStyle(c)),
+                  ),
               ],
             ),
           ),
@@ -1478,6 +1968,54 @@ class _PickRow extends StatelessWidget {
 }
 
 /// A row that goes somewhere, or shows one fact on the right.
+/// One of the three ways to write in.
+///
+/// A chip rather than a full-width row: three of these are one decision with
+/// three answers, and stacking them as rows would put them back to looking
+/// like three separate places to go.
+///
+/// Centred and single-line, because the three are `Expanded` to equal widths —
+/// left-aligned text in equal boxes reads as a ragged column rather than a
+/// row of buttons.
+class _ContactChip extends StatelessWidget {
+  const _ContactChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Material(
+      color: c.slate600,
+      borderRadius: BorderRadius.circular(Radii.pill),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.pill),
+        onTap: () {
+          feedback(Cue.tap);
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: c.text,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LinkRow extends StatelessWidget {
   const _LinkRow({required this.label, this.note, this.trailing, this.onTap});
 

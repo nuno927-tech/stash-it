@@ -18,7 +18,7 @@ library;
 
 /// The stored keys, and one of them is misspelled on purpose.
 ///
-/// `licence` is British and the app says "Driving license" — because that
+/// `licence` is British and the app says "Drivers license" — because that
 /// string is written into every saved document and every backup ever exported,
 /// so renaming it means a schema migration for a spelling. The KEY is frozen;
 /// only the label people read is American. The port keeps the same freeze so

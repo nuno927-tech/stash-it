@@ -32,7 +32,7 @@ import '../db/repository.dart';
 import 'feedback.dart';
 import 'item_form_sheet.dart';
 import 'sub_form_sheet.dart';
-import 'paper_form_screen.dart';
+import 'paper_form_sheet.dart';
 import 'theme.dart';
 
 enum AddKind { item, subscription, paper }
@@ -96,20 +96,18 @@ class _StashItButtonState extends State<StashItButton>
     setState(() {});
   }
 
-  Future<void> _push(Widget screen) =>
-      Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => screen));
-
   Future<void> _pick(AddKind kind) async {
     feedback(Cue.tap);
     _c.reverse();
     setState(() {});
 
     /*
-      Two sheets and one screen, until the document form is rebuilt too.
+      All three are sheets now.
 
-      Every other question in this app is asked in a sheet over the screen you
-      were on, and the three add forms were the last places taking the whole
-      screen. Documents is next; this note goes when it does.
+      Every question this app asks is asked over the screen you were on. The
+      three add forms were the last places taking the whole screen, and the
+      thing they were hiding behind themselves was the list somebody had just
+      been looking at.
     */
     switch (kind) {
       case AddKind.item:
@@ -117,7 +115,7 @@ class _StashItButtonState extends State<StashItButton>
       case AddKind.subscription:
         await showSubForm(context, repo: widget.repo);
       case AddKind.paper:
-        await _push(PaperFormScreen(repo: widget.repo));
+        await showPaperForm(context, repo: widget.repo);
     }
 
     widget.onDone?.call();

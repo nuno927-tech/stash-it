@@ -13,8 +13,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../billing/current.dart';
 import '../db/repository.dart';
 import '../logic/format.dart';
 import '../logic/notify_offer.dart';
@@ -23,10 +23,14 @@ import '../logic/subscription_form.dart';
 import '../logic/subscriptions.dart';
 import '../models/subscription.dart';
 import '../notify/sync.dart';
+import '../logic/auto_advance.dart';
+import 'auto_advance.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
+import 'form_sheet_parts.dart';
 import 'service_mark.dart';
 import 'theme.dart';
+import 'unlock_sheet.dart';
 
 /// Opens the form. Resolves true when something was saved.
 Future<bool?> showSubForm(
@@ -70,11 +74,19 @@ class _SubFormSheetState extends State<_SubFormSheet> {
   String? _problem;
   bool _saving = false;
 
+  final GlobalKey _billingCardKey = GlobalKey();
+  final GlobalKey _reminderCardKey = GlobalKey();
+
+  late final AutoAdvance _toBilling = AutoAdvance(_billingCardKey);
+  late final AutoAdvance _toReminder = AutoAdvance(_reminderCardKey);
+
   bool get _isNew => widget.existing == null;
 
   @override
   void dispose() {
     _name.dispose();
+    _toBilling.dispose();
+    _toReminder.dispose();
     super.dispose();
   }
 
@@ -103,7 +115,9 @@ class _SubFormSheetState extends State<_SubFormSheet> {
       }
 
       unawaited(syncReminders(widget.repo));
-      feedback(Cue.save);
+      // Not `save` — that is what a settings toggle gets. This is the app
+      // doing the one thing it is for. See the note on `Cue.stashed`.
+      feedback(Cue.stashed);
 
       /*
         The notification offer, only when a reminder was actually asked for.
@@ -119,7 +133,30 @@ class _SubFormSheetState extends State<_SubFormSheet> {
 
       if (mounted) Navigator.of(context).pop(true);
     } on CapReached catch (e) {
+      /*
+        The wall, and the way through it, in the same moment.
+
+        Showing the sentence alone leaves somebody holding a filled-in form
+        with nowhere to go — and the form is still filled in behind this
+        sheet, so unlocking and pressing Save again works with nothing
+        retyped. That is the whole reason the offer opens here rather than
+        sending them to Settings.
+      */
       setState(() => _problem = e.message);
+      if (!mounted) return;
+
+      final unlocked = await showUnlock(
+        context,
+        repo: widget.repo,
+        billing: appBilling,
+        count: e.count,
+      );
+
+      // Straight back into the save they were already trying to make.
+      if (unlocked && mounted) {
+        setState(() => _problem = null);
+        await _save();
+      }
     } catch (e) {
       setState(() => _problem = 'That did not save: $e');
     } finally {
@@ -211,11 +248,33 @@ class _SubFormSheetState extends State<_SubFormSheet> {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
+    // Just under the tab heading — see `sheetTop`. Five cards of answers do
+    // not fit in two thirds, and what you saw first was a third of a form.
+    final top = sheetTop(context);
+
+    /*
+      Service is one answer, so it advances the moment there is a name — from
+      the grid or typed. The cadence is never unset, so it is not listed;
+      "Started" is, and so are the two split fields when the toggle is on,
+      because a card with a switch turned on is not finished until the fields
+      it revealed are.
+    */
+    _toBilling.update(context, complete: cardFilled([_draft.name]));
+    _toReminder.update(
+      context,
+      complete: cardFilled([
+        _draft.anchorDate,
+        _draft.amountText,
+        _draft.startedDate,
+        if (_draft.shared) ...[_draft.payTo, _draft.payHow],
+      ]),
+    );
+
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.66,
+      initialChildSize: top,
       minChildSize: 0.4,
-      maxChildSize: 0.94,
+      maxChildSize: top,
       builder: (context, scroll) => Column(
         children: [
           Expanded(
@@ -225,9 +284,9 @@ class _SubFormSheetState extends State<_SubFormSheet> {
               children: [
                 _serviceCard(c),
                 const SizedBox(height: 14),
-                _billingCard(c),
+                KeyedSubtree(key: _billingCardKey, child: _billingCard(c)),
                 const SizedBox(height: 14),
-                _reminderCard(c),
+                KeyedSubtree(key: _reminderCardKey, child: _reminderCard(c)),
 
                 if (!_isNew) ...[
                   const SizedBox(height: 18),
@@ -265,36 +324,60 @@ class _SubFormSheetState extends State<_SubFormSheet> {
     */
     final matches = searchServices(_draft.name);
 
-    return _Card(
+    return SheetCard(
       title: 'Service',
       children: [
-        _Field(
-          child: TextField(
-            controller: _name,
-            autofocus: _isNew,
-            style: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.text),
-            cursorColor: c.gold,
-            decoration: InputDecoration(
-              hintText: 'Netflix, Spotify, the gym...',
-              hintStyle: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        /*
+          ── Once one is chosen, the grid goes ────────────────────────────────
+
+          The grid filters on whatever is in the name box, and choosing a
+          service puts its name in that box — so after a tap the fifty-seven
+          tiles collapsed to exactly one, sitting small and left-aligned where
+          the grid had been, with the large centred mark below it. Two icons
+          for one answer, and the little one looked like a leftover.
+
+          It is a leftover. A grid is for choosing between things; once the
+          choice is made there is nothing left to choose between, so what
+          belongs here is the answer and a way to change it.
+        */
+        if (serviceFor(_draft.serviceId) case final chosen?) ...[
+          Center(
+            child: Column(
+              children: [
+                ServiceMark(serviceId: chosen.id, name: chosen.name, size: 64),
+                const SizedBox(height: 10),
+                Text(
+                  chosen.name,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: c.text,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () {
+                    feedback(Cue.collapse);
+                    setState(() {
+                      // Both, because the grid filters on the name. Clearing
+                      // only the id would bring back a grid of one.
+                      _draft.serviceId = null;
+                      _draft.name = '';
+                      _name.clear();
+                    });
+                  },
+                  child: Text(
+                    'Choose a different one',
+                    style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
+                  ),
+                ),
+              ],
             ),
-            onChanged: (v) => setState(() {
-              _draft.name = v;
-
-              // Typing over a chosen service unpicks it. Otherwise a
-              // subscription called "Netflix account" keeps Netflix's id, and
-              // the id is what the rest of the app trusts.
-              final picked = serviceFor(_draft.serviceId);
-              if (picked != null && picked.name != v) _draft.serviceId = null;
-            }),
           ),
-        ),
-        const SizedBox(height: 14),
-
-        if (matches.isEmpty)
+        ] else if (matches.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
@@ -321,7 +404,6 @@ class _SubFormSheetState extends State<_SubFormSheet> {
                       width: width,
                       child: _ServiceTile(
                         service: service,
-                        on: _draft.serviceId == service.id,
                         onTap: () => _choose(service),
                       ),
                     ),
@@ -329,6 +411,45 @@ class _SubFormSheetState extends State<_SubFormSheet> {
               );
             },
           ),
+
+        const SizedBox(height: 14),
+
+        /*
+          ── The box goes under the grid, not over it ─────────────────────────
+
+          It was the first thing on the card, which put a text box in front of
+          somebody whose answer was almost certainly one of the fifty pictures
+          below it — and on a new subscription it took focus, so the keyboard
+          arrived and covered the grid before it had been looked at.
+
+          Underneath, it reads as what it actually is: the way out for the gym,
+          the window cleaner and the one service we do not have a logo for.
+
+          `bareInput` rather than a hand-written decoration, because the theme
+          sets `filled` and an `enabledBorder` and a decoration that only sets
+          `border` does not switch either off — see the note there. That is
+          what was drawing a second box inside this one.
+        */
+        WhiteField(
+          child: TextField(
+            controller: _name,
+            style: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.text),
+            cursorColor: c.gold,
+            decoration: bareInput(
+              hint: 'Netflix, Spotify, the gym...',
+              hintStyle: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
+            ),
+            onChanged: (v) => setState(() {
+              _draft.name = v;
+
+              // Typing over a chosen service unpicks it. Otherwise a
+              // subscription called "Netflix account" keeps Netflix's id, and
+              // the id is what the rest of the app trusts.
+              final picked = serviceFor(_draft.serviceId);
+              if (picked != null && picked.name != v) _draft.serviceId = null;
+            }),
+          ),
+        ),
       ],
     );
   }
@@ -338,11 +459,11 @@ class _SubFormSheetState extends State<_SubFormSheet> {
   Widget _billingCard(StashColors c) {
     final monthly = _monthly;
 
-    return _Card(
+    return SheetCard(
       title: 'Billing',
       children: [
-        const _Label('How often'),
-        _Seg<Cadence>(
+        const FieldLabel('How often'),
+        SegRow<Cadence>(
           value: _draft.cadence,
           options: const [
             (Cadence.weekly, 'Weekly'),
@@ -370,8 +491,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
                     Without it the row appears in a list sorted by when things
                     renew while having no answer to that question.
                   */
-                  const _Label('Next renewal'),
-                  _DateBox(
+                  const FieldLabel('Next renewal'),
+                  DateBox(
                     value: _draft.anchorDate,
                     onTap: () => _pickDate(anchor: true),
                   ),
@@ -383,8 +504,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Label('Amount'),
-                  _MoneyBox(
+                  const FieldLabel('Amount'),
+                  MoneyBox(
                     initial: _draft.amountText,
                     currency: _draft.currency,
                     onChanged: (v) => setState(() => _draft.amountText = v),
@@ -404,8 +525,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
         ],
 
         const SizedBox(height: 14),
-        const _Label('Started'),
-        _DateBox(
+        const FieldLabel('Started'),
+        DateBox(
           value: _draft.startedDate ?? '',
           onTap: () => _pickDate(anchor: false),
         ),
@@ -461,15 +582,15 @@ class _SubFormSheetState extends State<_SubFormSheet> {
 
         if (_draft.shared) ...[
           const SizedBox(height: 12),
-          const _Label('Who it goes to'),
-          _Box(
+          const FieldLabel('Who it goes to'),
+          TextBox(
             initial: _draft.payTo,
             hint: 'Mum, my flatmate, the group',
             onChanged: (v) => _draft.payTo = v,
           ),
           const SizedBox(height: 12),
-          const _Label('How they get it'),
-          _Box(
+          const FieldLabel('How they get it'),
+          TextBox(
             initial: _draft.payHow,
             hint: 'Standing order on the 1st',
             onChanged: (v) => _draft.payHow = v,
@@ -492,10 +613,10 @@ class _SubFormSheetState extends State<_SubFormSheet> {
     */
     final days = _draft.remindDays ?? 0;
 
-    return _Card(
+    return SheetCard(
       title: 'Reminder',
       children: [
-        _Seg<int>(
+        SegRow<int>(
           value: days,
           options: const [
             (0, 'None'),
@@ -516,8 +637,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
         ),
         const SizedBox(height: 14),
 
-        const _Label('Notes'),
-        _Box(
+        const FieldLabel('Notes'),
+        TextBox(
           initial: _draft.notes,
           hint: 'Optional',
           lines: 4,
@@ -529,68 +650,27 @@ class _SubFormSheetState extends State<_SubFormSheet> {
 
   /* ------------------------------------------------------------- footer */
 
-  Widget _footer(StashColors c) {
-    final problem = _problem ?? whyNotSaveableSubscription(_draft);
+  Widget _footer(StashColors c) => SheetFooter(
+        label: _isNew ? 'Save subscription' : 'Save changes',
+        // Said before the button is pressed rather than after. The one refusal
+        // this form makes, in the one place somebody is already looking.
+        problem: _problem ?? whyNotSaveableSubscription(_draft),
+        onSave: _saving ? null : _save,
+      );
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        14,
-        10,
-        14,
-        14 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      decoration: BoxDecoration(
-        color: c.slate900,
-        border: Border(top: BorderSide(color: c.hairline)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (problem != null) ...[
-            Text(
-              problem,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: c.gold,
-                foregroundColor: c.onGold,
-                disabledBackgroundColor: c.gold,
-                padding: const EdgeInsets.symmetric(vertical: 17),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.md),
-                ),
-              ),
-              child: Text(
-                _isNew ? 'Save subscription' : 'Save changes',
-                style: TextStyle(
-                  fontFamily: fontDisplay,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                  color: c.onGold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /* ------------------------------------------------------------- the pieces */
 
+/// One service on the grid.
+///
+/// No selected state, deliberately: the grid is only on screen while nothing
+/// is chosen. A lit tile would be a third place the same answer is drawn — see
+/// the note where the grid is built.
 class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({required this.service, required this.on, required this.onTap});
+  const _ServiceTile({required this.service, required this.onTap});
 
   final ServiceDef service;
-  final bool on;
   final VoidCallback onTap;
 
   @override
@@ -598,7 +678,7 @@ class _ServiceTile extends StatelessWidget {
     final c = StashColors.of(context);
 
     return Material(
-      color: on ? c.washGold : c.slate800,
+      color: c.slate800,
       borderRadius: BorderRadius.circular(Radii.sm),
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.sm),
@@ -607,7 +687,7 @@ class _ServiceTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.sm),
-            border: Border.all(color: on ? c.washGoldLine : c.hairline),
+            
           ),
           child: Column(
             children: [
@@ -625,8 +705,8 @@ class _ServiceTile extends StatelessWidget {
                   fontFamily: fontBody,
                   fontSize: 10.5,
                   height: 1.25,
-                  fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                  color: on ? c.gold : c.text,
+                  fontWeight: FontWeight.w500,
+                  color: c.text,
                 ),
               ),
             ],
@@ -637,280 +717,10 @@ class _ServiceTile extends StatelessWidget {
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.title, required this.children});
 
-  final String title;
-  final List<Widget> children;
 
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: c.slate700,
-        borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: c.hairline),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              color: c.text,
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: fontBody,
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: c.muted,
-        ),
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  const _Field({required this.child, this.padding});
-
-  final Widget child;
-  final EdgeInsets? padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        border: Border.all(color: c.hairline),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _Box extends StatelessWidget {
-  const _Box({
-    required this.initial,
-    required this.onChanged,
-    this.hint,
-    this.lines = 1,
-  });
-
-  final String initial;
-  final ValueChanged<String> onChanged;
-  final String? hint;
-  final int lines;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return _Field(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: lines > 1 ? 10 : 2),
-      child: TextFormField(
-        initialValue: initial,
-        maxLines: lines,
-        style: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.text),
-        cursorColor: c.gold,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.muted),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: lines > 1 ? 2 : 14),
-        ),
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
 
 /// The amount, with the currency symbol inside the box rather than beside it.
-class _MoneyBox extends StatelessWidget {
-  const _MoneyBox({
-    required this.initial,
-    required this.currency,
-    required this.onChanged,
-  });
 
-  final String initial;
 
-  /// The currency itself, not just its symbol — the formatter needs it too.
-  /// A box that shows £ and formats to two decimals because it was told "USD"
-  /// is wrong in every zero-decimal currency there is.
-  final String currency;
-
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return _Field(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-      child: Row(
-        children: [
-          Text(
-            currencySymbol(currency),
-            style: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.muted),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: TextFormField(
-              initialValue: initial,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.text),
-              cursorColor: c.gold,
-              decoration: InputDecoration(
-                hintText: '12.99',
-                hintStyle: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.muted),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              // Formats as you type rather than on blur, for the same reason
-              // the item's price does: correcting a field afterwards makes
-              // people wonder whether they typed it wrong.
-              inputFormatters: [
-                TextInputFormatter.withFunction((old, now) {
-                  final formatted = formatMoneyInput(now.text, currency);
-                  return TextEditingValue(
-                    text: formatted,
-                    selection: TextSelection.collapsed(offset: formatted.length),
-                  );
-                }),
-              ],
-              onChanged: onChanged,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DateBox extends StatelessWidget {
-  const _DateBox({required this.value, required this.onTap});
-
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: _Field(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value.isEmpty ? 'Pick one' : value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: value.isEmpty ? fontBody : fontMono,
-                  fontSize: 14,
-                  color: value.isEmpty ? c.muted : c.text,
-                ),
-              ),
-            ),
-            Icon(Icons.calendar_today_outlined, size: 17, color: c.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Seg<T> extends StatelessWidget {
-  const _Seg({required this.value, required this.options, required this.onPick});
-
-  final T value;
-  final List<(T, String)> options;
-  final ValueChanged<T> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: c.hairline),
-      ),
-      child: Row(
-        children: [
-          for (final (key, label) in options)
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  feedback(Cue.tap);
-                  onPick(key);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: key == value ? c.slate600 : Colors.transparent,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 13,
-                      fontWeight: key == value ? FontWeight.w700 : FontWeight.w500,
-                      color: key == value ? c.text : c.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

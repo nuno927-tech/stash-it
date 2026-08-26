@@ -5,12 +5,15 @@
 /// shield with a tick are this app's, and Material's nearest equivalents are a
 /// different app's.
 ///
-/// ── A tile is two targets in one shape ────────────────────────────────────
-/// The body opens the file picker; the corner opens the camera. An earlier
-/// version relied on the file picker offering "Take photo" itself — it does on
-/// some devices and goes straight to the gallery on others, which loses the
-/// camera entirely on exactly the phones where photographing a receipt is the
-/// only way it will ever get filed.
+/// ── One target, and the question comes after ──────────────────────────────
+/// A tile used to be two controls in one shape: the body opened the file
+/// picker and a corner opened the camera. Two tap targets inside one 84-pixel
+/// square, one of them fifteen pixels across, and no way to tell from looking
+/// which half you were about to hit.
+///
+/// Tapping a tile now asks. Same as the photograph tile at the top of the item
+/// form, and the same reason: the decision is "file a receipt", and where the
+/// bytes come from is a detail of that, not a thing to aim at.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,11 +38,6 @@ const Map<DocKind, String> _glyphs = {
 const String _linkGlyph = '''
 <path d="M10 13.5a3.5 3.5 0 005 0l3-3a3.5 3.5 0 00-5-5l-1 1" />
 <path d="M14 10.5a3.5 3.5 0 00-5 0l-3 3a3.5 3.5 0 005 5l1-1" />
-''';
-
-const String _cameraGlyph = '''
-<path d="M3 8.5A1.5 1.5 0 014.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
-<circle cx="12" cy="13" r="3.4" />
 ''';
 
 Widget _svg(String body, Color color, double size, double stroke) {
@@ -71,13 +69,12 @@ class DocGlyph extends StatelessWidget {
       _svg('<path d="${_glyphs[kind]}" />', color, size, 1.7);
 }
 
-/// Where the bytes come from.
-enum DocSource { files, camera }
-
 class DocTiles extends StatelessWidget {
   const DocTiles({required this.onPick, required this.onLink, super.key});
 
-  final void Function(DocKind kind, DocSource source) onPick;
+  /// The kind that was tapped. Where the bytes come from is asked afterwards.
+  final void Function(DocKind kind) onPick;
+
   final VoidCallback onLink;
 
   @override
@@ -103,8 +100,7 @@ class DocTiles extends StatelessWidget {
                 child: _Tile(
                   label: docKindLabels[kind]!,
                   glyph: '<path d="${_glyphs[kind]}" />',
-                  onTap: () => onPick(kind, DocSource.files),
-                  onCamera: () => onPick(kind, DocSource.camera),
+                  onTap: () => onPick(kind),
                 ),
               ),
 
@@ -131,91 +127,83 @@ class DocTiles extends StatelessWidget {
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.label,
-    required this.glyph,
-    required this.onTap,
-    this.onCamera,
-  });
+  const _Tile({required this.label, required this.glyph, required this.onTap});
 
   final String label;
   final String glyph;
   final VoidCallback onTap;
 
-  /// Null on the link tile, which has nothing to photograph.
-  final VoidCallback? onCamera;
-
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return Stack(
-      children: [
-        Material(
-          color: c.slate700,
-          borderRadius: BorderRadius.circular(Radii.sm),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(Radii.sm),
-            onTap: () {
-              feedback(Cue.attach);
-              onTap();
-            },
-            child: Container(
-              height: 84,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                border: Border.all(color: c.line),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _svg(glyph, c.gold, 22, 1.7),
-                  const SizedBox(height: 8),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: c.text,
-                    ),
+    /*
+      ── Why the height and the fill are on a Positioned.fill ────────────────
+
+      The tile used to be a bare `Material` as the Stack's first child, holding
+      a `Container(height: 84)`. A Stack gives its non-positioned children
+      LOOSE constraints, and a Container with a height but no width sizes
+      itself to its child — so every tile came out as wide as the word inside
+      it. Six tiles, six different widths, all hugging the left edge of the
+      slot they were given, and nothing about the code said so: the SizedBox
+      around it was the right width the whole time.
+
+      A fixed-height SizedBox with the body filled into it is the shape that
+      cannot do that.
+    */
+    /*
+      ── Why the height and the fill are on their own box ───────────────────
+
+      The tile used to be a bare `Material` inside a Stack, holding a
+      `Container(height: 84)`. A Stack gives its non-positioned children LOOSE
+      constraints, and a Container with a height but no width sizes itself to
+      its child — so every tile came out as wide as the word inside it. Six
+      tiles, six different widths, all hugging the left edge of the slot they
+      had been given, and nothing in the code said so: the SizedBox around it
+      was the right width the whole time.
+
+      The Stack is gone with the camera corner, so this is now simply a box
+      that states both of its dimensions.
+    */
+    return Material(
+      // The field colour, not the card's. These sit on a card that is already
+      // `slate700`, so a tile in the same colour was an outline with nothing
+      // in it.
+      color: c.slate800,
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        onTap: () {
+          feedback(Cue.attach);
+          onTap();
+        },
+        child: SizedBox(
+          height: 84,
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _svg(glyph, c.gold, 22, 1.7),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: c.text,
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        /*
-          The camera corner sits over the tile rather than inside it.
-
-          Two tap targets in one shape: the body picks a file, the corner
-          shoots one. Nesting the second inside the first is what the web
-          version could not do — nested buttons are invalid HTML — and it is
-          not much better here, because an InkWell inside an InkWell gives two
-          ripples for one tap.
-        */
-        if (onCamera != null)
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(Radii.sm),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Radii.sm),
-                onTap: () {
-                  feedback(Cue.attach);
-                  onCamera!();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: _svg(_cameraGlyph, c.muted, 15, 1.8),
                 ),
               ),
-            ),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }

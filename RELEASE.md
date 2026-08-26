@@ -167,13 +167,137 @@ encrypted at rest, and the PWA's policy says the opposite of both.
 
 ---
 
-## 6. Still to do before submitting
+## 6. The in-app product
+
+The unlock is one non-consumable product, bought once, no subscription. The app
+never sets the price — it reads whatever the Console says, localised, and shows
+that. Hard-coding "$8" would be wrong in every country but one and wrong
+everywhere the day the price changes.
+
+**In the Play Console → Monetise → In-app products → Create product:**
+
+| Field | Value |
+| --- | --- |
+| Product ID | `stash_it_unlock` |
+| Name | Unlock unlimited |
+| Description | Save as many things as you like. One payment, no subscription. |
+| Price | $8.00 (Play converts and rounds for every other currency) |
+| Status | Active |
+
+**The product ID cannot be changed after the first sale.** It is what people
+own. It is written plainly in `lib/billing/play_billing.dart` rather than
+assembled, so a rename is a one-line diff and a deliberate one.
+
+### Why it will show "the store is not answering" until several things are true
+
+All four of these have to hold before a price appears, and from inside the app
+they fail identically:
+
+1. The product exists in the Console **and is Active**.
+2. An app bundle with the same `applicationId` has been **uploaded to a track**
+   — internal testing is enough. Billing does not work against a local debug
+   build alone, even a signed one.
+3. The build is signed with the **upload key**, not a debug key.
+4. The Google account on the test device is on the **Licence testing** list
+   (Console → Setup → Licence testing), or is an internal tester.
+
+Licence testers are also the only way to buy this repeatedly without being
+charged — the purchase goes through, the entitlement is written, and it can be
+refunded from the Console to test the flow again.
+
+### The one thing that will silently cost money
+
+An unacknowledged purchase is **refunded automatically by Google after three
+days** — not failed, not pending, taken back from somebody who paid and is
+using the app. `completePurchase` is called in `play_billing.dart` after the
+entitlement is written, and moving it, wrapping it in a condition, or
+short-circuiting the purchase stream will reintroduce this. It has no visible
+symptom for three days.
+
+### Giving it away: promo codes
+
+**This is how beta testers get free access.** Not a code compiled into the app,
+and not the developer-tools button.
+
+Play Console → Monetise → Promotions → **Promo codes** → Create promotion:
+
+- Choose **In-app product**, then `stash_it_unlock`.
+- One-time use, quantity as needed. **500 per app per quarter**, which is
+  roughly forty times more than the twelve testers Play requires.
+- Set an expiry. A code with no end date is a code circulating for ever.
+- Download the CSV and hand out one code each.
+
+A tester redeems it in the Play Store app — profile → Payments and
+subscriptions → Redeem code — or at `play.google.com/redeem`. Google records a
+real purchase against their account, `restorePurchases` finds it on a new
+phone, and if somebody abuses one it can be refunded from the Console.
+
+Three reasons this beats a code typed into the app:
+
+1. **Nothing to leak.** A redeem code inside the APK is a bypass that anybody
+   can find by decompiling, and once it is out it cannot be revoked without
+   shipping an update — which the people already using it will not install.
+2. **It exercises the real path.** Every tester redeeming is a test of
+   purchase delivery, acknowledgement and restore. A custom bypass tests the
+   bypass, and the first person to find out buying is broken is a paying
+   customer.
+3. **It is revocable and it expires.**
+
+The one limitation: a promo code needs the app installed from Play, so it does
+not help on a sideloaded debug build. That is what the developer-tools button
+is for — Settings, ten taps on the version number, **Grant unlock**. It writes
+the same entitlement through the same door and marks the source `dev`, so a row
+that says `play` is one somebody actually paid for.
+
+**That button is compiled out of release builds.** It sits behind `kDebugMode`,
+which is a compile-time constant, so the subtree folds away and is tree-shaken
+— it is not hidden in the shipped APK, it is not in it. For one version it was
+not, and ten taps on a version number is not a secret: it is how Android's own
+developer options work, so it is a convention people find by accident rather
+than a lock they have to pick.
+
+### What a client-side check is actually worth
+
+Worth being clear-eyed about, because it changes what is and is not worth
+building.
+
+This app has no server, by design and permanently. That means the entitlement
+is a boolean in a database on the handset, and **anybody willing to decompile
+and patch the APK can set it.** No amount of obfuscation changes that; it moves
+the bar from "twenty minutes" to "an afternoon".
+
+So the check is not a lock, it is a turnstile. It exists so that:
+
+- a casual user cannot stumble past it,
+- somebody who wants to pay has an obvious way to,
+- and somebody who does not want to pay has to decide to steal it rather than
+  simply notice a button.
+
+Everything above is aimed at the first of those. Chasing the third would mean a
+server, an account and a login — which would cost more than the unlock earns
+and would break the one promise the app is actually built on.
+
+### Testing the restore path
+
+Worth doing properly, because it is the path a paying customer hits on a new
+phone and the one place the app can charge somebody twice:
+
+- Buy on device A.
+- Install on device B with the same Google account, fill to twenty, press
+  **I already paid**.
+- The entitlement should be written without a second charge.
+
+---
+
+## 7. Still to do before submitting
 
 - [x] App icon and launch screen — `dart run flutter_launcher_icons` after any
       change to `assets/icon/`. The 512×512 the Play listing wants is already
       at `assets/icon/play-store-512.png`.
 - [ ] Privacy policy URL — see section 5
 - [ ] `storeUrl` verified to resolve — see section 5
+- [ ] `stash_it_unlock` created and Active in the Console — see section 6
+- [ ] A purchase made and restored on a second device — see section 6
 - [ ] Screenshots from a real device with real data
 - [ ] `flutter build appbundle --release` verified to open, restore and back up
       on a phone that has never had a debug build installed

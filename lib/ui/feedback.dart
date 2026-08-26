@@ -29,7 +29,7 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 
-enum Cue { tap, nav, expand, collapse, save, delete, error, attach, launch, unlock }
+enum Cue { tap, nav, expand, collapse, save, stashed, delete, error, attach, launch, unlock }
 
 class _Voice {
   const _Voice(this.notes, this.step, this.wave, this.gain, {this.holdLast = 1});
@@ -74,6 +74,35 @@ const Map<Cue, _Voice> _voices = {
   Cue.collapse: _Voice([698.46, 523.25], 0.045, _Wave.sine, 0.04),
 
   Cue.save: _Voice([587.33, 880], 0.075, _Wave.sine, 0.07),
+
+  /*
+    ── Something went into the stash ──────────────────────────────────────────
+
+    `save` covers everything that writes: a switch flipped in Settings, a lock
+    turned on, a room renamed. All of those are the app agreeing with you.
+
+    Filing an item, a document or a subscription is different in kind — it is
+    the thing the app is FOR, and the only moment somebody has actually got
+    something out of using it. Sharing the confirmation tone with a preference
+    toggle made the two feel equally consequential, which is to say it made
+    neither feel like anything.
+
+    E–B–E: a fifth and then a fourth, the open chiming shape rather than the
+    triad. Distinct from `save` by pitch, by having three notes instead of two,
+    and by the top E ringing on after the phrase has finished.
+
+    Short, though — a quarter of a second. This is not the unlock fanfare and
+    must not be: somebody filing a kitchen drawer's worth of appliances will
+    hear it forty times in an evening, and anything with more character than
+    this becomes something to turn off.
+  */
+  Cue.stashed: _Voice(
+    [659.25, 987.77, 1318.51],
+    0.05,
+    _Wave.triangle,
+    0.06,
+    holdLast: 3,
+  ),
   Cue.attach: _Voice([523.25, 784], 0.06, _Wave.triangle, 0.06),
   Cue.delete: _Voice([392, 261.63], 0.075, _Wave.sine, 0.06),
   Cue.error: _Voice([233.08, 233.08], 0.11, _Wave.square, 0.04),
@@ -136,6 +165,14 @@ Future<void> _buzz(Cue cue) async {
       await HapticFeedback.selectionClick();
     case Cue.save:
       await HapticFeedback.mediumImpact();
+
+    // Light then medium, rising with the notes. A single pulse would be the
+    // same reply an ordinary save gives, which is the thing this cue exists
+    // not to be.
+    case Cue.stashed:
+      await HapticFeedback.lightImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 70));
+      await HapticFeedback.mediumImpact();
     // Double pulses on the web. Heavy is the closest single effect, and the
     // two that get it are the two that undo something.
     case Cue.delete:
@@ -159,6 +196,14 @@ Future<void> _buzz(Cue cue) async {
       await HapticFeedback.heavyImpact();
   }
 }
+
+/// Whether this cue has a tone at all.
+///
+/// Public only so a test can walk `Cue.values` — `_play` reaches into the map
+/// with a `!`, so a member added to the enum and not to the table is a crash
+/// at the moment somebody presses the thing, which is the worst possible time
+/// to find out and the least likely place to look.
+bool hasVoice(Cue cue) => _voices.containsKey(cue);
 
 bool _sounds = false;
 bool _haptics = true;

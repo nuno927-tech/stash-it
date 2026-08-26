@@ -244,16 +244,56 @@ int flaggedCount(List<Entry> entries) => entries.where((e) => e.flagged).length;
 /// as "62 days late" is a bigger one, because the passport does not expire
 /// until February and nothing is actually late. The window to act comfortably
 /// is open, which is a state and not a duration.
+/*
+  ── One implementation, not two that agree ──────────────────────────────────
+
+  This used to be its own set of five ifs, sitting under a comment on
+  `whenParts` promising that "whatever `whenLabel` says, this says the same
+  thing in two pieces". They were separate implementations of that promise, so
+  it lasted exactly as long as nobody changed one of them.
+
+  What changed was pluralisation: `whenParts` learned to say "1 day late" and
+  this did not, so the app printed "1 days late" on any paper one day overdue —
+  see `papers_tab`, which is the screen most likely to show it.
+
+  So it is now the join rather than a copy. The two forms cannot disagree
+  because there is only one of them, and the test that checks they reassemble
+  has gone from a guard against drift to a statement about how this is built.
+*/
 String whenLabel(Urgency urgency, int days) {
-  if (urgency == Urgency.overdue) return '${days.abs()} days late';
-  if (urgency == Urgency.now) return 'now';
-  if (days <= 0) return 'today';
-  if (days == 1) return 'tomorrow';
-  return '$days days';
+  final (big, unit) = whenParts(urgency, days);
+  return unit == null ? big : '$big $unit';
 }
 
 /// The same thing, given a row.
 String whenLabelFor(Entry e) => whenLabel(e.urgency, e.days);
+
+/*
+  ── The answer, split so the number can be the size of a number ─────────────
+
+  "14 days" set as one string at one size is a phrase, and a column of phrases
+  has to be read line by line. The whole point of this column is that it can be
+  compared down the page at a glance, which needs the digits large and the unit
+  small — and that needs them apart.
+
+  **This is the single source of the wording.** `whenLabel` is this, joined.
+
+  The wordy cases have no number and return null for the unit. "now" is a state
+  rather than a duration — see the note on `whenLabel` — and setting it in 20pt
+  digits would be inventing a measurement that does not exist.
+*/
+(String, String?) whenParts(Urgency urgency, int days) {
+  if (urgency == Urgency.overdue) {
+    final n = days.abs();
+    return ('$n', n == 1 ? 'day late' : 'days late');
+  }
+  if (urgency == Urgency.now) return ('now', null);
+  if (days <= 0) return ('today', null);
+  if (days == 1) return ('tomorrow', null);
+  return ('$days', 'days');
+}
+
+(String, String?) whenPartsFor(Entry e) => whenParts(e.urgency, e.days);
 
 /// "Nuno's passport" reads better than "Passport" in a mixed list.
 String _named(Paper paper) {

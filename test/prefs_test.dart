@@ -38,6 +38,23 @@ void main() {
       expect(prefsFrom(fresh).biometricLock, isFalse);
     });
 
+    /*
+      The one default that is ON, and the reason it has a test of its own.
+
+      Every other preference resolves null to false, so this is the one place
+      where "no opinion" and "off" are different answers — and getting it wrong
+      would turn rotation on for every existing install on upgrade, silently,
+      as a side effect of adding a switch.
+    */
+    test('portrait is locked unless somebody says otherwise', () {
+      expect(prefsFrom(fresh).lockPortrait, isTrue);
+      expect(prefsFrom(null).lockPortrait, isTrue);
+    });
+
+    test('and unlocking it is a real answer, not an absence', () {
+      expect(prefsFrom(const Settings(lockPortrait: false)).lockPortrait, isFalse);
+    });
+
     test('no settings at all still yields defaults', () {
       expect(prefsFrom(null).theme, defaultPrefs.theme);
       expect(prefsFrom(null).sounds, defaultPrefs.sounds);
@@ -76,13 +93,25 @@ void main() {
 
   group('the choices', () {
     /*
-      Null is the first option on the item form and it is the default: follow
-      the setting. It has to be a real, selectable choice rather than an
-      absence, or there is no way back once someone has picked a number.
+      ── No "Default" any more ─────────────────────────────────────────────
+
+      The first option used to be null, meaning "follow the global setting",
+      and it was what the form opened on. It answered a question about the
+      app's settings while every other button answered one about the thing in
+      your hand — and nobody has an opinion about whether to inherit a
+      preference they set once and have not looked at since.
+
+      Two weeks is first now, because it is the shortest useful notice: long
+      enough to find the receipt, short enough not to be forgotten again.
+
+      `Item.leadDays` is still nullable and null still means "follow the
+      setting" — records written before this exist and are read correctly. It
+      is simply no longer something the form offers.
     */
-    test('the item list opens with Default, meaning no override', () {
-      expect(itemLeadChoices.first.days, isNull);
-      expect(itemLeadChoices.first.label, 'Default');
+    test('opens on two weeks, and offers no null', () {
+      expect(itemLeadChoices.first.days, 14);
+      expect(itemLeadChoices.first.label, '2 weeks');
+      expect(itemLeadChoices.every((c) => c.days != null), isTrue);
     });
 
     /*

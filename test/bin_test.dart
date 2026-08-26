@@ -157,11 +157,13 @@ void main() {
       unchecked restore would be a hole you could drive the whole tier through:
       fill up, delete the lot, fill up again, restore the lot.
 
-      The cap is off in the shipped app for now, so these turn it on. The rule
-      is dormant, not gone — see `capEnforced`.
+      The cap is ON in the shipped app now — see `capEnforced`. These still
+      set it explicitly rather than relying on the default: a test that only
+      passes because of a global's current value is a test that silently stops
+      testing when somebody flips the global.
     */
     setUp(() => capEnforced = true);
-    tearDown(() => capEnforced = false);
+    tearDown(() => capEnforced = true);
 
     test('a subscriber can always restore', () => expect(canRestore(999, pro), isTrue));
 
@@ -174,7 +176,9 @@ void main() {
 
     test('and the refusal says how to fix it, and promises nothing is lost', () {
       final why = restoreBlockedReason(freeItemLimit);
-      expect(why, contains('subscribe'));
+      // "Unlock", not "subscribe" — it is one payment, once, and offering the
+      // wrong shape of deal answers a question nobody asked.
+      expect(why, contains('unlock'));
       expect(why, contains('stays here'));
       expect(why, contains('$freeItemLimit'));
     });
@@ -182,6 +186,9 @@ void main() {
     test('but with the cap off, nothing is refused at all', () {
       capEnforced = false;
       expect(canRestore(freeItemLimit + 100, free), isTrue);
+      // Put back by hand as well as by tearDown, so the state is not left
+      // wrong for anything sharing this isolate.
+      capEnforced = true;
     });
   });
 }

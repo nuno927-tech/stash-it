@@ -272,6 +272,10 @@ class SettingsTable extends Table {
   TextColumn get roomsView => text().nullable()();
   BoolColumn get biometricLock => boolean().nullable()();
 
+  /// Whether the screen is pinned upright. Null means no opinion, which
+  /// `prefsFrom` reads as on — see the note there.
+  BoolColumn get lockPortrait => boolean().nullable()();
+
   /*
     ── Reminders, and why these are two columns rather than one ─────────────
 
@@ -325,7 +329,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -362,6 +366,15 @@ class StashDatabase extends _$StashDatabase {
             await m.addColumn(subscriptions, subscriptions.shared);
             await m.addColumn(subscriptions, subscriptions.payTo);
             await m.addColumn(subscriptions, subscriptions.payHow);
+          }
+          if (from < 5) {
+            // Nullable, and null is read as ON rather than off — the one
+            // place in this file where "no opinion" does not resolve to
+            // false. Portrait is what every existing install has been doing
+            // since launch, so treating an old row as "unlocked" would turn
+            // rotation on for everybody who upgrades, which is a change
+            // nobody asked for dressed up as a default.
+            await m.addColumn(settingsTable, settingsTable.lockPortrait);
           }
         },
         beforeOpen: (details) async {

@@ -45,7 +45,7 @@ class SpendLine extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: c.hairline),
+        
         boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(

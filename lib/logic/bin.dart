@@ -59,9 +59,18 @@ String daysLeftLabel(int days) {
 /// is the only thing that can remove it.
 bool canRestore(int activeCount, Entitlements e) => canAddItem(activeCount, e);
 
+/// Why a save or a restore was refused.
+///
+/// "Unlock", not "subscribe". There is no subscription — it is one payment,
+/// once — and a message offering the wrong shape of deal is a message that
+/// gets the answer to a question nobody asked.
+///
+/// The second half is the part that matters. Somebody who has just been told
+/// they are full needs to know the thing they were trying to restore is not
+/// lost, and that sentence has to arrive in the same breath as the refusal.
 String restoreBlockedReason(int activeCount) =>
-    "You're at $activeCount of $freeItemLimit saved things. Remove something, "
-    'or subscribe, and this comes straight back — it stays here either way.';
+    "You're at $activeCount of $freeItemLimit saved things. Remove something "
+    'or unlock, and this comes straight back — it stays here either way.';
 
 /// "3 things" / "1 thing", for the entry row and the heading.
 ///

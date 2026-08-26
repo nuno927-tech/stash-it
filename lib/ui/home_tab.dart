@@ -28,10 +28,12 @@ import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
 import 'item_detail_screen.dart';
-import 'paper_form_screen.dart';
+import 'items_tab.dart' show ItemFilter, itemsFilter;
+import 'paper_form_sheet.dart';
 import 'parts.dart';
 import 'sub_form_sheet.dart';
 import 'scout.dart';
+import 'settings_tab.dart' show SettingsAnchor, settingsJump;
 import 'theme.dart';
 import 'thumb.dart';
 
@@ -155,11 +157,7 @@ class _HomeBodyState extends State<_HomeBody> {
       case TimelineKind.paper:
         final paper = await repo.paper(entry.id);
         if (paper == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => PaperFormScreen(repo: repo, existing: paper),
-          ),
-        );
+        await showPaperForm(context, repo: repo, existing: paper);
 
       case TimelineKind.subscription:
         final sub = await repo.subscription(entry.id);
@@ -172,10 +170,24 @@ class _HomeBodyState extends State<_HomeBody> {
   }
 
   /// Where a figure should take you, or nowhere when it has nothing to show.
-  VoidCallback? _tap(KindSplit split) {
+  ///
+  /// ── A number has to land on the rows it counted ──────────────────────────
+  /// "Lapsed 6" used to open the Items tab on its default view, which hides
+  /// lapsed items — so the one figure that most invited a tap was the one
+  /// whose destination was guaranteed not to contain what it had just
+  /// promised. Six became zero on arrival.
+  ///
+  /// The filter is only set when the destination is actually the Items tab.
+  /// `destinationFor` sends a split that is entirely documents to the Papers
+  /// tab instead, and that tab has no such filter to set.
+  VoidCallback? _tap(KindSplit split, {ItemFilter? filter}) {
     final to = destinationFor(split);
     if (to == null) return null;
-    return () => widget.onGo(to == Destination.items ? Tab.items : Tab.papers);
+
+    return () {
+      if (to == Destination.items && filter != null) itemsFilter.value = filter;
+      widget.onGo(to == Destination.items ? Tab.items : Tab.papers);
+    };
   }
 
   @override
@@ -327,15 +339,10 @@ class _Label extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontFamily: fontBody,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: c.muted,
-              ),
-            ),
+            // The same annotation style the forms use, so a section heading
+            // on Home and a field label on a sheet are recognisably the same
+            // kind of thing — see the scale note in theme.dart.
+            child: Text(text.toUpperCase(), style: fieldLabelStyle(c)),
           ),
           if (trailing != null) trailing!,
         ],
@@ -389,7 +396,7 @@ class _CoverCard extends StatelessWidget {
   const _CoverCard({required this.tally, required this.tap});
 
   final DatedTally tally;
-  final VoidCallback? Function(KindSplit) tap;
+  final VoidCallback? Function(KindSplit, {ItemFilter? filter}) tap;
 
   @override
   Widget build(BuildContext context) {
@@ -457,14 +464,17 @@ class _CoverCard extends StatelessWidget {
                     value: '${tally.lapsed}',
                     label: 'lapsed',
                     tone: c.ember,
-                    onTap: tap(tally.lapsedBy),
+                    onTap: tap(tally.lapsedBy, filter: ItemFilter.lapsed),
                   ),
                 ),
                 Expanded(
                   child: Figure(
                     value: '${tally.noDate}',
                     label: 'no date',
-                    onTap: tap(tally.noDateBy),
+                    // Same reasoning as lapsed: the Items tab already has a
+                    // filter for exactly this set, and a figure that counted
+                    // them should arrive with it on.
+                    onTap: tap(tally.noDateBy, filter: ItemFilter.noTerm),
                   ),
                 ),
               ],
@@ -543,7 +553,7 @@ class _BackupRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.slate700,
           borderRadius: BorderRadius.circular(Radii.md),
-          border: Border.all(color: c.hairline),
+          
           boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
         ),
         child: Row(
@@ -568,11 +578,19 @@ class _BackupRow extends StatelessWidget {
                 style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
               ),
             ),
-            // A line that reports a problem and cannot reach the fix is a line
-            // that gets read and ignored.
+            /*
+              A line that reports a problem and cannot reach the fix is a line
+              that gets read and ignored — and one that reaches the ROOM the
+              fix is in is most of the way there and none of the way to the
+              thing somebody pressed for. Settings is eight cards long.
+
+              The anchor is set before the tab changes, so it is already
+              waiting when the Settings tab is built. See `settingsJump`.
+            */
             GestureDetector(
               onTap: () {
                 feedback(Cue.tap);
+                settingsJump.value = SettingsAnchor.backup;
                 onGo(Tab.settings);
               },
               child: Text(
@@ -645,7 +663,7 @@ class _Chip extends StatelessWidget {
       decoration: BoxDecoration(
         color: lead ? c.washGoldSoft : c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: lead ? c.washGoldLine : c.hairline),
+        border: Border.all(color: lead ? c.washGoldLine : Colors.transparent),
         boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
@@ -701,7 +719,7 @@ class _TimelineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
-    final when = whenLabelFor(entry);
+    final (big, unit) = whenPartsFor(entry);
     final urgent = entry.urgency == Urgency.now || entry.urgency == Urgency.overdue;
 
     final body = Row(
@@ -744,15 +762,50 @@ class _TimelineRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          when,
-          style: TextStyle(
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            fontWeight: urgent ? FontWeight.w700 : FontWeight.w400,
-            color: urgent ? c.gold : c.muted,
-          ),
+        const SizedBox(width: 10),
+
+        /*
+          ── The number is the reason to read the row ──────────────────────
+
+          It was "14 days" as one 12.5pt string in muted grey — a phrase, set
+          smaller and quieter than the name beside it, in the one column whose
+          whole job is being compared down the page. Nothing about that said
+          "this is the answer".
+
+          Split, so the digits can be the size of digits and the unit can get
+          out of their way. `whenParts` does the splitting, so this and
+          `whenLabel` cannot drift.
+
+          The wordy cases — now, today, tomorrow — have no number and stay one
+          line: setting "now" in 20pt digits would be inventing a measurement
+          that does not exist.
+        */
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              big,
+              style: TextStyle(
+                fontFamily: fontDisplay,
+                fontSize: unit == null ? 15 : 21,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+                height: 1.05,
+                color: urgent ? c.ember : c.gold,
+              ),
+            ),
+            if (unit != null)
+              Text(
+                unit,
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 10.5,
+                  height: 1.2,
+                  color: c.muted,
+                ),
+              ),
+          ],
         ),
       ],
     );
@@ -857,12 +910,17 @@ class _NeedsCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        // The total, in the same gold and weight the rows
+                        // below it use. It was 13pt muted grey — the sum of
+                        // four gold numbers, set quieter than any of them.
                         Text(
                           '$total',
                           style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 13,
-                            color: c.muted,
+                            fontFamily: fontDisplay,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            color: c.gold,
                           ),
                         ),
                       ],
@@ -877,15 +935,26 @@ class _NeedsCard extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            /*
+                              Weight 200 to 800, matching the item countdowns.
+
+                              Bricolage's thinnest weight at 21px is a hairline
+                              — large enough to take the space a number of
+                              consequence takes and too pale to look like one.
+                              Every other figure in the app that means
+                              something now carries weight; this was the last
+                              one that did not.
+                            */
                             SizedBox(
-                              width: 28,
+                              width: 30,
                               child: Text(
                                 '${gap.count}',
                                 style: TextStyle(
                                   fontFamily: fontDisplay,
-                                  fontWeight: FontWeight.w200,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 21,
-                                  height: 1.1,
+                                  letterSpacing: -0.7,
+                                  height: 1.15,
                                   color: c.gold,
                                 ),
                               ),

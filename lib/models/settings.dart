@@ -65,6 +65,7 @@ class Settings {
     this.haptics,
     this.roomsView,
     this.biometricLock,
+    this.lockPortrait,
     this.notifyEnabled,
     this.notifyAskedAt,
     this.reminderHour,
@@ -88,6 +89,13 @@ class Settings {
 
   /// Ask for a fingerprint or face check before the app opens.
   final bool? biometricLock;
+
+  /// Pin the screen upright.
+  ///
+  /// The one preference where null resolves to **true** rather than false —
+  /// see `defaultPrefs`. Portrait is what the app has always done, so a record
+  /// written before this existed had that behaviour and should keep it.
+  final bool? lockPortrait;
 
   /// Whether reminders should arrive while the app is shut.
   ///
@@ -145,6 +153,7 @@ class Settings {
     bool? haptics,
     RoomsView? roomsView,
     bool? biometricLock,
+    bool? lockPortrait,
     bool? notifyEnabled,
     DateTime? notifyAskedAt,
     int? reminderHour,
@@ -163,6 +172,7 @@ class Settings {
         haptics: haptics ?? this.haptics,
         roomsView: roomsView ?? this.roomsView,
         biometricLock: biometricLock ?? this.biometricLock,
+        lockPortrait: lockPortrait ?? this.lockPortrait,
         notifyEnabled: notifyEnabled ?? this.notifyEnabled,
         notifyAskedAt: notifyAskedAt ?? this.notifyAskedAt,
         reminderHour: reminderHour ?? this.reminderHour,

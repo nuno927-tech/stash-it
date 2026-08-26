@@ -43,23 +43,79 @@ import '../models/subscription.dart';
 import '../models/types.dart';
 import 'dates.dart';
 import 'papers.dart';
+import 'timeline.dart' show dayMonth;
 import 'subscriptions.dart';
+import 'deep_link.dart';
 import 'warranty.dart';
 
-/// The two lines of a notification.
+/// What a notification says, collapsed and expanded.
 class Note {
-  const Note(this.title, this.body);
+  const Note(this.title, this.body, [String? detail]) : _detail = detail;
+
   final String title;
+
+  /// The one line a collapsed notification shows.
   final String body;
+
+  final String? _detail;
+
+  /*
+    ── The expanded body ───────────────────────────────────────────────────
+
+    Android shows a collapsed notification as one truncated line and expands
+    it when somebody pulls it down. Those are two different jobs and they were
+    being done by the same string.
+
+    Collapsed has to survive being cut off mid-word on a lock screen, so it
+    stays short. Expanded is where the detail goes — every record on the day
+    with what is actually happening to it — because somebody who pulled the
+    notification down has asked for exactly that.
+
+    Falls back to the body, so a Note built without one still expands to
+    something rather than to nothing.
+  */
+  String get detail => _detail ?? body;
+}
+
+/// One record wanting attention, and why.
+class Due {
+  const Due(this.label, this.why, this.link);
+
+  /// "Passport — Nuno", "Bosch dishwasher".
+  final String label;
+
+  /// "expires Feb 11", "cover ends Mar 4", "renews Sep 1".
+  ///
+  /// Lower case and verb-first so it reads as a continuation of the label
+  /// rather than as a sentence of its own: "Passport — Nuno · expires Feb 11".
+  final String why;
+
+  final DeepLink link;
 }
 
 /// One day the phone should be woken, and what to say when it is.
 class Wake {
-  const Wake(this.on, this.title, this.body);
+  const Wake(this.on, this.title, this.body, [this.payload = 'home', String? detail])
+      : detail = detail ?? body;
 
-  Wake.fromNote(this.on, Note note)
+  Wake.fromNote(this.on, Note note, [this.payload = 'home'])
       : title = note.title,
-        body = note.body;
+        body = note.body,
+        detail = note.detail;
+
+  /*
+    ── Where the tap goes ────────────────────────────────────────────────────
+
+    A notification that opens the app on whatever screen you last left has
+    wasted the one moment it had — somebody tapped it because of the thing it
+    named. See `logic/deep_link.dart` for the format.
+
+    Defaulted rather than required so the sixty-odd existing constructions in
+    the tests keep saying what they were written to say. A wake with no
+    opinion about where to land goes to the dashboard, which is the same
+    behaviour they had before this field existed.
+  */
+  final String payload;
 
   /// `YYYY-MM-DD`, local. Day granularity on purpose: the hour you did
   /// something is itself information, and nothing here needs it. The delivery
@@ -67,7 +123,12 @@ class Wake {
   final String on;
 
   final String title;
+
+  /// The one line a collapsed notification shows.
   final String body;
+
+  /// Every record on the day, one per line, for the expanded view. See `Note`.
+  final String detail;
 }
 
 /// How far ahead a schedule is worked out.
@@ -118,21 +179,29 @@ List<Wake> reminderSchedule(
   final today = startOfDay(at);
   final last = addDays(today, horizon);
 
-  final byDay = <String, List<String>>{};
+  final byDay = <String, List<Due>>{};
 
-  void add(DateTime? when, String label) {
+  void add(DateTime? when, Due due) {
     if (when == null) return;
     final day = startOfDay(when);
     // Today counts — something crossing its threshold this morning is exactly
     // what a reminder is for. Yesterday does not: the moment has gone and the
     // dashboard is already carrying it.
     if (day.isBefore(today) || day.isAfter(last)) return;
-    byDay.putIfAbsent(toIsoDate(day), () => []).add(label);
+    byDay.putIfAbsent(toIsoDate(day), () => []).add(due);
   }
 
   for (final paper in papers) {
-    if (expiryOf(paper) == null) continue;
-    add(renewBy(paper), _named(paper));
+    final expiry = expiryOf(paper);
+    if (expiry == null) continue;
+    add(
+      renewBy(paper),
+      Due(
+        _named(paper),
+        'expires ${dayMonth(expiry)}',
+        DeepLink(LinkKind.paper, paper.id),
+      ),
+    );
   }
 
   for (final item in items) {
@@ -141,7 +210,14 @@ List<Wake> reminderSchedule(
     // The day the countdown turns amber, not the day the cover ends — and this
     // item's own lead if it was given one, so the reminder lands on the same
     // day the dashboard changes colour.
-    add(addDays(end, -itemLeadDays(item)), item.name);
+    add(
+      addDays(end, -itemLeadDays(item)),
+      Due(
+        item.name,
+        'cover ends ${dayMonth(end)}',
+        DeepLink(LinkKind.item, item.id),
+      ),
+    );
   }
 
   for (final sub in subs) {
@@ -149,37 +225,99 @@ List<Wake> reminderSchedule(
     if (ask == null || ask == 0) continue;
     final renews = nextRenewal(sub, at);
     if (renews == null) continue;
-    add(addDays(renews, -ask), sub.name);
+    add(
+      addDays(renews, -ask),
+      Due(
+        sub.name,
+        // The amount as well as the date. A renewal is the one reminder where
+        // the number is the reason somebody would act on it — "renews Sep 1"
+        // invites a shrug where "renews Sep 1 · 12.99" invites a decision.
+        'renews ${dayMonth(renews)} · ${(sub.amountCents / 100).toStringAsFixed(2)}',
+        DeepLink(LinkKind.sub, sub.id),
+      ),
+    );
   }
 
   final days = byDay.keys.toList()..sort();
-  return [for (final on in days) Wake.fromNote(on, compose(byDay[on]!))];
+
+  return [
+    for (final on in days)
+      Wake.fromNote(
+        on,
+        compose(byDay[on]!),
+        /*
+          One record on the day means the tap can open that record. Several
+          means there is no single right answer — and picking the
+          alphabetically first would be arbitrary in a way somebody would
+          notice, because the notification named it first for a reason that
+          has nothing to do with which one they care about.
+
+          A busy day goes to the dashboard, which is already sorted
+          soonest-first and is exactly the list the notification summarised.
+        */
+        encodeLink(byDay[on]!.length == 1 ? byDay[on]!.single.link : const DeepLink.home()),
+      ),
+  ];
 }
 
 /// What the notification says.
 ///
-/// NAMES, NOT DETAIL. "Passport — Nuno" is enough to know what it's about and
-/// costs nothing on a lock screen a stranger can read; "Passport expires 11
-/// Feb, renew now" is the same information broadcast to anyone glancing at the
-/// phone on a table. Everything else is one tap away in an app that can ask for
-/// a fingerprint first.
+/// ── Detail, and where it is safe to put it ────────────────────────────────
 ///
-/// Two named and the rest counted, because a lock screen truncates and a list
-/// of five names truncates to three names and an ellipsis — which is a worse
-/// version of saying "and 3 more" on purpose.
-Note compose(List<String> labels) {
-  final names = [...labels]..sort();
+/// This used to say names and nothing else — "Passport — Nuno" and then
+/// "Needs a look in Stash it." The reasoning was a lock screen a stranger can
+/// read over your shoulder, and that reasoning was sound about the lock
+/// screen and wrong about everything else: it also stripped the detail from
+/// the notification shade on an unlocked phone, where nobody but the owner is
+/// looking, and left a reminder that says something needs doing without
+/// saying what or when.
+///
+/// So there are two bodies now.
+///
+/// **Collapsed** is one line that will be truncated, and gets the same
+/// treatment as before: a name, or a count and two names. Short enough to
+/// survive being cut off.
+///
+/// **Expanded** is what somebody sees after pulling the notification down —
+/// every record on the day with its date, one per line. Pulling it down is a
+/// deliberate act by whoever is holding the phone.
+///
+/// The lock screen is handled where it actually lives, which is not here:
+/// `reschedule` marks these `NotificationVisibility.private`, so Android
+/// redacts them on a locked phone and shows them in full once it is unlocked.
+/// That is the setting that was always the right answer to the original
+/// worry, and writing vaguer text was standing in for it.
+///
+/// Two named and the rest counted in the collapsed line, because a lock screen
+/// truncates and a list of five names truncates to three names and an ellipsis
+/// — which is a worse version of saying "and 3 more" on purpose.
+Note compose(List<Due> due) {
+  final sorted = [...due]..sort((a, b) => a.label.compareTo(b.label));
 
-  if (names.isEmpty) return const Note('Stash it', 'Needs a look in Stash it.');
-  if (names.length == 1) return Note(names.first, 'Needs a look in Stash it.');
+  if (sorted.isEmpty) return const Note('Stash it', 'Needs a look in Stash it.');
 
+  // One line per record, for the expanded view. Same order as the collapsed
+  // line, so the two read as the same list rather than as two lists.
+  final lines = [for (final d in sorted) '${d.label} · ${d.why}'].join('\n');
+
+  if (sorted.length == 1) {
+    final only = sorted.single;
+    return Note(only.label, _sentence(only.why), lines);
+  }
+
+  final names = [for (final d in sorted) d.label];
   final rest = names.length - 2;
   final listed = names.length == 2
       ? '${names[0]} and ${names[1]}'
       : '${names[0]}, ${names[1]} and $rest more';
 
-  return Note('${names.length} things need you', listed);
+  return Note('${names.length} things need you', listed, lines);
 }
+
+/// "expires Feb 11" becomes "Expires Feb 11." — the reason on its own line
+/// wants to read as a sentence, where the same words after a name do not.
+String _sentence(String why) =>
+    '${why[0].toUpperCase()}${why.substring(1)}.';
 
 /// The dates alone, for showing someone what their schedule looks like.
 ///

@@ -103,17 +103,43 @@ void main() {
 
   group('the cap', () {
     /*
-      ── The cap is off in the shipped app, and on in here ────────────────
+      ── The cap is on now ────────────────────────────────────────────────
 
-      Switched off deliberately while the app is being built out, and kept
-      whole rather than deleted — see `capEnforced`. The rule is still worth
-      testing, because the hard part was never the comparison: it was that
-      **both** insert paths go through the same gate. That property has to keep
-      being true while the cap is dormant, or turning it back on ships a cap
-      with a hole in it.
+      It was off for most of the port and kept whole rather than deleted — see
+      `capEnforced`. It stayed tested the whole time, because the hard part was
+      never the comparison: it was that **both** insert paths go through the
+      same gate. Keeping that property true while the rule was dormant is what
+      made switching it on a one-line change rather than a rebuild with a hole
+      in it.
+
+      Still set explicitly here rather than leaned on. A test that only passes
+      because of a global's current value stops testing the moment somebody
+      flips the global.
     */
     setUp(() => capEnforced = true);
-    tearDown(() => capEnforced = false);
+    tearDown(() => capEnforced = true);
+
+    /*
+      ── Paying is the only way in ──────────────────────────────────────────
+
+      `grantUnlock` is the one door, and `saveSettings` deliberately has no way
+      to open it — see `settingsToRow`. This checks both halves: that the door
+      works, and that the wide-open path beside it still cannot.
+    */
+    test('an unlock lifts the cap, and only billing can write one', () async {
+      await fillTo(freeItemLimit);
+      expect(await repo.canSave(), isFalse);
+
+      await repo.grantUnlock('play');
+      expect(await repo.canSave(), isTrue);
+      expect((await repo.settings()).entitlements.source, 'play');
+
+      // The restore path, trying to take it away again.
+      final settings = await repo.settings();
+      await repo.saveSettings(settings);
+      expect((await repo.settings()).entitlements.proUnlock, isTrue,
+          reason: 'saveSettings must not be able to revoke it either');
+    });
 
     /*
       THE ASSERTION THE FILE EXISTS FOR. `canAddItem` was always right; what
@@ -140,7 +166,7 @@ void main() {
         await repo.createItem(draft('One too many'));
         fail('should have refused');
       } on CapReached catch (e) {
-        expect(e.message, contains('subscribe'));
+        expect(e.message, contains('unlock'));
         expect(e.message, contains('$freeItemLimit'));
       }
     });
@@ -199,7 +225,28 @@ void main() {
     });
   });
 
-  group('with the cap off, which is how the app ships today', () {
+  group('with the cap off', () {
+    /*
+      ── This group had no setUp, and that was the bug ────────────────────────
+
+      It was written when `capEnforced` shipped false, so it leaned on the
+      default and asserted "which is how the app ships today" in its own name.
+      The day the app started shipping with the cap on, both tests failed —
+      not because the behaviour changed but because the sentence they were
+      standing on did.
+
+      Which is the exact failure the comment on the group above warns about. A
+      test that only passes because of a global's current value stops testing
+      the moment somebody flips the global, and it takes its own explanation
+      down with it.
+
+      The rule stays worth testing: `capEnforced` is a switch, and a switch
+      that has only ever been tested in one position is a switch nobody knows
+      the other end of.
+    */
+    setUp(() => capEnforced = false);
+    tearDown(() => capEnforced = true);
+
     test('nothing is refused', () async {
       await fillTo(freeItemLimit + 10);
       expect(await repo.cappedCount(), freeItemLimit + 10);
@@ -238,17 +285,16 @@ void main() {
     });
 
     /*
-      ── Restoring, with the cap switched back on ─────────────────────────────
+      ── Restoring, with the cap on ───────────────────────────────────────────
 
-      These two turn `capEnforced` on for the duration, because the app ships
-      with it off. That is not the tests bending to fit the code: the hole
-      below is a property of the cap, so it can only be demonstrated with a cap
-      in place, and the day the cap comes back is the day somebody needs to
-      know this was already thought about.
+      These set it explicitly rather than leaning on the default, even now that
+      the default is on. The hole below is a property of the cap and can only
+      be demonstrated with one in place — and a group two hundred lines up
+      already proved what happens to a test that lets a global speak for it.
     */
     group('and restoring when the cap is on', () {
       setUp(() => capEnforced = true);
-      tearDown(() => capEnforced = false);
+      tearDown(() => capEnforced = true);
 
       /*
         THE HOLE THIS CLOSES. Deleting frees a slot immediately, so an
@@ -440,7 +486,7 @@ void main() {
       // the half that proves the pretend unlock bought nothing — has to switch
       // it on to have anything to prove.
       capEnforced = true;
-      addTearDown(() => capEnforced = false);
+      addTearDown(() => capEnforced = true);
 
       const pretend = Settings(entitlements: Entitlements(proUnlock: true));
       await repo.saveSettings(pretend);
