@@ -1,21 +1,55 @@
 .dart_tool/
 build/
 
-# Drift generates this
+# Drift generates this. A fresh clone needs
+# `dart run build_runner build --delete-conflicting-outputs` before it compiles.
 *.g.dart
 
 # ── Signing ────────────────────────────────────────────────────────────────
 #
 # THE KEYSTORE AND ITS PASSWORDS NEVER GO IN THE REPOSITORY.
 #
-# Not because the repository is public — it is not — but because the upload key
-# is the one secret in this project that cannot be rotated. Lose it and the app
-# on the Play Store can never be updated again by anybody, including you; leak
-# it and somebody else can publish an update that Android will install over the
-# real one without a warning.
+# This repository IS public — it lives inside nuno927-tech/stash-it alongside
+# the web app — so a mistake here is published the moment it is pushed, and
+# GitHub keeps it in the history even after it is deleted.
+#
+# But the rule would stand either way, because the upload key is the one secret
+# in this project that cannot be rotated. Lose it and the app on the Play Store
+# can never be updated again by anybody, including you; leak it and somebody
+# else can publish an update that Android will install over the real one
+# without a warning.
 #
 # Back it up somewhere that is not this folder and not this laptop. See
 # RELEASE.md.
 *.jks
 *.keystore
 android/key.properties
+
+# ── Editor state ───────────────────────────────────────────────────────────
+#
+# These were tracked for the first sixty versions, which nobody noticed while
+# the repository was a folder on one laptop. They are worth removing now for
+# three reasons, in ascending order of importance:
+#
+#   They are noise. `.vs/` alone was 1.4 MB of binary index and symbol
+#   databases that changed on every build, so every commit carried a diff
+#   nobody wrote.
+#
+#   They are machine-specific. `.idea/libraries/Dart_SDK.xml` names the
+#   absolute path of one Flutter install; anybody cloning this gets a broken
+#   project configuration rather than none.
+#
+#   They are not reviewable. A `.wsuo` or a `.sqlite` cannot be read in a
+#   diff, so nobody can tell what is in one — which is exactly the sort of
+#   file that ends up carrying a token or a local path nobody meant to share.
+.idea/
+.vs/
+*.iml
+*.iws
+
+# Points at wherever Flutter is installed on this machine.
+android/local.properties
+
+# One-time utility for moving this project into the web repository. Not part
+# of the project, and meaningless once it has run.
+merge-into-monorepo.ps1

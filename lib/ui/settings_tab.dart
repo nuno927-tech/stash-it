@@ -1508,7 +1508,24 @@ Future<bool?> _askErase(BuildContext context) {
 ///
 /// The policy people actually read is the one inside the app; see
 /// lib/ui/privacy.dart. This is the address, not the source of truth.
-const String privacyUrl = 'https://nuno927.github.io/stash-it/privacy.html';
+///
+/// ── Two things were wrong with the address this replaces ──────────────────
+/// It read `nuno927.github.io`. The account is **nuno927-tech**, so the URL
+/// resolved to nothing at all — a privacy policy that 404s, which is worse
+/// than none because the listing went out of its way to point at it. Nothing
+/// in a build catches a URL that is merely wrong.
+///
+/// And it pointed at `privacy.html`, which is the **web** app's policy. That
+/// one describes a push server and unencrypted browser storage, neither of
+/// which is true here, and it says the app is free with an optional tip —
+/// this one has a purchase in it. Play checks the policy against what the app
+/// actually does.
+///
+/// So: a page of its own, generated from the same facts as lib/ui/privacy.dart
+/// and living in the web repo's `site/` folder, which is what GitHub Pages
+/// serves at the root of the project site.
+const String privacyUrl =
+    'https://nuno927-tech.github.io/stash-it/privacy-android.html';
 
 /*
   ── PLACEHOLDER. Replace before the first public release. ───────────────────
