@@ -1,6 +1,57 @@
 # Stash it
 
-Warranties, receipts and manuals for everything you own. Local-first PWA.
+Warranties, receipts and manuals for everything you own. Nothing leaves the
+device.
+
+## Two apps, one repository
+
+| Where | What | Built with |
+| --- | --- | --- |
+| the root | The web app — a local-first PWA | TypeScript, Vite, Dexie |
+| `mobile/` | The Android app | Flutter, Drift, SQLCipher |
+| `site/` | The marketing page and both privacy policies | Plain HTML, no build step |
+
+They are **separate applications that share a design and a data model, not a
+codebase.** No file is imported across the line, and neither can break the
+other's build.
+
+They live together anyway because the things that actually drift between them
+are not code: the wording of a warranty term, the shape of a backup file, what
+a reminder is allowed to say on a lock screen. Those are decisions, and
+decisions are easier to keep in step when they are one `git log` apart.
+
+### The one thing that must not drift
+
+The `.stashit` backup format. A file exported from either app should restore
+into the other, so the record shapes in `src/db/types.ts` and
+`mobile/lib/models/` describe the same thing and have to change together.
+
+### What is deliberately not shared
+
+- **Privacy policies.** Two files in `site/`, because the two apps genuinely
+  differ: the web version needs a push server to deliver a reminder and stores
+  its data unencrypted in the browser; the Android version schedules locally
+  and encrypts at rest. One policy covering both would be wrong about one of
+  them.
+- **CI.** The Pages workflow only runs when web files change — see the path
+  filter in `.github/workflows/deploy.yml`. A Dart commit deploys nothing.
+
+### Working on the Android app
+
+```bash
+cd mobile
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs   # required: *.g.dart is gitignored
+flutter test
+flutter run
+```
+
+Publishing it is `mobile/PUBLISHING.md` (the Play Store walkthrough) and
+`mobile/RELEASE.md` (signing keys and build commands).
+
+---
+
+## The web app
 
 ## Run it
 

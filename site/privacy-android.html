@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0B0D10" />
-    <title>Privacy policy — Stash it</title>
+    <title>Privacy policy (Android app) — Stash it</title>
     <meta
       name="description"
-      content="What Stash it collects, which is almost nothing, and the two exceptions where something does leave your phone."
+      content="What the Stash it Android app collects, which is nothing at all. No account, no server, no analytics, and no internet permission."
     />
     <link rel="icon" href="img/icon.png" />
 
@@ -295,6 +295,47 @@
           font-weight: 500;
         }
       }
+
+      /* Added for this page: a callout, an aside, and a permissions table. */
+      .note {
+        background: var(--gold-soft);
+        border: 1px solid rgba(242, 179, 61, 0.3);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin: 26px 0 8px;
+        font-size: 15px;
+        color: var(--text);
+      }
+      .aside {
+        border-left: 2px solid var(--line);
+        padding-left: 16px;
+        color: var(--dim);
+        font-size: 15px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 18px 0;
+        font-size: 15px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      td:first-child {
+        white-space: nowrap;
+        color: var(--text);
+      }
     </style>
   </head>
 
@@ -310,146 +351,172 @@
     </header>
 
     <main class="page">
-      <span class="eyebrow">Privacy policy · Web app</span>
-      <h1>We don't have your data</h1>
+      <span class="eyebrow">Privacy policy &middot; Android app</span>
+      <h1>We don&rsquo;t have your data</h1>
+
       <p class="lede">
-        Not as a promise about how carefully we look after it — as a description of the
-        architecture. There is no account, no server holding your records, and nothing for us to
-        look at even if we wanted to.
+        Not as a promise about how carefully we look after it &mdash; as a description of how the
+        app is built. There is no account, no server holding your records, and nothing for anyone
+        to look at even if they wanted to.
       </p>
 
-      <!--
-        Two apps, two policies, and they are not interchangeable.
-
-        The Android app has no push server and encrypts its database, so a
-        reader who arrived from the Play Store would be reading two claims that
-        are wrong about the app in their hand — and wrong in the app's favour,
-        which is the direction that matters. See site/privacy-android.html.
-      -->
-      <p class="lede" style="font-size: 15px; color: var(--muted)">
-        This page describes the <strong>web app</strong>. The Android app works differently in two
-        places — it has no push server, and its database is encrypted on the device — so it has
-        <a href="privacy-android.html">a policy of its own</a>.
-      </p>
-
-      <div class="card">
-        <h2>The short version</h2>
-        <ul>
-          <li><strong>No account.</strong> You never give us an email address or a name we can see.</li>
-          <li><strong>Everything stays on your device.</strong> Items, photos, receipts, documents, subscriptions — all of it lives in your browser's own storage.</li>
-          <li><strong>No analytics, no trackers, no ads.</strong> None. Not a page-view counter.</li>
-          <li><strong>Two exceptions</strong>, both optional and both described in full below: reminders, and backups you choose to send somewhere.</li>
-        </ul>
+      <div class="note">
+        <strong>This page is about the Android app.</strong> The web version of Stash it works
+        differently in two places that matter, and it has
+        <a href="privacy.html">a policy of its own</a>. Where they differ, the differences are
+        named below.
       </div>
 
-      <h2>What Stash it stores, and where</h2>
+      <h2>The short version</h2>
+      <ul>
+        <li><strong>No account.</strong> You never give anyone an email address or a name.</li>
+        <li>
+          <strong>Everything stays on your phone</strong>, in a database encrypted with a key held
+          by the phone itself.
+        </li>
+        <li><strong>No analytics, no trackers, no ads.</strong> None. Not a launch counter.</li>
+        <li>
+          <strong>The app requests no internet permission</strong>, so it could not send anything
+          anywhere even if it were asked to.
+        </li>
+      </ul>
+
+      <h2>What is stored, and where</h2>
       <p>
-        Everything you put into the app is written to your browser's local database on the device
-        you are holding. It is not uploaded, synced or mirrored. Uninstall the app or clear the
-        browser's storage and it is gone — which is why the app keeps asking you to make a backup.
+        Everything you put in is written to a database on the device you are holding. It is not
+        uploaded, synced or mirrored. Uninstall the app and it is gone &mdash; which is why the app
+        keeps asking you to make a backup.
       </p>
       <p>That includes:</p>
       <ul>
-        <li>Items you record, their prices, dates, warranty terms, rooms and notes.</li>
-        <li>Photographs and documents you attach.</li>
-        <li>Documents you track — passports, licenses, insurance and so on. <strong>Dates and general details only.</strong> The app deliberately cannot store a scan or a document number; there is no field for either.</li>
+        <li>Things you record, and their prices, dates, warranty terms, rooms and notes.</li>
+        <li>Photographs and files you attach.</li>
+        <li>Documents you track &mdash; passports, licences, insurance and so on.</li>
         <li>Subscriptions and their amounts.</li>
-        <li>Your settings, and the name you gave Scout to call you.</li>
+        <li>Your settings, and the name Scout calls you.</li>
       </ul>
 
-      <h2>The two exceptions</h2>
-
-      <h3>1. Reminders, if you turn them on</h3>
+      <h2>Documents are dates only</h2>
       <p>
-        Reminders are <strong>off until you switch them on</strong>. Delivering a notification to a
-        phone with the app closed is the one thing that cannot happen on the device, so it is the
-        one place where something leaves it. What leaves is this, and nothing else:
+        The app deliberately cannot store a scan or a document number &mdash; there is no field for
+        either, on purpose. A backup is a plain file the moment you share it, and a passport number
+        next to a name is a better identity-theft package than the scan would be.
       </p>
+
+      <h2>Encryption, and what it does not cover</h2>
+      <p>
+        The database is encrypted with SQLCipher, using a key kept in the phone&rsquo;s
+        hardware-backed Keystore. The key never leaves the handset, which is also why a lost phone
+        means lost data: nobody can open the file, including us.
+      </p>
+      <p>
+        <strong>The backup file you export is not encrypted.</strong> It has to be readable by a
+        future version of the app and by you, so treat it like any other file holding your records.
+      </p>
+      <p class="aside">
+        The web version stores its data in the browser and says plainly that it is not encrypted.
+        This is one of the two places the two versions genuinely differ.
+      </p>
+
+      <h2>Reminders</h2>
+      <p>
+        Reminders are worked out on the phone and handed to Android, which wakes the app on the day.
+        <strong>Nothing is sent anywhere</strong>, because there is nowhere to send it &mdash; no
+        account, no sender, no keys.
+      </p>
+      <p class="aside">
+        This is the other real difference. A browser cannot wake itself, so the web version needs a
+        server that knows which phone to ping and when. That whole arrangement is absent here, and
+        it is the single biggest reason this policy is shorter than the other one.
+      </p>
+      <p>
+        What a notification says is composed on the phone and shown by the phone. It deliberately
+        names things rather than describing them &mdash; &ldquo;Passport &mdash; Nuno&rdquo; and not
+        &ldquo;passport expires 11 February&rdquo; &mdash; because a lock screen is readable by
+        anyone holding the phone.
+      </p>
+
+      <h2>Backups you choose to send</h2>
+      <p>
+        &ldquo;Back up now&rdquo; makes one file with everything in it and hands it to the
+        phone&rsquo;s share sheet. Where it goes &mdash; a cloud drive, an email to yourself &mdash;
+        is your choice and happens outside Stash it. It is never received by anyone here.
+      </p>
+
+      <h2>The permissions the app asks for</h2>
       <table>
         <thead>
-          <tr>
-            <th>What</th>
-            <th>Why</th>
-          </tr>
+          <tr><th>Permission</th><th>What it is for</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td>A delivery address</td>
-            <td>A long anonymous URL your browser generates, which is how Google or Apple know which phone to wake. It is not tied to your identity and we cannot read anything from it.</td>
+            <td>Notifications</td>
+            <td>Reminders before a warranty or a renewal runs out. Optional.</td>
           </tr>
           <tr>
-            <td>A list of moments</td>
-            <td>The times a reminder is due — nine in the morning, your time, on each day something needs attention.</td>
+            <td>Camera</td>
+            <td>
+              Photographing an item or a receipt. Photos are written straight into the app&rsquo;s
+              own storage. Optional &mdash; you can pick existing files instead.
+            </td>
+          </tr>
+          <tr>
+            <td>Fingerprint / face</td>
+            <td>The optional lock on the app. Off unless you turn it on.</td>
+          </tr>
+          <tr>
+            <td>Run at startup</td>
+            <td>So scheduled reminders survive a restart. It does nothing else.</td>
           </tr>
         </tbody>
       </table>
       <p>
-        <strong>What the reminder says never leaves your phone.</strong> The wording is worked out
-        on your device and kept in your browser's own cache. The message that arrives on the day is
-        empty; your phone fills it in. Nobody in the middle — including us — can read a notification
-        they did not write.
-      </p>
-      <p>Worth knowing anyway, because it is true and rarely said:</p>
-      <ul>
-        <li>The delivery address lives on Google's or Apple's servers, so they can see that your phone was pinged and when.</li>
-        <li>Our sender sees your IP address each time the list of dates is refreshed. That happens weekly in one batch rather than whenever you edit something, specifically so it cannot be used to watch you use the app.</li>
-        <li>The times give away roughly which part of the world you are in, because that is what makes a reminder arrive in your morning rather than at three.</li>
-      </ul>
-      <p>
-        Turn reminders off and the app tells the sender to delete its record before it drops the
-        subscription. Nothing is kept.
+        There is no internet permission in the list, which is the one worth noticing. It is not an
+        oversight and it is not a setting &mdash; the app cannot reach a network at all.
       </p>
 
-      <h3>2. Backups you choose to send somewhere</h3>
+      <h2>The biometric lock</h2>
       <p>
-        "Back up now" makes one file containing everything and hands it to your phone's share
-        sheet. Where it goes — Google Drive, Files, an email to yourself — is your choice and
-        happens outside Stash it. We never receive it, and it is not encrypted, so treat it like
-        any other file with your records in it.
+        It guards the app, not the data. The database key is released whether or not you have just
+        used the sensor, so the lock stops somebody picking up your phone; it does not stop somebody
+        with your phone and a laptop.
       </p>
 
-      <h2>What we never do</h2>
-      <ul>
-        <li>No analytics or telemetry of any kind. We do not know how many people use this.</li>
-        <li>No advertising, and no data sold or shared with anyone.</li>
-        <li>No third-party trackers, tags or embedded scripts. The website loads a font from Google Fonts; the app loads nothing from anywhere.</li>
-        <li>No crash reporting.</li>
-      </ul>
+      <h2>Payment</h2>
+      <p>
+        Stash it holds twenty things for free. Lifting that limit is a single payment, handled
+        entirely by Google Play &mdash; no card details ever pass through Stash it, and we see only
+        what Play shows any developer: that a purchase happened, not who made it or how they paid.
+      </p>
+      <p>It is not a subscription, and there is nothing else to buy.</p>
 
       <h2>Children</h2>
       <p>
         Stash it is not directed at children and collects nothing from anyone, including them.
       </p>
 
-      <h2>Payments</h2>
-      <p>
-        Stash it is free. If you choose to chip in, the app opens Venmo with an amount filled in
-        and you confirm it there — no payment details ever pass through Stash it, and we see only
-        what Venmo shows any recipient.
-      </p>
-
       <h2>Your rights over your data</h2>
       <p>
         Because we hold nothing, there is nothing for us to hand over, correct or erase on your
         behalf, and no request you need to make of us. Your copy is yours: export it from Settings
-        at any time, and delete it by removing the app or clearing its storage.
+        at any time, and delete it by uninstalling the app.
       </p>
 
       <h2>Changes</h2>
       <p>
-        If this ever changes in a way that means something new leaves your device, it will be said
-        plainly in the app before it happens — not amended quietly here.
+        The full policy also ships <em>inside</em> the app, under Settings &rarr; Privacy, so it
+        always describes exactly the version you are holding. This page is kept in step with it.
       </p>
 
       <h2>Contact</h2>
       <p>
         Questions about any of this:
         <a href="mailto:nuno927@gmail.com">nuno927@gmail.com</a>. The app is open source, so you do
-        not have to take our word for any of it —
-        <a href="https://github.com/nuno927-tech/stash-it">read the code</a>.
+        not have to take our word for any of it &mdash;
+        <a href="https://github.com/nuno927-tech/stash-it/tree/main/mobile">read the code</a>.
       </p>
 
-      <p class="updated">Last updated 18 August 2026.</p>
+      <p class="updated">Last updated 26 August 2026.</p>
     </main>
 
     <footer>

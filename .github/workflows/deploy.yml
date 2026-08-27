@@ -3,6 +3,34 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # ── Why there is a path filter now ──────────────────────────────────────
+    #
+    # The Android app lives in `mobile/` in this same repository. Without this
+    # list, every Dart commit would install npm, typecheck TypeScript, run the
+    # web test suite and redeploy an identical site — several minutes of CI to
+    # publish exactly what was already published.
+    #
+    # It is an ALLOW list rather than a `paths-ignore: [mobile/**]`, because
+    # the failure modes are not symmetrical. An ignore list is wrong the moment
+    # somebody adds a second non-web folder and nobody remembers to add it; an
+    # allow list is wrong only in the direction of not deploying, which is
+    # visible immediately and fixed by pushing again.
+    #
+    # `workflow_dispatch` below is the escape hatch: if a deploy is ever needed
+    # for something not on this list, it can be run by hand from the Actions
+    # tab without editing the filter.
+    paths:
+      - 'src/**'
+      - 'site/**'
+      - 'public/**'
+      - 'test/**'
+      - 'scripts/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 # Allow one deploy at a time; a queued run supersedes an older one rather than
