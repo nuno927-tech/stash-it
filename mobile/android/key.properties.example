@@ -1,0 +1,16 @@
+# A TEMPLATE. Never put a real password in this file.
+#
+# This file IS tracked by git — that is the point of it, so a fresh clone knows
+# what shape `key.properties` has to be. The file it describes,
+# `android/key.properties`, is gitignored and is where the real values go.
+#
+# The two filenames differ by one word and hold opposite kinds of thing, which
+# is a trap worth naming rather than one worth being careful around.
+#
+# storeFile keeps the keystore outside the project folder entirely, out of reach
+# of a stray `git add -A`.
+
+storeFile=C:\\keys\\stash-it-upload.jks
+storePassword=PUT_IT_IN_key.properties_NOT_HERE
+keyAlias=upload
+keyPassword=PUT_IT_IN_key.properties_NOT_HERE

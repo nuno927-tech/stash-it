@@ -1,0 +1,198 @@
+name: stash_it
+description: >-
+  Warranties, documents and subscriptions — every date you'd rather not miss.
+publish_to: none
+version: 0.61.1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── reading a .stashit backup ──────────────────────────────────────────
+  #
+  # `logic/bundle.dart` takes the unzipping and the hashing as arguments so it
+  # stays testable without either. These are what gets passed in.
+  #
+  # archive is pinned to 3.x: 4.x deprecated `ArchiveFile.content` in favour of
+  # `readBytes()`, and moving is a two-line change in lib/io/bundle_file.dart.
+  archive: ^3.6.1
+  crypto: ^3.0.3
+
+  # ── the database ───────────────────────────────────────────────────────
+  #
+  # Drift rather than raw sqflite: the queries are checked at build time, and
+  # the thing this app does most — watch a table and rebuild a list when it
+  # changes — is one line instead of a subscription mechanism written by hand.
+  drift: ^2.20.0
+
+  # SQLite with encryption compiled in. **This is the whole of the encryption
+  # decision**: same engine, same SQL, one `PRAGMA key` issued on open. See
+  # lib/db/open_flutter.dart.
+  sqlcipher_flutter_libs: ^0.6.0
+
+  # And the plain engine, for `flutter test` and for desktop runs, where there
+  # is no keystore to hold a key and nothing worth encrypting against.
+  sqlite3: ^2.4.0
+
+  # Where the database file goes.
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Where the key goes: the Android Keystore, hardware-backed, never leaving
+  # the phone. That is the point, and it is also why a lost key is lost data —
+  # see the note in lib/db/open_flutter.dart.
+  flutter_secure_storage: ^9.2.2
+
+  # Choosing a .stashit file to restore from, and a document to attach to an
+  # item.
+  file_picker: ^8.1.2
+
+  # Photographing a receipt, and choosing one already taken.
+  #
+  # Separate from file_picker rather than duplicating it: the file picker's
+  # "take a photo" option exists on some devices and silently goes straight to
+  # the gallery on others, which loses the camera entirely. The PWA hit the
+  # same thing with `capture` on an <input> — see the note on DocTiles. A
+  # camera corner that only sometimes opens a camera is worse than not
+  # offering one.
+  image_picker: ^1.1.2
+
+  # And handing one back out. The backup goes to the share sheet rather than to
+  # Downloads, because the point is that it ends up somewhere that is **not
+  # this phone** — see the note on `_backUp`.
+  share_plus: ^10.1.2
+
+  # ── reminders that arrive while the app is shut ────────────────────────
+  #
+  # This is the entire replacement for the web app's push stack: no keys, no
+  # Firebase function, no endpoint, no service worker. `logic/reminders.dart`
+  # works out which days earn a wake; this hands that list to the OS.
+  flutter_local_notifications: ^17.2.3
+
+  # Its scheduler wants a zoned instant rather than a local one, because a
+  # phone that crosses a time zone must not fire a 9am reminder at 4am. See
+  # lib/notify/notifications.dart.
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
+
+  # The cue tones. Nothing is bundled as audio — `ui/feedback.dart` writes the
+  # PCM itself, for the same reason the PWA synthesises with WebAudio, and this
+  # only has to play the bytes.
+  audioplayers: ^6.1.0
+
+  # The nav icons are the PWA's own SVG paths, rendered rather than redrawn as
+  # Material glyphs — see lib/ui/nav_icons.dart for why that matters here.
+  flutter_svg: ^2.0.10
+
+  # The biometric lock. It guards the APP, not the data — see the note beside
+  # the switch in settings_tab.dart, which says so plainly rather than letting
+  # somebody assume otherwise.
+  local_auth: ^2.3.0
+
+  # Google Play's billing, for the one-time unlock.
+  #
+  # The price is NOT set here — it is set in the Play Console and read back
+  # from the store, localised. See lib/billing/play_billing.dart.
+  in_app_purchase: ^3.2.0
+
+  # Opening a mail app for the contact links, and a browser for the privacy
+  # policy. Nothing is posted anywhere: a `mailto:` needs no server, and a
+  # server is the one thing this app has spent its life not having.
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # ── on `flutter_test` rather than `test` ───────────────────────────────
+  #
+  # The suites were written against `package:test` when this was a plain Dart
+  # package. `flutter_test` re-exports all of it — `test`, `group`, `expect`
+  # and every matcher — so the change is one import line per file and nothing
+  # else. Keeping both would mean pinning `test` to whatever version the
+  # Flutter SDK happens to agree with, which is a fight worth avoiding.
+
+  # Drift generates the typed row classes. Nothing compiles until
+  # `dart run build_runner build` has been run at least once.
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.6
+  flutter_lints: ^5.0.0
+
+  # Generates the launcher icons from assets/icon/. A build-time tool, not a
+  # dependency of the app — run it when the artwork changes and never again.
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Scout, thirteen poses. Copied from the PWA's `src/assets/mascot/` rather
+    # than redrawn — same renders, same alpha, same contact shadows, so the two
+    # apps cannot drift apart by one of them being touched up.
+    - assets/mascot/
+
+    # The maker's plate at the foot of Settings. One image, cropped from the
+    # original — the torn paper edge and the generator's watermark are both
+    # outside the crop rather than painted over.
+    - assets/brand/
+
+  # ── The two faces, bundled rather than fetched ─────────────────────────
+  #
+  # The PWA loads these from Google Fonts at runtime. This app has no network
+  # at all, so they ship inside it — and a first launch that falls back to the
+  # system face and then reflows is worse than a slightly larger download.
+  #
+  # BOTH ARE VARIABLE FONTS, which is why one file covers every weight. Flutter
+  # reads a variable font's default instance unless told otherwise, so each
+  # weight the app actually uses is declared against the same file: 200 for the
+  # figures, 800 for the wordmark, and the rest for body text.
+  #
+  # See assets/fonts/README.md for where the files come from.
+  fonts:
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 200
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 400
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque.ttf
+          weight: 800
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+          weight: 300
+        - asset: assets/fonts/Inter.ttf
+          weight: 400
+        - asset: assets/fonts/Inter.ttf
+          weight: 500
+        - asset: assets/fonts/Inter.ttf
+          weight: 600
+        - asset: assets/fonts/Inter.ttf
+          weight: 700
+
+# ── The launcher icon ────────────────────────────────────────────────────
+#
+#   dart run flutter_launcher_icons
+#
+# Scout with the receipt, taken straight from the PWA's `public/icon-512.png`.
+# The two apps have to be the same thing on a home screen; anything drawn fresh
+# here would be a second brand.
+#
+# `image_path` is the whole square, for older Android and the Play listing.
+# `adaptive_icon_foreground` is what Android 8+ actually shows, masked by the
+# launcher to a circle, squircle or teardrop — and the maskable variant is the
+# one the PWA already ships for exactly that reason, with the subject pulled in
+# from the edges so the crop cannot take his ears off.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon/icon.png
+  adaptive_icon_background: "#0d0f12"
+  adaptive_icon_foreground: assets/icon/icon-maskable.png

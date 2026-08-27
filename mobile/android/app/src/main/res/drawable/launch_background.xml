@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What is on screen between tapping the icon and Flutter's first frame.
+
+    Dark, and deliberately empty. A splash screen with a logo on it is a promise
+    that loading takes long enough to be worth looking at something; this app
+    opens an encrypted database and draws, and the honest version of that is a
+    background that matches the app so the transition is invisible.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+</layer-list>

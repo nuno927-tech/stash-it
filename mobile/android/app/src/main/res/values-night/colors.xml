@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The slate-900 token, dark side. See ../values/colors.xml. -->
+<resources>
+    <color name="launch_background">#0d0f12</color>
+    <color name="ic_launcher_background">#0d0f12</color>
+</resources>

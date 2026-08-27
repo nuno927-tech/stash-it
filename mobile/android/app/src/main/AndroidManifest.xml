@@ -1,0 +1,135 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        ── Reminders, and the one permission deliberately NOT requested ──────
+
+        POST_NOTIFICATIONS is the Android 13+ runtime prompt, asked at the
+        moment somebody says yes to the offer rather than on first launch.
+
+        RECEIVE_BOOT_COMPLETED re-registers the schedule after a restart.
+        Without it, every pending reminder is silently dropped when the phone
+        reboots — which is not a crash, not a warning, just an app that quietly
+        stops working for anyone who turns their phone off at night.
+
+        SCHEDULE_EXACT_ALARM is **not** here on purpose. Google Play grants it
+        to alarm clocks and calendars and refuses it to most else, so asking is
+        a plausible way to fail review — and the schedule is rounded to a day
+        anyway. See the note on `androidScheduleMode` in
+        lib/notify/notifications.dart.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!--
+        The biometric prompt. Not a runtime permission — the system dialog does
+        the asking — but the app has to declare that it uses one at all, or
+        `canCheckBiometrics` reports false on a phone with a perfectly good
+        fingerprint reader.
+
+        See MainActivity.kt for the other half of this: the prompt is a Fragment
+        and needs an activity that can host one.
+    -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!--
+        Photographing a receipt.
+
+        CAMERA is declared, not requested by us: image_picker hands the job to
+        whatever camera app is installed, which takes the picture under its own
+        permission and returns a file. Android still wants the declaration on
+        an app that fires the intent.
+
+        Deliberately absent: READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE. The
+        photo picker and the document picker both run in their own process and
+        return exactly the file the person chose, so an app that only ever
+        wants one file at a time never needs to be able to read the gallery.
+        Asking for it would be asking to see everything in order to be given
+        one thing — and it is the permission most likely to be questioned in
+        review for an app whose entire pitch is that the data stays put.
+
+        `required="false"` so the app still installs on a device with no
+        camera; the tiles fall back to the file picker there.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!--
+        Backup is off, and it has to be.
+
+        Android's auto-backup would copy the database to Google Drive and
+        restore it onto a new device — where the SQLCipher key, which lives in
+        this handset's Keystore and never leaves it, does not exist. The result
+        is a file that opens on nothing: not corrupt, not recoverable, just
+        permanently unreadable, with no error a user could act on.
+
+        The app's own .stashit export is the backup story, and it is plain
+        enough to be restored anywhere. `allowBackup` covers older Android;
+        `dataExtractionRules` covers 12 and up, including device-to-device
+        transfer, which the older flag does not.
+    -->
+    <application
+        android:label="Stash it"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!--
+            flutter_local_notifications' own components. The first delivers a
+            scheduled notification; the second re-arms the whole schedule after
+            a reboot, which is what makes RECEIVE_BOOT_COMPLETED above mean
+            anything.
+        -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
