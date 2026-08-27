@@ -27,9 +27,39 @@ if (signingReady) {
     keyPropertiesFile.inputStream().use { keyProperties.load(it) }
 }
 
+/*
+   ── The two SDK levels are pinned, not inherited ────────────────────────────
+
+   Both of these read `flutter.compileSdkVersion` / `flutter.targetSdkVersion`
+   until 0.61.2, which means "whichever Android version this laptop's Flutter
+   install happens to default to". That is a fine default for a hobby project
+   and the wrong one for something with a submission deadline attached.
+
+   From 31 August 2026 Play rejects a NEW app that does not target Android 16
+   (API 36). Flutter's default trails the platform by design — it moves when a
+   Flutter release moves it, not when Play's rule changes — so the version that
+   gets built depends on when the machine last ran `flutter upgrade`. Nothing
+   in the project would say which number was used; it would surface as a
+   rejected upload with a number in it that appears nowhere in this repository.
+
+   So the number lives here, where it can be read, diffed and blamed.
+
+   compileSdk is what the code is COMPILED against — which APIs exist.
+   targetSdk is what the app CLAIMS to support — which behaviours Android
+   applies to it. They are the same number here, and usually should be: a
+   compileSdk ahead of targetSdk means compiling against APIs whose new
+   behaviour is switched off, which is the confusing half of both worlds.
+
+   Bumping targetSdk is never only a number. Android 16 makes edge-to-edge
+   drawing mandatory, so the app now paints behind the status and navigation
+   bars whether it asked to or not. Anything at the very top or bottom of a
+   screen that is not inside a `SafeArea` will sit underneath them. Check the
+   tab bar, the add button, and the top of every bottom sheet on a real device
+   before this ships.
+*/
 android {
     namespace = "app.stashit"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -51,13 +81,28 @@ android {
         // release means a new app with zero installs.
         applicationId = "app.stashit"
 
-        // Android 6. Set here rather than left at Flutter's default because
-        // sqlcipher_flutter_libs will not build below it — and because the
-        // alternative to encryption on old handsets is not "encryption later",
-        // it is a plaintext database on the phones least likely to be patched.
+        /*
+          ── This comment and this line disagree, and the line wins ──────────
+
+          It says "set here rather than left at Flutter's default", and then
+          reads Flutter's default. Whatever it once said, today the floor of
+          this app is whatever the installed Flutter thinks it should be.
+
+          It is probably fine: sqlcipher_flutter_libs needs API 23 and every
+          current Flutter default is above that, which is why nobody has
+          noticed. But "probably fine, and it would fail loudly if not" is a
+          different claim from the one the comment makes, and minSdk is the
+          number that decides which phones can install this at all — raising
+          it silently drops users who already have the app.
+
+          Left as-is rather than pinned to a guess, because unlike targetSdk
+          there is no deadline forcing the question and no way to check from
+          here what it currently resolves to. Run `flutter build appbundle
+          --release` and read the merged manifest, then pin it to that number.
+        */
         minSdk = flutter.minSdkVersion
 
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

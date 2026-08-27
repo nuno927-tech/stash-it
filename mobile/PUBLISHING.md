@@ -97,54 +97,54 @@ Full instructions are in `RELEASE.md`, section 1. The short version:
 
 Do the backup today. Everything else in this guide is recoverable.
 
-### 2.2 Target Android 16 — do this before you build
+### 2.2 Target Android 16 — done in 0.61.2
 
-Right now `android/app/build.gradle.kts` says:
+`android/app/build.gradle.kts` used to say `compileSdk = flutter.compileSdkVersion`
+and `targetSdk = flutter.targetSdkVersion` — meaning "whatever this laptop's
+Flutter install defaults to", which for many current versions is **35, not 36**.
+Play rejects a new app that isn't on 36 from 31 August 2026.
 
-```kotlin
-targetSdk = flutter.targetSdkVersion
-```
+Both are now pinned to `36` in the file, where the number can be read and
+diffed rather than depending on when the machine last ran `flutter upgrade`.
 
-That means "whatever version of Android my Flutter install happens to default
-to", which for many current Flutter versions is **35, not 36**. Play will reject
-a brand new app that isn't on 36.
+**Two things still to do yourself:**
 
-Pin it explicitly so it can't drift:
+1. **Install the SDK.** If Android SDK Platform 36 isn't on the machine the
+   build fails immediately. Android Studio → Settings → Languages & Frameworks
+   → Android SDK → tick **Android 16.0 ("Baklava" / API 36)** → Apply.
 
-```kotlin
-compileSdk = 36
-...
-targetSdk = 36
-```
+2. **Test on a real phone.** Android 16 makes edge-to-edge drawing mandatory,
+   so the app now paints behind the status and navigation bars whether it asked
+   to or not. Anything at the very top or bottom of a screen that isn't inside a
+   `SafeArea` will sit underneath them. Check the tab bar, the add button, and
+   the top of every bottom sheet.
 
-Then rebuild and test on a real phone. Android 16 forces apps to draw behind the
-status bar and navigation bar ("edge to edge"). If anything at the top or bottom
-of a screen ends up underneath the system bars, that's why — it's the one change
-most likely to need a fix.
+**One related thing left open:** `minSdk` still reads `flutter.minSdkVersion`,
+under a comment claiming it's set explicitly. It isn't, and the comment is
+wrong. It's very likely fine — SQLCipher needs API 23 and every current Flutter
+default is above it — but that's a different claim from the one the comment
+makes. Build once, read the number out of the merged manifest, and pin it.
+It decides which phones can install the app at all, so it's worth knowing
+rather than inheriting.
 
-### 2.3 Give it a version number Play will accept
+### 2.3 Give it a version number Play will accept — done in 0.61.2
 
-`pubspec.yaml` currently says:
-
-```yaml
-version: 0.61.1
-```
-
-There's no build number after it, so Play sees **version code 1**. Every single
-upload needs a version code **higher than the last one you uploaded** — reusing
-one is rejected, and you can never go back down.
-
-Change it to:
+`pubspec.yaml` had no build number, so Play would have seen **version code 1**.
+It now reads:
 
 ```yaml
-version: 0.61.1+1
+version: 0.61.2+1
 ```
 
-The part after the `+` is the number Play cares about. Bump it every single time
-you upload anything, even a test build you throw away five minutes later. The
-version *name* (`0.61.1`) is just the text people see.
+The part after the `+` is the number Play cares about. **Bump it every single
+time you upload anything**, even a test build you throw away five minutes
+later — a version code can never be reused and can never go down, so the first
+throwaway upload burns `+1` permanently.
 
-A simple habit: `+1`, `+2`, `+3`... and never reuse one.
+The version *name* (`0.61.2`) is just the text people see, and is kept in step
+with `appVersion` in `lib/ui/settings_tab.dart`.
+
+A simple habit: `+1`, `+2`, `+3`… and never reuse one.
 
 ### 2.4 Put the privacy policy on the web
 
@@ -469,9 +469,13 @@ No forms, no review queue in most cases. Updates are usually live within hours.
 **Code**
 
 - [ ] Keystore backed up in two places away from this computer
-- [ ] `targetSdk = 36` pinned, and tested on a real phone
-- [ ] `version:` has a `+build` number, and it goes up every upload
-- [ ] Privacy policy URL loads in a browser
+- [x] `targetSdk = 36` and `compileSdk = 36` pinned in build.gradle.kts
+- [ ] SDK Platform 36 installed, and a build tested on a real phone for
+      edge-to-edge problems
+- [ ] `minSdk` pinned to a real number instead of Flutter's default
+- [x] `version:` has a `+build` number — remember to raise it every upload
+- [x] Privacy policy written for this app and live at
+      `nuno927-tech.github.io/stash-it/privacy-android.html`
 - [ ] `flutter analyze` and `flutter test` clean
 
 **Assets**
