@@ -1,0 +1,58 @@
+# Line endings, decided once, in the repository rather than per machine.
+#
+# ── Why this file appeared when the Android app did ────────────────────────
+#
+# For one project it did not matter: everything was authored on one laptop by
+# one editor, so whatever it wrote is what got committed and nothing ever
+# disagreed.
+#
+# Two projects and two toolchains is a different situation. `git subtree add`
+# checked the Flutter files out fresh, Git for Windows applied its default
+# CRLF conversion on the way, and every one of the 168 files came back reading
+# as "modified" — 48,431 lines added and 48,431 removed, none of which were
+# changes anybody made.
+#
+# It resolved itself, because the same setting converts back on comparison.
+# That is the problem: it depends on a setting that is not in the repository,
+# so it is correct on this machine and unknowable on any other. The first
+# person to clone this with `core.autocrlf=false` would commit the whole tree
+# back with different line endings and blame Dart.
+#
+# `text=auto` keeps every blob stored with LF — which is what they already
+# are, so this changes nothing today — and lets each machine's checkout look
+# however that machine prefers. It is the storage that has to be consistent,
+# not the working copy.
+* text=auto
+
+# Shell scripts that must keep their native endings to run at all: a .ps1 or
+# .bat with LF is usually fine, a .sh with CRLF is not, and the shebang line
+# fails in a way that names the wrong thing.
+*.sh   text eol=lf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+gradlew      text eol=lf
+gradlew.bat  text eol=crlf
+
+# Named explicitly rather than left to git's NUL-byte heuristic. It is a good
+# heuristic, but a corrupted font or a mangled keystore is discovered late and
+# diagnosed slowly, and the cost of being explicit is these nine lines.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ico    binary
+*.ttf    binary
+*.otf    binary
+*.woff2  binary
+*.jks    binary
+*.keystore binary
+*.stashit  binary
+
+# Generated, and noisy in a review. Still committed — see the note on
+# pubspec.lock in mobile/RELEASE.md — just collapsed by default on GitHub.
+package-lock.json  linguist-generated=true
+mobile/pubspec.lock linguist-generated=true
+
+# So the repository's language bar reflects what is actually being written
+# rather than what happens to have the most lines.
+site/*.html linguist-documentation=true
