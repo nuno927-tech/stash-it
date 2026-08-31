@@ -38,13 +38,14 @@ import 'parts.dart';
 import 'prefs_scope.dart';
 import 'privacy.dart';
 import 'tour_screen.dart';
+import 'pro_badge.dart';
 import 'unlock_sheet.dart';
 import 'rooms_screen.dart';
 import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.62.0';
+const appVersion = '0.63.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -693,8 +694,36 @@ class _SettingsTabState extends State<SettingsTab> {
               future: _settings,
               builder: (context, settingsSnap) {
                 final entitlements = settingsSnap.data?.entitlements;
-                if (entitlements == null || entitlements.proUnlock) {
-                  return const SizedBox.shrink();
+                if (entitlements == null) return const SizedBox.shrink();
+
+                /*
+                  ── Paid, so the offer becomes a receipt ────────────────────
+
+                  This used to return nothing at all, which meant the single
+                  most visible consequence of paying was that something
+                  disappeared off the top of Settings. The card that had been
+                  asking for money every time you opened the screen simply
+                  stopped existing, and there was nowhere in the app that
+                  acknowledged the purchase had happened.
+
+                  It keeps the same slot and the same shape — gold wash, gold
+                  edge, first thing on the page — so what changes is the
+                  sentence rather than the layout.
+                */
+                if (entitlements.proUnlock) {
+                  return _ProCard(
+                    onTap: () async {
+                      final count = await _count;
+                      if (!context.mounted) return;
+                      await showUnlock(
+                        context,
+                        repo: widget.repo,
+                        billing: appBilling,
+                        count: count,
+                        owned: true,
+                      );
+                    },
+                  );
                 }
 
                 return FutureBuilder<int>(
@@ -951,7 +980,11 @@ class _SettingsTabState extends State<SettingsTab> {
                   label: 'Your name',
                   note: 'Only used in the greeting.',
                   value: settings.displayName ?? '',
-                  hint: 'Nuno',
+                  // A placeholder, not a default — nothing is saved until
+                  // something is typed. "Nuno" was the developer's own name
+                  // shipping to every user as the example of what a name looks
+                  // like, which is a small thing that reads as an oversight.
+                  hint: 'Scout',
                   onSubmit: (v) => _saveSettings((s) => s.copyWith(displayName: v.trim())),
                 ),
                 _Rule(c),
@@ -2106,6 +2139,84 @@ class _LinkRow extends StatelessWidget {
 /// The gold, full-width kind. Backup and restore are two halves of one job, so
 /// they get the same weight — drawing one as a ghost outline would imply one of
 /// them was the safe option and the other was not.
+/// The receipt that sits where the offer used to.
+///
+/// Tappable, and it opens the same sheet the offer did — see `showUnlock`'s
+/// `owned` flag. The six reasons somebody paid are the same six things they
+/// bought, so the list is shared rather than written twice; only the footer
+/// changes from a price to a thank-you.
+class _ProCard extends StatelessWidget {
+  const _ProCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+      child: Material(
+        color: c.washGold,
+        borderRadius: BorderRadius.circular(Radii.lg),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.lg),
+          onTap: () {
+            feedback(Cue.tap);
+            onTap();
+          },
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 15, 14, 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Radii.lg),
+              border: Border.all(color: c.gold.withValues(alpha: 0.45)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.workspace_premium_outlined, size: 20, color: c.gold),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Stash it Pro',
+                        style: TextStyle(
+                          fontFamily: fontDisplay,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.6,
+                          color: c.text,
+                        ),
+                      ),
+                    ),
+                    const ProBadge(),
+                    const SizedBox(width: 4),
+                    // A chevron, because the card does something. Without one
+                    // it is a status panel that happens to be tappable, which
+                    // nobody discovers.
+                    Icon(Icons.chevron_right, size: 20, color: c.muted),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Unlimited. Thanks for supporting Scout and Stash it',
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 13,
+                    height: 1.45,
+                    color: c.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BigButton extends StatelessWidget {
   const _BigButton({required this.label, this.note, this.icon, this.onTap});
 

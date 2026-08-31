@@ -388,7 +388,10 @@ Future<String?> _askName(
         textCapitalization: TextCapitalization.sentences,
         onSubmitted: (v) => Navigator.of(context).pop(v),
         style: TextStyle(fontFamily: fontBody, color: c.text),
-        decoration: const InputDecoration(hintText: 'Garage, loft, Nuno\'s office'),
+        // Third example is a possessive on purpose — rooms are often "whose"
+        // rather than "where", and the hint is the only place that gets said.
+        // It used to be the developer's own name.
+        decoration: const InputDecoration(hintText: 'Garage, loft, Sam\'s office'),
       ),
       actions: [
         TextButton(

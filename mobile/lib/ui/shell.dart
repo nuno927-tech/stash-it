@@ -30,6 +30,7 @@ import 'items_tab.dart';
 import 'nav_icons.dart';
 import 'papers_tab.dart';
 import 'parts.dart';
+import 'pro_badge.dart';
 import 'settings_tab.dart';
 import 'subs_tab.dart';
 import 'theme.dart';
@@ -60,10 +61,31 @@ class _ShellState extends State<Shell> {
   */
   bool _opening = false;
 
+  /*
+    ── Whether to draw PRO beside the wordmark ─────────────────────────────
+
+    Read here rather than watched, because there is no settings stream and
+    adding one for a single boolean would be a lot of machinery for a badge.
+
+    Re-read on every tab change, which is sufficient and not a shortcut: the
+    only way to become Pro is the unlock sheet, the only way to that sheet is
+    the Settings tab, and the only way to see this masthead is to leave
+    Settings. Buying it and arriving here is a tab change by definition.
+  */
+  bool _pro = false;
+
+  Future<void> _readPro() async {
+    final settings = await widget.repo.settings();
+    if (!mounted) return;
+    final now = settings.entitlements.proUnlock;
+    if (now != _pro) setState(() => _pro = now);
+  }
+
   @override
   void initState() {
     super.initState();
     pendingLink.addListener(_handleLink);
+    _readPro();
 
     /*
       And one read straight away, for the tap that WAS the launch.
@@ -227,13 +249,30 @@ class _ShellState extends State<Shell> {
               // five screens each drawing their own is five chances for one to
               // drift. Home takes the wordmark — see `Wordmark`.
               if (_tab == Tab.home)
-                const Padding(
+                Padding(
                   // The same 2 and 4 as `TabTitle`, so the wordmark and every
                   // screen's name sit on exactly the same line. They are the
                   // same object doing the same job, and a four-pixel drift
                   // between tabs is visible the moment you swipe.
-                  padding: EdgeInsets.fromLTRB(16, 2, 16, 4),
-                  child: Align(alignment: Alignment.centerLeft, child: Wordmark()),
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      // Baseline would be the instinct and is wrong here: the
+                      // badge has no baseline worth aligning to, only a box.
+                      // Centring the box against the wordmark's line is what
+                      // makes it sit level rather than hang.
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Wordmark(),
+                        if (_pro) ...[
+                          const SizedBox(width: 9),
+                          const ProBadge(),
+                        ],
+                      ],
+                    ),
+                  ),
                 )
               else
                 TabTitle(
@@ -332,5 +371,9 @@ class _ShellState extends State<Shell> {
     // bigger gesture, and pitch carries that better than volume does.
     feedback(Cue.nav);
     setState(() => _tab = to);
+
+    // Cheap, and it is what makes the badge appear the moment somebody comes
+    // back from buying. Leaving Settings is the only route to seeing it.
+    _readPro();
   }
 }

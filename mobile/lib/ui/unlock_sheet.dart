@@ -37,10 +37,21 @@ import '../billing/billing.dart';
 import '../db/repository.dart';
 import '../logic/limits.dart';
 import 'feedback.dart';
+import 'pro_badge.dart';
 import 'scout.dart';
 import 'theme.dart';
 
 /// Shows the offer. Resolves true when the app came back unlocked.
+///
+/// ── The same sheet answers two different questions ────────────────────────
+/// Before buying it asks "is this worth it", and the six reasons below are the
+/// argument. After buying, tapping the Pro card asks "what did I get", and the
+/// same six lines are the answer — so the list is shared rather than written
+/// twice and left to drift.
+///
+/// What [owned] changes is only what sits under them: a price and two buttons,
+/// or a thank-you and a way out. Showing somebody a Buy button for a thing they
+/// already own is the specific failure this exists to avoid.
 Future<bool> showUnlock(
   BuildContext context, {
   required Repository repo,
@@ -48,6 +59,9 @@ Future<bool> showUnlock(
 
   /// How many things are saved, for the line that says where they are.
   required int count,
+
+  /// True when this is a receipt rather than an offer.
+  bool owned = false,
 }) async {
   feedback(Cue.expand);
 
@@ -60,18 +74,25 @@ Future<bool> showUnlock(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => _Unlock(repo: repo, billing: billing, count: count),
+    builder: (context) =>
+        _Unlock(repo: repo, billing: billing, count: count, owned: owned),
   );
 
   return unlocked ?? false;
 }
 
 class _Unlock extends StatefulWidget {
-  const _Unlock({required this.repo, required this.billing, required this.count});
+  const _Unlock({
+    required this.repo,
+    required this.billing,
+    required this.count,
+    required this.owned,
+  });
 
   final Repository repo;
   final Billing billing;
   final int count;
+  final bool owned;
 
   @override
   State<_Unlock> createState() => _UnlockState();
@@ -144,27 +165,45 @@ class _UnlockState extends State<_Unlock> {
             ),
             const SizedBox(height: 12),
 
-            Text(
-              'Stash it Pro',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontWeight: FontWeight.w800,
-                fontSize: 30,
-                letterSpacing: -0.9,
-                height: 1.1,
-                color: c.text,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Stash it Pro',
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 30,
+                    letterSpacing: -0.9,
+                    height: 1.1,
+                    color: c.text,
+                  ),
+                ),
+                // Only once it is true. On the offer sheet this would be a
+                // badge for something nobody has yet.
+                if (widget.owned) ...[
+                  const SizedBox(width: 10),
+                  const ProBadge(scale: 1.15),
+                ],
+              ],
             ),
             const SizedBox(height: 8),
 
             Text(
-              // The number they are at, said back. Somebody who arrived here
-              // by being refused already knows they are full; somebody who
-              // came from Settings does not, and the same sentence serves both.
-              'You have ${widget.count} of $freeItemLimit. One payment lifts '
-              'the limit for good — and it is the only thing this app will '
-              'ever ask you to pay for.',
+              widget.owned
+                  // No count, and no limit named. Saying "you have 34 of 20"
+                  // to somebody who paid to stop being counted would be a
+                  // strange thing to put in front of them.
+                  ? 'Yours, on this Google account, for good. Here is what that '
+                      'covers.'
+                  // The number they are at, said back. Somebody who arrived
+                  // here by being refused already knows they are full; somebody
+                  // who came from Settings does not, and the same sentence
+                  // serves both.
+                  : 'You have ${widget.count} of $freeItemLimit. One payment '
+                      'lifts the limit for good — and it is the only thing this '
+                      'app will ever ask you to pay for.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: fontBody,
@@ -228,6 +267,49 @@ class _UnlockState extends State<_Unlock> {
             ),
             const SizedBox(height: 20),
 
+            /*
+              Owned: a thank-you and a way out, and deliberately no store call
+              at all. Asking Play for a price here would be work done to render
+              a button nobody should be offered, and it would put "the store is
+              not answering" in front of a paying customer on a plane.
+            */
+            if (widget.owned) ...[
+              Text(
+                'Thanks for supporting Scout and Stash it.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                  color: c.gold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: c.text,
+                    side: BorderSide(color: c.line),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: c.text,
+                    ),
+                  ),
+                ),
+              ),
+            ] else
             FutureBuilder<Offer>(
               future: _offer,
               builder: (context, snap) {
@@ -351,12 +433,16 @@ class _UnlockState extends State<_Unlock> {
               Nothing is hidden, nothing is deleted, nothing is held hostage —
               the only thing the limit stops is adding the twenty-first.
             */
-            Text(
-              'Everything you have saved stays exactly as it is either way. '
-              'The limit only stops new ones.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: fontBody, fontSize: 12, height: 1.5, color: c.muted),
-            ),
+            // Only on the offer. It answers "what happens to my twenty if I
+            // don't pay", which is not a question anybody who has paid is
+            // asking.
+            if (!widget.owned)
+              Text(
+                'Everything you have saved stays exactly as it is either way. '
+                'The limit only stops new ones.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontFamily: fontBody, fontSize: 12, height: 1.5, color: c.muted),
+              ),
           ],
         ),
       ),

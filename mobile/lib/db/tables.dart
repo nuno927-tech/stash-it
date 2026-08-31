@@ -266,6 +266,14 @@ class SettingsTable extends Table {
   TextColumn get displayName => text().nullable()();
   DateTimeColumn get onboardedAt => dateTime().nullable()();
 
+  /// When "Skip" said to ask again.
+  ///
+  /// Null means no reminder is pending, which is the state for somebody who
+  /// took the tour and for somebody who has never been offered it. Only a
+  /// deliberate skip sets it — see `tourDue`, which refuses to interrupt
+  /// anybody who did not ask to be interrupted.
+  DateTimeColumn get tourRemindAt => dateTime().nullable()();
+
   TextColumn get theme => text().nullable()();
   BoolColumn get sounds => boolean().nullable()();
   BoolColumn get haptics => boolean().nullable()();
@@ -329,7 +337,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -375,6 +383,12 @@ class StashDatabase extends _$StashDatabase {
             // rotation on for everybody who upgrades, which is a change
             // nobody asked for dressed up as a default.
             await m.addColumn(settingsTable, settingsTable.lockPortrait);
+          }
+          if (from < 6) {
+            // Null for everybody who already has the app, which is correct:
+            // no reminder is pending for them. Whether they see the tour is
+            // decided by `onboardedAt`, not by this.
+            await m.addColumn(settingsTable, settingsTable.tourRemindAt);
           }
         },
         beforeOpen: (details) async {
