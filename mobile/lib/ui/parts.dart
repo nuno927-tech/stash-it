@@ -22,10 +22,21 @@ import 'theme.dart';
 ///
 /// The colour lives in the dot beside the label rather than in the digits, for
 /// the same reason.
+/*
+  ── A figure that counts up to itself ───────────────────────────────────────
+
+  Only when it is a number, and `count` is how a caller says so. The four on
+  the dashboard sit beside a ring that sweeps; arriving fully formed next to
+  it made them look like a different screen's furniture.
+
+  `value` stays for everything that is not countable — a total in pounds, a
+  short word — because counting "£46.5K" up is not a thing anybody wants.
+*/
 class Figure extends StatelessWidget {
   const Figure({
     required this.value,
     required this.label,
+    this.count,
     this.onTap,
     this.tone,
     super.key,
@@ -33,6 +44,9 @@ class Figure extends StatelessWidget {
 
   final String value;
   final String label;
+
+  /// When set, the figure counts up to this instead of drawing [value].
+  final int? count;
 
   /// Null when there is nothing to show. A figure that navigates to an empty
   /// screen is worse than one that does not respond.
@@ -57,8 +71,9 @@ class Figure extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              value,
+            _Counted(
+              value: value,
+              count: count,
               style: TextStyle(
                 fontFamily: fontDisplay,
                 fontWeight: FontWeight.w200,
@@ -110,6 +125,36 @@ class Figure extends StatelessWidget {
 /// scan as one measurement broken into parts. Wrapped, they read as four
 /// separate facts that happen to be near each other — which is how the port had
 /// them, and why they stopped looking like the PWA's.
+/// The number, arriving.
+///
+/// `TweenAnimationBuilder` rather than a controller: there is no state to
+/// keep beyond the number itself, and when the number changes it animates
+/// from wherever it had got to — the same rule the ring follows, for the same
+/// reason. Adding one item should nudge a figure, not replay it from zero.
+class _Counted extends StatelessWidget {
+  const _Counted({required this.value, required this.count, required this.style});
+
+  final String value;
+  final int? count;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == null || MediaQuery.of(context).disableAnimations) {
+      return Text(count?.toString() ?? value, style: style);
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: count!.toDouble()),
+      // The ring's own sweep, so the arc and the counts under it land together
+      // rather than one chasing the other.
+      duration: const Duration(milliseconds: 850),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => Text('${v.round()}', style: style),
+    );
+  }
+}
+
 class FigureRow extends StatelessWidget {
   const FigureRow(this.figures, {super.key});
 
@@ -413,7 +458,29 @@ class TimelineTile extends StatelessWidget {
 /// Undated records are not drawn and not in the divisor either. Including them
 /// would mean the score DROPS when you add a record with a date missing, which
 /// punishes the one behaviour the app wants.
-class Ring extends StatelessWidget {
+/*
+  ── The ring draws itself, rather than appearing already drawn ──────────────
+
+  It used to be a StatelessWidget painting the final arc on its first frame:
+  the dashboard's headline number was simply there, complete, before anybody
+  had focused on it.
+
+  A ring is a proportion, and a proportion is easier to read as it arrives —
+  the eye follows the sweep and lands on where it stopped. Counting the
+  percentage up alongside it means the number and the arc are saying the same
+  thing at the same moment rather than one confirming the other afterwards.
+
+  ── And it animates BETWEEN values, not just up from nothing ────────────────
+
+  The obvious version sweeps from zero whenever it is built, which is right on
+  first open and wrong every time after: adding one item to a household of
+  twenty-five would replay the whole thing to move the arc by a degree.
+
+  So the tween is from what is currently drawn to what has just arrived. On
+  the first build that happens to be zero, which is the opening sweep; on an
+  edit it is a short correction, which is what an edit is.
+*/
+class Ring extends StatefulWidget {
   const Ring({
     required this.inDate,
     required this.needsStarting,
@@ -428,6 +495,108 @@ class Ring extends StatelessWidget {
   final int percent;
 
   @override
+  State<Ring> createState() => _RingState();
+}
+
+class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    // Slow enough to be a sweep and not a flicker; fast enough that the number
+    // has settled by the time somebody has read the greeting above it.
+    duration: const Duration(milliseconds: 850),
+  );
+
+  late final CurvedAnimation _curve =
+      CurvedAnimation(parent: _sweep, curve: Curves.easeOutCubic);
+
+  // What was on screen when the last change arrived. Zero to begin with, which
+  // is what makes the first appearance a full sweep.
+  double _fromIn = 0, _fromSoon = 0, _fromLapsed = 0, _fromPercent = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _sweep.forward();
+  }
+
+  @override
+  void didUpdateWidget(Ring old) {
+    super.didUpdateWidget(old);
+    if (old.inDate == widget.inDate &&
+        old.needsStarting == widget.needsStarting &&
+        old.lapsed == widget.lapsed &&
+        old.percent == widget.percent) {
+      return;
+    }
+
+    // Start the next run from whatever is drawn right now rather than from the
+    // last target — a change arriving mid-sweep would otherwise jump back.
+    final t = _curve.value;
+    _fromIn = _fromIn + (old.inDate - _fromIn) * t;
+    _fromSoon = _fromSoon + (old.needsStarting - _fromSoon) * t;
+    _fromLapsed = _fromLapsed + (old.lapsed - _fromLapsed) * t;
+    _fromPercent = _fromPercent + (old.percent - _fromPercent) * t;
+
+    _sweep.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  double _at(double from, num to, double t) => from + (to - from) * t;
+
+  @override
+  Widget build(BuildContext context) {
+    /*
+      ── The OS setting wins ─────────────────────────────────────────────────
+
+      "Remove animations" in Android's accessibility settings is not a taste
+      preference — people turn it on for motion sickness, for vestibular
+      disorders, and because a phone that moves less is a phone that is easier
+      to follow. A sweeping arc is exactly the sort of thing it means.
+
+      Checked in `build` rather than at construction so it takes effect the
+      moment the setting changes, without needing the screen reopened.
+    */
+    if (MediaQuery.of(context).disableAnimations) {
+      return _RingFace(
+        inDate: widget.inDate.toDouble(),
+        needsStarting: widget.needsStarting.toDouble(),
+        lapsed: widget.lapsed.toDouble(),
+        percent: widget.percent,
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (context, _) => _RingFace(
+        inDate: _at(_fromIn, widget.inDate, _curve.value),
+        needsStarting: _at(_fromSoon, widget.needsStarting, _curve.value),
+        lapsed: _at(_fromLapsed, widget.lapsed, _curve.value),
+        percent: _at(_fromPercent, widget.percent, _curve.value).round(),
+      ),
+    );
+  }
+}
+
+class _RingFace extends StatelessWidget {
+  const _RingFace({
+    required this.inDate,
+    required this.needsStarting,
+    required this.lapsed,
+    required this.percent,
+  });
+
+  final double inDate;
+  final double needsStarting;
+  final double lapsed;
+  final int percent;
+
+  @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
@@ -439,9 +608,9 @@ class Ring extends StatelessWidget {
       width: 176,
       child: CustomPaint(
         painter: _RingPainter(
-          covered: inDate.toDouble(),
-          soon: needsStarting.toDouble(),
-          lapsed: lapsed.toDouble(),
+          covered: inDate,
+          soon: needsStarting,
+          lapsed: lapsed,
           track: c.slate600,
           error: c.ember,
           moss: c.moss,

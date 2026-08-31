@@ -22,11 +22,15 @@ void main() {
     });
 
     test('but nothing at all is not', () {
-      expect(whyNotSaveable(ItemDraft()), contains('Give it a name'));
+      final blank = whyNotSaveable(ItemDraft())!;
+      expect(blank.message, contains('Give it a name'));
+      // The message names the field; `where` is what actually takes somebody
+      // to it. A refusal that only describes is one people hunt for.
+      expect(blank.where, Missing.name);
     });
 
     test('and neither is whitespace', () {
-      expect(whyNotSaveable(ItemDraft(name: '   ')), contains('Give it a name'));
+      expect(whyNotSaveable(ItemDraft(name: '   '))!.message, contains('Give it a name'));
     });
 
     // No date, no price, no cover — all fine. Most things people own are like
@@ -55,7 +59,9 @@ void main() {
         name: 'Kettle',
         coverages: [CoverageDraft(unit: CoverageUnit.months, amountText: '24')],
       );
-      expect(whyNotSaveable(d), contains('purchase date'));
+      final noDate = whyNotSaveable(d)!;
+      expect(noDate.message, contains('purchase date'));
+      expect(noDate.where, Missing.purchaseDate);
     });
 
     test('and is fine the moment a date arrives', () {
@@ -86,7 +92,9 @@ void main() {
         purchaseDate: '2026-01-01',
         coverages: [CoverageDraft(label: 'Fabric', provider: 'Ercol')],
       );
-      expect(whyNotSaveable(d), contains('Fabric'));
+      final noTerm = whyNotSaveable(d)!;
+      expect(noTerm.message, contains('Fabric'));
+      expect(noTerm.where, Missing.term);
     });
 
     // Tapping "add cover" and changing your mind is not an error.

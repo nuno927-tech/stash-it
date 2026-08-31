@@ -510,4 +510,31 @@ void main() {
       expect(destinationFor(const KindSplit(0, 0)), isNull);
     });
   });
+  group('the year, when the year is news', () {
+    final thisYear = DateTime(2026, 6, 1);
+
+    test('is left off for something running out this year', () {
+      expect(dayMonthMaybeYear(DateTime(2026, 4, 3), thisYear), 'Apr 3');
+      expect(dayMonthMaybeYear(DateTime(2026, 12, 31), thisYear), 'Dec 31');
+    });
+
+    /*
+      A passport is the case this exists for. "Expires Apr 3" on a document
+      that runs out in 2031 is not merely incomplete — the reader supplies
+      "this year", because that is what every other date on the screen means.
+    */
+    test('and shown for anything that is not', () {
+      expect(dayMonthMaybeYear(DateTime(2031, 4, 3), thisYear), 'Apr 3, 2031');
+      expect(dayMonthMaybeYear(DateTime(2024, 9, 16), thisYear), 'Sep 16, 2024');
+    });
+
+    // Not "within twelve months" — the calendar year. December 31st and
+    // January 1st are one day apart and read completely differently, which is
+    // the whole reason a year is worth printing.
+    test('the boundary is the calendar, not twelve months', () {
+      expect(dayMonthMaybeYear(DateTime(2027, 1, 1), DateTime(2026, 12, 31)),
+          'Jan 1, 2027');
+    });
+  });
+
 }

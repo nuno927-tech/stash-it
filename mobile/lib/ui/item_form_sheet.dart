@@ -66,7 +66,8 @@ Future<bool?> showItemForm(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => _ItemFormSheet(repo: repo, existing: existing),
+    builder: (context) =>
+        SheetEntrance(child: _ItemFormSheet(repo: repo, existing: existing)),
   );
 }
 
@@ -112,6 +113,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /// added policy has no id yet.
   final Set<int> _detailed = {};
 
+  final GlobalKey _productCardKey = GlobalKey();
   final GlobalKey _roomCardKey = GlobalKey();
   final GlobalKey _warrantyCardKey = GlobalKey();
   final GlobalKey _attachmentsCardKey = GlobalKey();
@@ -171,13 +173,46 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     super.dispose();
   }
 
+  /*
+    ── Take them to it, do not just name it ────────────────────────────────
+
+    The refusal used to appear at the foot of the sheet and nowhere else. On a
+    five-card form that scrolls, "Add the purchase date" is a sentence about
+    something off screen: the person reads it, cannot see the field, and has
+    to work out which card it was in.
+
+    So the card comes to them. The message still says what to do — the two
+    together are "here, and this" rather than either alone.
+
+    `alignment: 0.15` rather than 0 so the card lands just below the top edge
+    instead of flush against it, which is what makes it read as arriving
+    rather than as the page having jumped.
+  */
+  void _showMe(Missing where) {
+    final key = switch (where) {
+      Missing.name || Missing.purchaseDate => _productCardKey,
+      Missing.term => _warrantyCardKey,
+    };
+
+    final target = key.currentContext;
+    if (target == null) return;
+
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      alignment: 0.15,
+    );
+  }
+
   /* ------------------------------------------------------------- saving */
 
   Future<void> _save() async {
     final problem = whyNotSaveable(_draft);
     if (problem != null) {
       feedback(Cue.error);
-      setState(() => _problem = problem);
+      setState(() => _problem = problem.message);
+      _showMe(problem.where);
       return;
     }
 
@@ -576,7 +611,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               controller: scroll,
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
               children: [
-                _productCard(c),
+                KeyedSubtree(key: _productCardKey, child: _productCard(c)),
                 const SizedBox(height: 14),
                 KeyedSubtree(key: _roomCardKey, child: _roomCard(c)),
                 const SizedBox(height: 14),
@@ -1157,7 +1192,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         label: _isNew ? 'Save item' : 'Save changes',
         // Said before the button is pressed rather than after. The one refusal
         // this form makes, in the one place somebody is already looking.
-        problem: _problem ?? whyNotSaveable(_draft),
+        problem: _problem ?? whyNotSaveable(_draft)?.message,
         onSave: _saving ? null : _save,
       );
 

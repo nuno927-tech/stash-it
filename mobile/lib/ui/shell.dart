@@ -50,6 +50,32 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   Tab _tab = Tab.home;
 
+  /*
+    ── Which way the next tab comes from ───────────────────────────────────
+
+    Tabs used to cut: the old one vanished and the new one was simply there,
+    so a swipe and a tap on the bar looked identical and neither said which
+    direction you had moved. A slide is not decoration here — it is the only
+    thing that tells you the app has five screens in a row rather than five
+    unrelated places.
+
+    Derived from the enum's order, which is also the order the swipe walks and
+    the order the bar draws. `Tab` is the single list — see the note at the
+    top of this file — so "later in the enum" and "to the right" are the same
+    statement.
+  */
+  bool _forward = true;
+
+  /// The one door for changing tabs, so nothing can move without saying which
+  /// way. Every `setState(() => _tab = ...)` used to be its own.
+  void _goTo(Tab to) {
+    if (to == _tab) return;
+    setState(() {
+      _forward = to.index > _tab.index;
+      _tab = to;
+    });
+  }
+
   /// Bumped to force the visible tab to rebuild after the add sheet closes.
   /// Items watches a stream and does not need it; the other three read futures.
   int _generation = 0;
@@ -190,7 +216,7 @@ class _ShellState extends State<Shell> {
 
       switch (link.kind) {
         case LinkKind.home:
-          setState(() => _tab = Tab.home);
+          _goTo(Tab.home);
 
         case LinkKind.item:
           final item = await repo.item(link.id!);
@@ -199,10 +225,10 @@ class _ShellState extends State<Shell> {
           // time for that, so it is a normal outcome rather than an error —
           // the dashboard is the honest place to land.
           if (item == null) {
-            setState(() => _tab = Tab.home);
+            _goTo(Tab.home);
             return;
           }
-          setState(() => _tab = Tab.items);
+          _goTo(Tab.items);
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => ItemDetailScreen(repo: repo, item: item),
@@ -212,14 +238,14 @@ class _ShellState extends State<Shell> {
         case LinkKind.paper:
           final paper = await repo.paper(link.id!);
           if (!mounted) return;
-          setState(() => _tab = Tab.papers);
+          _goTo(Tab.papers);
           if (paper == null) return;
           await showPaperForm(context, repo: repo, existing: paper);
 
         case LinkKind.sub:
           final sub = await repo.subscription(link.id!);
           if (!mounted) return;
-          setState(() => _tab = Tab.subs);
+          _goTo(Tab.subs);
           if (sub == null) return;
           await showSubForm(context, repo: repo, existing: sub);
       }
@@ -366,21 +392,56 @@ class _ShellState extends State<Shell> {
                 ),
 
               Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: KeyedSubtree(
-                        key: ValueKey('${_tab.name}-$_generation'),
-                        child: switch (_tab) {
-                          Tab.home => HomeTab(repo: widget.repo, onGo: _select),
-                          Tab.items => ItemsTab(repo: widget.repo),
-                          Tab.subs => SubsTab(repo: widget.repo),
-                          Tab.papers => PapersTab(repo: widget.repo),
-                          Tab.settings => SettingsTab(repo: widget.repo),
-                        },
-                      ),
-                    ),
-                  ],
+                child: AnimatedSwitcher(
+                  // Long enough to read as travel, short enough that somebody
+                  // stepping through all five tabs is not waiting on it.
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+
+                  /*
+                    Both children are on screen together during the swap, one
+                    arriving and one leaving. The default layout stacks them
+                    centred and sizes to the largest, which makes a tall list
+                    shove a short one about mid-transition; this pins both to
+                    fill instead, so neither moves except along x.
+                  */
+                  layoutBuilder: (current, previous) => Stack(
+                    children: [
+                      for (final child in previous) Positioned.fill(child: child),
+                      if (current != null) Positioned.fill(child: current),
+                    ],
+                  ),
+
+                  /*
+                    Called for the arriving child AND the leaving one, so the
+                    key is what tells them apart. The leaving child's animation
+                    runs in reverse, which is why the same Tween sends it out
+                    the opposite side rather than needing its own.
+                  */
+                  transitionBuilder: (child, animation) {
+                    final arriving =
+                        (child.key as ValueKey<String>).value == '${_tab.name}-$_generation';
+                    final from = _forward ? 1.0 : -1.0;
+
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(arriving ? from : -from, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey('${_tab.name}-$_generation'),
+                    child: switch (_tab) {
+                      Tab.home => HomeTab(repo: widget.repo, onGo: _select),
+                      Tab.items => ItemsTab(repo: widget.repo),
+                      Tab.subs => SubsTab(repo: widget.repo),
+                      Tab.papers => PapersTab(repo: widget.repo),
+                      Tab.settings => SettingsTab(repo: widget.repo),
+                    },
+                  ),
                 ),
               ),
             ],
@@ -427,7 +488,7 @@ class _ShellState extends State<Shell> {
     // A lower, rounder note than an ordinary tap: moving between tabs is a
     // bigger gesture, and pitch carries that better than volume does.
     feedback(Cue.nav);
-    setState(() => _tab = to);
+    _goTo(to);
 
     // Cheap, and it is what makes the badge appear the moment somebody comes
     // back from buying. Leaving Settings is the only route to seeing it.

@@ -49,7 +49,8 @@ Future<bool?> showPaperForm(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => _PaperFormSheet(repo: repo, existing: existing),
+    builder: (context) =>
+        SheetEntrance(child: _PaperFormSheet(repo: repo, existing: existing)),
   );
 }
 

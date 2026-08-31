@@ -107,12 +107,43 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
+
+    /*
+      ── And past the entrance animations ────────────────────────────────────
+
+      The ring sweeps its arc and counts its percentage up over 850ms, and the
+      dashboard figures do the same. Crucially they do NOT start at t=0: they
+      start when their data arrives, which is after the futures above resolve.
+      So the pumps that clear the splash are not enough, and a test asserting
+      "100" found a ring that had reached 72.
+
+      Two full sweeps' worth, so the margin is the length of the animation
+      again rather than a few milliseconds of luck.
+    */
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump(const Duration(milliseconds: 900));
     return db;
   }
 
+  /*
+    ── Now past the slide, not just past the tap ────────────────────────────
+
+    Tabs cross-fade and slide over 240ms, and for that whole time BOTH are
+    mounted — the arriving one and the leaving one, each with its own database
+    queries and its own animation controllers. The leaving tab is disposed at
+    the end of it.
+
+    That matters more than it looks: a test that asserts, and then closes the
+    database, while a tab it has navigated away from is still subscribed to a
+    query stream is a test that can sit waiting on `close()`.
+
+    So this now outlasts the transition with room to spare rather than by
+    sixty milliseconds.
+  */
   Future<void> goTo(WidgetTester tester, String label) async {
     await tester.tap(find.text(label));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
   }

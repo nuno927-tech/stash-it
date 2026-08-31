@@ -320,6 +320,26 @@ const List<String> _months = [
 /// month list in it. Until then, one format everywhere beats twelve.
 String dayMonth(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 
+/*
+  ── The same date, plus the year when the year is news ──────────────────────
+
+  "Expires Apr 3" is unambiguous for something running out in the next few
+  months and actively misleading for a passport that runs out in 2031: the
+  reader supplies "this year" because that is what every other date on the
+  screen means, and a document is exactly the kind of thing whose expiry is
+  years away.
+
+  Only when it differs from now, because a year on every line is noise that
+  makes the one line that needed it harder to find — which is the same
+  argument for leaving it off in the first place, applied honestly.
+
+  `now` is a parameter so this is testable without waiting for January.
+*/
+String dayMonthMaybeYear(DateTime d, [DateTime? now]) {
+  final today = now ?? DateTime.now();
+  return d.year == today.year ? dayMonth(d) : '${dayMonth(d)}, ${d.year}';
+}
+
 /* --------------------------------------------------------------- the ring */
 
 /// One count, split by what it is made of.

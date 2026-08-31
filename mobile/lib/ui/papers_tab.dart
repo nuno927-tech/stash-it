@@ -491,52 +491,36 @@ class _PaperTile extends StatelessWidget {
     );
 
     /*
-      ── Boxed when it wants something, plain when it does not ────────────────
+      ── One row shape, like the other two lists ──────────────────────────────
 
-      The same rule the dashboard's timeline uses: a border rather than a fill,
-      because these rows already carry a coloured circle and a coloured line,
-      and a solid background on top is the third way of saying one thing. On a
-      bad month four filled rows in a row stop reading as urgent and start
-      reading as the background.
+      This used to branch: a plain full-bleed row when the document was fine,
+      and an inset rounded card when it wanted something. The card was meant to
+      say "this one needs you", and next to Items and Subscriptions — both of
+      which shade a square, full-bleed row and never change shape — it said
+      "this is a different kind of list" instead.
+
+      The two branches collapse into one because they were already the same
+      thing wearing different clothes: `statusWash` returns null for `settled`
+      and `unknown`, and a document that does not act IS settled. So a valid
+      row gets no gradient and renders exactly as the plain branch did, without
+      the plain branch existing.
+
+      Shape carries no meaning here. The gradient does, and it is the same
+      gradient the other two lists use.
     */
-    if (!acts) {
-      return InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
-          decoration: BoxDecoration(
-            color: lit ? c.washGoldSoft : c.slate800,
-            border: Border(bottom: BorderSide(color: c.slate700)),
-          ),
-          child: body,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+        decoration: BoxDecoration(
+          // The calendar-style highlight wins over the status wash, the same
+          // way it does on Subscriptions: somebody who tapped a thing is
+          // looking for that answer, not this one.
+          color: lit ? c.washGoldSoft : c.slate800,
+          gradient: lit ? null : statusWash(c, status),
+          border: Border(bottom: BorderSide(color: c.slate700)),
         ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
-      child: Material(
-        color: lit ? c.washGoldSoft : c.slate800,
-        borderRadius: BorderRadius.circular(Radii.md),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.md),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(11),
-            /*
-              The wash replaces the outline. A border around a row that already
-              carries a coloured circle and a coloured word was the third way
-              of saying one thing — and four boxed rows together stopped
-              reading as urgent and started reading as a table.
-            */
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Radii.md),
-              gradient: lit ? null : statusWash(c, status),
-              border: lit ? Border.all(color: c.washGoldLine) : null,
-            ),
-            child: body,
-          ),
-        ),
+        child: body,
       ),
     );
   }
@@ -545,13 +529,15 @@ class _PaperTile extends StatelessWidget {
     if (expiry == null) return 'No expiry recorded';
 
     return switch (state) {
-      PaperState.expired => 'Expired ${dayMonth(expiry)}',
+      PaperState.expired => 'Expired ${dayMonthMaybeYear(expiry)}',
       // The window is open, which is a state and not a countdown — see
       // `whenLabel`. Saying "62 days late" about a passport that does not
       // expire until February would be worse than saying nothing.
-      PaperState.renew => 'Start now · expires ${dayMonth(expiry)}',
+      PaperState.renew => 'Start now · expires ${dayMonthMaybeYear(expiry)}',
       PaperState.valid =>
-        start == null ? 'Expires ${dayMonth(expiry)}' : 'Start ${dayMonth(start)}',
+        start == null
+            ? 'Expires ${dayMonthMaybeYear(expiry)}'
+            : 'Start ${dayMonthMaybeYear(start)}',
     };
   }
 }

@@ -251,9 +251,17 @@ class TimeLeft extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            left.value,
-            textAlign: TextAlign.right,
+          /*
+            Cross-faded, in step with the pill on the other side of the row.
+
+            The two say the same thing in different alphabets — "Lapsed" and
+            a red number — so one of them snapping while the other eases makes
+            the row look like it changed twice. 260ms is the pill's number,
+            copied deliberately rather than chosen again.
+          */
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOut,
             /*
               ── Weight, not just size ────────────────────────────────────────
 
@@ -276,6 +284,7 @@ class TimeLeft extends StatelessWidget {
               color: colour,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
+            child: Text(left.value, textAlign: TextAlign.right),
           ),
           const SizedBox(height: 3),
           Text(

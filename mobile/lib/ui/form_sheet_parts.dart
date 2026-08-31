@@ -8,6 +8,8 @@
 /// wrong in all three and would have been fixed in one.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -40,6 +42,86 @@ double sheetTop(BuildContext context) {
   final below = media.padding.top + 58;
 
   return (1 - below / media.size.height).clamp(0.5, 0.96);
+}
+
+/*
+  ── The content arrives just after the sheet does ───────────────────────────
+
+  A modal sheet already slides up; that is Flutter's route transition and it
+  moves the whole panel as one rigid object. Everything inside is therefore
+  already in its final position when the panel is still travelling, which
+  reads as a printed card being pushed onto the screen.
+
+  This gives the contents a shorter, later, smaller move of their own — 14
+  pixels over 320ms, starting once the panel is most of the way up. The panel
+  arrives and then settles, which is what a physical thing does.
+
+  Deliberately small. A sheet whose contents visibly fly in is a sheet you
+  wait for, and these are forms people open dozens of times.
+*/
+class SheetEntrance extends StatefulWidget {
+  const SheetEntrance({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<SheetEntrance> createState() => _SheetEntranceState();
+}
+
+class _SheetEntranceState extends State<SheetEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _in = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+
+  late final Animation<double> _t =
+      CurvedAnimation(parent: _in, curve: Curves.easeOutCubic);
+
+  /*
+    Held and cancelled — and I wrote this as a bare `Future.delayed` first,
+    three versions after fixing exactly that in `Shell` and `Splash`.
+
+    A bare delay is a timer nobody owns. The `if (mounted)` inside guards the
+    work and never the timer, so a sheet dismissed inside the first 90ms
+    leaves one running against a dead State, and Flutter's test binding fails
+    the whole test with "A Timer is still pending".
+  */
+  Timer? _begin;
+
+  @override
+  void initState() {
+    super.initState();
+    // Started a beat late on purpose: the route's own slide owns the first
+    // 90ms, and two things moving at once is one thing moving badly.
+    _begin = Timer(const Duration(milliseconds: 90), () {
+      if (mounted) _in.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _begin?.cancel();
+    _in.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) return widget.child;
+
+    return AnimatedBuilder(
+      animation: _t,
+      child: widget.child,
+      builder: (context, child) => Opacity(
+        opacity: _t.value,
+        child: Transform.translate(
+          offset: Offset(0, 14 * (1 - _t.value)),
+          child: child,
+        ),
+      ),
+    );
+  }
 }
 
 /// A titled card, with an optional control or a mascot in the corner.

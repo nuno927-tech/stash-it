@@ -137,12 +137,39 @@ class ItemDraft {
       coverages.where((c) => !c.isBlank).toList();
 }
 
+/// Which card holds the thing that is missing.
+///
+/// Returned alongside the message so the form can take somebody to it. A
+/// refusal that names a field without showing it makes people hunt through
+/// five cards for a box they cannot picture.
+enum Missing { name, purchaseDate, term }
+
+/// Why this cannot be saved, and where.
+class SaveProblem {
+  const SaveProblem(this.message, this.where);
+
+  final String message;
+  final Missing where;
+}
+
 /// Why this cannot be saved, or null when it can.
 ///
 /// One message at a time, in the order somebody would fix them. A form that
 /// lights up four errors at once is a form that gets abandoned.
-String? whyNotSaveable(ItemDraft d) {
-  if (d.name.trim().isEmpty) return 'Give it a name — anything you would call it.';
+///
+/// ── Each one says what to do, not what is wrong ───────────────────────────
+/// "Name is required" describes the app's rule. "Give it a name — anything you
+/// would call it" describes the next thing to type, and also quietly answers
+/// the question that stops people: whether it has to be the official product
+/// name. Same for the date, which explains why it is being asked for rather
+/// than asserting that it is mandatory.
+SaveProblem? whyNotSaveable(ItemDraft d) {
+  if (d.name.trim().isEmpty) {
+    return const SaveProblem(
+      'Give it a name — anything you would call it.',
+      Missing.name,
+    );
+  }
 
   /*
     ── The one real refusal ──────────────────────────────────────────────
@@ -159,12 +186,16 @@ String? whyNotSaveable(ItemDraft d) {
     (c) => c.hasTerm && c.unit != CoverageUnit.lifetime,
   );
   if (wantsCountdown && d.purchaseDate.trim().isEmpty) {
-    return 'Add the purchase date — the countdown is measured from it.';
+    return const SaveProblem(
+      'Add the purchase date — the countdown is measured from it.',
+      Missing.purchaseDate,
+    );
   }
 
   for (final c in d.realCoverages) {
     if (!c.hasTerm) {
-      return 'How long does "${c.label.trim().isEmpty ? 'that cover' : c.label.trim()}" run for?';
+      final name = c.label.trim().isEmpty ? 'that cover' : c.label.trim();
+      return SaveProblem('How long does "$name" run for?', Missing.term);
     }
   }
 

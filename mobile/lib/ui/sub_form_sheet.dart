@@ -49,7 +49,8 @@ Future<bool?> showSubForm(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => _SubFormSheet(repo: repo, existing: existing),
+    builder: (context) =>
+        SheetEntrance(child: _SubFormSheet(repo: repo, existing: existing)),
   );
 }
 

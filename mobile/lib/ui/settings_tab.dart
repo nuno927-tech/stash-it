@@ -45,7 +45,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.65.2';
+const appVersion = '0.68.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -804,14 +804,38 @@ class _SettingsTabState extends State<SettingsTab> {
                             colour and the wording can never disagree about
                             what "nearly full" means.
                           */
+                          /*
+                            Filled rather than drawn.
+
+                            The bar is the one thing on this card that is a
+                            quantity rather than a sentence, and it sits under
+                            a number that says the same thing. Arriving full
+                            made it read as a background shape; filling makes
+                            it read as a measurement of something.
+
+                            `TweenAnimationBuilder` also handles the case that
+                            matters more than first paint: saving an item
+                            nudges the bar along instead of jumping it, so the
+                            movement is legible as "that one you just added".
+                          */
                           ClipRRect(
                             borderRadius: BorderRadius.circular(Radii.pill),
-                            child: LinearProgressIndicator(
-                              value: (count / freeItemLimit).clamp(0.0, 1.0),
-                              minHeight: 7,
-                              backgroundColor: c.field,
-                              valueColor: AlwaysStoppedAnimation(
-                                full ? c.ember : (left <= warnWhenLeft ? c.honey : c.gold),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(
+                                begin: 0,
+                                end: (count / freeItemLimit).clamp(0.0, 1.0),
+                              ),
+                              duration: const Duration(milliseconds: 850),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, filled, _) => LinearProgressIndicator(
+                                value: MediaQuery.of(context).disableAnimations
+                                    ? (count / freeItemLimit).clamp(0.0, 1.0)
+                                    : filled,
+                                minHeight: 7,
+                                backgroundColor: c.field,
+                                valueColor: AlwaysStoppedAnimation(
+                                  full ? c.ember : (left <= warnWhenLeft ? c.honey : c.gold),
+                                ),
                               ),
                             ),
                           ),
@@ -903,8 +927,10 @@ class _SettingsTabState extends State<SettingsTab> {
                   use at all.
                 */
                 _SwitchRow(
+                  // No note. "Lock to portrait" is the whole explanation, and a
+                  // line under it restating the label in longer words is the
+                  // kind of help that makes a settings page feel like a manual.
                   label: 'Lock to portrait',
-                  note: 'Stops the screen turning when you tilt the phone.',
                   value: prefs.lockPortrait,
                   onChanged: (on) => prefs.set(lockPortrait: on),
                 ),
@@ -1783,21 +1809,28 @@ class _SegRow<T> extends StatelessWidget {
   }
 }
 
+/*
+  ── One line, and no room for a second ──────────────────────────────────────
+
+  This briefly took an optional `note` for a subtitle under the label. It was
+  added for one switch — Lock to portrait — and removed again the moment that
+  subtitle turned out to be restating its own label in longer words.
+
+  Not kept "in case something needs it later". An unused optional parameter is
+  an invitation: the next switch with a slightly weak label gets a sentence
+  under it instead of a better label, and a settings page becomes a manual one
+  reasonable line at a time.
+
+  If a switch genuinely cannot be explained by its label, the label is wrong.
+*/
 class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
     required this.label,
     required this.value,
     required this.onChanged,
-    this.note,
   });
 
   final String label;
-
-  /// A second line, for a switch whose label does not say what it does.
-  /// Most do not need one; a switch that needs a paragraph is the wrong
-  /// control.
-  final String? note;
-
   final bool value;
   final ValueChanged<bool>? onChanged;
 
@@ -1809,25 +1842,18 @@ class _SwitchRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
+          // The Column that used to be here held the label above a note. With
+          // the note gone it wrapped one child and aligned it against itself,
+          // which is scaffolding for a thing that is not there any more.
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: fontBody,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: c.text,
-                  ),
-                ),
-                if (note != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2, right: 4),
-                    child: Text(note!, style: hintStyle(c)),
-                  ),
-              ],
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: c.text,
+              ),
             ),
           ),
           const SizedBox(width: 12),

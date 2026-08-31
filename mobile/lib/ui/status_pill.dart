@@ -67,11 +67,31 @@ Gradient? statusWash(StashColors c, StashStatus status) {
 
   final (_, wash) = statusInk(c, status);
 
+  /*
+    ── Stronger, and reaching further across the row ───────────────────────
+
+    It started at the wash's own alpha and was gone by 55% of the width, which
+    on a dark row was close to nothing: the state was carried almost entirely
+    by the pill, and the shading it was meant to reinforce read as a rendering
+    artefact more than a signal.
+
+    Half again as strong at the left edge, fading out at 82%. Still a gradient
+    rather than a fill — four solid rows together stop reading as urgent and
+    start reading as the background, which is the note on the row builders and
+    the reason this is a wash at all.
+
+    Changed here rather than on the `wash*` tokens deliberately. Those are
+    shared with the status pill, and a pill is small and already outlined; it
+    does not need what a full-width row needs.
+  */
   return LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [wash, wash.withValues(alpha: 0)],
-    stops: const [0, 0.55],
+    colors: [
+      wash.withValues(alpha: (wash.a * 1.55).clamp(0, 1)),
+      wash.withValues(alpha: 0),
+    ],
+    stops: const [0, 0.82],
   );
 }
 
@@ -87,7 +107,26 @@ class StatusPill extends StatelessWidget {
     final c = StashColors.of(context);
     final (ink, wash) = statusInk(c, status);
 
-    return Container(
+    /*
+      ── Both the wash and the ink cross-fade ──────────────────────────────
+
+      A pill changes colour when the thing under it changes state — a filter
+      switching the list, or cover running out while the app is open. It used
+      to repaint: green one frame, amber the next, with nothing to say the two
+      were the same pill rather than a different row scrolling into place.
+
+      The text colour has to move with the background or the pair goes briefly
+      illegible mid-fade — amber ink on a green wash is a real frame if only
+      one of them is animating.
+
+      `AnimatedContainer` and `AnimatedDefaultTextStyle` both no-op when the
+      OS asks for no animation, so this needs no guard of its own.
+    */
+    const swap = Duration(milliseconds: 260);
+
+    return AnimatedContainer(
+      duration: swap,
+      curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         // The unknown state gets the muted ink on a plain recess: it is a
@@ -96,8 +135,9 @@ class StatusPill extends StatelessWidget {
         color: status == StashStatus.unknown ? c.field : wash,
         borderRadius: BorderRadius.circular(Radii.pill),
       ),
-      child: Text(
-        label,
+      child: AnimatedDefaultTextStyle(
+        duration: swap,
+        curve: Curves.easeOut,
         style: TextStyle(
           fontFamily: fontBody,
           fontSize: 10.5,
@@ -105,6 +145,7 @@ class StatusPill extends StatelessWidget {
           letterSpacing: 0.2,
           color: ink,
         ),
+        child: Text(label),
       ),
     );
   }

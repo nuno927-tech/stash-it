@@ -449,11 +449,17 @@ class _CoverCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Figure(value: '${tally.inDate}', label: 'in date', tone: c.moss),
+                  child: Figure(
+                    value: '${tally.inDate}',
+                    count: tally.inDate,
+                    label: 'in date',
+                    tone: c.moss,
+                  ),
                 ),
                 Expanded(
                   child: Figure(
                     value: '${tally.needsStarting}',
+                    count: tally.needsStarting,
                     label: 'action needed',
                     tone: c.honey,
                     onTap: tap(tally.needsStartingBy),
@@ -462,6 +468,7 @@ class _CoverCard extends StatelessWidget {
                 Expanded(
                   child: Figure(
                     value: '${tally.lapsed}',
+                    count: tally.lapsed,
                     label: 'lapsed',
                     tone: c.ember,
                     onTap: tap(tally.lapsedBy, filter: ItemFilter.lapsed),
@@ -470,6 +477,7 @@ class _CoverCard extends StatelessWidget {
                 Expanded(
                   child: Figure(
                     value: '${tally.noDate}',
+                    count: tally.noDate,
                     label: 'no date',
                     // Same reasoning as lapsed: the Items tab already has a
                     // filter for exactly this set, and a figure that counted

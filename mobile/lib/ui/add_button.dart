@@ -28,12 +28,15 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../billing/current.dart';
 import '../db/repository.dart';
+import '../logic/limits.dart';
 import 'feedback.dart';
 import 'item_form_sheet.dart';
 import 'sub_form_sheet.dart';
 import 'paper_form_sheet.dart';
 import 'theme.dart';
+import 'unlock_sheet.dart';
 
 enum AddKind { item, subscription, paper }
 
@@ -79,7 +82,55 @@ class _StashItButtonState extends State<StashItButton>
     super.dispose();
   }
 
+  /*
+    ── Full, and the button says so before it is pressed ───────────────────
+
+    The cap used to be enforced at the point of saving: the fan opened, the
+    form opened, somebody filled in a kettle, and only on Save did the app say
+    there was no room. That is the worst possible moment to find out — the
+    work is done and the answer is no.
+
+    Dimming the button moves the news to before the effort. The button still
+    works, because a dead control invites the question "why will this not
+    work" rather than answering it; it just goes somewhere else.
+  */
+  bool _full = false;
+
+  Future<void> _readRoom() async {
+    final settings = await widget.repo.settings();
+    final count = await widget.repo.cappedCount();
+    if (!mounted) return;
+
+    final now = !canAddItem(count, settings.entitlements);
+    if (now != _full) setState(() => _full = now);
+  }
+
+  /// Straight to the offer, with the count already in it.
+  Future<void> _offer() async {
+    feedback(Cue.tap);
+    final count = await widget.repo.cappedCount();
+    if (!mounted) return;
+
+    final unlocked = await showUnlock(
+      context,
+      repo: widget.repo,
+      billing: appBilling,
+      count: count,
+    );
+    if (unlocked) {
+      await _readRoom();
+      widget.onDone?.call();
+    }
+  }
+
   void _toggle() {
+    // Full: the fan never opens. Three choices of thing you cannot add is a
+    // worse answer than one clear reason why.
+    if (_full) {
+      _offer();
+      return;
+    }
+
     feedback(_open ? Cue.collapse : Cue.expand);
     if (_open) {
       _c.reverse();
@@ -87,6 +138,12 @@ class _StashItButtonState extends State<StashItButton>
       _c.forward();
     }
     setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _readRoom();
   }
 
   void _close() {
@@ -119,6 +176,7 @@ class _StashItButtonState extends State<StashItButton>
     }
 
     widget.onDone?.call();
+    await _readRoom();
   }
 
   @override
@@ -294,13 +352,27 @@ class _StashItButtonState extends State<StashItButton>
   /// object on the screen. The plus turns forty-five degrees into a cross,
   /// which is the same shape saying the opposite thing.
   Widget _pill(StashColors c, double t) {
+    /*
+      Dimmed rather than greyed out.
+
+      A disabled-looking control says "this is broken or not for you"; a
+      quieter gold says "this still does something, and it is not the usual
+      thing". The plus stays a plus for the same reason — turning it into a
+      lock would make the button about the paywall rather than about adding.
+    */
+    final gold = _full ? Color.lerp(c.gold, c.slate600, 0.45)! : c.gold;
+    final ink = _full ? c.muted : c.onGold;
+
     return Material(
-      color: Color.lerp(c.gold, c.slate600, t),
+      color: Color.lerp(gold, c.slate600, t),
       borderRadius: BorderRadius.circular(Radii.pill),
-      elevation: 6 * (1 - t) + 2,
+      elevation: (_full ? 2 : 6) * (1 - t) + 2,
       // A coloured object lit from behind throws its own colour; a grey shadow
       // under a gold pill on a dark background just reads as dirt.
-      shadowColor: c.gold.withValues(alpha: 0.6 * (1 - t)),
+      // No glow when there is no room. The halo is what makes this the loudest
+      // thing on the screen, and it should not be shouting an invitation it
+      // cannot honour.
+      shadowColor: gold.withValues(alpha: (_full ? 0.15 : 0.6) * (1 - t)),
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.pill),
         onTap: _toggle,
@@ -314,7 +386,7 @@ class _StashItButtonState extends State<StashItButton>
                 child: Icon(
                   Icons.add,
                   size: 24,
-                  color: Color.lerp(c.onGold, c.text, t),
+                  color: Color.lerp(ink, c.text, t),
                 ),
               ),
               const SizedBox(width: 8),
@@ -325,7 +397,7 @@ class _StashItButtonState extends State<StashItButton>
                   fontWeight: FontWeight.w800,
                   fontSize: 19,
                   letterSpacing: -0.3,
-                  color: Color.lerp(c.onGold, c.text, t),
+                  color: Color.lerp(ink, c.text, t),
                 ),
               ),
             ],
