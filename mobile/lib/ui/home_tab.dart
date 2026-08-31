@@ -28,11 +28,12 @@ import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
 import 'item_detail_screen.dart';
-import 'items_tab.dart' show ItemFilter, itemsFilter;
+import 'items_tab.dart' show FilterRequest, ItemFilter, itemsFilter;
 import 'paper_form_sheet.dart';
 import 'parts.dart';
 import 'sub_form_sheet.dart';
 import 'scout.dart';
+import 'status_pill.dart';
 import 'settings_tab.dart' show SettingsAnchor, settingsJump;
 import 'theme.dart';
 import 'thumb.dart';
@@ -200,7 +201,13 @@ class _HomeBodyState extends State<_HomeBody> {
     if (to == null) return null;
 
     return () {
-      if (to == Destination.items && filter != null) itemsFilter.value = filter;
+      /*
+        Sent whether or not there is a filter, because "no filter" is the
+        instruction for the figures that have no chip of their own. Guarding
+        this on `filter != null` was the bug: those figures said nothing, and
+        the list kept whatever the last figure had asked for.
+      */
+      if (to == Destination.items) itemsFilter.value = FilterRequest(filter);
       widget.onGo(to == Destination.items ? Tab.items : Tab.papers);
     };
   }
@@ -878,18 +885,6 @@ class _TimelineRow extends StatelessWidget {
 
     final body = Row(
       children: [
-        if (!urgent) ...[
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: entry.flagged ? c.honey : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 11),
-        ] else
-          const SizedBox(width: 2),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -965,52 +960,55 @@ class _TimelineRow extends StatelessWidget {
     );
 
     /*
-      ── 10 and 2, from `.duerow` ────────────────────────────────────────────
+      ── One row shape, and it is the Items tab's ────────────────────────────
 
-      It was 10 and 16, and a plain row and a circled one were 8 pixels apart
-      in height for reasons that had nothing to do with either. The PWA gives
-      every row the same 10px of vertical padding and separates them with a
-      hairline; the circled ones get a border and 4px of margin, which is what
-      keeps the borders from touching.
+      This branched: a plain hairline row for anything calm, and an inset
+      bordered card with its own shadow for anything urgent. Two shapes, two
+      paddings, two widths — on a screen whose whole job is to be scanned in
+      one pass.
+
+      Items, Documents and Subscriptions all draw a square full-bleed row and
+      say what they mean with a wash. This list is built from the same three
+      tables; it should not be the one place that says it differently.
+
+      So: same padding, same hairline, same gradient. The card, the shadow and
+      the coloured dot all go — the dot only ever appeared on flagged rows,
+      which are exactly the rows the wash now covers, and two marks for one
+      fact is how a list stops being scannable.
     */
-    if (!urgent) {
-      return InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: c.slate700)),
-          ),
-          child: body,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+        decoration: BoxDecoration(
+          color: c.slate800,
+          gradient: statusWash(c, _statusOf(entry.urgency)),
+          border: Border(bottom: BorderSide(color: c.slate700)),
         ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
-      child: Material(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.md),
-        // A shadow on this one too: it is a card sitting among plain rows, and
-        // the border alone was doing all the work of saying so.
-        elevation: 2,
-        shadowColor: Color.fromRGBO(0, 0, 0, Theme.of(context).brightness == Brightness.dark ? 0.5 : 0.12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.md),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Radii.md),
-              border: Border.all(color: c.line),
-            ),
-            child: body,
-          ),
-        ),
+        child: body,
       ),
     );
   }
 }
+
+/*
+  ── The timeline's urgency, in the app's shared vocabulary ──────────────────
+
+  `Urgency` is the timeline's own four-way sort; `StashStatus` is what the
+  washes and pills are keyed on everywhere else. This is the join, kept in one
+  place so the dashboard cannot end up tinting "overdue" a different colour
+  from the Items tab.
+
+  `now` maps to overdue rather than soon on purpose. It means the window to act
+  is open and closing — a passport whose renew-by has passed — and the
+  countdown beside it is already drawn in ember. A honey row under an ember
+  number would be the screen disagreeing with itself.
+*/
+StashStatus _statusOf(Urgency u) => switch (u) {
+      Urgency.overdue || Urgency.now => StashStatus.overdue,
+      Urgency.soon => StashStatus.soon,
+      Urgency.later => StashStatus.settled,
+    };
 
 /// What is missing, and why it matters.
 ///

@@ -73,7 +73,30 @@ enum ItemFilter { lapsed, noTerm }
   listening when it was written, and the Items tab is often built for the
   first time a frame AFTER the value is set.
 */
-final ValueNotifier<ItemFilter?> itemsFilter = ValueNotifier<ItemFilter?>(null);
+/// What the dashboard asked this list to show.
+///
+/// ── Why a request, and not just an `ItemFilter?` ───────────────────────────
+/// It was a bare `ItemFilter?`, and null had to mean two different things:
+/// "nobody asked for anything" and "somebody asked for the default view".
+/// The tab could only act on the first reading, so a figure with no filter of
+/// its own — "action needed" has no matching chip — arrived saying nothing,
+/// and the list showed whatever it had been showing before.
+///
+/// The result was a dashboard where one metric worked and the others appeared
+/// to inherit its answer. Which is worse than either doing nothing or doing
+/// the wrong thing, because it is right often enough to be believed.
+///
+/// A request wraps the null. `FilterRequest(null)` is a real instruction —
+/// "show everything you normally would" — and every figure that lands here
+/// now sends one.
+class FilterRequest {
+  const FilterRequest(this.filter);
+
+  /// Null means the default view: everything except lapsed.
+  final ItemFilter? filter;
+}
+
+final ValueNotifier<FilterRequest?> itemsFilter = ValueNotifier<FilterRequest?>(null);
 
 class ItemsTab extends StatefulWidget {
   const ItemsTab({required this.repo, super.key});
@@ -152,11 +175,13 @@ class _ItemsTabState extends State<ItemsTab> {
   /// follows: a value set a frame before this widget exists has to survive
   /// until somebody has actually acted on it.
   void _takeFilter() {
-    final wanted = itemsFilter.value;
-    if (wanted == null || !mounted) return;
+    final request = itemsFilter.value;
+    if (request == null || !mounted) return;
 
     itemsFilter.value = null;
-    setState(() => _filter = wanted);
+    // `request.filter` may itself be null, and that is an answer rather than
+    // an absence — see `FilterRequest`.
+    setState(() => _filter = request.filter);
   }
 
   List<Room> _rooms = const [];
