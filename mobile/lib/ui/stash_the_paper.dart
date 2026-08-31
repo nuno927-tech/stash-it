@@ -46,13 +46,31 @@ const String stashThePaperBody =
 Future<void> showStashThePaper(BuildContext context) {
   feedback(Cue.save);
 
+  final c = StashColors.of(context);
+
   return showModalBottomSheet<void>(
     context: context,
     // Dismissible by dragging as well as by the button. The button is the
     // instruction; the drag is for the second hundred times.
     isScrollControlled: true,
     showDragHandle: true,
-    backgroundColor: StashColors.of(context).slate700,
+
+    /*
+      ── The list behind this is dimmed, deliberately ──────────────────────
+
+      Flutter's default barrier is `black54`, which over a dark app is barely
+      a barrier at all: the list underneath stayed bright enough to read, so
+      the sheet looked like a panel sharing the screen rather than one thing
+      interrupting another.
+
+      `scrim` is the app's own token for exactly this — 72% of the darkest
+      slate in the dark palette, and a matching white in the light one. It has
+      been defined for both palettes since the theme was written and never
+      once read; three widgets describe "the scrim" in their comments while
+      drawing their own. This is the first thing to actually use it.
+    */
+    barrierColor: c.scrim,
+    backgroundColor: c.slate700,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),

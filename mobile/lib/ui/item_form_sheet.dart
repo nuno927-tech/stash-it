@@ -186,6 +186,17 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       _saving = true;
     });
 
+    /*
+      Declared out here so the reminder can be shown AFTER the try finishes.
+
+      Inside it, a failure to open the reminder would be caught by the generic
+      `catch` below and reported as "That did not save" — about an item that
+      saved perfectly well — and that handler calls `setState` on a widget the
+      pop has already disposed.
+    */
+    var wantsPaper = false;
+    BuildContext? host;
+
     try {
       // The item's picture, written first so its id can go on the record.
       if (_photo != null) {
@@ -243,6 +254,29 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       // doing the one thing it is for. See the note on `Cue.stashed`.
       feedback(Cue.stashed);
 
+      if (!mounted) return;
+
+      /*
+        ── This form closes BEFORE the paper reminder opens ──────────────────
+
+        It used to be the other way round: the reminder was shown, awaited,
+        and only then was the form popped. So the sheet telling somebody to go
+        and file the receipt appeared on top of the form they had just filled
+        in — the item still sitting there in fields, looking unsaved, behind a
+        note about what to do next.
+
+        The reminder is a note about the list, not about the form. Closing
+        first means it opens over the Items tab, which is where the thing they
+        just saved now is.
+
+        The navigator and its context are taken before the pop because this
+        State is gone immediately after it — `mounted` is false, `context` is
+        dead, and the reminder needs somewhere to be shown from that outlives
+        the sheet it was triggered by.
+      */
+      final navigator = Navigator.of(context);
+      host = navigator.context;
+
       /*
         The paper reminder, on a new item only, and only when nothing was
         attached.
@@ -252,11 +286,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         and the tiles are right there on this form now, which is the whole
         reason the check is worth making.
       */
-      if (_isNew && !attached && mounted) {
-        await showStashThePaper(context);
-      }
+      wantsPaper = _isNew && !attached;
 
-      if (mounted) Navigator.of(context).pop(true);
+      navigator.pop(true);
     } on CapReached catch (e) {
       /*
         The wall, and the way through it, in the same moment.
@@ -283,9 +315,34 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         await _save();
       }
     } catch (e) {
-      setState(() => _problem = 'That did not save: $e');
+      // Guarded like every other setState in here. Without it a failure
+      // arriving after the sheet has gone crashes on a disposed widget.
+      if (mounted) setState(() => _problem = 'That did not save: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+
+    /*
+      Outside the try, and after the form has gone: a note about the list,
+      shown over the list.
+
+      ── Guarded on the context's OWN mounted, not this widget's ────────────
+
+      The analyzer objected to the first version of this line and was right in
+      a way worth writing down: `host` belongs to the Navigator, not to this
+      State. So `this.mounted` — which is false by now anyway, the pop saw to
+      that — says nothing at all about whether the context being used is still
+      alive. It is an unrelated check that happens to sit nearby, which is the
+      most convincing kind of wrong guard.
+
+      `BuildContext.mounted` asks the only question that matters here: is the
+      element this context points at still in the tree. It would be false if
+      the whole route stack had gone during the save — closed by a back
+      gesture, or by a notification tap routing somewhere else.
+    */
+    final where = host;
+    if (wantsPaper && where != null && where.mounted) {
+      await showStashThePaper(where);
     }
   }
 
