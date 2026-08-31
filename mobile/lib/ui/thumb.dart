@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
+import '../logic/item_icon.dart';
 import '../models/types.dart';
 import 'warranty_ring.dart';
 
@@ -74,4 +75,46 @@ class ItemArtLive extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The glyph that stands in for an item with no photograph.
+///
+/// Lives here rather than on the list, because the list row and the product
+/// sheet both draw it and they have to agree — a kettle that is a coffee cup
+/// in one place and a box in the other is the app contradicting itself about
+/// what it thinks the thing is.
+IconData itemIcon(Item item) {
+  final key = iconKeyFor(IconSubject(
+    name: item.name,
+    brand: item.brand,
+    model: item.model,
+    notes: item.notes,
+  ));
+
+  return switch (key) {
+    IconKey.fridge => Icons.kitchen,
+    IconKey.dishwasher || IconKey.washer || IconKey.dryer => Icons.local_laundry_service,
+    IconKey.oven || IconKey.microwave => Icons.microwave,
+    IconKey.kettle || IconKey.coffee => Icons.coffee,
+    IconKey.tv => Icons.tv,
+    IconKey.laptop => Icons.laptop,
+    IconKey.phone => Icons.smartphone,
+    IconKey.speaker => Icons.speaker,
+    IconKey.camera => Icons.photo_camera,
+    IconKey.router => Icons.router,
+    IconKey.console => Icons.videogame_asset,
+    IconKey.printer => Icons.print,
+    IconKey.saw || IconKey.drill || IconKey.hammer || IconKey.wrench => Icons.handyman,
+    IconKey.mower || IconKey.grill => Icons.grass,
+    IconKey.bike => Icons.pedal_bike,
+    IconKey.car => Icons.directions_car,
+    IconKey.sofa || IconKey.chair => Icons.chair,
+    IconKey.bed => Icons.bed,
+    IconKey.table => Icons.table_restaurant,
+    IconKey.lamp => Icons.light,
+    IconKey.boiler || IconKey.aircon => Icons.thermostat,
+    IconKey.vacuum => Icons.cleaning_services,
+    IconKey.watch => Icons.watch,
+    IconKey.box => Icons.inventory_2_outlined,
+  };
 }

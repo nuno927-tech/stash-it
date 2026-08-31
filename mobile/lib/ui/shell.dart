@@ -25,9 +25,9 @@ import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
 import 'add_button.dart';
 import 'card_arrival_screen.dart';
-import 'item_detail_screen.dart';
-import 'paper_form_sheet.dart';
-import 'sub_form_sheet.dart';
+import 'item_view_sheet.dart';
+import 'paper_view_sheet.dart';
+import 'sub_view_sheet.dart';
 import 'feedback.dart';
 import 'home_tab.dart';
 import 'items_tab.dart';
@@ -331,25 +331,21 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
             return;
           }
           _goTo(Tab.items);
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(repo: repo, item: item),
-            ),
-          );
+          await showItemView(context, repo: repo, item: item);
 
         case LinkKind.paper:
           final paper = await repo.paper(link.id!);
           if (!mounted) return;
           _goTo(Tab.papers);
           if (paper == null) return;
-          await showPaperForm(context, repo: repo, existing: paper);
+          await showPaperView(context, repo: repo, paper: paper);
 
         case LinkKind.sub:
           final sub = await repo.subscription(link.id!);
           if (!mounted) return;
           _goTo(Tab.subs);
           if (sub == null) return;
-          await showSubForm(context, repo: repo, existing: sub);
+          await showSubView(context, repo: repo, sub: sub);
       }
     } finally {
       _opening = false;

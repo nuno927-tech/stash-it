@@ -28,7 +28,7 @@ import '../models/settings.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
-import 'item_detail_screen.dart';
+import 'item_view_sheet.dart';
 
 import 'paper_form_sheet.dart';
 import 'parts.dart';
@@ -165,11 +165,7 @@ class _HomeBodyState extends State<_HomeBody> {
       case TimelineKind.item:
         final item = await repo.item(entry.id);
         if (item == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ItemDetailScreen(repo: repo, item: item),
-          ),
-        );
+        await showItemView(context, repo: repo, item: item);
 
       case TimelineKind.paper:
         final paper = await repo.paper(entry.id);
@@ -374,12 +370,7 @@ class _HomeBodyState extends State<_HomeBody> {
             items: data.recent,
             onOpen: (item) async {
               feedback(Cue.tap);
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ItemDetailScreen(repo: widget.repo, item: item),
-                ),
-              );
+              await showItemView(context, repo: widget.repo, item: item);
               if (mounted) setState(() {});
             },
           ),

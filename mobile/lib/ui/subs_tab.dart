@@ -29,6 +29,7 @@ import 'service_mark.dart';
 import 'status_pill.dart';
 import 'spend_line.dart';
 import 'sub_form_sheet.dart';
+import 'sub_view_sheet.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
 import 'undo_bar.dart';
@@ -100,8 +101,14 @@ class _SubsTabState extends State<SubsTab> {
 
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
+  // Same split as Documents: an existing one is looked at, a new one is filled
+  // in. See the note there.
   Future<void> open(Subscription? sub) async {
-    await showSubForm(context, repo: widget.repo, existing: sub);
+    if (sub == null) {
+      await showSubForm(context, repo: widget.repo);
+    } else {
+      await showSubView(context, repo: widget.repo, sub: sub);
+    }
     if (!mounted) return;
     setState(() {});
     await maybeOfferNotifications(context, widget.repo);

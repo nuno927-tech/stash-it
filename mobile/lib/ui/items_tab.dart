@@ -28,7 +28,7 @@ import '../models/types.dart';
 import 'bin_screen.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
-import 'item_detail_screen.dart';
+import 'item_view_sheet.dart';
 import 'item_form_sheet.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
@@ -756,11 +756,7 @@ class _ItemsTabState extends State<ItemsTab> {
     if (item == null) {
       await showItemForm(context, repo: widget.repo);
     } else {
-      await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (context) => ItemDetailScreen(repo: widget.repo, item: item),
-        ),
-      );
+      await showItemView(context, repo: widget.repo, item: item);
     }
     if (!mounted) return;
     await maybeOfferNotifications(context, widget.repo);
@@ -1141,7 +1137,7 @@ class _ItemTile extends StatelessWidget {
             ItemArtLive(
               repo: repo,
               item: item,
-              fallback: Icon(_icon(item), size: 18, color: c.muted),
+              fallback: Icon(itemIcon(item), size: 18, color: c.muted),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1224,38 +1220,3 @@ class _ItemTile extends StatelessWidget {
 /// A wrong icon is worse than a neutral one — it looks like the app has
 /// misunderstood the thing — so anything the keyword table does not recognise
 /// gets a plain box rather than a guess.
-IconData _icon(Item item) {
-  final key = iconKeyFor(IconSubject(
-    name: item.name,
-    brand: item.brand,
-    model: item.model,
-    notes: item.notes,
-  ));
-
-  return switch (key) {
-    IconKey.fridge => Icons.kitchen,
-    IconKey.dishwasher || IconKey.washer || IconKey.dryer => Icons.local_laundry_service,
-    IconKey.oven || IconKey.microwave => Icons.microwave,
-    IconKey.kettle || IconKey.coffee => Icons.coffee,
-    IconKey.tv => Icons.tv,
-    IconKey.laptop => Icons.laptop,
-    IconKey.phone => Icons.smartphone,
-    IconKey.speaker => Icons.speaker,
-    IconKey.camera => Icons.photo_camera,
-    IconKey.router => Icons.router,
-    IconKey.console => Icons.videogame_asset,
-    IconKey.printer => Icons.print,
-    IconKey.saw || IconKey.drill || IconKey.hammer || IconKey.wrench => Icons.handyman,
-    IconKey.mower || IconKey.grill => Icons.grass,
-    IconKey.bike => Icons.pedal_bike,
-    IconKey.car => Icons.directions_car,
-    IconKey.sofa || IconKey.chair => Icons.chair,
-    IconKey.bed => Icons.bed,
-    IconKey.table => Icons.table_restaurant,
-    IconKey.lamp => Icons.light,
-    IconKey.boiler || IconKey.aircon => Icons.thermostat,
-    IconKey.vacuum => Icons.cleaning_services,
-    IconKey.watch => Icons.watch,
-    IconKey.box => Icons.inventory_2_outlined,
-  };
-}

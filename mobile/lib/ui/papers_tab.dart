@@ -21,6 +21,7 @@ import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'paper_form_sheet.dart';
+import 'paper_view_sheet.dart';
 import 'paper_icon.dart';
 import 'status_pill.dart';
 import '../logic/card.dart';
@@ -148,8 +149,16 @@ class _PapersTabState extends State<PapersTab> {
   /// items list is watched because it is the one people leave open.
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
+  /*
+    An existing document opens its product page; there being none is the only
+    case that goes straight to a form, because there is nothing to look at yet.
+  */
   Future<void> open(Paper? paper) async {
-    await showPaperForm(context, repo: widget.repo, existing: paper);
+    if (paper == null) {
+      await showPaperForm(context, repo: widget.repo);
+    } else {
+      await showPaperView(context, repo: widget.repo, paper: paper);
+    }
     if (!mounted) return;
     setState(() {});
     await maybeOfferNotifications(context, widget.repo);
