@@ -128,6 +128,21 @@ class _HomeBodyState extends State<_HomeBody> {
   bool _all = false;
 
   /*
+    ── Which kind of thing is coming up ────────────────────────────────────
+
+    Null is the default and means all three, the same shape the Items tab's
+    filters use: exclusive named states, and tapping the lit one returns to
+    null rather than doing nothing.
+
+    Worth having because "Coming up" is the one list in the app built from
+    three tables at once. Everywhere else you are already on a screen that
+    answers "which kind" by existing; here the answer is mixed together, and
+    the question people arrive with is usually about one of them — the
+    renewals, or the paperwork.
+  */
+  TimelineKind? _kind;
+
+  /*
     ── A row in "Coming up" opens the thing it is about ────────────────────
 
     It used to open nothing, which made the dashboard a list of statements
@@ -195,8 +210,12 @@ class _HomeBodyState extends State<_HomeBody> {
     final c = StashColors.of(context);
     final data = widget.data;
 
-    final line = _all ? data.line : data.line.take(_shown).toList();
-    final more = data.line.length - line.length;
+    final chosen = _kind == null
+        ? data.line
+        : data.line.where((e) => e.kind == _kind).toList();
+
+    final line = _all ? chosen : chosen.take(_shown).toList();
+    final more = chosen.length - line.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -245,6 +264,20 @@ class _HomeBodyState extends State<_HomeBody> {
   ) {
     final t = data.tally;
 
+    /*
+      Offered only when there is a choice to make.
+
+      One kind of thing coming up is not a mixed list, and three chips over a
+      column of five passports is a control whose every option is either "what
+      you already see" or "nothing". The same rule the Items tab applies to
+      its Lapsed chip.
+
+      Computed from `data.line` — the WHOLE timeline, not the filtered `line`
+      that arrives as an argument. Deriving it from the filtered list would
+      leave one chip on screen the moment a filter was chosen, and no way back.
+    */
+    final kinds = data.line.map((e) => e.kind).toSet();
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
       children: [
@@ -266,6 +299,34 @@ class _HomeBodyState extends State<_HomeBody> {
 
         if (data.line.isNotEmpty) ...[
           const _Label('Coming up'),
+
+          if (kinds.length > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final kind in TimelineKind.values)
+                    if (kinds.contains(kind))
+                      _KindChip(
+                        label: _kindLabel[kind]!,
+                        count: data.line.where((e) => e.kind == kind).length,
+                        on: _kind == kind,
+                        onTap: () {
+                          feedback(Cue.tap);
+                          setState(() {
+                            _kind = _kind == kind ? null : kind;
+                            // The "Show more" state belongs to the list that
+                            // was on screen, not to this one.
+                            _all = false;
+                          });
+                        },
+                      ),
+                ],
+              ),
+            ),
+
           for (final entry in line)
             _TimelineRow(entry: entry, onTap: () => _openEntry(entry)),
           if (more > 0)
@@ -392,6 +453,73 @@ class _OutlinePill extends StatelessWidget {
 /// That last line matters more than it looks. A ring showing 83% with no
 /// denominator is a score out of nothing — the sentence is what makes it a
 /// measurement.
+/*
+  ── The words, and why they are the nav bar's ───────────────────────────────
+
+  "Items", "Subs", "Documents" — the same three the bottom bar uses, in the
+  same order the enum walks. Somebody filtering this list is choosing between
+  places they already know by those names, and inventing a second vocabulary
+  for the same three things is how an app ends up with "Papers" here and
+  "Documents" there.
+*/
+const Map<TimelineKind, String> _kindLabel = {
+  TimelineKind.item: 'Items',
+  TimelineKind.subscription: 'Subs',
+  TimelineKind.paper: 'Documents',
+};
+
+/// One filter, carrying its own count.
+///
+/// The number is what makes this a summary as well as a control: "Documents 4"
+/// answers the question without being pressed, and the press is for when the
+/// answer is not enough.
+///
+/// Wash and gold edge when lit, exactly as the Items tab's chips — the two
+/// rows do the same job and a second visual language for it would suggest
+/// otherwise.
+class _KindChip extends StatelessWidget {
+  const _KindChip({
+    required this.label,
+    required this.count,
+    required this.on,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(Radii.pill),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: on ? c.washGold : c.slate700,
+          borderRadius: BorderRadius.circular(Radii.pill),
+          border: Border.all(color: on ? c.washGoldLine : Colors.transparent),
+        ),
+        child: Text(
+          '$label $count',
+          style: TextStyle(
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: on ? c.gold : c.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CoverCard extends StatelessWidget {
   const _CoverCard({required this.tally, required this.tap});
 
@@ -479,6 +607,24 @@ class _CoverCard extends StatelessWidget {
                     value: '${tally.noDate}',
                     count: tally.noDate,
                     label: 'no date',
+                    /*
+                      ── Gold, not honey, and the difference matters ────────
+
+                      The other three dots are moss, honey and ember — a
+                      traffic light. "No date" is a fourth thing: not good,
+                      not urgent, just unanswerable, and it had no dot at all,
+                      which made it read as a caption rather than as one of
+                      four counts.
+
+                      Honey is the obvious yellow and is already spoken for by
+                      "action needed" one column to the left. Two yellows side
+                      by side saying different things is worse than no dot.
+                      Gold is the app's other amber, distinct at a glance, and
+                      it already has a wash to match — see the Items tab,
+                      which lights these same rows gold when you arrive there
+                      by tapping this.
+                    */
+                    tone: c.gold,
                     // Same reasoning as lapsed: the Items tab already has a
                     // filter for exactly this set, and a figure that counted
                     // them should arrive with it on.

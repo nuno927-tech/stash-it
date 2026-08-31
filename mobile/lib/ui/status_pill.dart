@@ -95,6 +95,28 @@ Gradient? statusWash(StashColors c, StashStatus status) {
   );
 }
 
+/*
+  ── The wash for a row a filter picked out ──────────────────────────────────
+
+  Gold, matching the dot on the dashboard figure that sends people here. The
+  two ends of that journey are one gesture — tap a gold dot, land on gold rows
+  — and a different colour at the far end would make it a coincidence rather
+  than an answer.
+
+  Here rather than in items_tab so it is built the same way as `statusWash`:
+  same direction, same stops, same fade. They sit in the same slot on the same
+  rows and the only thing that should differ between them is the hue.
+*/
+Gradient filterWash(StashColors c) => LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        c.washGold.withValues(alpha: (c.washGold.a * 1.55).clamp(0, 1)),
+        c.washGold.withValues(alpha: 0),
+      ],
+      stops: const [0, 0.82],
+    );
+
 /// The word, on its own tint.
 class StatusPill extends StatelessWidget {
   const StatusPill({required this.status, required this.label, super.key});

@@ -299,6 +299,7 @@ class _ItemsTabState extends State<ItemsTab> {
                             : _ItemTile(
                                 repo: widget.repo,
                                 item: shown[i],
+                                lit: _filter == ItemFilter.noTerm,
                                 onTap: () => _open(shown[i]),
                                 onDelete: () => _delete(shown[i]),
                               ),
@@ -533,6 +534,7 @@ class _ItemsTabState extends State<ItemsTab> {
       rows.addAll(group.map((item) => _ItemTile(
             repo: widget.repo,
             item: item,
+            lit: _filter == ItemFilter.noTerm,
             onTap: () => _open(item),
             onDelete: () => _delete(item),
           )));
@@ -855,12 +857,23 @@ class _ItemTile extends StatelessWidget {
   const _ItemTile({
     required this.repo,
     required this.item,
+    this.lit = false,
     this.onTap,
     this.onDelete,
   });
 
   final Repository repo;
   final Item item;
+
+  /// Washed gold, for the rows a filter singled out.
+  ///
+  /// Only ever true for the no-term filter, because that is the one state
+  /// `statusWash` deliberately leaves unpainted — an item with no term is not
+  /// in trouble, it is unanswered, and tinting every one of them all the time
+  /// would be wallpaper. Lit only while somebody has asked to see exactly
+  /// these.
+  final bool lit;
+
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
@@ -917,7 +930,15 @@ class _ItemTile extends StatelessWidget {
         */
         decoration: BoxDecoration(
           color: c.slate800,
-          gradient: statusWash(c, status),
+          /*
+            The filter's own wash wins over the status one.
+
+            They cannot both be right: somebody who tapped "no date" on the
+            dashboard is looking for that answer, and a row shaded by its
+            warranty state would be answering a question they did not ask.
+            Same rule the Subscriptions calendar follows for a chosen day.
+          */
+          gradient: lit ? filterWash(c) : statusWash(c, status),
           border: Border(bottom: BorderSide(color: c.slate700)),
         ),
         child: Row(
