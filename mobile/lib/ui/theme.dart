@@ -270,20 +270,41 @@ class Radii {
 }
 
 /*
-  ── Type ────────────────────────────────────────────────────────────────────
+  ── Type: two faces ─────────────────────────────────────────────────────────
 
-  Bricolage Grotesque for display, Inter for body, JetBrains Mono for figures —
-  the same three the PWA loads. Bundled as files rather than fetched: this app
-  has no network at all, and a first launch that falls back to the system face
-  and then reflows is worse than a slightly larger download.
+  Bricolage Grotesque for display, Inter for everything read as words. Bundled
+  as files rather than fetched, because a first launch that shows the system
+  face and then reflows is worse than a slightly larger download.
 
-  The names are declared here and the files in pubspec.yaml. Until they are
-  added, Flutter falls back silently — which is why `fontFamily` is a constant
-  rather than typed at each use.
+  ── There used to be a third, and it was never real ─────────────────────────
+
+  `fontMono` named 'JetBrainsMono', which was never added to pubspec.yaml and
+  never existed in assets/fonts. Flutter does not complain about an unknown
+  family; it silently substitutes the platform default. So five places that
+  asked for a monospaced face — the diagnostics values, the backup date, the
+  version string, the ERASE confirmation and the date fields — had been drawn
+  in Roboto since the port began, and nothing anywhere said so.
+
+  The comment that used to sit here predicted it exactly: "Until they are
+  added, Flutter falls back silently." It was written as a note to self during
+  the port, and then nobody came back. A note describing a thing that is not
+  true yet ages into a note describing a thing that is not true.
+
+  Two ways out: add the font, or stop asking for it. Stopping is the honest
+  one — the app is a two-font app, has been for its whole life, and the five
+  sites have looked fine that way. `fontMono` stays as a NAME, aliased to the
+  body face, because those five places are genuinely different in kind: they
+  are read character by character rather than as words. If a mono face is ever
+  added, changing this one line puts it everywhere it belongs.
 */
 const String fontDisplay = 'BricolageGrotesque';
 const String fontBody = 'Inter';
-const String fontMono = 'JetBrainsMono';
+
+/// Where digits and codes are read one character at a time.
+///
+/// Aliased to the body face today. It is a separate name so the intent
+/// survives — see the note above.
+const String fontMono = fontBody;
 
 /*
   ── The scale ───────────────────────────────────────────────────────────────

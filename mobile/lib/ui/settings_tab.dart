@@ -44,7 +44,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.61.2';
+const appVersion = '0.62.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -423,7 +423,21 @@ class _SettingsTabState extends State<SettingsTab> {
 
     await _saveSettings((s) => s.copyWith(biometricLock: true));
     feedback(Cue.save);
-    _say('Locked. You will be asked next time the app opens.');
+
+    /*
+      This sentence was a lie for sixty versions.
+
+      Nothing read `biometricLock`. The prompt above — the one confirming the
+      switch — was the only check the app ever ran, and because it looks
+      exactly like the lock working, it read as proof that it did. See
+      lib/ui/lock_gate.dart, which is now the thing that makes it true.
+
+      It says "put down" rather than "closed" on purpose: the gate allows a
+      thirty-second grace so the camera, the file picker and the share sheet do
+      not each cost a fingerprint.
+    */
+    _say('Locked. You will be asked when you open the app, and if you put the '
+        'phone down for a while.');
   }
 
   /// Read, change, write. Every setting on this screen goes through here so

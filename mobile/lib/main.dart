@@ -16,6 +16,7 @@ import 'db/open_flutter.dart';
 import 'db/repository.dart';
 import 'notify/sync.dart';
 import 'ui/feedback.dart';
+import 'ui/lock_gate.dart';
 import 'ui/prefs_scope.dart';
 import 'ui/shell.dart';
 import 'ui/splash.dart';
@@ -147,7 +148,22 @@ class StashItApp extends StatelessWidget {
           darkTheme: stashTheme(dark: true),
           themeMode: themeModeOf(prefs.theme),
 
-          home: Splash(child: Shell(repo: repo)),
+          /*
+            The gate is OUTSIDE the splash, and the nesting is the whole point.
+
+            `Splash` paints its child underneath itself and fades to reveal it,
+            so anything inside it is already built and already on screen. A
+            lock in that position would be a picture of a lock over live
+            records — visible the instant the fade finished, and captured by
+            the task switcher's thumbnail regardless.
+
+            Out here, `Shell` is not constructed until the gate opens, so there
+            is nothing behind the lock to leak.
+          */
+          home: LockGate(
+            repo: repo,
+            child: Splash(child: Shell(repo: repo)),
+          ),
         ),
       ),
     );
