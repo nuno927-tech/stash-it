@@ -32,6 +32,43 @@ import 'theme.dart';
   `value` stays for everything that is not countable — a total in pounds, a
   short word — because counting "£46.5K" up is not a thing anybody wants.
 */
+/*
+  ── The dashboard's opening, and it plays once ──────────────────────────────
+
+  The ring sweeps and the four figures count up from zero. That is an opening
+  title: it earns its keep the first time somebody sees the screen, and after
+  that it is a delay between tapping Home and reading a number.
+
+  It was replaying on every visit to the tab, because the tab is rebuilt from
+  scratch each time — `AnimatedSwitcher` disposes the old one, so `initState`
+  ran again and the tween started from zero again. Somebody stepping Home →
+  Items → Home watched the same 850ms performance twice.
+
+  So: one flag, for the life of the process. First view animates; every view
+  after it draws the finished numbers immediately. A cold start resets it,
+  which is the right grain — "the first time you open the app" is exactly what
+  a process-lifetime flag means.
+
+  It is flipped from a post-frame callback rather than the moment the ring
+  starts, because the figures are built AFTER the ring in the same frame and
+  would otherwise read a flag the ring had already spent. Post-frame runs once
+  the whole frame is laid out, so everything in it sees the same answer.
+
+  A number CHANGING is a different event and still animates — see the note on
+  `didUpdateWidget`. This governs the arrival, not the updates.
+*/
+bool _introPlayed = false;
+
+/// Whether the dashboard's opening animation is still owed.
+bool get dashboardIntroDue => !_introPlayed;
+
+/// The sweep, and the count, and they are one duration on purpose.
+///
+/// The arc and the figures beneath it describe the same tally. Two durations
+/// would have them land at different moments, which reads as one chasing the
+/// other rather than as a single picture assembling.
+const Duration dashboardSweep = Duration(milliseconds: 1100);
+
 class Figure extends StatelessWidget {
   const Figure({
     required this.value,
@@ -140,15 +177,15 @@ class _Counted extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (count == null || MediaQuery.of(context).disableAnimations) {
+    if (count == null ||
+        !dashboardIntroDue ||
+        MediaQuery.of(context).disableAnimations) {
       return Text(count?.toString() ?? value, style: style);
     }
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: count!.toDouble()),
-      // The ring's own sweep, so the arc and the counts under it land together
-      // rather than one chasing the other.
-      duration: const Duration(milliseconds: 850),
+      duration: dashboardSweep,
       curve: Curves.easeOutCubic,
       builder: (context, v, _) => Text('${v.round()}', style: style),
     );
@@ -499,12 +536,8 @@ class Ring extends StatefulWidget {
 }
 
 class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
-  late final AnimationController _sweep = AnimationController(
-    vsync: this,
-    // Slow enough to be a sweep and not a flicker; fast enough that the number
-    // has settled by the time somebody has read the greeting above it.
-    duration: const Duration(milliseconds: 850),
-  );
+  late final AnimationController _sweep =
+      AnimationController(vsync: this, duration: dashboardSweep);
 
   late final CurvedAnimation _curve =
       CurvedAnimation(parent: _sweep, curve: Curves.easeOutCubic);
@@ -516,7 +549,26 @@ class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
+    /*
+      Second and later visits open on the finished ring rather than sweeping to
+      it again — see `dashboardIntroDue`. The controller is parked at 1 rather
+      than skipped, so `didUpdateWidget` below still has a sensible `_curve
+      .value` to interpolate from when a count actually changes.
+    */
+    if (!dashboardIntroDue) {
+      _sweep.value = 1;
+      _fromIn = widget.inDate.toDouble();
+      _fromSoon = widget.needsStarting.toDouble();
+      _fromLapsed = widget.lapsed.toDouble();
+      _fromPercent = widget.percent.toDouble();
+      return;
+    }
+
     _sweep.forward();
+    // After the frame, so the four figures below get the same answer this ring
+    // just got rather than the one it consumed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _introPlayed = true);
   }
 
   @override

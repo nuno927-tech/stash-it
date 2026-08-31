@@ -53,7 +53,27 @@ import 'warranty_ring.dart';
 /// What it buys is that the dashboard can now say "lapsed" and mean it. A
 /// figure that reads 6 has to land on six rows; landing on the whole list
 /// with six of them somewhere in it is a link that technically worked.
-enum ItemFilter { lapsed, noTerm }
+enum ItemFilter {
+  /// Cover has run out.
+  lapsed,
+
+  /// No warranty length recorded, so there is nothing to count down.
+  noTerm,
+
+  /*
+    ── The filter the dashboard was asking for and could not name ───────────
+
+    "Action needed" is the honey figure under the ring: cover that has not run
+    out yet but is inside its notice window. There was no filter for it, so
+    tapping that number sent the Items tab the empty instruction — which the
+    tab correctly read as "show the default view", i.e. everything. The number
+    said 3 and the list showed 21.
+
+    The other two figures had filters and worked; this one silently did not,
+    which is worse than a broken link because the screen still changed.
+  */
+  endingSoon,
+}
 
 /*
   ── Third notifier of this shape ────────────────────────────────────────────
@@ -216,6 +236,8 @@ class _ItemsTabState extends State<ItemsTab> {
         if (all == null) return const Center(child: CircularProgressIndicator());
 
         final lapsed = all.where((i) => warrantyState(i) == WarrantyState.expired).length;
+        final soon =
+            all.where((i) => warrantyState(i) == WarrantyState.endingSoon).length;
 
         /*
           One switch, four outcomes, and the default is the one with no chip
@@ -229,6 +251,8 @@ class _ItemsTabState extends State<ItemsTab> {
             all.where((i) => warrantyState(i) == WarrantyState.expired).toList(),
           ItemFilter.noTerm =>
             all.where((i) => warrantyState(i) == WarrantyState.unknown).toList(),
+          ItemFilter.endingSoon =>
+            all.where((i) => warrantyState(i) == WarrantyState.endingSoon).toList(),
           null => all.where((i) => warrantyState(i) != WarrantyState.expired).toList(),
         };
 
@@ -280,7 +304,7 @@ class _ItemsTabState extends State<ItemsTab> {
                           _worth(all, c),
                           _search(c),
                           const SizedBox(height: 10),
-                          _chips(lapsed, c),
+                          _chips(lapsed, soon, c),
                         ],
                       ),
                     ),
@@ -439,7 +463,7 @@ class _ItemsTabState extends State<ItemsTab> {
     it off rather than doing nothing, and that is the whole reason the
     dashboard can link here at all.
   */
-  Widget _chips(int lapsed, StashColors c) {
+  Widget _chips(int lapsed, int soon, StashColors c) {
     void pick(ItemFilter f) {
       feedback(Cue.tap);
       setState(() => _filter = _filter == f ? null : f);
@@ -477,7 +501,21 @@ class _ItemsTabState extends State<ItemsTab> {
                 an empty screen as the answer to a question with no wrong
                 answer.
               */
-              if (lapsed > 0)
+              /*
+                ...or while it is the filter currently applied. Arriving from
+                the dashboard with a filter whose chip is not drawn gives a
+                short list, nothing lit, and no way to get back — the screen
+                would be hiding the reason it looks the way it does.
+              */
+              if (soon > 0 || _filter == ItemFilter.endingSoon)
+                _Chip(
+                  label: 'Action needed $soon',
+                  on: _filter == ItemFilter.endingSoon,
+                  tone: c.honey,
+                  onTap: () => pick(ItemFilter.endingSoon),
+                ),
+
+              if (lapsed > 0 || _filter == ItemFilter.lapsed)
                 _Chip(
                   label: 'Lapsed $lapsed',
                   on: _filter == ItemFilter.lapsed,

@@ -597,7 +597,11 @@ class _CoverCard extends StatelessWidget {
                     count: tally.needsStarting,
                     label: 'action needed',
                     tone: c.honey,
-                    onTap: tap(tally.needsStartingBy),
+                    // The Items tab has a filter for exactly this set now. It
+                    // did not, so this figure used to hand over an empty
+                    // instruction and land you on the unfiltered list — the
+                    // number said 3 and the screen showed everything.
+                    onTap: tap(tally.needsStartingBy, filter: ItemFilter.endingSoon),
                   ),
                 ),
                 Expanded(
