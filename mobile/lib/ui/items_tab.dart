@@ -16,6 +16,7 @@ import '../logic/bin.dart';
 import '../logic/dashboard.dart';
 import '../logic/prefs.dart';
 import '../models/settings.dart';
+import '../logic/item_filter.dart';
 import '../logic/item_icon.dart';
 import '../logic/search.dart';
 import '../logic/timeline.dart';
@@ -37,91 +38,36 @@ import 'undo_bar.dart';
 import 'thumb.dart';
 import 'warranty_ring.dart';
 
-/// Which slice of the collection the list is showing.
-///
-/// **Null is the fourth state and the default**: everything except lapsed.
-/// Named states are exclusive slices — only lapsed, or only the ones with no
-/// term entered — and tapping the chip that is already on returns to null.
-///
-/// ── What this replaced, and what it gave up ───────────────────────────────
-/// Two independent booleans, `_showLapsed` and `_onlyNoTerm`, which between
-/// them could express "everything including lapsed" — a view that has quietly
-/// gone. It was the least useful of the four: a list sorted by what expires
-/// soonest with every dead warranty mixed back into it is the pile the sort
-/// exists to unmake.
-///
-/// What it buys is that the dashboard can now say "lapsed" and mean it. A
-/// figure that reads 6 has to land on six rows; landing on the whole list
-/// with six of them somewhere in it is a link that technically worked.
-enum ItemFilter {
-  /// Cover has run out.
-  lapsed,
-
-  /// No warranty length recorded, so there is nothing to count down.
-  noTerm,
-
-  /*
-    ── The filter the dashboard was asking for and could not name ───────────
-
-    "Action needed" is the honey figure under the ring: cover that has not run
-    out yet but is inside its notice window. There was no filter for it, so
-    tapping that number sent the Items tab the empty instruction — which the
-    tab correctly read as "show the default view", i.e. everything. The number
-    said 3 and the list showed 21.
-
-    The other two figures had filters and worked; this one silently did not,
-    which is worse than a broken link because the screen still changed.
-  */
-  endingSoon,
-}
-
 /*
-  ── Third notifier of this shape ────────────────────────────────────────────
+  ── The filter arrives as configuration, not as a message ───────────────────
 
-  `pendingLink` carries a notification tap, `settingsJump` carries the
-  dashboard's backup line, and this carries a dashboard figure. All three
-  exist because the widget that knows where to go and the widget that can go
-  there are two tabs apart with a shell between them.
+  This was a `ValueNotifier` mailbox: the dashboard posted a filter into a
+  global, changed tabs, and the Items tab read the global once on its first
+  frame and cleared it. It worked when nothing else was happening and failed
+  the moment anything was — the reported symptom was the right list appearing
+  and then being replaced by the whole collection a moment later, which is
+  exactly what a one-shot mailbox looks like when the tab gets built twice: the
+  first instance eats the message, the second finds an empty box and falls back
+  to the default view.
 
-  Three is the point at which this should become one mechanism rather than
-  three notifiers with three sets of the same listener-plus-post-frame
-  boilerplate. It has not been done here because it is a refactor and this is
-  a feature, but it is now overdue rather than hypothetical.
+  The whole class of bug comes from the filter living somewhere other than the
+  thing it describes. So it lives here now — a constructor argument, supplied
+  by the shell on every build, re-supplied on every rebuild, impossible to
+  consume or to lose. There is nothing to clear, nothing to race, and no
+  listener to arrive too late for.
 
-  Set before the tab changes, so — as with the other two — a listener alone is
-  not enough. A `ValueNotifier` does not replay to somebody who was not
-  listening when it was written, and the Items tab is often built for the
-  first time a frame AFTER the value is set.
+  The shell holds it because the shell is what already holds "which tab", and
+  "which tab, showing what" is one fact rather than two.
 */
-/// What the dashboard asked this list to show.
-///
-/// ── Why a request, and not just an `ItemFilter?` ───────────────────────────
-/// It was a bare `ItemFilter?`, and null had to mean two different things:
-/// "nobody asked for anything" and "somebody asked for the default view".
-/// The tab could only act on the first reading, so a figure with no filter of
-/// its own — "action needed" has no matching chip — arrived saying nothing,
-/// and the list showed whatever it had been showing before.
-///
-/// The result was a dashboard where one metric worked and the others appeared
-/// to inherit its answer. Which is worse than either doing nothing or doing
-/// the wrong thing, because it is right often enough to be believed.
-///
-/// A request wraps the null. `FilterRequest(null)` is a real instruction —
-/// "show everything you normally would" — and every figure that lands here
-/// now sends one.
-class FilterRequest {
-  const FilterRequest(this.filter);
-
-  /// Null means the default view: everything except lapsed.
-  final ItemFilter? filter;
-}
-
-final ValueNotifier<FilterRequest?> itemsFilter = ValueNotifier<FilterRequest?>(null);
-
 class ItemsTab extends StatefulWidget {
-  const ItemsTab({required this.repo, super.key});
+  const ItemsTab({required this.repo, this.filter, super.key});
 
   final Repository repo;
+
+  /// Which slice to open on. Null is the default view: everything except
+  /// lapsed. Supplied by the shell — see the note at the top of this file for
+  /// why it is an argument rather than a message.
+  final ItemFilter? filter;
 
   @override
   State<ItemsTab> createState() => _ItemsTabState();
@@ -158,7 +104,11 @@ class _ItemsTabState extends State<ItemsTab> {
     and it could not express the state the dashboard needs — only lapsed, and
     nothing else.
   */
-  ItemFilter? _filter;
+  ///
+  /// Seeded from `widget.filter` and then owned locally, so tapping a chip can
+  /// change it without the shell having to hear about it. A NEW instruction
+  /// from the shell wins — see `didUpdateWidget`.
+  late ItemFilter? _filter = widget.filter;
 
   /*
     ── Room grouping, and the setting that was inert without it ─────────────
@@ -176,42 +126,40 @@ class _ItemsTabState extends State<ItemsTab> {
   @override
   void initState() {
     super.initState();
-    _readRooms();
-
-    // Listener AND one read now, for the reason in the note on `itemsFilter`.
-    itemsFilter.addListener(_takeFilter);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _takeFilter());
+    _readContext();
   }
 
+  /// A fresh instruction from the shell replaces whatever the chips were set
+  /// to. Guarded on a real change so a rebuild for any other reason — and the
+  /// shell rebuilds often — does not undo somebody's chip tap.
   @override
-  void dispose() {
-    itemsFilter.removeListener(_takeFilter);
-    super.dispose();
-  }
-
-  /// Takes whatever the dashboard left, and clears it.
-  ///
-  /// Cleared by the reader rather than the writer, the same rule `pendingLink`
-  /// follows: a value set a frame before this widget exists has to survive
-  /// until somebody has actually acted on it.
-  void _takeFilter() {
-    final request = itemsFilter.value;
-    if (request == null || !mounted) return;
-
-    itemsFilter.value = null;
-    // `request.filter` may itself be null, and that is an answer rather than
-    // an absence — see `FilterRequest`.
-    setState(() => _filter = request.filter);
+  void didUpdateWidget(ItemsTab old) {
+    super.didUpdateWidget(old);
+    if (widget.filter != old.filter) setState(() => _filter = widget.filter);
   }
 
   List<Room> _rooms = const [];
 
-  Future<void> _readRooms() async {
+  /*
+    Which items have a receipt, which is the one question about an item that
+    cannot be answered from the item. Read once per visit rather than watched:
+    the tab is rebuilt every time it is opened, so "once per visit" and "fresh"
+    are the same thing here, and a second stream to keep a `Set<String>` honest
+    would be machinery for a filter somebody reaches maybe twice.
+  */
+  Set<String> _withReceipt = const {};
+
+  Future<void> _readContext() async {
     final rooms = await widget.repo.rooms();
     final settings = await widget.repo.settings();
+    final docs = await widget.repo.activeDocs();
     if (!mounted) return;
 
     setState(() {
+      _withReceipt = {
+        for (final d in docs)
+          if (d.kind == DocKind.receipt) d.itemId,
+      };
       _rooms = rooms;
       _grouped = true;
       if (prefsFrom(settings).roomsView == RoomsView.collapsed) {
@@ -235,9 +183,6 @@ class _ItemsTabState extends State<ItemsTab> {
         final all = snap.data;
         if (all == null) return const Center(child: CircularProgressIndicator());
 
-        final lapsed = all.where((i) => warrantyState(i) == WarrantyState.expired).length;
-        final soon =
-            all.where((i) => warrantyState(i) == WarrantyState.endingSoon).length;
 
         /*
           One switch, four outcomes, and the default is the one with no chip
@@ -246,15 +191,18 @@ class _ItemsTabState extends State<ItemsTab> {
           AND lapsed hidden", which is a filter combination nobody chose and
           nothing on screen explained.
         */
-        var shown = switch (_filter) {
-          ItemFilter.lapsed =>
-            all.where((i) => warrantyState(i) == WarrantyState.expired).toList(),
-          ItemFilter.noTerm =>
-            all.where((i) => warrantyState(i) == WarrantyState.unknown).toList(),
-          ItemFilter.endingSoon =>
-            all.where((i) => warrantyState(i) == WarrantyState.endingSoon).toList(),
-          null => all.where((i) => warrantyState(i) != WarrantyState.expired).toList(),
-        };
+        /*
+          One predicate, shared with whoever counted the number that sent you
+          here — see `matchesFilter`. The default view is the only case decided
+          locally, because "everything except lapsed" is this screen's own
+          editorial choice rather than anybody's filter.
+        */
+        var shown = _filter == null
+            ? all.where((i) => warrantyState(i) != WarrantyState.expired).toList()
+            : all
+                .where((i) =>
+                    matchesFilter(_filter!, i, withReceipt: _withReceipt))
+                .toList();
 
         /*
           Search runs over the whole collection, not the filtered view, and it
@@ -304,7 +252,7 @@ class _ItemsTabState extends State<ItemsTab> {
                           _worth(all, c),
                           _search(c),
                           const SizedBox(height: 10),
-                          _chips(lapsed, soon, c),
+                          _chips(all, c),
                         ],
                       ),
                     ),
@@ -463,11 +411,31 @@ class _ItemsTabState extends State<ItemsTab> {
     it off rather than doing nothing, and that is the whole reason the
     dashboard can link here at all.
   */
-  Widget _chips(int lapsed, int soon, StashColors c) {
+  Widget _chips(List<Item> all, StashColors c) {
     void pick(ItemFilter f) {
       feedback(Cue.tap);
       setState(() => _filter = _filter == f ? null : f);
     }
+
+    int countOf(ItemFilter f) =>
+        all.where((i) => matchesFilter(f, i, withReceipt: _withReceipt)).length;
+
+    /*
+      The three standing controls, plus — only while it is on — whichever
+      arrival filter brought you here.
+
+      A filter with nothing in it is not offered: a chip for a category you own
+      nothing in is a control that does nothing, sitting where a useful one
+      could be. But the filter currently APPLIED is always drawn, even at zero.
+      Arriving from a card with a filter whose chip is not on screen gives a
+      short list, nothing lit, and no way back — the screen hiding the reason
+      it looks the way it does.
+    */
+    final offered = <ItemFilter>[
+      for (final f in standingFilters)
+        if (countOf(f) > 0 || _filter == f) f,
+      if (_filter != null && !standingFilters.contains(_filter)) _filter!,
+    ];
 
     return Padding(
       padding: const EdgeInsets.only(left: 16),
@@ -489,48 +457,26 @@ class _ItemsTabState extends State<ItemsTab> {
                 ),
             ],
           ),
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              /*
-                Offered only when there is something to look at. A filter for a
-                category you own nothing in is a control that does nothing,
-                sitting where a useful one could be — and tapping it would give
-                an empty screen as the answer to a question with no wrong
-                answer.
-              */
-              /*
-                ...or while it is the filter currently applied. Arriving from
-                the dashboard with a filter whose chip is not drawn gives a
-                short list, nothing lit, and no way to get back — the screen
-                would be hiding the reason it looks the way it does.
-              */
-              if (soon > 0 || _filter == ItemFilter.endingSoon)
-                _Chip(
-                  label: 'Action needed $soon',
-                  on: _filter == ItemFilter.endingSoon,
-                  tone: c.honey,
-                  onTap: () => pick(ItemFilter.endingSoon),
-                ),
-
-              if (lapsed > 0 || _filter == ItemFilter.lapsed)
-                _Chip(
-                  label: 'Lapsed $lapsed',
-                  on: _filter == ItemFilter.lapsed,
-                  tone: c.ember,
-                  onTap: () => pick(ItemFilter.lapsed),
-                ),
-
-              _Chip(
-                label: 'No term',
-                on: _filter == ItemFilter.noTerm,
-                tone: c.line,
-                onTap: () => pick(ItemFilter.noTerm),
-              ),
-            ],
-          ),
+          if (offered.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                for (final f in offered)
+                  _Chip(
+                    label: '${filterLabel[f]} ${countOf(f)}',
+                    on: _filter == f,
+                    tone: switch (f) {
+                      ItemFilter.endingSoon => c.honey,
+                      ItemFilter.lapsed => c.ember,
+                      _ => c.line,
+                    },
+                    onTap: () => pick(f),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

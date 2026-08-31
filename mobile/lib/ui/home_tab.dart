@@ -18,6 +18,7 @@ import 'package:flutter/material.dart' hide Tab;
 import '../db/repository.dart';
 import '../logic/dashboard.dart';
 import '../logic/greeting.dart';
+import '../logic/item_filter.dart';
 import '../logic/nudges.dart';
 import '../logic/subscriptions.dart';
 import '../logic/swipe.dart';
@@ -28,7 +29,7 @@ import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
 import 'item_detail_screen.dart';
-import 'items_tab.dart' show FilterRequest, ItemFilter, itemsFilter;
+
 import 'paper_form_sheet.dart';
 import 'parts.dart';
 import 'sub_form_sheet.dart';
@@ -42,7 +43,7 @@ class HomeTab extends StatelessWidget {
   const HomeTab({required this.repo, required this.onGo, super.key});
 
   final Repository repo;
-  final void Function(Tab) onGo;
+  final void Function(Tab, {ItemFilter? filter}) onGo;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +112,7 @@ class _HomeBody extends StatefulWidget {
 
   final Repository repo;
   final _Home data;
-  final void Function(Tab) onGo;
+  final void Function(Tab, {ItemFilter? filter}) onGo;
 
   @override
   State<_HomeBody> createState() => _HomeBodyState();
@@ -202,13 +203,16 @@ class _HomeBodyState extends State<_HomeBody> {
 
     return () {
       /*
-        Sent whether or not there is a filter, because "no filter" is the
-        instruction for the figures that have no chip of their own. Guarding
-        this on `filter != null` was the bug: those figures said nothing, and
-        the list kept whatever the last figure had asked for.
+        Handed straight to the shell, which holds it for as long as the tab is
+        open. It used to be posted into a global the Items tab read once and
+        cleared — see the note at the top of items_tab.dart for why that could
+        not be made reliable.
       */
-      if (to == Destination.items) itemsFilter.value = FilterRequest(filter);
-      widget.onGo(to == Destination.items ? Tab.items : Tab.papers);
+      if (to == Destination.items) {
+        widget.onGo(Tab.items, filter: filter);
+      } else {
+        widget.onGo(Tab.papers);
+      }
     };
   }
 
@@ -697,7 +701,7 @@ class _BackupRow extends StatelessWidget {
   const _BackupRow({required this.status, required this.onGo});
 
   final BackupStatus status;
-  final void Function(Tab) onGo;
+  final void Function(Tab, {ItemFilter? filter}) onGo;
 
   @override
   Widget build(BuildContext context) {
@@ -1025,7 +1029,7 @@ class _NeedsCard extends StatelessWidget {
   const _NeedsCard({required this.gaps, required this.onGo});
 
   final List<Gap> gaps;
-  final void Function(Tab) onGo;
+  final void Function(Tab, {ItemFilter? filter}) onGo;
 
   @override
   Widget build(BuildContext context) {
@@ -1084,9 +1088,19 @@ class _NeedsCard extends StatelessWidget {
                     for (final gap in gaps) ...[
                       Divider(color: c.line, height: 18),
                       InkWell(
+                        /*
+                          Each row now opens the items it counted.
+
+                          They all called `onGo(Tab.items)` bare, so four rows
+                          reading 3, 7, 2 and 5 opened the same unfiltered list
+                          — the card named a problem and then handed you the
+                          whole collection to find it in. `gapFilter` is the
+                          mapping, and the filter it names is the same
+                          predicate the count was made with.
+                        */
                         onTap: () {
                           feedback(Cue.tap);
-                          onGo(Tab.items);
+                          onGo(Tab.items, filter: gapFilter[gap.kind]);
                         },
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,

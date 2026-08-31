@@ -17,6 +17,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
+import '../logic/item_filter.dart';
 import '../logic/deep_link.dart';
 import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
@@ -68,13 +69,30 @@ class _ShellState extends State<Shell> {
 
   /// The one door for changing tabs, so nothing can move without saying which
   /// way. Every `setState(() => _tab = ...)` used to be its own.
-  void _goTo(Tab to) {
-    if (to == _tab) return;
+  void _goTo(Tab to, {ItemFilter? filter}) {
+    if (to == _tab && filter == _itemsFilter) return;
     setState(() {
       _forward = to.index > _tab.index;
       _tab = to;
+      _itemsFilter = filter;
     });
   }
+
+  /*
+    ── Which slice of the Items tab to open, held here ─────────────────────
+
+    It used to be a `ValueNotifier` the dashboard wrote and the Items tab read
+    once and cleared, which lost the instruction whenever the tab happened to
+    be built twice — see the note at the top of items_tab.dart.
+
+    "Which tab" already lives here. "Which tab, showing what" is the same fact,
+    so it lives here too, and is handed down as an argument on every build.
+
+    It is cleared by every navigation that does not set it, which is what makes
+    reaching Items from the bottom bar give the plain list rather than whatever
+    a dashboard figure last asked for.
+  */
+  ItemFilter? _itemsFilter;
 
   /// Bumped to force the visible tab to rebuild after the add sheet closes.
   /// Items watches a stream and does not need it; the other three read futures.
@@ -421,7 +439,8 @@ class _ShellState extends State<Shell> {
                   */
                   transitionBuilder: (child, animation) {
                     final arriving =
-                        (child.key as ValueKey<String>).value == '${_tab.name}-$_generation';
+                        (child.key as ValueKey<String>).value ==
+                            '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}';
                     final from = _forward ? 1.0 : -1.0;
 
                     return SlideTransition(
@@ -433,10 +452,10 @@ class _ShellState extends State<Shell> {
                     );
                   },
                   child: KeyedSubtree(
-                    key: ValueKey('${_tab.name}-$_generation'),
+                    key: ValueKey('${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
                     child: switch (_tab) {
                       Tab.home => HomeTab(repo: widget.repo, onGo: _select),
-                      Tab.items => ItemsTab(repo: widget.repo),
+                      Tab.items => ItemsTab(repo: widget.repo, filter: _itemsFilter),
                       Tab.subs => SubsTab(repo: widget.repo),
                       Tab.papers => PapersTab(repo: widget.repo),
                       Tab.settings => SettingsTab(repo: widget.repo),
@@ -483,12 +502,12 @@ class _ShellState extends State<Shell> {
     was right, the destination was wrong, and the app looked as though it had
     mislaid them.
   */
-  void _select(Tab to) {
-    if (to == _tab) return;
+  void _select(Tab to, {ItemFilter? filter}) {
+    if (to == _tab && filter == _itemsFilter) return;
     // A lower, rounder note than an ordinary tap: moving between tabs is a
     // bigger gesture, and pitch carries that better than volume does.
     feedback(Cue.nav);
-    _goTo(to);
+    _goTo(to, filter: filter);
 
     // Cheap, and it is what makes the badge appear the moment somebody comes
     // back from buying. Leaving Settings is the only route to seeing it.
