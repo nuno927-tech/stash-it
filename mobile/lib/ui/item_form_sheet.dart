@@ -140,7 +140,11 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       it was wrong.
     */
     if (_draft.coverages.isEmpty) {
-      _draft.coverages.add(CoverageDraft(label: 'Warranty', unit: CoverageUnit.months));
+      _draft.coverages.add(CoverageDraft(
+        label: 'Warranty',
+        unit: CoverageUnit.months,
+        amountText: defaultTermText(CoverageUnit.months),
+      ));
     }
 
     /*
@@ -553,9 +557,12 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     return SheetCard(
       title: 'Product information',
       // Glasses on, taking it down. Top right, out of the way of the fields.
+      // 64 rather than 74. `SheetCard` lays the title and the mascot out as
+      // one row, so his height is the height of the card's header — ten
+      // pixels off him is ten pixels off the gap above the first field.
       trailing: const Scout(
         pose: ScoutPose.clipboard,
-        height: 74,
+        height: 64,
         motion: [ScoutMotion.breathe],
       ),
       children: [
@@ -594,11 +601,11 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         const FieldLabel('When did you buy it?'),
         DateBox(value: _draft.purchaseDate, onTap: _pickDate),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,6 +782,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           onTap: () => setState(() => _draft.coverages.add(CoverageDraft(
                 label: 'Warranty',
                 unit: CoverageUnit.months,
+                amountText: defaultTermText(CoverageUnit.months),
               ))),
         ),
       ],
@@ -791,31 +799,30 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'Warranty',
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: c.text,
-              ),
+        /*
+          No heading here.
+
+          It read "Warranty" in 17pt directly above a row of buttons whose
+          first button also read "Warranty" — the card is already titled
+          "Warranty information", so the word appeared three times in four
+          centimetres and named nothing the buttons did not.
+
+          The remove button stays, on its own, and only when there is more
+          than one policy to remove.
+        */
+        if (_draft.coverages.length > 1)
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              onPressed: () => setState(() {
+                _draft.coverages.removeAt(i);
+                _detailed.remove(i);
+              }),
+              icon: Icon(Icons.close, size: 18, color: c.muted),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Remove this policy',
             ),
-            const Spacer(),
-            if (_draft.coverages.length > 1)
-              IconButton(
-                onPressed: () => setState(() {
-                  _draft.coverages.removeAt(i);
-                  _detailed.remove(i);
-                }),
-                icon: Icon(Icons.close, size: 18, color: c.muted),
-                visualDensity: VisualDensity.compact,
-                tooltip: 'Remove this policy',
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
+          ),
 
         /*
           ── The name is chosen, not typed ─────────────────────────────────
@@ -860,14 +867,30 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             setState(() => cov.label = name.trim());
           },
         ),
-        const SizedBox(height: 8),
+        /*
+          A rule, because these are two different questions.
+
+          Above it: what the policy is called. Below it: how long it runs.
+          Four rows of near-identical buttons ran together as one control, and
+          the only thing separating "Free service" from "Months" was that one
+          happened to be a word and the other happened to be a unit.
+        */
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Container(height: 1, color: c.line),
+        ),
 
         SegRow<CoverageUnit>(
           value: cov.unit,
           options: [
             for (final unit in CoverageUnit.values) (unit, coverageUnitLabels[unit]!),
           ],
-          onPick: (v) => setState(() => cov.unit = v),
+          // The length comes with it. See `termAfterUnitChange`: a number that
+          // the new row cannot light up would otherwise sit there as "Custom".
+          onPick: (v) => setState(() {
+            cov.amountText = termAfterUnitChange(v, cov.amountText);
+            cov.unit = v;
+          }),
         ),
 
         /*

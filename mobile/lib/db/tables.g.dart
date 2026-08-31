@@ -3874,6 +3874,12 @@ class $SettingsTableTable extends SettingsTable
   late final GeneratedColumn<DateTime> onboardedAt = GeneratedColumn<DateTime>(
       'onboarded_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _tourRemindAtMeta =
+      const VerificationMeta('tourRemindAt');
+  @override
+  late final GeneratedColumn<DateTime> tourRemindAt = GeneratedColumn<DateTime>(
+      'tour_remind_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _themeMeta = const VerificationMeta('theme');
   @override
   late final GeneratedColumn<String> theme = GeneratedColumn<String>(
@@ -3983,6 +3989,7 @@ class $SettingsTableTable extends SettingsTable
         devModeEnabled,
         displayName,
         onboardedAt,
+        tourRemindAt,
         theme,
         sounds,
         haptics,
@@ -4050,6 +4057,12 @@ class $SettingsTableTable extends SettingsTable
           _onboardedAtMeta,
           onboardedAt.isAcceptableOrUnknown(
               data['onboarded_at']!, _onboardedAtMeta));
+    }
+    if (data.containsKey('tour_remind_at')) {
+      context.handle(
+          _tourRemindAtMeta,
+          tourRemindAt.isAcceptableOrUnknown(
+              data['tour_remind_at']!, _tourRemindAtMeta));
     }
     if (data.containsKey('theme')) {
       context.handle(
@@ -4145,6 +4158,8 @@ class $SettingsTableTable extends SettingsTable
           .read(DriftSqlType.string, data['${effectivePrefix}display_name']),
       onboardedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}onboarded_at']),
+      tourRemindAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}tour_remind_at']),
       theme: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}theme']),
       sounds: attachedDatabase.typeMapping
@@ -4195,6 +4210,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final bool devModeEnabled;
   final String? displayName;
   final DateTime? onboardedAt;
+
+  /// When "Skip" said to ask again.
+  ///
+  /// Null means no reminder is pending, which is the state for somebody who
+  /// took the tour and for somebody who has never been offered it. Only a
+  /// deliberate skip sets it — see `tourDue`, which refuses to interrupt
+  /// anybody who did not ask to be interrupted.
+  final DateTime? tourRemindAt;
   final String? theme;
   final bool? sounds;
   final bool? haptics;
@@ -4223,6 +4246,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       required this.devModeEnabled,
       this.displayName,
       this.onboardedAt,
+      this.tourRemindAt,
       this.theme,
       this.sounds,
       this.haptics,
@@ -4253,6 +4277,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     }
     if (!nullToAbsent || onboardedAt != null) {
       map['onboarded_at'] = Variable<DateTime>(onboardedAt);
+    }
+    if (!nullToAbsent || tourRemindAt != null) {
+      map['tour_remind_at'] = Variable<DateTime>(tourRemindAt);
     }
     if (!nullToAbsent || theme != null) {
       map['theme'] = Variable<String>(theme);
@@ -4309,6 +4336,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       onboardedAt: onboardedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(onboardedAt),
+      tourRemindAt: tourRemindAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tourRemindAt),
       theme:
           theme == null && nullToAbsent ? const Value.absent() : Value(theme),
       sounds:
@@ -4358,6 +4388,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       devModeEnabled: serializer.fromJson<bool>(json['devModeEnabled']),
       displayName: serializer.fromJson<String?>(json['displayName']),
       onboardedAt: serializer.fromJson<DateTime?>(json['onboardedAt']),
+      tourRemindAt: serializer.fromJson<DateTime?>(json['tourRemindAt']),
       theme: serializer.fromJson<String?>(json['theme']),
       sounds: serializer.fromJson<bool?>(json['sounds']),
       haptics: serializer.fromJson<bool?>(json['haptics']),
@@ -4388,6 +4419,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'devModeEnabled': serializer.toJson<bool>(devModeEnabled),
       'displayName': serializer.toJson<String?>(displayName),
       'onboardedAt': serializer.toJson<DateTime?>(onboardedAt),
+      'tourRemindAt': serializer.toJson<DateTime?>(tourRemindAt),
       'theme': serializer.toJson<String?>(theme),
       'sounds': serializer.toJson<bool?>(sounds),
       'haptics': serializer.toJson<bool?>(haptics),
@@ -4414,6 +4446,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           bool? devModeEnabled,
           Value<String?> displayName = const Value.absent(),
           Value<DateTime?> onboardedAt = const Value.absent(),
+          Value<DateTime?> tourRemindAt = const Value.absent(),
           Value<String?> theme = const Value.absent(),
           Value<bool?> sounds = const Value.absent(),
           Value<bool?> haptics = const Value.absent(),
@@ -4438,6 +4471,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         devModeEnabled: devModeEnabled ?? this.devModeEnabled,
         displayName: displayName.present ? displayName.value : this.displayName,
         onboardedAt: onboardedAt.present ? onboardedAt.value : this.onboardedAt,
+        tourRemindAt:
+            tourRemindAt.present ? tourRemindAt.value : this.tourRemindAt,
         theme: theme.present ? theme.value : this.theme,
         sounds: sounds.present ? sounds.value : this.sounds,
         haptics: haptics.present ? haptics.value : this.haptics,
@@ -4481,6 +4516,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           data.displayName.present ? data.displayName.value : this.displayName,
       onboardedAt:
           data.onboardedAt.present ? data.onboardedAt.value : this.onboardedAt,
+      tourRemindAt: data.tourRemindAt.present
+          ? data.tourRemindAt.value
+          : this.tourRemindAt,
       theme: data.theme.present ? data.theme.value : this.theme,
       sounds: data.sounds.present ? data.sounds.value : this.sounds,
       haptics: data.haptics.present ? data.haptics.value : this.haptics,
@@ -4524,6 +4562,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('devModeEnabled: $devModeEnabled, ')
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
+          ..write('tourRemindAt: $tourRemindAt, ')
           ..write('theme: $theme, ')
           ..write('sounds: $sounds, ')
           ..write('haptics: $haptics, ')
@@ -4551,6 +4590,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         devModeEnabled,
         displayName,
         onboardedAt,
+        tourRemindAt,
         theme,
         sounds,
         haptics,
@@ -4577,6 +4617,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.devModeEnabled == this.devModeEnabled &&
           other.displayName == this.displayName &&
           other.onboardedAt == this.onboardedAt &&
+          other.tourRemindAt == this.tourRemindAt &&
           other.theme == this.theme &&
           other.sounds == this.sounds &&
           other.haptics == this.haptics &&
@@ -4601,6 +4642,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<bool> devModeEnabled;
   final Value<String?> displayName;
   final Value<DateTime?> onboardedAt;
+  final Value<DateTime?> tourRemindAt;
   final Value<String?> theme;
   final Value<bool?> sounds;
   final Value<bool?> haptics;
@@ -4624,6 +4666,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.devModeEnabled = const Value.absent(),
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
+    this.tourRemindAt = const Value.absent(),
     this.theme = const Value.absent(),
     this.sounds = const Value.absent(),
     this.haptics = const Value.absent(),
@@ -4648,6 +4691,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.devModeEnabled = const Value.absent(),
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
+    this.tourRemindAt = const Value.absent(),
     this.theme = const Value.absent(),
     this.sounds = const Value.absent(),
     this.haptics = const Value.absent(),
@@ -4672,6 +4716,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<bool>? devModeEnabled,
     Expression<String>? displayName,
     Expression<DateTime>? onboardedAt,
+    Expression<DateTime>? tourRemindAt,
     Expression<String>? theme,
     Expression<bool>? sounds,
     Expression<bool>? haptics,
@@ -4698,6 +4743,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (devModeEnabled != null) 'dev_mode_enabled': devModeEnabled,
       if (displayName != null) 'display_name': displayName,
       if (onboardedAt != null) 'onboarded_at': onboardedAt,
+      if (tourRemindAt != null) 'tour_remind_at': tourRemindAt,
       if (theme != null) 'theme': theme,
       if (sounds != null) 'sounds': sounds,
       if (haptics != null) 'haptics': haptics,
@@ -4725,6 +4771,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       Value<bool>? devModeEnabled,
       Value<String?>? displayName,
       Value<DateTime?>? onboardedAt,
+      Value<DateTime?>? tourRemindAt,
       Value<String?>? theme,
       Value<bool?>? sounds,
       Value<bool?>? haptics,
@@ -4749,6 +4796,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       devModeEnabled: devModeEnabled ?? this.devModeEnabled,
       displayName: displayName ?? this.displayName,
       onboardedAt: onboardedAt ?? this.onboardedAt,
+      tourRemindAt: tourRemindAt ?? this.tourRemindAt,
       theme: theme ?? this.theme,
       sounds: sounds ?? this.sounds,
       haptics: haptics ?? this.haptics,
@@ -4794,6 +4842,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     }
     if (onboardedAt.present) {
       map['onboarded_at'] = Variable<DateTime>(onboardedAt.value);
+    }
+    if (tourRemindAt.present) {
+      map['tour_remind_at'] = Variable<DateTime>(tourRemindAt.value);
     }
     if (theme.present) {
       map['theme'] = Variable<String>(theme.value);
@@ -4852,6 +4903,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('devModeEnabled: $devModeEnabled, ')
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
+          ..write('tourRemindAt: $tourRemindAt, ')
           ..write('theme: $theme, ')
           ..write('sounds: $sounds, ')
           ..write('haptics: $haptics, ')
@@ -6669,6 +6721,7 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<bool> devModeEnabled,
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
+  Value<DateTime?> tourRemindAt,
   Value<String?> theme,
   Value<bool?> sounds,
   Value<bool?> haptics,
@@ -6694,6 +6747,7 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<bool> devModeEnabled,
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
+  Value<DateTime?> tourRemindAt,
   Value<String?> theme,
   Value<bool?> sounds,
   Value<bool?> haptics,
@@ -6745,6 +6799,9 @@ class $$SettingsTableTableFilterComposer
 
   ColumnFilters<DateTime> get onboardedAt => $composableBuilder(
       column: $table.onboardedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get tourRemindAt => $composableBuilder(
+      column: $table.tourRemindAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get theme => $composableBuilder(
       column: $table.theme, builder: (column) => ColumnFilters(column));
@@ -6824,6 +6881,10 @@ class $$SettingsTableTableOrderingComposer
 
   ColumnOrderings<DateTime> get onboardedAt => $composableBuilder(
       column: $table.onboardedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get tourRemindAt => $composableBuilder(
+      column: $table.tourRemindAt,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get theme => $composableBuilder(
       column: $table.theme, builder: (column) => ColumnOrderings(column));
@@ -6906,6 +6967,9 @@ class $$SettingsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get onboardedAt => $composableBuilder(
       column: $table.onboardedAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get tourRemindAt => $composableBuilder(
+      column: $table.tourRemindAt, builder: (column) => column);
+
   GeneratedColumn<String> get theme =>
       $composableBuilder(column: $table.theme, builder: (column) => column);
 
@@ -6981,6 +7045,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<bool> devModeEnabled = const Value.absent(),
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
+            Value<DateTime?> tourRemindAt = const Value.absent(),
             Value<String?> theme = const Value.absent(),
             Value<bool?> sounds = const Value.absent(),
             Value<bool?> haptics = const Value.absent(),
@@ -7005,6 +7070,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             devModeEnabled: devModeEnabled,
             displayName: displayName,
             onboardedAt: onboardedAt,
+            tourRemindAt: tourRemindAt,
             theme: theme,
             sounds: sounds,
             haptics: haptics,
@@ -7029,6 +7095,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<bool> devModeEnabled = const Value.absent(),
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
+            Value<DateTime?> tourRemindAt = const Value.absent(),
             Value<String?> theme = const Value.absent(),
             Value<bool?> sounds = const Value.absent(),
             Value<bool?> haptics = const Value.absent(),
@@ -7053,6 +7120,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             devModeEnabled: devModeEnabled,
             displayName: displayName,
             onboardedAt: onboardedAt,
+            tourRemindAt: tourRemindAt,
             theme: theme,
             sounds: sounds,
             haptics: haptics,

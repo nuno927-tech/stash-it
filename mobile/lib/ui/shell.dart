@@ -29,10 +29,13 @@ import 'home_tab.dart';
 import 'items_tab.dart';
 import 'nav_icons.dart';
 import 'papers_tab.dart';
+import '../logic/tour.dart';
 import 'parts.dart';
 import 'pro_badge.dart';
 import 'settings_tab.dart';
+import 'splash.dart';
 import 'subs_tab.dart';
+import 'tour_screen.dart';
 import 'theme.dart';
 
 class Shell extends StatefulWidget {
@@ -81,11 +84,64 @@ class _ShellState extends State<Shell> {
     if (now != _pro) setState(() => _pro = now);
   }
 
+  /*
+    ── The tour finally has a trigger ──────────────────────────────────────
+
+    `tourDue`, `remindLater` and `TourState` were written and tested and never
+    called. `showTour` was reachable from one place — the "Take the tour" row
+    in Settings — which is the only route somebody who already knows about the
+    tour would take. On a fresh install the app opened onto an empty dashboard
+    and explained nothing.
+
+    Here rather than in `main`, because showing a sheet needs a Navigator and a
+    context that outlives it, and this is the widget that has both.
+
+    Delayed past `splashTotal` because the splash is drawn OVER this — Shell is
+    built at t=0 and sits underneath it. A sheet opened at t=0 would slide up
+    behind a full-screen title card and be half over by the time anybody saw
+    it. The extra 240ms is so it starts after the fade finishes rather than
+    during it.
+  */
+  /*
+    Held and cancelled, not awaited.
+
+    This was `await Future.delayed(...)`, and a bare delay is a timer nobody
+    owns: it keeps running after the widget is gone, and `if (!mounted)`
+    afterwards guards the WORK without ever guarding the TIMER. Flutter's test
+    binding says so out loud — "A Timer is still pending even after the widget
+    tree was disposed" — on any test that finishes inside the delay, which was
+    ten of them.
+
+    In the app the same leak is quieter and still real: every rebuild of the
+    shell that disposed early would leave a timer holding a reference to a
+    dead State until it fired.
+  */
+  Timer? _tourAt;
+
+  Future<void> _maybeTour() async {
+    if (!mounted) return;
+
+    final settings = await widget.repo.settings();
+    if (!mounted) return;
+
+    final due = tourOnLaunch(TourState(
+      doneAt: settings.onboardedAt,
+      remindAt: settings.tourRemindAt,
+    ));
+    if (!due) return;
+
+    // Not dismissible on the way in: a first-launch tour that vanishes on a
+    // stray tap outside it, before anything is recorded, is one nobody sees
+    // again and nobody chose to skip.
+    await showTour(context, repo: widget.repo, dismissible: false);
+  }
+
   @override
   void initState() {
     super.initState();
     pendingLink.addListener(_handleLink);
     _readPro();
+    _tourAt = Timer(splashTotal + const Duration(milliseconds: 240), _maybeTour);
 
     /*
       And one read straight away, for the tap that WAS the launch.
@@ -108,6 +164,7 @@ class _ShellState extends State<Shell> {
 
   @override
   void dispose() {
+    _tourAt?.cancel();
     pendingLink.removeListener(_handleLink);
     super.dispose();
   }

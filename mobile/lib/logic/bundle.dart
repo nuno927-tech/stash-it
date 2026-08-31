@@ -539,6 +539,7 @@ Settings? _settingsOf(Object? v) {
     devModeEnabled: boolOf(j['devModeEnabled']) ?? false,
     displayName: j['displayName'] is String ? (j['displayName'] as String).trim() : null,
     onboardedAt: dateOf(j['onboardedAt']),
+    tourRemindAt: dateOf(j['tourRemindAt']),
     theme: j['theme'] == null ? null : enumOf(j['theme'], ThemeChoice.values, ThemeChoice.system),
     sounds: boolOf(j['sounds']),
     haptics: boolOf(j['haptics']),

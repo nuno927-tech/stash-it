@@ -80,8 +80,23 @@ void main() {
       made a fourteen-tap introduction to an app whose pitch is that it is
       quick.
     */
-    test('is eight screens, and no more', () {
-      expect(tourSteps.length, 8);
+    /*
+      ── Nine, and the ninth had to argue for itself ────────────────────────
+
+      This said eight, and it failed the moment a step was added — which is
+      the test doing exactly what it was written to do. The budget is not a
+      style note; it is the difference between an introduction and a queue.
+
+      The ninth earns its place by not being a tour screen. The other eight
+      explain the app; this one collects the single thing the app needs back,
+      and it is the last tap rather than an extra one before the end.
+
+      Raise this number again only with a sentence of the same kind. "It
+      seemed useful" is how a fourteen-tap onboarding gets built one
+      reasonable step at a time.
+    */
+    test('is nine screens, and no more', () {
+      expect(tourSteps.length, 9);
     });
 
     test('every step has a key, a title and words', () {

@@ -37,9 +37,35 @@ void main() {
     List<Item> items = const [],
     List<Paper> papers = const [],
     List<Subscription> subs = const [],
+
+    /*
+      ── Onboarded, unless a test says otherwise ─────────────────────────────
+
+      The shell offers the tour on any launch where nobody has taken it and
+      nobody has skipped it — which is exactly the state a freshly-opened
+      in-memory database is in. So every test in this file was a first
+      install, and once the clock passed `splashTotal` a modal sheet slid up
+      over whatever the test was looking at. Thirteen failed at once.
+
+      That is the same shape as the splash, whose own note two dozen lines
+      below records twelve failures for the same reason: a widget that wraps
+      or covers the whole tree is invisible in the source of a test and total
+      in its effect.
+
+      The default is `true` because these tests are about the app in use, not
+      about meeting it. Pass `false` to exercise the first-launch path — and
+      the scheduling itself is covered without a widget at all, in
+      tour_launch_test.dart.
+    */
+    bool onboarded = true,
   }) async {
     final db = openInMemory();
     final repo = Repository(db);
+
+    if (onboarded) {
+      final now = await repo.settings();
+      await repo.saveSettings(now.copyWith(onboardedAt: DateTime.now()));
+    }
 
     for (final i in items) {
       await repo.createItem(i);
@@ -90,6 +116,111 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
   }
+
+  /*
+    ── Pump until it turns up, rather than guessing when ────────────────────
+
+    The tour is not on a fixed clock from the test's point of view. `Shell` is
+    built inside `LockGate`, which does not build its child until it has read
+    the lock setting — so the timer that offers the tour starts at whatever
+    moment that read lands, and only then waits `splashTotal`. Adding the
+    callback's own database read and a route animation on top, "when" is a
+    number this file cannot know.
+
+    So it pumps until the thing appears, with a ceiling. Nothing is hidden: if
+    the tour never comes the finder is still empty and the expectation still
+    fails — this only stops the test being wrong about the timetable.
+  */
+  Future<void> pumpUntil(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 40 && finder.evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+  }
+
+  /// What is actually on screen, for when a finder comes back empty and the
+  /// failure would otherwise say only that.
+  String onScreen(WidgetTester tester) => tester
+      .widgetList<Text>(find.byType(Text))
+      .map((t) => t.data)
+      .whereType<String>()
+      .take(12)
+      .join(' | ');
+
+  /*
+    ── The tour, which for sixty versions did not arrive ────────────────────
+
+    Every other test in this file passes `onboarded: true` by default, which
+    means none of them would notice if this broke again. These two are the
+    pair that would.
+
+    Pumped in explicit steps rather than settled: Scout breathes on a
+    repeating controller, so `pumpAndSettle` never returns.
+  */
+  testWidgets('a first install is offered the tour', (tester) async {
+    /*
+      ── A portrait phone, for this test only ────────────────────────────────
+
+      Every test in this file runs on the default 800x600 surface, which is
+      landscape and nothing like the device this app is built for. Harmless
+      for a list or a settings row; not harmless for a bottom sheet, which is
+      sized as a fraction of the height it is given.
+
+      Set before `show` so the very first layout is the right shape, and put
+      back afterwards so nothing else in the file inherits it.
+    */
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final db = await show(tester, onboarded: false);
+
+    final first = find.text('Everything you own, with its paperwork');
+    await pumpUntil(tester, first);
+
+    expect(first, findsOneWidget, reason: 'on screen instead: ${onScreen(tester)}');
+
+    /*
+      ── Why this does not go on to tap Skip ─────────────────────────────────
+
+      It tried to, and the tap kept landing outside the render tree: y=971 on
+      a 600-tall surface, y=1469 on a 900-tall one. Both are almost exactly
+      1.63x the viewport, so the footer is not merely below the fold on a
+      small window — it scales with the window and is always off it. Resizing
+      cannot fix that, and `ensureVisible` cannot either, because the footer
+      sits outside the PageView rather than inside a scrollable.
+
+      That is a fact about how the sheet lays out, not about this test, and it
+      is written down in the version note rather than worked around here.
+
+      What this test is for is the bug that was actually reported: a fresh
+      install was never offered the tour at all. That assertion is above and
+      it passes. `_later` is exercised through `remindLater` and
+      `tourOnLaunch` in tour_launch_test.dart, without a widget.
+    */
+    await db.close();
+  });
+
+  testWidgets('and somebody who has seen it is left alone', (tester) async {
+    final db = await show(tester);
+
+    // Wound well past any point the tour could have arrived, so absence here
+    // means it was never offered rather than not offered yet.
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.text('Everything you own, with its paperwork'), findsNothing);
+
+    /*
+      Every other test in this file ends this way and mine did not, which is
+      the whole of the "Timer is still pending" failure.
+
+      Drift schedules a zero-duration timer when a query stream is let go, and
+      the binding tears the tree down and checks for stray timers in the same
+      breath — so the cleanup is queued and never run. Closing the database
+      here drains it while there are still frames to spend.
+    */
+    await db.close();
+  });
 
   testWidgets('the dashboard opens on an empty install', (tester) async {
     final db = await show(tester);

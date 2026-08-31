@@ -45,7 +45,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.63.0';
+const appVersion = '0.65.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1176,7 +1176,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 _LinkRow(
                   label: 'Take the tour',
                   note: 'Eight screens. What it does and how to feed it.',
-                  onTap: () => showTour(context),
+                  onTap: () => showTour(context, repo: widget.repo),
                 ),
                 _Rule(c),
                 _LinkRow(

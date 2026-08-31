@@ -26,6 +26,15 @@ import 'parts.dart';
 import 'scout.dart';
 import 'theme.dart';
 
+/// How long the splash owns the screen, hold plus fade.
+///
+/// Exported because something has to happen AFTER it — the tour, on a first
+/// launch — and the alternative is a second number somewhere else that has to
+/// be kept in step with these two by hand.
+const Duration splashHold = Duration(milliseconds: 1100);
+const Duration splashFade = Duration(milliseconds: 420);
+const Duration splashTotal = Duration(milliseconds: 1520);
+
 class Splash extends StatefulWidget {
   const Splash({required this.child, super.key});
 
@@ -39,7 +48,7 @@ class Splash extends StatefulWidget {
 class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
   late final AnimationController _out = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: splashFade,
   );
 
   bool _gone = false;
@@ -56,7 +65,7 @@ class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
       this app is speed of entry — somebody opens it to check one date — and a
       title card that outstays that is a tax on every single launch.
     */
-    Timer(const Duration(milliseconds: 1100), () {
+    _leave = Timer(splashHold, () {
       if (!mounted) return;
       _out.forward().then((_) {
         if (mounted) setState(() => _gone = true);
@@ -64,8 +73,23 @@ class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
     });
   }
 
+  /*
+    Held so it can be cancelled, which it was not.
+
+    An uncancelled timer outlives the widget: the `if (!mounted)` inside guards
+    the work but not the timer itself, so a shell disposed inside the first
+    1.1 seconds left one running with a reference to a dead State.
+
+    Nothing ever caught it, and the reason is luck rather than design — the
+    widget tests wind the clock 1,200ms, past the 1,100 this waits, so it had
+    always fired by teardown. The identical bug in `Shell._maybeTour` waits
+    1,760ms and failed ten tests immediately. Same mistake, different number.
+  */
+  Timer? _leave;
+
   @override
   void dispose() {
+    _leave?.cancel();
     _out.dispose();
     super.dispose();
   }

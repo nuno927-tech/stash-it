@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../logic/tour.dart' as tour;
+import '../db/repository.dart';
 import 'feedback.dart';
 import 'scout.dart';
 import 'theme.dart';
@@ -24,7 +25,21 @@ import 'theme.dart';
 /// Two thirds, like every other sheet — so the app stays visible above it and
 /// the tour reads as a note about the thing behind it rather than a wall you
 /// have to get through before you are allowed in.
-Future<void> showTour(BuildContext context) {
+/// ── It now records that it happened ──────────────────────────────────────
+/// It used to take no repository and write nothing. Finishing it changed
+/// nothing on disk, so `onboardedAt` stayed null forever and the app had no
+/// way to know the tour had ever been seen — which is half of why it never
+/// fired on launch and why it would have fired again on every launch if it
+/// had.
+///
+/// [dismissible] is false when this is the first-launch showing: a tour that
+/// vanishes on a stray tap outside it, before anything has been recorded, is
+/// a tour somebody never sees again and never chose to skip.
+Future<void> showTour(
+  BuildContext context, {
+  required Repository repo,
+  bool dismissible = true,
+}) {
   feedback(Cue.tap);
 
   return showModalBottomSheet<void>(
@@ -32,11 +47,13 @@ Future<void> showTour(BuildContext context) {
     useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
+    isDismissible: dismissible,
+    enableDrag: dismissible,
     backgroundColor: StashColors.of(context).slate700,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => const _Tour(),
+    builder: (context) => _Tour(repo: repo),
   );
 }
 
@@ -51,10 +68,13 @@ const Map<tour.ScoutPose, ScoutPose> _poses = {
   tour.ScoutPose.report: ScoutPose.report,
   tour.ScoutPose.alert: ScoutPose.alert,
   tour.ScoutPose.acorn: ScoutPose.acorn,
+  tour.ScoutPose.lounge: ScoutPose.lounge,
 };
 
 class _Tour extends StatefulWidget {
-  const _Tour();
+  const _Tour({required this.repo});
+
+  final Repository repo;
 
   @override
   State<_Tour> createState() => _TourState();
@@ -62,18 +82,46 @@ class _Tour extends StatefulWidget {
 
 class _TourState extends State<_Tour> {
   final PageController _pages = PageController();
+  final TextEditingController _name = TextEditingController();
   int _at = 0;
 
   @override
   void dispose() {
     _pages.dispose();
+    _name.dispose();
     super.dispose();
   }
 
-  void _next() {
+  /// Finished. Records the date, and the name if one was typed.
+  ///
+  /// `onboardedAt` is what stops this reappearing on every launch, so it is
+  /// written whether or not a name was given — reaching the end IS the
+  /// completion, and the name is optional on its own step.
+  Future<void> _done() async {
+    final typed = _name.text.trim();
+    final now = await widget.repo.settings();
+    await widget.repo.saveSettings(now.copyWith(
+      onboardedAt: DateTime.now(),
+      displayName: typed.isEmpty ? now.displayName : typed,
+    ));
+  }
+
+  /// Skipped. Comes back in three days, once.
+  ///
+  /// `onboardedAt` is deliberately NOT set: skipping is not finishing, and
+  /// somebody who skipped should get one more offer rather than none.
+  Future<void> _later() async {
+    final now = await widget.repo.settings();
+    await widget.repo.saveSettings(
+      now.copyWith(tourRemindAt: tour.remindLater()),
+    );
+  }
+
+  Future<void> _next() async {
     if (tour.isLastStep(_at)) {
       feedback(Cue.save);
-      Navigator.of(context).pop();
+      await _done();
+      if (mounted) Navigator.of(context).pop();
       return;
     }
 
@@ -105,7 +153,7 @@ class _TourState extends State<_Tour> {
                   feedback(Cue.tap);
                   setState(() => _at = i);
                 },
-                itemBuilder: (context, i) => _Step(step: tour.stepAt(i)),
+                itemBuilder: (context, i) => _Step(step: tour.stepAt(i), name: _name),
               ),
             ),
 
@@ -143,9 +191,10 @@ class _TourState extends State<_Tour> {
                   // Always available, never the loud one. A tour you cannot
                   // leave is a tour that gets remembered for that.
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       feedback(Cue.collapse);
-                      Navigator.of(context).pop();
+                      await _later();
+                      if (context.mounted) Navigator.of(context).pop();
                     },
                     child: Text(
                       tour.isLastStep(_at) ? '' : 'Skip',
@@ -168,7 +217,7 @@ class _TourState extends State<_Tour> {
                       ),
                     ),
                     child: Text(
-                      tour.isLastStep(_at) ? 'Got it' : 'Next',
+                      tour.isLastStep(_at) ? 'Done' : 'Next',
                       style: TextStyle(
                         fontFamily: fontDisplay,
                         fontWeight: FontWeight.w800,
@@ -188,13 +237,18 @@ class _TourState extends State<_Tour> {
 }
 
 class _Step extends StatelessWidget {
-  const _Step({required this.step});
+  const _Step({required this.step, required this.name});
 
   final tour.TourStep step;
+
+  /// Shared with the sheet, so what is typed here survives a swipe back and
+  /// forth and is still there to be saved on the last tap.
+  final TextEditingController name;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
+    final asks = step.key == tour.nameStepKey;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
@@ -204,7 +258,9 @@ class _Step extends StatelessWidget {
             child: Center(
               child: Scout(
                 pose: _poses[step.pose]!,
-                height: 168,
+                // Smaller on the step that has a field under it, so the
+                // keyboard does not push the whole thing off the sheet.
+                height: asks ? 118 : 168,
                 motion: const [ScoutMotion.float, ScoutMotion.breathe],
                 shadow: true,
               ),
@@ -233,6 +289,53 @@ class _Step extends StatelessWidget {
               color: c.muted,
             ),
           ),
+
+          if (asks) ...[
+            const SizedBox(height: 16),
+            TextField(
+              controller: name,
+              textAlign: TextAlign.center,
+              textCapitalization: TextCapitalization.words,
+              // Done rather than next: this is the last step, and a keyboard
+              // offering "next" on the final field suggests there is more.
+              textInputAction: TextInputAction.done,
+              style: TextStyle(
+                fontFamily: fontDisplay,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                color: c.text,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Scout',
+                hintStyle: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: c.muted,
+                ),
+                filled: true,
+                fillColor: c.field,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  borderSide: BorderSide(color: c.washGoldLine),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Optional',
+              style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+            ),
+          ],
         ],
       ),
     );

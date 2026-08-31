@@ -310,4 +310,65 @@ void main() {
           DateTime(2028, 1, 1));
     });
   });
+  group('the length a policy opens on', () {
+    /*
+      A policy used to open with no number chosen: a row of buttons, none lit,
+      and a form that could be saved with a warranty of no length. Whether the
+      default is right matters less than that there is one — nothing selected
+      is not a neutral starting state, it is an unanswered question wearing
+      the same clothes as an answered one.
+    */
+    test('is the commonest answer for its unit', () {
+      expect(defaultTermText(CoverageUnit.days), '30');
+      expect(defaultTermText(CoverageUnit.months), '12');
+      expect(defaultTermText(CoverageUnit.years), '1');
+    });
+
+    test('and lifetime has none, because it has no length', () {
+      expect(defaultTermText(CoverageUnit.lifetime), '');
+    });
+
+    // Every default has to be a button on its own row, or the form opens
+    // showing "Custom 12" — a number the user never typed, presented as
+    // though they had.
+    test('every default is one of the buttons', () {
+      for (final unit in [CoverageUnit.days, CoverageUnit.months, CoverageUnit.years]) {
+        expect(
+          isCustomTerm(unit, defaultTermText(unit)),
+          isFalse,
+          reason: '${defaultTermText(unit)} is not a preset for $unit',
+        );
+      }
+    });
+  });
+
+  group('switching units', () {
+    test('keeps a number the new row can light up', () {
+      // 12 is on both the months and the days rows... it is not, and that is
+      // the point: only a genuine match survives.
+      expect(termAfterUnitChange(CoverageUnit.months, '12'), '12');
+      expect(termAfterUnitChange(CoverageUnit.years, '3'), '3');
+      expect(termAfterUnitChange(CoverageUnit.days, '90'), '90');
+    });
+
+    /*
+      Twelve months is a sensible warranty. Twelve years, arrived at by
+      tapping "Years", is not — and left alone it renders as "Custom 12",
+      which reads as something typed rather than something carried over.
+    */
+    test('and replaces one it cannot', () {
+      expect(termAfterUnitChange(CoverageUnit.years, '12'), '1');
+      expect(termAfterUnitChange(CoverageUnit.days, '5'), '30');
+      expect(termAfterUnitChange(CoverageUnit.months, '180'), '12');
+    });
+
+    test('lifetime clears it, having no length to keep', () {
+      expect(termAfterUnitChange(CoverageUnit.lifetime, '12'), '');
+    });
+
+    test('an empty length picks up the default', () {
+      expect(termAfterUnitChange(CoverageUnit.months, ''), '12');
+    });
+  });
+
 }

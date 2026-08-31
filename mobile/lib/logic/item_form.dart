@@ -328,6 +328,46 @@ const Map<CoverageUnit, List<int>> coveragePresets = {
   CoverageUnit.lifetime: [],
 };
 
+/*
+  ── The length a new policy starts on ───────────────────────────────────────
+
+  A policy used to open with no number chosen at all: a row of buttons, none
+  lit, and a form that could be saved with a warranty of no length. The
+  commonest answer for each unit is a better starting point than nothing —
+  it is one tap to change and zero taps when it is right.
+
+  Thirty days, twelve months, one year. These are what is printed on the
+  paperwork most often, not round numbers picked for looking tidy.
+
+  Lifetime is absent on purpose: it has no length, and `coveragePresets`
+  gives it an empty row for the same reason.
+*/
+const Map<CoverageUnit, int> defaultTerm = {
+  CoverageUnit.days: 30,
+  CoverageUnit.months: 12,
+  CoverageUnit.years: 1,
+};
+
+/// What a freshly-created policy should read, for [unit].
+String defaultTermText(CoverageUnit unit) => '${defaultTerm[unit] ?? ''}';
+
+/// The length to show after switching units.
+///
+/// Keeps a number the new row can actually light up. Twelve months is a
+/// sensible warranty; twelve years, arrived at by tapping "Years", is not —
+/// and leaving it there shows "Custom 12", which reads as something the user
+/// typed rather than something the app carried over.
+///
+/// A genuine custom length survives if it happens to be valid for the new
+/// unit; otherwise switching unit is taken as the user saying the old number
+/// no longer applies.
+String termAfterUnitChange(CoverageUnit to, String amountText) {
+  if (to == CoverageUnit.lifetime) return '';
+  final amount = int.tryParse(amountText.trim());
+  if (amount != null && coveragePresets[to]!.contains(amount)) return amountText;
+  return defaultTermText(to);
+}
+
 /// True when the typed length is not one of the buttons — so the form knows to
 /// show the number it has rather than a row with nothing selected.
 bool isCustomTerm(CoverageUnit unit, String amountText) {

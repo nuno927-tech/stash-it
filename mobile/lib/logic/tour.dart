@@ -22,6 +22,7 @@ enum ScoutPose {
   report,
   alert,
   acorn,
+  lounge,
 }
 
 class TourStep {
@@ -136,7 +137,37 @@ const List<TourStep> tourSteps = [
         'puts the backup on you: Back up now in Settings makes one file you '
         'can send to Drive, Files, or yourself.',
   ),
+
+  /*
+    ── The ninth step, and the only one that asks rather than tells ──────────
+
+    A tour is a budget and every screen has to displace one. This one earns
+    its place by not being a tour screen at all: the other eight explain the
+    app, and this collects the single thing the app needs from you.
+
+    Last, deliberately. Asking a stranger's name before showing them anything
+    is a form the app has not earned yet; asking after eight screens of what
+    it does is the end of an introduction. It also makes the final tap a
+    completion rather than a dismissal.
+
+    Skippable like every other step, and skipping costs nothing — the greeting
+    falls back to the time of day on its own. See `greeting`.
+  */
+  TourStep(
+    nameStepKey,
+    ScoutPose.lounge,
+    'What should I call you?',
+    'Only used to say hello on the dashboard. It stays on this phone with '
+        'everything else, and you can change or clear it in Settings whenever '
+        'you like.',
+  ),
 ];
+
+/// The step that carries a text field rather than only words.
+///
+/// Named here rather than matched on its position so the script can be
+/// reordered without the widget quietly rendering a field on the wrong screen.
+const String nameStepKey = 'name';
 
 /* ---------------------------------------------------------------- when */
 
@@ -165,6 +196,34 @@ bool tourDue(TourState state, [DateTime? now]) {
   if (at == null) return false;
 
   return !(now ?? DateTime.now()).isBefore(at);
+}
+
+/*
+  ── Whether to show it at all, on this launch ───────────────────────────────
+
+  This is the question that had no answer for sixty versions.
+
+  `tourDue` was written, tested, and never called; so were `remindLater` and
+  `TourState`. The whole scheduling half existed as logic with no trigger, and
+  `showTour` was reachable from exactly one place — the "Take the tour" row in
+  Settings, which is the one route that only somebody who already knows about
+  the tour would ever take.
+
+  Two ways in, and they are different questions:
+
+    Never onboarded and never skipped — a fresh install. Show it. This is the
+    case that was broken: the app opened straight onto an empty dashboard and
+    explained nothing.
+
+    Skipped, and the three days are up. Show it again, once.
+
+  Anybody who finished it, and anybody who skipped it less than three days
+  ago, is left alone.
+*/
+bool tourOnLaunch(TourState state, [DateTime? now]) {
+  if (state.doneAt != null) return false;
+  if (state.remindAt == null) return true;
+  return tourDue(state, now);
 }
 
 DateTime remindLater([DateTime? now, int days = remindDays]) =>

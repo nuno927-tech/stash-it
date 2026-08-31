@@ -158,6 +158,7 @@ Map<String, Object?> settingsToJson(Settings s) => _tidy({
       'devModeEnabled': s.devModeEnabled,
       'displayName': s.displayName,
       'onboardedAt': _iso(s.onboardedAt),
+      'tourRemindAt': _iso(s.tourRemindAt),
       'theme': s.theme?.name,
       'sounds': s.sounds,
       'haptics': s.haptics,

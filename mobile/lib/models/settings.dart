@@ -60,6 +60,7 @@ class Settings {
     this.devModeEnabled = false,
     this.displayName,
     this.onboardedAt,
+    this.tourRemindAt,
     this.theme,
     this.sounds,
     this.haptics,
@@ -139,6 +140,9 @@ class Settings {
   /// Set once the welcome has been answered, either way.
   final DateTime? onboardedAt;
 
+  /// When "Skip" on the tour said to ask again. Null means nothing is pending.
+  final DateTime? tourRemindAt;
+
   Settings copyWith({
     List<int>? reminderOffsetsDays,
     String? currency,
@@ -148,6 +152,7 @@ class Settings {
     bool? devModeEnabled,
     String? displayName,
     DateTime? onboardedAt,
+    DateTime? tourRemindAt,
     ThemeChoice? theme,
     bool? sounds,
     bool? haptics,
@@ -167,6 +172,7 @@ class Settings {
         devModeEnabled: devModeEnabled ?? this.devModeEnabled,
         displayName: displayName ?? this.displayName,
         onboardedAt: onboardedAt ?? this.onboardedAt,
+        tourRemindAt: tourRemindAt ?? this.tourRemindAt,
         theme: theme ?? this.theme,
         sounds: sounds ?? this.sounds,
         haptics: haptics ?? this.haptics,
