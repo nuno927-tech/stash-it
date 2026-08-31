@@ -57,6 +57,10 @@ class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // The app is built underneath from here, but nobody can see it. Anything
+    // whose whole point is being watched should wait — see `appRevealed`.
+    appRevealed.value = false;
+
     /*
       1.1 seconds, then fade.
 
@@ -68,7 +72,9 @@ class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
     _leave = Timer(splashHold, () {
       if (!mounted) return;
       _out.forward().then((_) {
-        if (mounted) setState(() => _gone = true);
+        if (!mounted) return;
+        setState(() => _gone = true);
+        appRevealed.value = true;
       });
     });
   }

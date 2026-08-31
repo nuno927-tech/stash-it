@@ -29,7 +29,9 @@ import '../logic/format.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
+import '../logic/card.dart';
 import 'item_form_sheet.dart';
+import 'share_card_sheet.dart';
 import 'parts.dart';
 
 class ItemDetailScreen extends StatefulWidget {
@@ -74,6 +76,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       appBar: AppBar(
         title: Text(_item.name),
         actions: [
+          // Send this one on. The sheet is what asks about attachments and
+          // shows the words that will travel — see share_card_sheet.dart.
+          IconButton(
+            tooltip: 'Send to someone',
+            icon: const Icon(Icons.ios_share),
+            onPressed: () => shareCardSheet(
+              context,
+              repo: widget.repo,
+              pick: CardPick(items: {_item.id}),
+            ),
+          ),
           TextButton(onPressed: _edit, child: const Text('Edit')),
         ],
       ),

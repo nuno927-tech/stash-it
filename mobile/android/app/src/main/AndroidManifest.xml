@@ -94,6 +94,45 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!--
+                Opening a .stashcard somebody sent.
+
+                A card is a few records to ADD. A .stashit backup is everything,
+                and restoring one replaces the database — so only the card
+                extension is claimed here. Nothing in the app opens a backup by
+                tapping it; that stays behind a deliberate trip to Settings.
+
+                Two filters because Android matches these differently. The
+                first catches a file with a real path — a download, a file
+                manager, an email attachment saved to disk. The second catches
+                a content:// URI, which is what a messaging app hands over.
+
+                Neither is reliable on its own, and together they are still not
+                a guarantee: a content:// URI often carries no filename for
+                pathPattern to match, and the sending app decides the MIME type
+                it declares. That is why Settings also has "Add a shared card",
+                which opens the file picker and cannot fail. The filters are
+                the convenience; the button is the contract.
+            -->
+            <intent-filter android:label="Add to Stash it">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.stashcard"/>
+                <data android:pathPattern=".*\\..*\\.stashcard"/>
+            </intent-filter>
+
+            <intent-filter android:label="Add to Stash it">
+                <action android:name="android.intent.action.VIEW"/>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/x-stash-it-card"/>
+            </intent-filter>
         </activity>
         <!--
             flutter_local_notifications' own components. The first delivers a

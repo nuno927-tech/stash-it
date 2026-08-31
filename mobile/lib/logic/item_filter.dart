@@ -1,4 +1,6 @@
+import '../models/paper.dart';
 import '../models/types.dart';
+import 'papers.dart';
 import 'dashboard.dart';
 import 'warranty.dart';
 
@@ -97,3 +99,41 @@ const Map<GapKind, ItemFilter> gapFilter = {
   GapKind.date: ItemFilter.noPurchaseDate,
   GapKind.photo: ItemFilter.noPhoto,
 };
+
+/*
+  ── The same question, asked of a document ──────────────────────────────────
+
+  The ring counts warranties AND documents — "3 need action" can be two items
+  and a passport. A tap can only open one list, so it opens the items, and the
+  screen then showed 2 under a number that said 3. Both were right; together
+  they looked like a bug, which for a number nobody can check is the same
+  thing as being one.
+
+  So the list says so. Not by changing either number — both are honest — but
+  by carrying the remainder across: a line under the chips reading "and 1
+  document", which goes to the tab that holds it.
+*/
+
+/// The three questions that mean something to a document as well as an item.
+///
+/// "No photograph" and "no receipt" are not questions you can ask a passport.
+const Set<ItemFilter> filtersSpanningPapers = {
+  ItemFilter.endingSoon,
+  ItemFilter.lapsed,
+  ItemFilter.noTerm,
+};
+
+bool matchesPaperFilter(ItemFilter filter, Paper paper) => switch (filter) {
+      ItemFilter.endingSoon =>
+        expiryOf(paper) != null && paperState(paper) == PaperState.renew,
+      ItemFilter.lapsed =>
+        expiryOf(paper) != null && paperState(paper) == PaperState.expired,
+      ItemFilter.noTerm => expiryOf(paper) == null,
+      _ => false,
+    };
+
+/// How many documents the same filter caught. Zero when it does not apply.
+int papersMatching(ItemFilter filter, List<Paper> papers) =>
+    filtersSpanningPapers.contains(filter)
+        ? papers.where((p) => matchesPaperFilter(filter, p)).length
+        : 0;

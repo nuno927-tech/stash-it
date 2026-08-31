@@ -214,8 +214,23 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              /*
+                On guard, not on alert.
+
+                `alert` is the ears-up pose the dashboard uses for "something
+                needs a minute" — a warning. Nothing is wrong here: the app is
+                shut, which is what was asked for. Wearing the warning face
+                while asking for a fingerprint reads as an accusation, and it
+                is the same face somebody sees when they genuinely have
+                overdue paperwork, which spends it.
+
+                `acorn` is the launch-screen pose — guarding the thing itself.
+                It is also literally the pose on the screen a second earlier,
+                so the lock reads as part of opening the app rather than as
+                something that went wrong on the way in.
+              */
               Scout(
-                pose: ScoutPose.alert,
+                pose: ScoutPose.acorn,
                 height: height * 0.32,
                 motion: const [ScoutMotion.breathe],
                 shadow: true,

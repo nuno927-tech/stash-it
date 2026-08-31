@@ -455,7 +455,11 @@ class _ShellState extends State<Shell> {
                     key: ValueKey('${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
                     child: switch (_tab) {
                       Tab.home => HomeTab(repo: widget.repo, onGo: _select),
-                      Tab.items => ItemsTab(repo: widget.repo, filter: _itemsFilter),
+                      Tab.items => ItemsTab(
+                          repo: widget.repo,
+                          filter: _itemsFilter,
+                          onGo: _select,
+                        ),
                       Tab.subs => SubsTab(repo: widget.repo),
                       Tab.papers => PapersTab(repo: widget.repo),
                       Tab.settings => SettingsTab(repo: widget.repo),

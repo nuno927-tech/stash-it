@@ -39,6 +39,26 @@ import '../models/types.dart';
 const String backupFormat = 'stash-it-backup';
 const int backupFormatVersion = 1;
 
+/*
+  ── A shared card is a different file, and that is a safety decision ────────
+
+  A card holds a handful of records somebody sent you. A backup holds
+  everything you own, and restoring one REPLACES the database — that is what a
+  restore is for.
+
+  If both were `.stashit` with the same format string, one mis-tap on a file
+  in a text message could wipe a stranger's entire stash. The failure is
+  silent, instant and total, and the person who caused it did nothing more
+  careless than tap the wrong attachment.
+
+  So they are two formats with two extensions, and each reader refuses the
+  other by name — the check below is the whole guard. The message points at
+  the right door rather than just saying no, because somebody holding a file
+  they cannot open is a person who will keep tapping it.
+*/
+const String cardFormat = 'stash-it-card';
+const int cardFormatVersion = 1;
+
 /// Anything wrong with the file, phrased for the person holding it.
 ///
 /// One exception type rather than several, because every one of these ends up
@@ -190,6 +210,11 @@ List<int> checksumInput(Map<String, List<int>> entries) => [
 ParsedBundle parseBundle(
   Map<String, List<int>> entries, {
   required String Function(List<int> bytes) sha256Hex,
+
+  /// Which of the two file types the caller is willing to accept. The restore
+  /// path takes the default; the import path passes [cardFormat]. Neither can
+  /// be handed the other by accident — see the note beside `cardFormat`.
+  String format = backupFormat,
 }) {
   Object? read(String name) {
     final raw = entries[name];
@@ -203,9 +228,31 @@ ParsedBundle parseBundle(
     }
   }
 
+  /*
+    A file with no manifest, or a manifest that is not an object, gets the same
+    sentence as one claiming the wrong format — phrased for whichever door the
+    caller knocked on. "Not a Stash it file" would be true and useless: the
+    person is holding it because they were trying to restore a backup, or to
+    add a card, and the answer has to name the thing they were trying to do.
+  */
+  final wanted = format == cardFormat ? 'card' : 'backup';
+
   final manifestJson = read('manifest.json');
-  if (manifestJson is! Map || manifestJson['format'] != backupFormat) {
-    throw const BundleError('That file is not a Stash it backup.');
+  if (manifestJson is! Map) {
+    throw BundleError('That file is not a Stash it $wanted.');
+  }
+
+  final found = manifestJson['format'];
+  if (found != format) {
+    throw BundleError(switch ((found, format)) {
+      // The two dangerous confusions, each pointed at the right door.
+      (cardFormat, backupFormat) => 'That is a shared card, not a backup. '
+          'Open it from Items to add what is in it to your stash — restoring '
+          'it would replace everything you have.',
+      (backupFormat, cardFormat) => 'That is a full backup, not a shared card. '
+          'Restore it from Settings if you meant to replace what is here.',
+      _ => 'That file is not a Stash it $wanted.',
+    });
   }
 
   final manifest = _readManifest(manifestJson.cast<String, dynamic>());
@@ -216,10 +263,11 @@ ParsedBundle parseBundle(
     );
   }
 
-  if (manifest.formatVersion > backupFormatVersion) {
+  final ceiling = format == cardFormat ? cardFormatVersion : backupFormatVersion;
+  if (manifest.formatVersion > ceiling) {
     throw BundleError(
-      'This backup uses format v${manifest.formatVersion}, newer than this app '
-      'understands. Update Stash it and try again.',
+      'This $wanted uses format v${manifest.formatVersion}, newer than this '
+      'app understands. Update Stash it and try again.',
     );
   }
 

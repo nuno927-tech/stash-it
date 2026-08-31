@@ -62,6 +62,23 @@ bool _introPlayed = false;
 /// Whether the dashboard's opening animation is still owed.
 bool get dashboardIntroDue => !_introPlayed;
 
+/*
+  ── And it waits for the splash to get out of the way ───────────────────────
+
+  `Splash` draws the app UNDERNEATH itself from the first frame and fades off
+  after 1.5 seconds, which is deliberate — it means the dashboard is warm and
+  finished by the time anybody sees it. It also meant the opening animation
+  played, in full, behind an opaque title card, and the flag above was spent
+  before the app was visible. The ring and the four figures simply appeared,
+  already at their final values, every single launch.
+
+  So the intro waits for this. It starts TRUE, so anything not wrapped in a
+  splash — a test, a deep link straight into a tab — animates normally rather
+  than silently never animating, which is the failure mode that would go
+  unnoticed for another sixty versions.
+*/
+final ValueNotifier<bool> appRevealed = ValueNotifier<bool>(true);
+
 /// The sweep, and the count, and they are one duration on purpose.
 ///
 /// The arc and the figures beneath it describe the same tally. Two durations
@@ -183,11 +200,22 @@ class _Counted extends StatelessWidget {
       return Text(count?.toString() ?? value, style: style);
     }
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: count!.toDouble()),
-      duration: dashboardSweep,
-      curve: Curves.easeOutCubic,
-      builder: (context, v, _) => Text('${v.round()}', style: style),
+    /*
+      Behind the splash this draws the finished number and does not move. The
+      tween is not started and then hidden — it is not built at all, so when
+      the splash lifts the builder mounts fresh and counts from zero. Nobody
+      sees the still frame, because something opaque was over it.
+    */
+    return ValueListenableBuilder<bool>(
+      valueListenable: appRevealed,
+      builder: (context, revealed, _) => revealed
+          ? TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: count!.toDouble()),
+              duration: dashboardSweep,
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) => Text('${v.round()}', style: style),
+            )
+          : Text('${count!}', style: style),
     );
   }
 }
@@ -565,9 +593,27 @@ class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
       return;
     }
 
+    if (appRevealed.value) {
+      _begin();
+    } else {
+      appRevealed.addListener(_onRevealed);
+    }
+  }
+
+  void _onRevealed() {
+    if (!appRevealed.value || !mounted) return;
+    appRevealed.removeListener(_onRevealed);
+    _begin();
+  }
+
+  void _begin() {
     _sweep.forward();
-    // After the frame, so the four figures below get the same answer this ring
-    // just got rather than the one it consumed.
+    /*
+      Burned after the frame, not now. The four figures are built below this
+      ring and listen to the same signal, so they are still mid-rebuild when
+      this runs — spending the flag here would have the ring sweep while the
+      numbers snapped, which is the half-animation that reads as a glitch.
+    */
     WidgetsBinding.instance.addPostFrameCallback((_) => _introPlayed = true);
   }
 
@@ -594,6 +640,7 @@ class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    appRevealed.removeListener(_onRevealed);
     _curve.dispose();
     _sweep.dispose();
     super.dispose();

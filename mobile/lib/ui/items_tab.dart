@@ -7,7 +7,7 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Tab;
 
 import '../notify/sync.dart';
 
@@ -15,8 +15,11 @@ import '../db/repository.dart';
 import '../logic/bin.dart';
 import '../logic/dashboard.dart';
 import '../logic/prefs.dart';
+import '../models/paper.dart';
 import '../models/settings.dart';
+import '../logic/card.dart';
 import '../logic/item_filter.dart';
+import '../logic/swipe.dart' show Tab;
 import '../logic/item_icon.dart';
 import '../logic/search.dart';
 import '../logic/timeline.dart';
@@ -31,6 +34,7 @@ import 'notify_offer_dialog.dart';
 import 'parts.dart';
 import 'room_icon.dart';
 import 'scout.dart';
+import 'share_card_sheet.dart';
 import 'status_pill.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
@@ -60,9 +64,13 @@ import 'warranty_ring.dart';
   "which tab, showing what" is one fact rather than two.
 */
 class ItemsTab extends StatefulWidget {
-  const ItemsTab({required this.repo, this.filter, super.key});
+  const ItemsTab({required this.repo, required this.onGo, this.filter, super.key});
 
   final Repository repo;
+
+  /// The shell's one door for changing tabs. This screen needs it for exactly
+  /// one thing — see `_alsoDocuments`.
+  final void Function(Tab, {ItemFilter? filter}) onGo;
 
   /// Which slice to open on. Null is the default view: everything except
   /// lapsed. Supplied by the shell — see the note at the top of this file for
@@ -123,6 +131,54 @@ class _ItemsTabState extends State<ItemsTab> {
   final Set<String> _shut = {};
   bool _grouped = false;
 
+  /*
+    ── Choosing several to send ──────────────────────────────────────────────
+
+    Null means not selecting. A set — even an empty one — means the list is in
+    selection mode, which is why this is nullable rather than a `Set` plus a
+    `bool`: two fields that must agree are two fields that can disagree, and
+    "selecting, with nothing selected" is a real state that has to be
+    representable so the header can say "Nothing chosen" rather than vanishing.
+
+    Started by a long-press, which is the gesture Android has spent fifteen
+    years teaching people to try on a list. Nothing on screen advertises it,
+    and that is the trade: no permanent chrome on a screen whose job is being
+    read, at the cost of a feature some people will not find. A tip in the tour
+    is the cheaper fix than a toolbar.
+  */
+  Set<String>? _picked;
+
+  void _startPicking(String id) {
+    feedback(Cue.tap);
+    setState(() => _picked = {id});
+  }
+
+  void _pick(String id) {
+    feedback(Cue.tap);
+    setState(() {
+      final now = {..._picked!};
+      now.contains(id) ? now.remove(id) : now.add(id);
+      _picked = now;
+    });
+  }
+
+  void _stopPicking() => setState(() => _picked = null);
+
+  Future<void> _sendPicked() async {
+    final chosen = _picked;
+    if (chosen == null || chosen.isEmpty) return;
+
+    final sent = await shareCardSheet(
+      context,
+      repo: widget.repo,
+      pick: CardPick(items: chosen),
+    );
+    if (!mounted) return;
+    // Selection survives a cancelled send. Somebody who backed out of the
+    // share sheet has not changed their mind about the eight rows they ticked.
+    if (sent) _stopPicking();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,13 +205,18 @@ class _ItemsTabState extends State<ItemsTab> {
   */
   Set<String> _withReceipt = const {};
 
+  /// Held only to count, never to draw — see `_alsoDocuments`.
+  List<Paper> _papers = const [];
+
   Future<void> _readContext() async {
     final rooms = await widget.repo.rooms();
     final settings = await widget.repo.settings();
     final docs = await widget.repo.activeDocs();
+    final papers = await widget.repo.activePapers();
     if (!mounted) return;
 
     setState(() {
+      _papers = papers;
       _withReceipt = {
         for (final d in docs)
           if (d.kind == DocKind.receipt) d.itemId,
@@ -240,6 +301,23 @@ class _ItemsTabState extends State<ItemsTab> {
                 squeezed into a corner, and it was wider than any query anyone
                 types anyway.
               */
+              /*
+                While picking, the header is the selection and nothing else.
+
+                Not a bar added ABOVE the search field and the chips: those
+                controls answer "which of my things am I looking at", and the
+                answer stops mattering the moment the question becomes "which
+                of these am I sending". Leaving them there would also let
+                somebody change the filter mid-selection and watch half their
+                ticks scroll out of reach.
+              */
+              if (_picked != null)
+                _PickingBar(
+                  count: _picked!.length,
+                  onCancel: _stopPicking,
+                  onSend: _picked!.isEmpty ? null : _sendPicked,
+                )
+              else
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Row(
@@ -253,6 +331,7 @@ class _ItemsTabState extends State<ItemsTab> {
                           _search(c),
                           const SizedBox(height: 10),
                           _chips(all, c),
+                          _alsoDocuments(c),
                         ],
                       ),
                     ),
@@ -296,8 +375,14 @@ class _ItemsTabState extends State<ItemsTab> {
                             : _ItemTile(
                                 repo: widget.repo,
                                 item: shown[i],
-                                lit: _filter == ItemFilter.noTerm,
-                                onTap: () => _open(shown[i]),
+                                picking: _picked != null,
+                                picked: _picked?.contains(shown[i].id) ?? false,
+                                onTap: () => _picked == null
+                                    ? _open(shown[i])
+                                    : _pick(shown[i].id),
+                                onLongPress: _picked == null
+                                    ? () => _startPicking(shown[i].id)
+                                    : null,
                                 onDelete: () => _delete(shown[i]),
                               ),
                       ),
@@ -411,6 +496,61 @@ class _ItemsTabState extends State<ItemsTab> {
     it off rather than doing nothing, and that is the whole reason the
     dashboard can link here at all.
   */
+  /*
+    ── The half of the answer that is not on this screen ────────────────────
+
+    The dashboard's figures count warranties and documents together, because
+    "what needs attention" is one question about a household rather than two
+    about two tables. Tapping one opens a single list, so the number above and
+    the rows below could differ — 3 on the card, 2 here — with nothing on
+    screen accounting for the third.
+
+    Neither number is wrong, so neither is changed. The remainder is simply
+    stated, and it is a link, because somebody who just tapped a 3 wants the
+    third thing rather than an explanation of why it is missing.
+
+    Nothing is drawn when the filter is one documents cannot answer, or when
+    they contribute none: a line reading "and 0 documents" is noise on every
+    screen it appears on.
+  */
+  Widget _alsoDocuments(StashColors c) {
+    final filter = _filter;
+    if (filter == null) return const SizedBox.shrink();
+
+    final count = papersMatching(filter, _papers);
+    if (count == 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 9),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        onTap: () {
+          feedback(Cue.tap);
+          widget.onGo(Tab.papers);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'and $count document${count == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: c.gold,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Icon(Icons.chevron_right, size: 15, color: c.gold),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _chips(List<Item> all, StashColors c) {
     void pick(ItemFilter f) {
       feedback(Cue.tap);
@@ -543,8 +683,10 @@ class _ItemsTabState extends State<ItemsTab> {
       rows.addAll(group.map((item) => _ItemTile(
             repo: widget.repo,
             item: item,
-            lit: _filter == ItemFilter.noTerm,
-            onTap: () => _open(item),
+            picking: _picked != null,
+            picked: _picked?.contains(item.id) ?? false,
+            onTap: () => _picked == null ? _open(item) : _pick(item.id),
+            onLongPress: _picked == null ? () => _startPicking(item.id) : null,
             onDelete: () => _delete(item),
           )));
     }
@@ -866,31 +1008,36 @@ class _ItemTile extends StatelessWidget {
   const _ItemTile({
     required this.repo,
     required this.item,
-    this.lit = false,
     this.onTap,
+    this.onLongPress,
     this.onDelete,
+    this.picking = false,
+    this.picked = false,
   });
 
   final Repository repo;
   final Item item;
 
-  /// Washed gold, for the rows a filter singled out.
-  ///
-  /// Only ever true for the no-term filter, because that is the one state
-  /// `statusWash` deliberately leaves unpainted — an item with no term is not
-  /// in trouble, it is unanswered, and tinting every one of them all the time
-  /// would be wallpaper. Lit only while somebody has asked to see exactly
-  /// these.
-  final bool lit;
-
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onDelete;
+
+  /// Whether the list is in selection mode at all, and whether this row is in.
+  final bool picking;
+  final bool picked;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    if (onDelete == null) return _row(context, c);
+    /*
+      Swipe-to-delete is suspended while picking.
+
+      The two gestures are close enough to collide, and their outcomes are not
+      symmetric: choosing the wrong row to send is a tap to undo, and deleting
+      the wrong row mid-selection is a trip to the bin to work out what went.
+    */
+    if (onDelete == null || picking) return _row(context, c);
 
     return SwipeToDelete(
       id: 'item-${item.id}',
@@ -925,6 +1072,10 @@ class _ItemTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      // Long-press is how selection starts. It is the gesture Android has
+      // trained people to try on a list, and it costs no chrome on a screen
+      // that is not selecting anything.
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
         /*
@@ -947,11 +1098,46 @@ class _ItemTile extends StatelessWidget {
             warranty state would be answering a question they did not ask.
             Same rule the Subscriptions calendar follows for a chosen day.
           */
-          gradient: lit ? filterWash(c) : statusWash(c, status),
+          /*
+            ── Undated rows are gold, always ─────────────────────────────────
+
+            This used to light only while the "no term" filter was on, on the
+            reasoning that an unanswered item is not in trouble and tinting
+            them permanently would be wallpaper.
+
+            That was wrong in one specific way: `statusWash` paints covered,
+            ending soon and lapsed, so the undated rows were the only ones
+            drawing no colour at all — and "no colour" already means "fine" on
+            every other row in the list. The state that most wants a minute of
+            somebody's attention was the state that looked settled.
+
+            Gold rather than a fourth traffic-light shade, matching the dot on
+            the dashboard figure that counts them. Not good, not urgent,
+            unanswered.
+          */
+          gradient: warrantyState(item) == WarrantyState.unknown
+              ? filterWash(c)
+              : statusWash(c, status),
           border: Border(bottom: BorderSide(color: c.slate700)),
         ),
         child: Row(
           children: [
+            /*
+              The tick, in front of the photograph, and only while picking.
+
+              In front rather than trailing: it is the thing being changed by
+              a tap, and a control on the right of a row whose left is a
+              photograph reads as a property of the row rather than as the
+              handle for it.
+            */
+            if (picking) ...[
+              Icon(
+                picked ? Icons.check_circle : Icons.circle_outlined,
+                size: 21,
+                color: picked ? c.gold : c.slate600,
+              ),
+              const SizedBox(width: 11),
+            ],
             ItemArtLive(
               repo: repo,
               item: item,
@@ -1072,4 +1258,75 @@ IconData _icon(Item item) {
     IconKey.watch => Icons.watch,
     IconKey.box => Icons.inventory_2_outlined,
   };
+}
+
+
+/// The header that replaces the search row while rows are being chosen.
+class _PickingBar extends StatelessWidget {
+  const _PickingBar({
+    required this.count,
+    required this.onCancel,
+    required this.onSend,
+  });
+
+  final int count;
+  final VoidCallback onCancel;
+  final VoidCallback? onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: c.slate800,
+        borderRadius: BorderRadius.circular(Radii.pill),
+        border: Border.all(color: c.line),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Stop choosing',
+            icon: Icon(Icons.close, size: 20, color: c.muted),
+            onPressed: onCancel,
+          ),
+          Expanded(
+            child: Text(
+              // The number, because it is the only thing that changed since
+              // the last tap and the only thing worth reading here.
+              count == 0 ? 'Nothing chosen' : '$count chosen',
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: count == 0 ? c.muted : c.text,
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: onSend,
+            icon: const Icon(Icons.ios_share, size: 17),
+            label: const Text('Send'),
+            style: FilledButton.styleFrom(
+              backgroundColor: c.gold,
+              foregroundColor: c.onGold,
+              disabledBackgroundColor: c.slate700,
+              disabledForegroundColor: c.muted,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              textStyle: TextStyle(
+                fontFamily: fontDisplay,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

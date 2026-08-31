@@ -39,13 +39,15 @@ import 'prefs_scope.dart';
 import 'privacy.dart';
 import 'tour_screen.dart';
 import 'pro_badge.dart';
+import '../io/card_file.dart';
+import 'card_arrival_screen.dart';
 import 'unlock_sheet.dart';
 import 'rooms_screen.dart';
 import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.71.0';
+const appVersion = '0.74.3';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -227,6 +229,54 @@ class _SettingsTabState extends State<SettingsTab> {
           '${result.subscriptions} subscriptions and ${result.blobs} files.');
     } on BundleError catch (e) {
       // Every refusal already carries a sentence written for a person.
+      _say(e.message);
+    } catch (e) {
+      _say('That did not work: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /*
+    ── Taking in a card somebody sent ────────────────────────────────────────
+
+    Deliberately its own action, sitting apart from Restore, and worded so the
+    two cannot be mistaken for each other. Restore REPLACES what is on the
+    phone; this ADDS to it. They are one row apart in a list, so the difference
+    has to be in the words rather than in the reader's memory.
+
+    Android's file association for `.stashcard` is registered in the manifest,
+    but it cannot be relied on: a card arriving through a messaging app is a
+    `content://` URI that frequently carries no filename to match against, and
+    the sending app chooses the MIME type it declares. So the association is a
+    convenience and THIS is the route that always works.
+  */
+  Future<void> _addCard() async {
+    _say(null);
+    setState(() => _busy = true);
+
+    try {
+      // Same reasoning as `_restore` for leaving `withData` off.
+      final picked = await FilePicker.platform.pickFiles();
+      final files = picked?.files ?? const <PlatformFile>[];
+      final path = files.isEmpty ? null : files.first.path;
+      if (path == null) return;
+
+      final bytes = await File(path).readAsBytes();
+      final card = parseCardBytes(bytes);
+
+      if (!mounted) return;
+      final added = await Navigator.of(context).push<int>(
+        MaterialPageRoute(
+          builder: (_) => CardArrivalScreen(repo: widget.repo, card: card),
+        ),
+      );
+
+      if (added != null && added > 0) {
+        _say('Added $added ${added == 1 ? 'thing' : 'things'} to your stash.');
+      }
+    } on BundleError catch (e) {
+      // Including the one that says "that is a backup, not a card".
       _say(e.message);
     } catch (e) {
       _say('That did not work: $e');
@@ -1167,6 +1217,18 @@ class _SettingsTabState extends State<SettingsTab> {
                   onTap: _busy ? null : _restore,
                 ),
                 _Note('This replaces what is on the phone.', c),
+
+                const SizedBox(height: 12),
+                _BigButton(
+                  label: 'Add a card someone sent',
+                  onTap: _busy ? null : _addCard,
+                ),
+                _Note(
+                  'A .stashcard file from another Stash it user. You see what '
+                  'is in it first, and it adds to what you have rather than '
+                  'replacing it.',
+                  c,
+                ),
 
                 _Rule(c),
                 _LinkRow(
