@@ -23,7 +23,9 @@ import 'feedback.dart';
 import 'paper_form_sheet.dart';
 import 'paper_icon.dart';
 import 'status_pill.dart';
+import '../logic/card.dart';
 import 'parts.dart';
+import 'share_card_sheet.dart';
 import 'scout.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
@@ -39,6 +41,41 @@ class PapersTab extends StatefulWidget {
 }
 
 class _PapersTabState extends State<PapersTab> {
+  /*
+    Choosing documents to send. Null means not choosing — same shape and same
+    reasoning as the Items tab, which the note there explains.
+  */
+  Set<String>? _picked;
+
+  void _startPicking(String id) {
+    feedback(Cue.tap);
+    setState(() => _picked = {id});
+  }
+
+  void _pick(String id) {
+    feedback(Cue.tap);
+    setState(() {
+      final now = {..._picked!};
+      now.contains(id) ? now.remove(id) : now.add(id);
+      _picked = now;
+    });
+  }
+
+  void _stopPicking() => setState(() => _picked = null);
+
+  Future<void> _sendPicked() async {
+    final chosen = _picked;
+    if (chosen == null || chosen.isEmpty) return;
+
+    final sent = await shareCardSheet(
+      context,
+      repo: widget.repo,
+      pick: CardPick(papers: chosen),
+    );
+    if (!mounted) return;
+    if (sent) _stopPicking();
+  }
+
   final ScrollController _scroll = ScrollController();
   final Map<String, GlobalKey> _keys = {};
 
@@ -157,6 +194,13 @@ class _PapersTabState extends State<PapersTab> {
           controller: _scroll,
           padding: const EdgeInsets.only(bottom: 120),
           children: [
+            if (_picked != null)
+              PickingBar(
+                count: _picked!.length,
+                onCancel: _stopPicking,
+                onSend: _picked!.isEmpty ? null : _sendPicked,
+              )
+            else
             _Tiles(
               total: all.length,
               needing: needing,
@@ -175,7 +219,12 @@ class _PapersTabState extends State<PapersTab> {
                 key: _keys[paper.id],
                 paper: paper,
                 lit: _lit == paper.id,
-                onTap: () => open(paper),
+                picking: _picked != null,
+                picked: _picked?.contains(paper.id) ?? false,
+                onTap: () =>
+                    _picked == null ? open(paper) : _pick(paper.id),
+                onLongPress:
+                    _picked == null ? () => _startPicking(paper.id) : null,
                 onDelete: () => _delete(paper),
               ),
             const SizedBox(height: 24),
@@ -346,7 +395,10 @@ class _PaperTile extends StatelessWidget {
     required this.paper,
     this.lit = false,
     this.onTap,
+    this.onLongPress,
     this.onDelete,
+    this.picking = false,
+    this.picked = false,
     super.key,
   });
 
@@ -356,13 +408,20 @@ class _PaperTile extends StatelessWidget {
   final bool lit;
 
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onDelete;
+
+  /// Whether the list is choosing rows to send, and whether this one is in.
+  final bool picking;
+  final bool picked;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    if (onDelete == null) return _row(context, c);
+    // Swipe-to-delete is suspended while picking, the same as on Items: the
+    // gestures collide and the outcomes are not symmetric.
+    if (onDelete == null || picking) return _row(context, c);
 
     return SwipeToDelete(
       id: 'paper-${paper.id}',
@@ -397,6 +456,16 @@ class _PaperTile extends StatelessWidget {
 
     final body = Row(
       children: [
+        // The tick leads the row while picking, ahead of the status ring —
+        // it is the thing a tap changes.
+        if (picking) ...[
+          Icon(
+            picked ? Icons.check_circle : Icons.circle_outlined,
+            size: 21,
+            color: picked ? c.gold : c.slate600,
+          ),
+          const SizedBox(width: 11),
+        ],
         /*
           Anything needing action is circled, the same way the ring marks it on
           the dashboard. Two screens, one visual language: if it has a coloured
@@ -510,6 +579,7 @@ class _PaperTile extends StatelessWidget {
     */
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
         decoration: BoxDecoration(

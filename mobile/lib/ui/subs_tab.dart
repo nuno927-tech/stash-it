@@ -19,7 +19,10 @@ import '../logic/subscriptions.dart';
 import '../models/subscription.dart';
 import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
+import '../logic/card.dart';
+import 'feedback.dart';
 import 'parts.dart';
+import 'share_card_sheet.dart';
 import 'renewal_calendar.dart';
 import 'scout.dart';
 import 'service_mark.dart';
@@ -40,6 +43,41 @@ class SubsTab extends StatefulWidget {
 }
 
 class _SubsTabState extends State<SubsTab> {
+  /*
+    Choosing subscriptions to send. Null means not choosing — same shape and
+    same reasoning as the Items tab, which the note there explains.
+  */
+  Set<String>? _picked;
+
+  void _startPicking(String id) {
+    feedback(Cue.tap);
+    setState(() => _picked = {id});
+  }
+
+  void _pick(String id) {
+    feedback(Cue.tap);
+    setState(() {
+      final now = {..._picked!};
+      now.contains(id) ? now.remove(id) : now.add(id);
+      _picked = now;
+    });
+  }
+
+  void _stopPicking() => setState(() => _picked = null);
+
+  Future<void> _sendPicked() async {
+    final chosen = _picked;
+    if (chosen == null || chosen.isEmpty) return;
+
+    final sent = await shareCardSheet(
+      context,
+      repo: widget.repo,
+      pick: CardPick(subscriptions: chosen),
+    );
+    if (!mounted) return;
+    if (sent) _stopPicking();
+  }
+
   /// The day picked on the calendar, or null.
   DateTime? _day;
 
@@ -126,7 +164,14 @@ class _SubsTabState extends State<SubsTab> {
         return ListView(
           padding: const EdgeInsets.only(bottom: 120),
           children: [
-            _Tiles(subs: subs, week: week),
+            if (_picked != null)
+              PickingBar(
+                count: _picked!.length,
+                onCancel: _stopPicking,
+                onSend: _picked!.isEmpty ? null : _sendPicked,
+              )
+            else
+              _Tiles(subs: subs, week: week),
 
             const SizedBox(height: 14),
             RenewalCalendar(
@@ -161,7 +206,11 @@ class _SubsTabState extends State<SubsTab> {
               _SubTile(
                 sub: sub,
                 lit: charged(sub),
-                onTap: () => open(sub),
+                picking: _picked != null,
+                picked: _picked?.contains(sub.id) ?? false,
+                onTap: () => _picked == null ? open(sub) : _pick(sub.id),
+                onLongPress:
+                    _picked == null ? () => _startPicking(sub.id) : null,
                 onDelete: () => _delete(sub),
               ),
 
@@ -341,7 +390,10 @@ class _SubTile extends StatelessWidget {
     required this.sub,
     this.lit = false,
     this.onTap,
+    this.onLongPress,
     this.onDelete,
+    this.picking = false,
+    this.picked = false,
   });
 
   final Subscription sub;
@@ -350,13 +402,19 @@ class _SubTile extends StatelessWidget {
   final bool lit;
 
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onDelete;
+
+  /// Whether the list is choosing rows to send, and whether this one is in.
+  final bool picking;
+  final bool picked;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    if (onDelete == null) return _row(context, c);
+    // Swipe-to-delete is suspended while picking, the same as on the other two.
+    if (onDelete == null || picking) return _row(context, c);
 
     return SwipeToDelete(
       id: 'sub-${sub.id}',
@@ -384,6 +442,7 @@ class _SubTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
         decoration: BoxDecoration(
@@ -398,6 +457,15 @@ class _SubTile extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // The tick leads the row while picking — it is what a tap changes.
+            if (picking) ...[
+              Icon(
+                picked ? Icons.check_circle : Icons.circle_outlined,
+                size: 21,
+                color: picked ? c.gold : c.slate600,
+              ),
+              const SizedBox(width: 11),
+            ],
             /*
               The real mark now.
 

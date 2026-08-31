@@ -17,11 +17,14 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
+import '../io/incoming_card.dart';
+import '../logic/bundle.dart';
 import '../logic/item_filter.dart';
 import '../logic/deep_link.dart';
 import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
 import 'add_button.dart';
+import 'card_arrival_screen.dart';
 import 'item_detail_screen.dart';
 import 'paper_form_sheet.dart';
 import 'sub_form_sheet.dart';
@@ -48,7 +51,7 @@ class Shell extends StatefulWidget {
   State<Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<Shell> {
+class _ShellState extends State<Shell> with WidgetsBindingObserver {
   Tab _tab = Tab.home;
 
   /*
@@ -185,6 +188,20 @@ class _ShellState extends State<Shell> {
     super.initState();
     pendingLink.addListener(_handleLink);
     _readPro();
+
+    /*
+      ── A .stashcard, tapped ────────────────────────────────────────────────
+
+      Three arrival routes, because Android has three and none is reliable
+      alone. The observer catches a resume; the post-frame read below catches
+      the tap that WAS the launch; and `onCardArrived` catches a file opened
+      while the app is already in front, which Android hands to the running
+      activity without restarting anything.
+
+      All three funnel into `_openCard`, which is guarded — see `_reading`.
+    */
+    WidgetsBinding.instance.addObserver(this);
+    onCardArrived((path) => unawaited(_openCard(path)));
     _tourAt = Timer(splashTotal + const Duration(milliseconds: 240), _maybeTour);
 
     /*
@@ -203,12 +220,79 @@ class _ShellState extends State<Shell> {
       Neither alone is enough, and which one fires is a matter of how long the
       platform took to answer — that is, not something to design around.
     */
-    WidgetsBinding.instance.addPostFrameCallback((_) => _handleLink());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleLink();
+      unawaited(_takeCard());
+    });
+  }
+
+  /*
+    ── Opening a card ────────────────────────────────────────────────────────
+
+    Guarded the same way `_handleLink` is, and for the same reason: the three
+    arrival routes overlap, so the same file can be offered twice within a
+    frame or two. Without this, somebody would dismiss the arrival screen and
+    find a second one behind it.
+  */
+  bool _reading = false;
+
+  Future<void> _takeCard() async {
+    final path = await takeIncomingCard();
+    if (path == null || !mounted) return;
+    await _openCard(path);
+  }
+
+  Future<void> _openCard(String path) async {
+    if (_reading || !mounted) return;
+    _reading = true;
+
+    try {
+      final card = await readCardAt(path);
+      if (!mounted) return;
+
+      final added = await Navigator.of(context).push<int>(
+        MaterialPageRoute(
+          builder: (_) => CardArrivalScreen(repo: widget.repo, card: card),
+        ),
+      );
+
+      if (added != null && added > 0 && mounted) {
+        // Land where the things went. Arriving back on whatever tab happened
+        // to be open, with a number in a snackbar, makes somebody hunt for
+        // what they just accepted.
+        _goTo(Tab.items);
+        _say('Added $added ${added == 1 ? 'thing' : 'things'} to your stash.');
+      }
+    } on BundleError catch (e) {
+      // Including "that is a full backup, not a shared card".
+      if (mounted) _say(e.message);
+    } catch (e) {
+      if (mounted) _say('That card could not be opened.');
+    } finally {
+      _reading = false;
+    }
+  }
+
+  void _say(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  /*
+    A card tapped while the app was in the background arrives with the resume
+    rather than with a fresh launch, so there is nothing else that would think
+    to ask.
+  */
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_takeCard());
   }
 
   @override
   void dispose() {
     _tourAt?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     pendingLink.removeListener(_handleLink);
     super.dispose();
   }

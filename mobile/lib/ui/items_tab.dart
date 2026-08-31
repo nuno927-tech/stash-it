@@ -312,7 +312,7 @@ class _ItemsTabState extends State<ItemsTab> {
                 ticks scroll out of reach.
               */
               if (_picked != null)
-                _PickingBar(
+                PickingBar(
                   count: _picked!.length,
                   onCancel: _stopPicking,
                   onSend: _picked!.isEmpty ? null : _sendPicked,
@@ -1258,75 +1258,4 @@ IconData _icon(Item item) {
     IconKey.watch => Icons.watch,
     IconKey.box => Icons.inventory_2_outlined,
   };
-}
-
-
-/// The header that replaces the search row while rows are being chosen.
-class _PickingBar extends StatelessWidget {
-  const _PickingBar({
-    required this.count,
-    required this.onCancel,
-    required this.onSend,
-  });
-
-  final int count;
-  final VoidCallback onCancel;
-  final VoidCallback? onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-      decoration: BoxDecoration(
-        color: c.slate800,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: c.line),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Stop choosing',
-            icon: Icon(Icons.close, size: 20, color: c.muted),
-            onPressed: onCancel,
-          ),
-          Expanded(
-            child: Text(
-              // The number, because it is the only thing that changed since
-              // the last tap and the only thing worth reading here.
-              count == 0 ? 'Nothing chosen' : '$count chosen',
-              style: TextStyle(
-                fontFamily: fontBody,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: count == 0 ? c.muted : c.text,
-              ),
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: onSend,
-            icon: const Icon(Icons.ios_share, size: 17),
-            label: const Text('Send'),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.gold,
-              foregroundColor: c.onGold,
-              disabledBackgroundColor: c.slate700,
-              disabledForegroundColor: c.muted,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              textStyle: TextStyle(
-                fontFamily: fontDisplay,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
