@@ -30,7 +30,7 @@ import 'item_wizard_sheet.dart';
 import 'item_view_sheet.dart';
 import 'paper_form_sheet.dart';
 import 'paper_view_sheet.dart';
-import 'sub_form_sheet.dart';
+import 'sub_wizard_sheet.dart';
 import 'sub_view_sheet.dart';
 import 'feedback.dart';
 import 'home_tab.dart';
@@ -316,7 +316,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
           if (mounted) await showPaperForm(context, repo: widget.repo);
         case 'subscription':
           _goTo(Tab.subs);
-          if (mounted) await showSubForm(context, repo: widget.repo);
+          if (mounted) await showSubWizard(context, repo: widget.repo);
       }
     } finally {
       _adding = false;

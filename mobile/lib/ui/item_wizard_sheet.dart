@@ -49,6 +49,7 @@ import 'pick_doc.dart';
 import 'save_item.dart';
 import 'stash_the_paper.dart';
 import 'theme.dart';
+import 'wizard_parts.dart';
 
 /// Opens the step-by-step add. Resolves true when something was saved.
 Future<bool?> showItemWizard(BuildContext context, {required Repository repo}) {
@@ -458,7 +459,11 @@ class _WizardState extends State<_Wizard> {
             padding: EdgeInsets.only(bottom: insets),
             child: Column(
               children: [
-                _Rail(at: _at, c: c),
+                WizardRail(
+                  steps: _Step.values.length,
+                  at: _at.index,
+                  c: c,
+                ),
                 Expanded(
                   child: PageView(
                     controller: _pages,
@@ -506,12 +511,13 @@ class _WizardState extends State<_Wizard> {
                   saved to save, and after it the way out has already been
                   offered. So they share a slot rather than costing a row each.
                 */
-                _Footer(
+                WizardFooter(
                   c: c,
                   last: _last,
-                  named: _named,
+                  ready: _named,
                   saving: _saving,
                   onNext: _next,
+                  lastLabel: 'Save item',
                   quietLabel: _at == _Step.what
                       ? 'Use the full form instead'
                       : 'Save now',
@@ -558,7 +564,7 @@ class _WizardState extends State<_Wizard> {
     // whole screen — see `_advance`.
     _advance(_Step.what);
 
-    return _Ask(
+    return WizardAsk(
       question: 'What is it?',
       hint: 'A name is all this needs. The rest helps later.',
       /*
@@ -610,7 +616,7 @@ class _WizardState extends State<_Wizard> {
 
     final all = _rooms;
 
-    return _Ask(
+    return WizardAsk(
       question: 'Where does it live?',
       hint: 'So you can find it by room later.',
       answer: all == null
@@ -641,7 +647,7 @@ class _WizardState extends State<_Wizard> {
     final chosen = parseDate(_draft.purchaseDate);
     final today = startOfDay(DateTime.now());
 
-    return _Ask(
+    return WizardAsk(
       question: 'When did you get it?',
       hint: 'Every countdown is measured from this.',
       answer: Column(
@@ -709,7 +715,7 @@ class _WizardState extends State<_Wizard> {
   Widget _coverage() {
     _advance(_Step.cover);
 
-    return _Ask(
+    return WizardAsk(
       question: "What's the coverage and how long?",
       hint: 'Skip it if you are not sure — you can add it later.',
       /*
@@ -749,7 +755,7 @@ class _WizardState extends State<_Wizard> {
       always take another receipt, so "finished" is a judgement only the person
       holding the phone can make.
     */
-    return _Ask(
+    return WizardAsk(
       question: 'Anything to keep with it?',
       hint: 'A receipt, a manual, a photo of the serial plate.',
       answer: Column(
@@ -793,7 +799,7 @@ class _WizardState extends State<_Wizard> {
   }
 
   Widget _warning(StashColors c) {
-    return _Ask(
+    return WizardAsk(
       question: 'How much warning?',
       hint: 'Before the cover runs out.',
       answer: SheetCard(
@@ -818,94 +824,6 @@ class _WizardState extends State<_Wizard> {
               color: c.muted,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Segments that fill as you go. Not a dot per step: a rail says how much is
-/// left in a shape somebody reads without counting.
-class _Rail extends StatelessWidget {
-  const _Rail({required this.at, required this.c});
-
-  final _Step at;
-  final StashColors c;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 28, 20),
-        child: Row(
-          children: [
-            for (final step in _Step.values) ...[
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: step.index <= at.index ? c.gold : c.slate600,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              if (step != _Step.values.last) const SizedBox(width: 5),
-            ],
-          ],
-        ),
-      );
-}
-
-/// One question: the words, and whatever answers it.
-class _Ask extends StatelessWidget {
-  const _Ask({
-    required this.question,
-    required this.hint,
-    required this.answer,
-  });
-
-  final String question;
-  final String hint;
-
-  /// Whatever answers it — a field, or a row of chips.
-  ///
-  /// Named `answer` rather than `child` on purpose: this one sits between the
-  /// question and the way past it, and a name that says what it holds is worth
-  /// more than one that says where it goes.
-  final Widget answer;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    // Scrolls, because a step can be taller than what the keyboard leaves.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            question,
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              fontSize: 25,
-              height: 1.15,
-              letterSpacing: -0.7,
-              color: c.text,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            hint,
-            style: TextStyle(
-              fontFamily: fontBody,
-              fontSize: 13.5,
-              height: 1.5,
-              color: c.muted,
-            ),
-          ),
-          const SizedBox(height: 24),
-          answer,
         ],
       ),
     );
@@ -1186,107 +1104,4 @@ class _Quiet extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({
-    required this.c,
-    required this.last,
-    required this.named,
-    required this.saving,
-    required this.onNext,
-    required this.quietLabel,
-    required this.onQuiet,
-  });
-
-  final StashColors c;
-  final bool last;
-  final bool named;
-  final bool saving;
-  final VoidCallback onNext;
-
-  /// "Use the full form instead" on the first screen, "Save now" after it.
-  final String quietLabel;
-
-  /// Null hides the quiet button — on the last screen, where the gold one
-  /// already says "Save item", and before there is a name to save.
-  final VoidCallback? onQuiet;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
-        child: Row(
-          children: [
-            /*
-              ── Expanded, and no Spacer beside it ─────────────────────────────
-
-              This was `Flexible` AND a `Spacer`, which is two things asking for
-              the same leftover width. The Spacer has flex 1 and always takes
-              what it asks for; Flexible only takes what its child needs and
-              gives up the rest — so the label was squeezed to whatever the
-              Spacer left and ellipsised to "Use the full form in…".
-
-              One flexible child, not two. The button takes the whole remaining
-              width and its text sits at the left of it, which puts the words
-              where a Spacer would have put the gap anyway.
-
-              "Save now" rather than "Skip", for the other slot: skip says the
-              question was a step you got out of, save says the thing exists —
-              which is true from the moment it has a name.
-            */
-            if (onQuiet != null)
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: onQuiet,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 44),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      quietLabel,
-                      maxLines: 1,
-                      // A backstop, not the plan. At 13pt the longest label is
-                      // comfortably inside what is left beside the gold button
-                      // on a 360dp phone.
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: fontBody,
-                        fontSize: 13,
-                        color: c.muted,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              const Spacer(),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: saving || !named ? null : onNext,
-              style: FilledButton.styleFrom(
-                backgroundColor: c.gold,
-                foregroundColor: c.onGold,
-                disabledBackgroundColor: c.slate600,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-              ),
-              child: Text(
-                saving ? 'Saving' : (last ? 'Save item' : 'Next'),
-                style: TextStyle(
-                  fontFamily: fontDisplay,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: named ? c.onGold : c.muted,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
 }

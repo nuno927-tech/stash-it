@@ -28,7 +28,7 @@ import 'scout.dart';
 import 'service_mark.dart';
 import 'status_pill.dart';
 import 'spend_line.dart';
-import 'sub_form_sheet.dart';
+import 'sub_wizard_sheet.dart';
 import 'sub_view_sheet.dart';
 import 'swipe_to_delete.dart';
 import 'theme.dart';
@@ -105,7 +105,7 @@ class _SubsTabState extends State<SubsTab> {
   // in. See the note there.
   Future<void> open(Subscription? sub) async {
     if (sub == null) {
-      await showSubForm(context, repo: widget.repo);
+      await showSubWizard(context, repo: widget.repo);
     } else {
       await showSubView(context, repo: widget.repo, sub: sub);
     }
@@ -135,7 +135,7 @@ class _SubsTabState extends State<SubsTab> {
             firstThing,
             pose: ScoutPose.calendar,
             onStash: () async {
-              await showSubForm(context, repo: widget.repo);
+              await showSubWizard(context, repo: widget.repo);
               if (context.mounted) setState(() {});
             },
           );
