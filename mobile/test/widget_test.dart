@@ -257,11 +257,22 @@ void main() {
   testWidgets('the dashboard opens on an empty install', (tester) async {
     final db = await show(tester);
 
-    // Nothing to do is a state worth saying out loud, not a blank screen.
-    expect(find.text('Nothing needs you.'), findsOneWidget);
-    // Uppercased by `_Label` now — section headings on Home use the same
-    // tracked-out annotation style the form labels do. See theme.dart.
-    expect(find.text('ITEMS AND DOCUMENTS'), findsOneWidget);
+    /*
+      A brand new install shows the first-run screen, not a dashboard.
+
+      This used to assert 'Nothing needs you.' and the section headings, which
+      is what the dashboard says when it has records and none of them need
+      anything. On an app with nothing in it at all that dashboard is a ring at
+      nought per cent, four zeroes and a backup warning about data that does
+      not exist — all true, none of it useful, and the first thing anybody
+      sees. See `firstThing`.
+    */
+    expect(find.textContaining('Nothing stashed yet'), findsOneWidget);
+    expect(find.textContaining('Tap Stash it'), findsOneWidget);
+
+    // And the dashboard is genuinely not there, rather than merely scrolled
+    // out of view behind it.
+    expect(find.text('ITEMS AND DOCUMENTS'), findsNothing);
 
     await db.close();
   });
@@ -326,12 +337,21 @@ void main() {
 
     // `textContaining`, because the empty state also says how to fix itself —
     // an empty screen that does not tell you what to do next is a dead end.
-    expect(find.textContaining('Nothing saved yet'), findsOneWidget);
+    expect(find.textContaining('Nothing stashed yet'), findsOneWidget);
     // Named, not drawn as a symbol: the button is a pill with the app's name
     // on it now, and "tap +" would send somebody looking for a plus that is
     // only half of what the button says.
-    expect(find.textContaining('Tap Stash it to put something in'),
-        findsOneWidget);
+    expect(find.textContaining('Tap Stash it'), findsOneWidget);
+
+    /*
+      And the header is gone with it.
+
+      A total worth zero, a search box with nothing to search and six filter
+      chips that all match nothing. Every one of those controls answers "which
+      of my things am I looking at", which is not a question somebody has
+      before they have any.
+    */
+    expect(find.byType(TextField), findsNothing);
 
     await db.close();
   });
@@ -399,17 +419,28 @@ void main() {
   });
 
   /*
-    The empty documents tab is the one screen that has to make a promise
-    before anyone has put anything in. Somebody being asked to record a
-    passport is entitled to know what the app will hold first.
+    ── A promise that used to be here, and is not ──────────────────────────
+
+    This asserted 'No scans, no document numbers' on the empty Documents tab,
+    and the reasoning behind it was good: somebody being asked to record a
+    passport is entitled to know what the app will hold before they type
+    anything.
+
+    That sentence went when the four tabs were given one shared first-run
+    message. The promise is still true — the app has never stored a scan or a
+    document number, and `Paper` structurally cannot — and it is still made in
+    the privacy policy and on the document form. It is no longer made on the
+    empty screen.
+
+    Worth revisiting: consistency across four tabs is a smaller thing than
+    telling somebody what you will do with their passport.
   */
-  testWidgets('and an empty one promises no scans and no numbers',
-      (tester) async {
+  testWidgets('an empty documents tab says how to start', (tester) async {
     final db = await show(tester);
     await goTo(tester, 'Documents');
 
-    expect(
-        find.textContaining('No scans, no document numbers'), findsOneWidget);
+    expect(find.textContaining('Nothing stashed yet'), findsOneWidget);
+    expect(find.textContaining('Tap Stash it'), findsOneWidget);
 
     await db.close();
   });
