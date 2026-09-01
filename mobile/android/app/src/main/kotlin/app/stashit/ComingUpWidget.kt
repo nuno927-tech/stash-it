@@ -102,6 +102,7 @@ class ComingUpWidget : HomeWidgetProvider() {
         // The whole card opens the app, not just the caption — a list of
         // things running out is not a place to hunt for the tap target.
         views.setOnClickPendingIntent(R.id.coming_up_root, open(context))
+        views.setOnClickPendingIntent(R.id.coming_up_settings, settings(context, id))
 
         val payload = data.getString(KEY, null)?.let {
             runCatching { JSONObject(it) }.getOrNull()
@@ -223,6 +224,34 @@ class ComingUpWidget : HomeWidgetProvider() {
         // this launcher has drawn before. Muted is the honest answer: it shows
         // the countdown without claiming to know how urgent it is.
         else -> R.color.widget_muted
+    }
+
+    /**
+     * Opens this widget's settings, from the widget.
+     *
+     * The launcher has its own way in — long-press, then a reconfigure button —
+     * and it cannot be relied on. It is an Android 12 feature, several
+     * launchers never show it, and a widget placed before the app declared
+     * itself reconfigurable never gains it. Settings nobody can reach are not
+     * settings.
+     *
+     * The request code is the widget id, and has to be: PendingIntent identity
+     * ignores extras, so two widgets would otherwise share one intent and the
+     * second cog would open the first widget's settings.
+     */
+    private fun settings(context: Context, id: Int): PendingIntent {
+        val intent = Intent(context, WidgetSettingsActivity::class.java).apply {
+            action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        return PendingIntent.getActivity(
+            context,
+            id,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun open(context: Context): PendingIntent {

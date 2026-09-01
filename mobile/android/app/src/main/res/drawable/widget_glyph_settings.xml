@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A cog. Muted rather than gold: it is a way in, not a thing to look at. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="@color/widget_muted">
+    <path android:fillColor="@android:color/white"
+        android:pathData="M12,8.5A3.5,3.5 0 1,0 12,15.5A3.5,3.5 0 1,0 12,8.5M12,10.5A1.5,1.5 0 1,1 12,13.5A1.5,1.5 0 1,1 12,10.5M10.6,2L10.2,4.6C9.6,4.9 9,5.2 8.5,5.6L6.1,4.6L4.7,7L6.7,8.7C6.6,9.1 6.6,9.6 6.6,10C6.6,10.4 6.6,10.9 6.7,11.3L4.7,13L6.1,15.4L8.5,14.4C9,14.8 9.6,15.1 10.2,15.4L10.6,18L13.4,18L13.8,15.4C14.4,15.1 15,14.8 15.5,14.4L17.9,15.4L19.3,13L17.3,11.3C17.4,10.9 17.4,10.4 17.4,10C17.4,9.6 17.4,9.1 17.3,8.7L19.3,7L17.9,4.6L15.5,5.6C15,5.2 14.4,4.9 13.8,4.6L13.4,2Z" />
+</vector>

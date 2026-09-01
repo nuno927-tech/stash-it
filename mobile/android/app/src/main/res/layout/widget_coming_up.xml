@@ -66,6 +66,23 @@
             android:maxLines="1"
             android:ellipsize="end" />
 
+        <!--
+            The way into this widget's own settings.
+
+            On the widget rather than left to the launcher's long-press menu,
+            because that menu is not a promise: the reconfigure button is an
+            Android 12 feature, several launchers never show it, and a widget
+            placed before the app declared itself reconfigurable does not gain
+            it at all. A widget with settings nobody can reach has no settings.
+        -->
+        <ImageView
+            android:id="@+id/coming_up_settings"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:padding="7dp"
+            android:src="@drawable/widget_glyph_settings"
+            android:contentDescription="@string/widget_settings_title" />
+
         <ImageView
             android:layout_width="30dp"
             android:layout_height="32dp"
