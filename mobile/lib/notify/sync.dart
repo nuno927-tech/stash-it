@@ -53,11 +53,34 @@ Future<int> syncReminders(Repository repo) async {
   // settings screen goes to zero rather than lying.
   if (!await notifications.permitted()) return 0;
 
-  final schedule = reminderSchedule(
-    await repo.activeItems(),
-    await repo.activeSubscriptions(),
-    await repo.activePapers(),
-  );
+  final items = await repo.activeItems();
+
+  final schedule = [
+    ...reminderSchedule(
+      items,
+      await repo.activeSubscriptions(),
+      await repo.activePapers(),
+    ),
+
+    /*
+      ── The backup, which nothing else can tell you about ──────────────────
+
+      Every other reminder here is derived from a record with a date on it.
+      This one is derived from an absence — the backup that has not happened —
+      and that is exactly why it has to be a notification rather than another
+      card on the dashboard. The person it is written for is the one who has
+      not opened the app in two months.
+
+      Merged into the same list rather than scheduled separately so the cap in
+      `reschedule` applies across the whole schedule. Two schedulers with one
+      OS limit between them is a bug waiting for a busy household.
+    */
+    ...backupWakes(
+      everyDays: settings.backupReminderDays,
+      itemCount: items.length,
+      lastBackupAt: settings.lastBackupAt,
+    ),
+  ]..sort((a, b) => a.on.compareTo(b.on));
 
   // The chosen hour, or nine. See `defaultSendHour` — a reminder arriving at
   // three in the morning is a reminder somebody switches off.

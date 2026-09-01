@@ -263,6 +263,82 @@ List<Wake> reminderSchedule(
   ];
 }
 
+/// The days to say a backup is overdue.
+///
+/// ── Why this is a wake and not just a card ────────────────────────────────
+/// The dashboard has carried this for a while — `backupNudge` for the warning
+/// and `backupStatus` for the standing fact. Both require somebody to open the
+/// app, and the person this is written for is the one who has not opened it in
+/// two months. The reminder that only fires when you are already looking is
+/// the reminder that never fires.
+///
+/// ── The same rules as the card, deliberately ──────────────────────────────
+/// `everyDays == 0` is somebody saying never, and must not be read as "every
+/// zero days". An empty collection is suppressed for the reason `backupNudge`
+/// gives: nagging someone to back up nothing is how a reminder teaches people
+/// to ignore reminders.
+///
+/// ── And it keeps asking ───────────────────────────────────────────────────
+/// One notification the day it falls due, then the same interval again while
+/// it stays overdue. A single warning that is missed is a warning that did not
+/// happen, and the thing being protected here is every record in the app.
+///
+/// Never backed up at all is overdue by definition: there is no date to count
+/// from and nothing anywhere but this phone.
+List<Wake> backupWakes({
+  required int everyDays,
+  required int itemCount,
+  DateTime? lastBackupAt,
+  DateTime? now,
+  int horizon = horizonDays,
+}) {
+  if (everyDays <= 0 || itemCount == 0) return const [];
+
+  final today = startOfDay(now ?? DateTime.now());
+  final until = addDays(today, horizon);
+  final days = <DateTime>[];
+
+  /*
+    Where the cycle starts.
+
+    From the last backup, not from today, so somebody who backs up on the 3rd
+    of the month keeps being asked on the 3rd. Anchoring to today would make
+    the date drift forward every time the app rescheduled, which is every
+    launch.
+  */
+  var due = lastBackupAt == null
+      ? today
+      : addDays(startOfDay(lastBackupAt), everyDays);
+
+  if (due.isBefore(today)) {
+    // Already overdue, and nothing has said so. Today, then back on the cycle.
+    days.add(today);
+    while (!due.isAfter(today)) {
+      due = addDays(due, everyDays);
+    }
+  }
+
+  while (!due.isAfter(until)) {
+    days.add(due);
+    due = addDays(due, everyDays);
+  }
+
+  return [
+    for (final day in days)
+      Wake(
+        toIsoDate(day),
+        'Back up your stash',
+        // No count and no names. What is overdue is the backup, and the number
+        // of records is not the reason to act — it is the same sentence whether
+        // there are four or four hundred.
+        'It has been a while since your last backup.',
+        'home',
+        'Everything you have stashed lives on this phone only. '
+            'Settings, then Back up now, takes a moment.',
+      ),
+  ];
+}
+
 /// What the notification says.
 ///
 /// ── Detail, and where it is safe to put it ────────────────────────────────

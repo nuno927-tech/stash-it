@@ -33,6 +33,7 @@ import 'bin_screen.dart';
 import 'confetti.dart';
 import 'confirm_delete.dart';
 import 'diagnostics.dart';
+import 'schedule_screen.dart';
 import 'feedback.dart';
 import 'parts.dart';
 import 'prefs_scope.dart';
@@ -49,7 +50,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.89.0';
+const appVersion = '0.90.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1464,15 +1465,6 @@ class _SettingsTabState extends State<SettingsTab> {
           _Card(
             title: 'Developer',
             children: [
-              Text(
-                'SQLCipher, with a key from the Android Keystore. The app '
-                'refuses to open if the library did not load, rather than '
-                'writing a plaintext database it believes is encrypted.',
-                style: TextStyle(
-                    fontFamily: fontBody, fontSize: 12, color: c.muted),
-              ),
-              _Rule(c),
-
               /*
                     ── Read-only, and that is why it ships ──────────────────────
 
@@ -1490,6 +1482,26 @@ class _SettingsTabState extends State<SettingsTab> {
                 label: 'Diagnostics',
                 note: 'Counts and versions, copyable. Nothing private.',
                 onTap: () => showDiagnostics(context, widget.repo),
+              ),
+              _Rule(c),
+
+              /*
+                    ── The one part of the app that cannot be watched ───────────
+
+                    A notification is scheduled now and arrives days later, on a
+                    phone that may have been off, after an OS free to delay it.
+                    When one does not turn up there is nothing to inspect, and
+                    "never scheduled" looks exactly like "scheduled and
+                    swallowed".
+
+                    This lists what will fire and when, alongside what the phone
+                    says it is holding — two numbers that should agree and are
+                    worth seeing when they do not.
+                  */
+              _LinkRow(
+                label: 'Scheduled reminders',
+                note: 'What will fire, and when.',
+                onTap: () => showSchedule(context, widget.repo),
               ),
               _Rule(c),
 

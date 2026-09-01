@@ -170,32 +170,39 @@ Future<Diagnostics> gather(Repository repo, {required double textScale}) async {
   return Diagnostics(sections: sections, text: buffer.toString());
 }
 
+/// Opens diagnostics as a screen of its own.
+///
+/// ── A page, not a sheet ────────────────────────────────────────────────────
+/// The rest of the app opens things in a two-thirds sheet, and that idiom
+/// earns its place: a sheet keeps the screen behind it visible, which is right
+/// when you are picking a thing or filling one field.
+///
+/// This is neither. It is thirty-odd rows of numbers somebody reads top to
+/// bottom, usually while typing them into a support email — and a sheet fights
+/// that on both counts. It gives up a third of the height to a screen nobody
+/// is looking at, and every scroll to the top risks a drag that dismisses the
+/// whole thing.
+///
+/// So it gets the full page and a back button, which is what a document is.
 Future<void> showDiagnostics(BuildContext context, Repository repo) {
   feedback(Cue.expand);
 
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: StashColors.of(context).slate900,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-    ),
-    builder: (context) => _Diagnostics(repo: repo),
+  return Navigator.of(context, rootNavigator: true).push<void>(
+    MaterialPageRoute(builder: (context) => DiagnosticsScreen(repo: repo)),
   );
 }
 
-class _Diagnostics extends StatefulWidget {
-  const _Diagnostics({required this.repo});
+/// Public because it is a route now rather than a sheet's contents.
+class DiagnosticsScreen extends StatefulWidget {
+  const DiagnosticsScreen({required this.repo, super.key});
 
   final Repository repo;
 
   @override
-  State<_Diagnostics> createState() => _DiagnosticsState();
+  State<DiagnosticsScreen> createState() => _DiagnosticsState();
 }
 
-class _DiagnosticsState extends State<_Diagnostics> {
+class _DiagnosticsState extends State<DiagnosticsScreen> {
   /*
     Read once, in `didChangeDependencies` rather than in a field initialiser,
     because the text scale comes from an inherited widget and reading one of
@@ -221,9 +228,22 @@ class _DiagnosticsState extends State<_Diagnostics> {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return FractionallySizedBox(
-      heightFactor: 0.85,
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: c.slate900,
+      appBar: AppBar(
+        backgroundColor: c.slate900,
+        title: Text(
+          'Diagnostics',
+          style: TextStyle(
+            fontFamily: fontDisplay,
+            fontWeight: FontWeight.w800,
+            fontSize: 22,
+            letterSpacing: -0.6,
+            color: c.text,
+          ),
+        ),
+      ),
+      body: SafeArea(
         top: false,
         child: FutureBuilder<Diagnostics>(
           future: _data,
@@ -237,19 +257,10 @@ class _DiagnosticsState extends State<_Diagnostics> {
               children: [
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                     children: [
-                      Text(
-                        'Diagnostics',
-                        style: TextStyle(
-                          fontFamily: fontDisplay,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 26,
-                          letterSpacing: -0.7,
-                          color: c.text,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
+                      // The title lives in the app bar now. What is left is the
+                      // sentence that matters: what this is safe to do with.
                       Text(
                         'Counts and versions only — no names, no dates, nothing '
                         'out of your records. Safe to paste into an email.',
