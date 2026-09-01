@@ -259,6 +259,7 @@ WidgetLine _lineOf(Entry entry) {
     detail: entry.detail,
     value: value,
     unit: unit ?? '',
+    kind: entry.kind,
     tone: switch (entry.urgency) {
       Urgency.overdue || Urgency.now => WidgetTone.late_,
       Urgency.soon => WidgetTone.soon,
