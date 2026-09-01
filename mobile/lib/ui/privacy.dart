@@ -61,8 +61,11 @@ const List<(String, String)> _policy = [
         '• Everything stays on this phone, in a database encrypted with a key '
         'held by the phone itself.\n\n'
         '• No analytics, no trackers, no ads. None. Not a launch counter.\n\n'
-        '• The app requests no internet permission, so it could not send '
-        'anything anywhere even if it were asked to.',
+        '\u2022 The app itself never sends anything anywhere. Nothing you '
+        'record leaves this phone unless you share it deliberately.\n\n'
+        '\u2022 The one exception is buying the unlock, which Google Play '
+        'handles rather than us \u2014 and it is the only reason the app can '
+        'reach the network at all.',
   ),
   (
     'What is stored, and where',

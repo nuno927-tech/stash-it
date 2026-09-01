@@ -28,11 +28,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../db/repository.dart';
 import '../logic/card.dart';
 import '../logic/dates.dart';
 import '../logic/format.dart';
+import '../logic/manuals.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
@@ -155,6 +157,7 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
                 if (schedule.isNotEmpty) _cover(c, schedule),
                 _facts(c),
                 _files(c),
+                _manual(c),
               ],
             ),
           ),
@@ -330,6 +333,72 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /* --------------------------------------------------------------- manual */
+
+  /*
+    ── A way to the manual, not the manual ──────────────────────────────────
+
+    The brand and model are already typed, which is nine tenths of finding a
+    manual — so the app builds the manufacturer's own search URL and hands it to
+    the browser. See `logic/manuals.dart` for why it does not fetch anything
+    itself, and why the manufacturer's site beats a web search.
+
+    Shown only when there is a model. Brand alone lands on a support home page,
+    which is a button that promises an answer and delivers a menu.
+  */
+  Widget _manual(StashColors c) {
+    if ((_item.model ?? '').trim().isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const ViewLabel('Manual'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              feedback(Cue.tap);
+              final where =
+                  manualSearch(brand: _item.brand, model: _item.model);
+              await launchUrl(where, mode: LaunchMode.externalApplication);
+            },
+            icon: Icon(Icons.menu_book_outlined, size: 17, color: c.gold),
+            label: Text(
+              manualButtonLabel(_item.brand),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: c.text,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: c.line),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.md),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            // Says where it goes before it goes there. A button that silently
+            // leaves the app is the one thing this app should never do quietly.
+            'Opens your browser. Nothing is sent from Stash it.',
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 11.5,
+              color: c.muted,
+            ),
+          ),
+        ],
       ),
     );
   }
