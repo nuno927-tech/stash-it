@@ -265,8 +265,16 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
             ),
           ),
 
-          // Pinned under the list, so a long card scrolls behind a button
-          // that never leaves — the footer shape the view sheets use.
+          /*
+            Pinned under the list, so a long card scrolls behind a button that
+            never leaves — the footer shape the view sheets use.
+
+            Full width, and told so: a `FilledButton` in a centred `Column`
+            sizes to its own text, and a pill radius on something that narrow
+            reads as a lozenge rather than as the one action on the sheet. The
+            view sheets get their width from an `Expanded` in a `Row`; this has
+            no row to sit in, so it says so directly.
+          */
           Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             decoration: BoxDecoration(
@@ -275,25 +283,34 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
             ),
             child: SafeArea(
               top: false,
-              child: FilledButton(
-                onPressed: _busy || _keep.isEmpty || over ? null : _add,
-                style: FilledButton.styleFrom(
-                  backgroundColor: c.gold,
-                  disabledBackgroundColor: c.slate600,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Radii.pill),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _busy || _keep.isEmpty || over ? null : _add,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.gold,
+                    disabledBackgroundColor: c.slate600,
+                    // Fifteen, like every other primary button in the app. It
+                    // was sixteen, copied from a `bottomNavigationBar` that sat
+                    // on the window's own inset and could afford the extra.
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
                   ),
-                ),
-                child: Text(
-                  _keep.isEmpty
-                      ? 'Nothing ticked'
-                      : 'Add ${_keep.length} to my stash',
-                  style: TextStyle(
-                    fontFamily: fontDisplay,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15.5,
-                    color: _busy || _keep.isEmpty || over ? c.muted : c.onGold,
+                  child: Text(
+                    _keep.isEmpty
+                        ? 'Nothing ticked'
+                        : 'Add ${_keep.length} to my stash',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5,
+                      color:
+                          _busy || _keep.isEmpty || over ? c.muted : c.onGold,
+                    ),
                   ),
                 ),
               ),
