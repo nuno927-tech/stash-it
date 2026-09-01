@@ -16,9 +16,11 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:crypto/crypto.dart';
 
 import '../db/backup.dart';
+import '../logic/backup_progress.dart';
 import '../db/tables.dart';
 import '../logic/bundle.dart';
 import '../models/types.dart';
@@ -122,21 +124,57 @@ List<int> writeBundle({
 /// four steps itself — is a caller that can get the order wrong, and getting
 /// the order wrong means a checksum over bytes that are not the bytes in the
 /// file. The reader would then refuse every backup this app produced.
-Future<List<int>> exportBackup(StashDatabase db) async {
-  final contents = await gatherBackup(db);
+Future<List<int>> exportBackup(
+  StashDatabase db, {
+  BackupWatcher? onStep,
+}) async {
+  final contents = await gatherBackup(db, onStep: onStep);
 
-  final bytes = writeBundle(
+  onStep?.call(const BackupProgress(BackupStage.sealing));
+
+  /*
+    ── Hashed and zipped on another isolate ─────────────────────────────────
+
+    This is the step that made the app look like it had crashed. Encoding the
+    JSON, hashing it and deflating a hundred and sixty megabytes is one long
+    synchronous push, and on the UI isolate it blocks every frame for its whole
+    duration — no spinner, no bar, no touch response. Adding a progress
+    indicator without moving this would have produced a progress indicator that
+    freezes, which is worse: it looks broken rather than busy.
+
+    `compute` spawns an isolate, so the work happens where it cannot stop the
+    screen. Everything crossing over is plain data — maps, lists, bytes — which
+    is exactly what `writeBundle` was already built to take, because it was
+    written to be testable without a database.
+  */
+  final bytes = await compute(_seal, (
     tables: contents.tables,
     blobs: contents.blobs,
-    manifestOverrides: {
-      'counts': {
-        'items': contents.counts.$1,
-        'docs': contents.counts.$2,
-        'blobs': contents.counts.$3,
-      },
-    },
-  );
+    counts: contents.counts,
+  ));
 
   await markBackedUp(db);
+  onStep?.call(const BackupProgress(BackupStage.done));
   return bytes;
 }
+
+/// The isolate's half of `exportBackup`. Top-level, because `compute` cannot
+/// send a closure.
+List<int> _seal(
+  ({
+    Map<String, Object?> tables,
+    Map<String, List<int>> blobs,
+    (int, int, int) counts,
+  }) work,
+) =>
+    writeBundle(
+      tables: work.tables,
+      blobs: work.blobs,
+      manifestOverrides: {
+        'counts': {
+          'items': work.counts.$1,
+          'docs': work.counts.$2,
+          'blobs': work.counts.$3,
+        },
+      },
+    );

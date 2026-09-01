@@ -12,6 +12,7 @@ library;
 
 import 'package:drift/drift.dart';
 
+import '../logic/backup_progress.dart';
 import '../logic/bundle_write.dart';
 import 'mapping.dart';
 import 'tables.dart';
@@ -32,14 +33,53 @@ class BackupContents {
 /// Soft-deleted rows travel. A restore has to be able to undo an accidental
 /// delete, and a backup that quietly drops the bin turns "I deleted the wrong
 /// thing and restored yesterday's file" into a dead end.
-Future<BackupContents> gatherBackup(StashDatabase db) async {
+Future<BackupContents> gatherBackup(
+  StashDatabase db, {
+  BackupWatcher? onStep,
+}) async {
+  onStep?.call(const BackupProgress(BackupStage.reading));
+
   final items = await db.select(db.items).get();
   final docs = await db.select(db.docs).get();
   final rooms = await db.select(db.rooms).get();
   final subs = await db.select(db.subscriptions).get();
   final papers = await db.select(db.papers).get();
-  final blobs = await db.select(db.blobs).get();
   final settings = await db.select(db.settingsTable).getSingleOrNull();
+
+  /*
+    ── The photographs are read in batches, not all at once ─────────────────
+
+    `select(db.blobs).get()` pulled every photograph into memory in one go. On
+    a real collection that is the whole backup — a hundred and sixty megabytes
+    on the one this was tested against — arriving as a single allocation with
+    nothing on screen to say why the app had stopped answering.
+
+    Reading the ids first costs one cheap query and buys two things: a total to
+    count against, so the bar can be honest, and an `await` between batches, so
+    the frame after each one actually paints. A progress bar on a starved event
+    loop is a still image.
+  */
+  final ids = await (db.selectOnly(db.blobs)..addColumns([db.blobs.id]))
+      .map((row) => row.read(db.blobs.id)!)
+      .get();
+
+  final blobFiles = <String, List<int>>{};
+  const batch = 8;
+
+  for (var i = 0; i < ids.length; i += batch) {
+    final slice = ids.sublist(i, (i + batch).clamp(0, ids.length));
+    final rows =
+        await (db.select(db.blobs)..where((t) => t.id.isIn(slice))).get();
+
+    for (final b in rows) {
+      blobFiles[blobPath(b.id, b.mime)] = b.bytes;
+    }
+    onStep?.call(BackupProgress(
+      BackupStage.packing,
+      done: blobFiles.length,
+      total: ids.length,
+    ));
+  }
 
   /*
     The keys are the table names the reader expects, and their order in the
@@ -59,10 +99,8 @@ Future<BackupContents> gatherBackup(StashDatabase db) async {
 
   return BackupContents(
     tables,
-    {
-      for (final b in blobs) blobPath(b.id, b.mime): b.bytes,
-    },
-    (items.length, docs.length, blobs.length),
+    blobFiles,
+    (items.length, docs.length, ids.length),
   );
 }
 

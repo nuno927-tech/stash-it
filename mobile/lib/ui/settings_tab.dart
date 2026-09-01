@@ -41,6 +41,7 @@ import 'tour_screen.dart';
 import 'pro_badge.dart';
 import '../io/card_file.dart';
 import 'ask_text.dart';
+import 'backup_sheets.dart';
 import 'card_arrival_screen.dart';
 import 'unlock_sheet.dart';
 import 'rooms_screen.dart';
@@ -48,7 +49,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.81.0';
+const appVersion = '0.82.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -224,8 +225,25 @@ class _SettingsTabState extends State<SettingsTab> {
 
       final bytes = await File(path).readAsBytes();
       final bundle = parseBackupBytes(bytes);
-      final result = await restoreInto(widget.repo.db, bundle);
 
+      if (!mounted) return;
+      final result = await runWithAcorns<RestoreResult>(
+        context,
+        title: 'Putting everything back',
+        job: (_) => restoreInto(widget.repo.db, bundle),
+      );
+
+      if (!mounted) return;
+      await showRestoreDone(
+        context,
+        items: result.items,
+        papers: result.papers,
+        subscriptions: result.subscriptions,
+        files: result.blobs,
+      );
+
+      // Still said in the card as well, for somebody who dismissed the sheet
+      // before reading it.
       _say('Restored ${result.items} items, ${result.papers} documents, '
           '${result.subscriptions} subscriptions and ${result.blobs} files.');
     } on BundleError catch (e) {
@@ -301,8 +319,15 @@ class _SettingsTabState extends State<SettingsTab> {
     setState(() => _busy = true);
 
     try {
-      final bytes = await exportBackup(widget.repo.db);
+      // Behind a sheet with a moving bar — the sealing step alone can hold the
+      // phone for seconds, and it used to do that with nothing on screen.
+      final bytes = await runWithAcorns<List<int>>(
+        context,
+        title: 'Gathering everything',
+        job: (onStep) => exportBackup(widget.repo.db, onStep: onStep),
+      );
 
+      if (!mounted) return;
       final dir = await getTemporaryDirectory();
       final file = File(p.join(dir.path, backupFileName()));
       await file.writeAsBytes(bytes);
