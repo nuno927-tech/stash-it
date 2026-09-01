@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Coming up: what runs out next.
+
+    ── Why this one is not a picture ──────────────────────────────────────────
+
+    The ring is rendered in Flutter and shown as a PNG, because RemoteViews
+    cannot draw an arc. This could have been too, and should not be: a list is
+    the one thing where a picture is actively wrong. Dragging a list taller
+    means "show me more", and a picture can only get bigger — the same three
+    rows in larger type.
+
+    So the rows are real views and the provider fills them, which is also what
+    lets it decide how many fit. Six is the ceiling; ComingUpWidget.kt hides
+    the rest.
+
+    ── Six copies of the same eleven lines ────────────────────────────────────
+
+    RemoteViews has no <include> that can be addressed afterwards and no way to
+    build a view in a loop, so a row that the provider needs to reach by id has
+    to exist in the XML by id. Six rows is six copies. The alternative is a
+    RemoteViewsService with an adapter — a bound service, a factory class and a
+    second process boundary — to save repetition in a file nobody reads twice.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/coming_up_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
+
+    <!-- The masthead, as on Quick add: wordmark left, Scout in the corner. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="2dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            style="@style/WidgetWordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_wordmark_stash"
+            android:textColor="@color/widget_text" />
+
+        <TextView
+            style="@style/WidgetWordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_wordmark_it"
+            android:textColor="@color/widget_gold" />
+
+        <TextView
+            android:id="@+id/coming_up_caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/widget_coming_up_label"
+            android:textColor="@color/widget_muted"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="32dp"
+            android:src="@drawable/widget_scout"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/widget_scout" />
+    </LinearLayout>
+
+    <!--
+        What the list says when it has nothing to say, which is never nothing.
+        Shown instead of the rows, and the sentence comes from Dart because
+        which emptiness this is depends on the database.
+    -->
+    <TextView
+        android:id="@+id/coming_up_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="4dp"
+        android:paddingTop="6dp"
+        android:text="@string/widget_coming_up_label"
+        android:textColor="@color/widget_muted"
+        android:textSize="13sp"
+        android:visibility="gone"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <LinearLayout
+        android:id="@+id/row_0"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_0_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_0_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_0_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_1"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_1_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_1_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_1_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_2"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_2_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_2_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_2_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_3"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_3_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_3_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_3_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_4"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_4_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_4_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_4_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_5"
+        style="@style/WidgetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/row_5_title"
+            style="@style/WidgetRowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/row_5_value"
+            style="@style/WidgetRowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/row_5_unit"
+            style="@style/WidgetRowUnit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</LinearLayout>

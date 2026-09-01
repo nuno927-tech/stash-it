@@ -33,6 +33,7 @@
 /// worth it for a number that is one tap from being right.
 library;
 
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
@@ -47,7 +48,10 @@ import '../ui/widget_face.dart';
 ///
 /// Fully qualified, because `updateWidget` resolves a bare name against the
 /// package it thinks is running and gets that wrong in a flavoured build.
-const List<String> _providers = ['app.stashit.RingWidget'];
+const List<String> _providers = [
+  'app.stashit.RingWidget',
+  'app.stashit.ComingUpWidget',
+];
 
 /// Keys the Kotlin side reads. Changing one here changes nothing there, which
 /// is exactly the sort of break that shows up as a blank widget and no error,
@@ -55,6 +59,15 @@ const List<String> _providers = ['app.stashit.RingWidget'];
 const String ringDarkKey = 'ring_dark';
 const String ringLightKey = 'ring_light';
 const String ringWordsKey = 'ring_words';
+
+/// Coming up travels as data rather than as a picture.
+///
+/// The ring is one fixed composition and scales; a list is not. Somebody who
+/// drags this widget taller expects more rows, and more rows is exactly what a
+/// picture cannot give them — it can only get bigger. So the lines cross as
+/// JSON and the launcher lays them out itself, which is also what lets it
+/// decide how many will fit.
+const String comingUpKey = 'coming_up';
 
 /// Rendered at 3x, so a picture drawn for a 2x2 cell is still sharp when
 /// somebody stretches it across four. Cheap: it is one 480px square.
@@ -82,6 +95,27 @@ Future<void> mirrorWidgets(Repository repo) async {
       "image" is a widget somebody blind has no reason to keep. The Kotlin side
       puts this on the ImageView's contentDescription.
     */
+    await HomeWidget.saveWidgetData<String>(
+      comingUpKey,
+      jsonEncode({
+        'lines': [for (final line in payload.lines) line.toJson()],
+        /*
+          The empty sentence is written here rather than in Kotlin, because
+          which emptiness this is depends on the database — nothing stashed at
+          all reads differently from nothing coming up, and one of those is
+          fixed by adding something while the other is not.
+        */
+        'empty': emptyWidgetLine(
+          anythingStashed: payload.inDate +
+                  payload.needsAction +
+                  payload.lapsed +
+                  payload.noDate >
+              0,
+          kinds: const WidgetKinds(),
+        ),
+      }),
+    );
+
     await HomeWidget.saveWidgetData<String>(
       ringWordsKey,
       '${payload.percent} per cent still in date. '

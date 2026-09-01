@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A list, so height is the axis that matters.
+
+    Four cells by two to begin with — three rows and the masthead — and it
+    resizes tall enough for six, which is `widgetMaxLines` and the most the
+    payload ever carries. Dragging it taller genuinely shows more, which is the
+    whole reason this widget is real views rather than a rendered picture.
+
+    Narrow is where it degrades: the row is a name and a countdown, and below
+    about three cells the name is all ellipsis. minResizeWidth says so.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="280dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_coming_up"
+    android:previewLayout="@layout/widget_coming_up"
+    android:description="@string/widget_coming_up_description"
+    android:updatePeriodMillis="0" />

@@ -31,4 +31,47 @@
         <item name="android:ellipsize">end</item>
         <item name="android:includeFontPadding">false</item>
     </style>
+
+    <!--
+        One row of the Coming up list: a name on the left, a countdown on the
+        right. The whole row is one tap target, so the padding is generous
+        enough to hit with a thumb rather than tuned to look tight.
+    -->
+    <style name="WidgetRow">
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:paddingTop">5dp</item>
+        <item name="android:paddingBottom">5dp</item>
+    </style>
+
+    <style name="WidgetRowTitle">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/widget_text</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!--
+        The number, coloured by tone. The colour is set by the provider from
+        @color/widget_moss, _honey or _ember — a hex string travelling in the
+        payload would be a second copy of the palette, and the one nobody
+        remembers to change.
+    -->
+    <style name="WidgetRowValue">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <!-- "days", "months". A unit is not a number: same tone, smaller, and it
+         follows the figure rather than competing with it. -->
+    <style name="WidgetRowUnit">
+        <item name="android:textSize">11sp</item>
+        <item name="android:layout_marginStart">3dp</item>
+        <item name="android:textColor">@color/widget_muted</item>
+        <item name="android:maxLines">1</item>
+    </style>
 </resources>
