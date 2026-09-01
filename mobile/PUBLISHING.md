@@ -119,13 +119,18 @@ diffed rather than depending on when the machine last ran `flutter upgrade`.
    `SafeArea` will sit underneath them. Check the tab bar, the add button, and
    the top of every bottom sheet.
 
-**One related thing left open:** `minSdk` still reads `flutter.minSdkVersion`,
-under a comment claiming it's set explicitly. It isn't, and the comment is
-wrong. It's very likely fine — SQLCipher needs API 23 and every current Flutter
-default is above it — but that's a different claim from the one the comment
-makes. Build once, read the number out of the merged manifest, and pin it.
-It decides which phones can install the app at all, so it's worth knowing
-rather than inheriting.
+**`minSdk` is now pinned — done in 0.89.0.** It reads `26` (Android 8.0),
+where it used to read `flutter.minSdkVersion`, which is not a number at all: it
+is whatever the installed Flutter defaults to that month.
+
+26 covers roughly 99% of active Android phones, and the 1% buys something
+specific. Home screen widgets load a font from `res/font/`, which starts at
+exactly 26, and their icons are vector drawables, which are unreliable inside a
+widget below API 24. Neither failure is catchable — the widget simply does not
+appear.
+
+This number decides which phones can install the app at all. Lowering it later
+is free; raising it after release silently drops people who already have it.
 
 ### 2.3 Give it a version number Play will accept — done in 0.61.2
 
@@ -472,7 +477,7 @@ No forms, no review queue in most cases. Updates are usually live within hours.
 - [x] `targetSdk = 36` and `compileSdk = 36` pinned in build.gradle.kts
 - [ ] SDK Platform 36 installed, and a build tested on a real phone for
       edge-to-edge problems
-- [ ] `minSdk` pinned to a real number instead of Flutter's default
+- [x] `minSdk` pinned to a real number instead of Flutter's default — 26
 - [x] `version:` has a `+build` number — remember to raise it every upload
 - [x] Privacy policy written for this app and live at
       `nuno927-tech.github.io/stash-it/privacy-android.html`

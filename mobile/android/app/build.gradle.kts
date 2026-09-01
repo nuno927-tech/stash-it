@@ -66,9 +66,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
 
-        // flutter_local_notifications uses java.time, which arrived in API 26.
-        // Desugaring back-ports it so the app still runs on Android 6, which is
-        // where minSdk is set — see the note below.
+        /*
+           flutter_local_notifications uses java.time, which arrived in API 26.
+
+           minSdk is now 26 as well, so nothing here needs back-porting any
+           more and this could go. It stays because it costs a few hundred
+           kilobytes and removing it turns any future lowering of the floor
+           into a link error nobody would connect to this line.
+        */
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -82,25 +87,36 @@ android {
         applicationId = "app.stashit"
 
         /*
-          ── This comment and this line disagree, and the line wins ──────────
+           ── Pinned, and pinned high on purpose ──────────────────────────────
 
-          It says "set here rather than left at Flutter's default", and then
-          reads Flutter's default. Whatever it once said, today the floor of
-          this app is whatever the installed Flutter thinks it should be.
+           This was `flutter.minSdkVersion`, which is not a number — it is
+           whatever the installed Flutter happens to default to that month. The
+           floor of an app decides which phones can install it at all, and
+           having it move when somebody upgrades their tools is the wrong kind
+           of surprise: raising it silently drops people who already have the
+           app installed.
 
-          It is probably fine: sqlcipher_flutter_libs needs API 23 and every
-          current Flutter default is above that, which is why nobody has
-          noticed. But "probably fine, and it would fail loudly if not" is a
-          different claim from the one the comment makes, and minSdk is the
-          number that decides which phones can install this at all — raising
-          it silently drops users who already have the app.
+           26 is Android 8.0, which is about 99% of active devices. The 1% is a
+           real cost and it buys something specific — everything the app does
+           works there with no fallbacks:
 
-          Left as-is rather than pinned to a guess, because unlike targetSdk
-          there is no deadline forcing the question and no way to check from
-          here what it currently resolves to. Run `flutter build appbundle
-          --release` and read the merged manifest, then pin it to that number.
+             Home screen widgets can load a font from res/font/. That starts at
+             26 exactly, and an unresolvable font reference does not degrade,
+             it stops the widget inflating.
+
+             Widget icons are vector drawables. Those are unreliable inside
+             RemoteViews below API 24 and can throw while the LAUNCHER inflates
+             them, which reaches the home screen as "an error occurred loading
+             widget" and cannot be caught here.
+
+           Both of those are already written defensively, and at 26 neither
+           defence can ever run. Kept anyway: a floor that gets lowered later
+           should not silently break the widgets.
+
+           Raise this only with a reason. Lowering it is free; raising it after
+           release is not.
         */
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
 
         targetSdk = 36
         versionCode = flutter.versionCode
