@@ -331,9 +331,19 @@ const List<String> coverageLabels = [
   'Limited warranty',
   'Extended warranty',
   'Parts and labor',
-  'Money back',
-  'Free service',
 ];
+
+/*
+  ── Two names came off this list ──────────────────────────────────────────
+
+  "Money back" and "Free service" went, leaving four plus Custom. They were
+  real answers and rare ones, and each cost a segment on a row that was already
+  two rows tall — which is most of why the warranty card read as bloated.
+
+  Nothing is lost: Custom takes anything, and it asks properly. A record
+  restored from a backup that already says "Money back" keeps saying it —
+  `isCustomLabel` will simply call it a custom name, which is now true.
+*/
 
 /// True when the label is something the person wrote rather than one on offer.
 ///

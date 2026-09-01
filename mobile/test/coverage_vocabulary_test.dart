@@ -14,22 +14,31 @@ void main() {
     /*
       The order is the layout.
 
-      The form draws these as two rows of three — what kind of policy it is,
+      The form draws these as two rows and a Custom seat — what kind of policy
       then what it does for you. Reordering the list silently reshuffles the
       buttons on the screen, which is exactly the sort of change that looks
       harmless in a diff.
     */
-    test('is two rows of three, in order', () {
-      expect(coverageLabels, hasLength(6));
-      expect(coverageLabels.take(3), [
+    test('is four names, split two and three, in order', () {
+      /*
+        Four, not six. "Money back" and "Free service" came off: real answers
+        and rare ones, each costing a segment on a control that was two rows of
+        three and needed two lines per label to fit them. The card read as
+        bloated and that was most of the reason.
+
+        The split is two and three because the names are uneven — "Warranty"
+        against "Extended warranty" — and the long ones need half a bar each to
+        stay on one line. The third seat on the second row is Custom, which the
+        control adds itself.
+      */
+      expect(coverageLabels, hasLength(4));
+      expect(coverageLabels.take(2), [
         'Warranty',
         'Limited warranty',
-        'Extended warranty',
       ]);
-      expect(coverageLabels.skip(3), [
+      expect(coverageLabels.skip(2), [
+        'Extended warranty',
         'Parts and labor',
-        'Money back',
-        'Free service',
       ]);
     });
 
@@ -47,11 +56,25 @@ void main() {
       expect(isCustomLabel('warranty'), isTrue, reason: 'case matters');
     });
 
-    test('the six are not', () {
+    test('the four are not, whitespace and all', () {
       for (final label in coverageLabels) {
         expect(isCustomLabel(label), isFalse);
+        expect(isCustomLabel('  $label  '), isFalse);
       }
-      expect(isCustomLabel('  Money back  '), isFalse);
+    });
+
+    test('a name that used to be on the list is custom now', () {
+      /*
+        "Money back" was one of the six and is not one of the four. A record
+        restored from a backup keeps saying it, and this is what becomes of it:
+        the Custom slot, showing its own name.
+
+        The honest outcome rather than a bug — it IS a custom name now, nothing
+        is lost, and the alternative would be a hidden option only somebody's
+        old data can reach.
+      */
+      expect(isCustomLabel('Money back'), isTrue);
+      expect(isCustomLabel('Free service'), isTrue);
     });
 
     /*

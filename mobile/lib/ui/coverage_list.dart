@@ -71,7 +71,7 @@ class _CoverageListState extends State<CoverageList> {
             ),
           _one(context, c, i),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         /*
           A list, not two fixed slots.
@@ -137,24 +137,38 @@ class _CoverageListState extends State<CoverageList> {
           rather than leaving an empty field in front of everybody who did not
           need one.
         */
+        /*
+          Two and three, not three and two.
+
+          The names are uneven — "Warranty" against "Extended warranty" — and
+          the long ones need the width. Splitting after the first two puts the
+          two longest on a row with half the bar each, which is what stops
+          them wrapping to a second line and doubling the height of the whole
+          control.
+
+          One line each for the same reason. Two was most of why this card
+          read as bloated.
+        */
         SegRow<String?>(
           // Null when the name came from Custom, so neither row lights up
           // something the person did not choose.
           value: custom ? null : cov.label,
           options: [
-            for (final name in coverageLabels.take(3)) (name, name),
+            for (final name in coverageLabels.take(2)) (name, name),
           ],
+          lines: 1,
           onPick: (v) => _changed(() => cov.label = v!),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         SegRow<String>(
           value: custom ? '' : cov.label,
           options: [
-            for (final name in coverageLabels.skip(3)) (name, name),
+            for (final name in coverageLabels.skip(2)) (name, name),
             // Shows the custom name once there is one, so the row still says
             // what it is without a separate field repeating it back.
             ('', custom ? cov.label : 'Custom'),
           ],
+          lines: 1,
           onPick: (v) async {
             if (v.isNotEmpty) {
               _changed(() => cov.label = v);
@@ -180,7 +194,7 @@ class _CoverageListState extends State<CoverageList> {
           happened to be a word and the other happened to be a unit.
         */
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           child: Container(height: 1, color: c.line),
         ),
         SegRow<CoverageUnit>(
@@ -244,7 +258,7 @@ class _CoverageListState extends State<CoverageList> {
             ),
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         /*
           The rest of a policy behind one press.

@@ -525,6 +525,20 @@ class SegRow<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.pill),
       ),
       child: Row(
+        /*
+          ── The lit one fills the bar ────────────────────────────────────────
+
+          Every segment is the same WIDTH because of `Expanded`, and used to be
+          its own HEIGHT: a container sizes to its content, so a one-line label
+          made a short pill inside a bar whose height came from a two-line one
+          somewhere else in the row. The result was a lit pill floating with a
+          gap above and below it.
+
+          `stretch` gives every segment the row's full height, and the
+          alignment below centres the words inside it — without that they would
+          sit at the top of the segment they now fill.
+        */
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final (key, label) in options)
             Expanded(
@@ -536,8 +550,9 @@ class SegRow<T> extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
+                  alignment: Alignment.center,
                   padding:
-                      const EdgeInsets.symmetric(vertical: 11, horizontal: 3),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
                   decoration: BoxDecoration(
                     color: key == value ? c.slate600 : Colors.transparent,
                     borderRadius: BorderRadius.circular(Radii.pill),
