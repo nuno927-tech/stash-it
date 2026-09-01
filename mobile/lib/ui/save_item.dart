@@ -28,12 +28,12 @@ import 'package:flutter/widgets.dart';
 
 import '../billing/current.dart';
 import '../db/repository.dart';
+import '../logic/attachments.dart';
 import '../logic/item_form.dart';
 import '../logic/notify_offer.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
 import 'feedback.dart';
-import 'pick_doc.dart';
 import 'unlock_sheet.dart';
 
 /// What happened, said in a way the caller can act on.

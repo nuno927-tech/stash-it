@@ -53,6 +53,15 @@ Future<bool?> showItemForm(
   BuildContext context, {
   required Repository repo,
   Item? existing,
+
+  /*
+    What was already typed on the way here.
+
+    The step-by-step sheet offers a way out into this form, and an escape hatch
+    that throws away the name somebody has just typed is one they use once.
+    Ignored when `existing` is set: an edit already has a name.
+  */
+  String startingName = '',
 }) {
   feedback(Cue.expand);
 

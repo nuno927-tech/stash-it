@@ -265,7 +265,7 @@ class _WizardState extends State<_Wizard> {
                       _Ask(
                         question: 'What is it?',
                         hint: 'Anything you would call it.',
-                        child: _NameField(
+                        answer: _NameField(
                           controller: _name,
                           focus: _nameFocus,
                           onChanged: (_) => setState(() {}),
@@ -279,7 +279,7 @@ class _WizardState extends State<_Wizard> {
                       _Ask(
                         question: 'Where does it live?',
                         hint: 'So you can find it by room later.',
-                        child: _Rooms(
+                        answer: _Rooms(
                           rooms: _rooms,
                           chosen: _draft.roomId,
                           onPick: (id) => setState(() => _draft.roomId = id),
@@ -289,7 +289,7 @@ class _WizardState extends State<_Wizard> {
                       _Ask(
                         question: 'When did you get it?',
                         hint: 'Every countdown is measured from this.',
-                        child: _Bought(
+                        answer: _Bought(
                           date: _draft.purchaseDate,
                           onPick: (iso) =>
                               setState(() => _draft.purchaseDate = iso),
@@ -298,7 +298,7 @@ class _WizardState extends State<_Wizard> {
                       _Ask(
                         question: 'How long is it covered?',
                         hint: 'Skip it if you are not sure.',
-                        child: _Cover(
+                        answer: _Cover(
                           chosen: _draft.coverages.isEmpty
                               ? null
                               : _draft.coverages.first,
@@ -400,13 +400,21 @@ class _Ask extends StatelessWidget {
   const _Ask({
     required this.question,
     required this.hint,
-    required this.child,
+    required this.answer,
     this.footer,
   });
 
   final String question;
   final String hint;
-  final Widget child;
+
+  /// Whatever answers it — a field, or a row of chips.
+  ///
+  /// Named `answer` rather than `child` on purpose. `child` last is a lint and
+  /// a convention, and this one wants to sit between the question and the way
+  /// past it; a name that says what it holds is worth more here than a name
+  /// that says where it goes.
+  final Widget answer;
+
   final Widget? footer;
 
   @override
@@ -440,7 +448,7 @@ class _Ask extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 26),
-          child,
+          answer,
           if (footer != null) ...[
             const SizedBox(height: 26),
             Center(child: footer!),
@@ -578,11 +586,12 @@ class _Bought extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (label, when) in guesses)
+            for (final (label, on) in guesses)
               _Chip(
                 label: label,
-                on: date == toIsoDate(when),
-                onTap: () => onPick(date == toIsoDate(when) ? '' : toIsoDate(when)),
+                on: date == toIsoDate(on),
+                onTap: () =>
+                    onPick(date == toIsoDate(on) ? '' : toIsoDate(on)),
               ),
           ],
         ),
