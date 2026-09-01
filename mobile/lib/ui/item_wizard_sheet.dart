@@ -434,7 +434,7 @@ class _WizardState extends State<_Wizard> {
       is a question, three answers and one row of buttons, and it fits.
     */
     return SizedBox(
-      height: screen * 0.66,
+      height: screen * 0.72,
       child: SheetEntrance(
         child: SafeArea(
           top: false,
@@ -1218,38 +1218,51 @@ class _Footer extends StatelessWidget {
         child: Row(
           children: [
             /*
-              Quiet, and it never competes with the gold one.
+              ── Expanded, and no Spacer beside it ─────────────────────────────
 
-              "Save now" rather than "Skip": skip says the question was a step
-              you got out of, save says the thing exists — which is true from
-              the moment it has a name.
+              This was `Flexible` AND a `Spacer`, which is two things asking for
+              the same leftover width. The Spacer has flex 1 and always takes
+              what it asks for; Flexible only takes what its child needs and
+              gives up the rest — so the label was squeezed to whatever the
+              Spacer left and ellipsised to "Use the full form in…".
 
-              Flexible with an ellipsis because "Use the full form instead" is
-              long, and a Row that runs out of width does not shrink politely,
-              it draws a yellow stripe across the footer.
+              One flexible child, not two. The button takes the whole remaining
+              width and its text sits at the left of it, which puts the words
+              where a Spacer would have put the gap anyway.
+
+              "Save now" rather than "Skip", for the other slot: skip says the
+              question was a step you got out of, save says the thing exists —
+              which is true from the moment it has a name.
             */
             if (onQuiet != null)
-              Flexible(
-                child: TextButton(
-                  onPressed: onQuiet,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size(0, 44),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    quietLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 13,
-                      color: c.muted,
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: onQuiet,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 44),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      quietLabel,
+                      maxLines: 1,
+                      // A backstop, not the plan. At 13pt the longest label is
+                      // comfortably inside what is left beside the gold button
+                      // on a 360dp phone.
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 13,
+                        color: c.muted,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            const Spacer(),
+              )
+            else
+              const Spacer(),
             const SizedBox(width: 8),
             FilledButton(
               onPressed: saving || !named ? null : onNext,
