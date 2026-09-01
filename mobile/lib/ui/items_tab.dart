@@ -314,12 +314,28 @@ class _ItemsTabState extends State<ItemsTab> {
                 somebody change the filter mid-selection and watch half their
                 ticks scroll out of reach.
               */
+              /*
+                ── And nothing at all, on a phone that has just installed ────
+
+                A total worth zero, a search box with nothing to search, six
+                filter chips that all match nothing, and a second Scout above
+                the Scout already standing in the empty list. Every one of
+                those controls answers "which of my things am I looking at",
+                which is not a question somebody has before they have any.
+
+                So on a genuinely empty app the header goes entirely and the
+                screen is Scout and one sentence. `all.isEmpty` rather than
+                `shown.isEmpty`: a search that found nothing must keep the
+                search field, or there is no way to change the search.
+              */
               if (_picked != null)
                 PickingBar(
                   count: _picked!.length,
                   onCancel: _stopPicking,
                   onSend: _picked!.isEmpty ? null : _sendPicked,
                 )
+              else if (all.isEmpty)
+                const SizedBox.shrink()
               else
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -353,9 +369,7 @@ class _ItemsTabState extends State<ItemsTab> {
               Expanded(
                 child: shown.isEmpty
                     ? Blank(
-                        all.isEmpty
-                            ? 'Nothing saved yet.\n\nTap Stash it to put something in.'
-                            : 'Nothing here matches that.',
+                        all.isEmpty ? firstThing : 'Nothing here matches that.',
                         // Paperwork when the list has never had anything in it;
                         // ears up when a search found nothing, because those are
                         // different situations and only one of them is a

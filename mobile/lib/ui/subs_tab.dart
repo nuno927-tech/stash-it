@@ -130,13 +130,8 @@ class _SubsTabState extends State<SubsTab> {
         }
 
         if (subs.isEmpty) {
-          return const Blank(
-            'Nothing recurring yet.\n\n'
-            'Add what you pay for and this shows what a month really costs, '
-            'which months are the heavy ones, and what renews next.\n\n'
-            'Tap Stash it to add one.',
-            pose: ScoutPose.calendar,
-          );
+          // Same sentence, calendar pose. See `firstThing`.
+          return const Blank(firstThing, pose: ScoutPose.calendar);
         }
 
         final theme = Theme.of(context);

@@ -405,6 +405,24 @@ class Wordmark extends StatelessWidget {
   }
 }
 
+/// What every screen says before there is anything in the app.
+///
+/// ── One sentence, four screens ────────────────────────────────────────────
+/// Each tab used to explain itself here — what a document is for, what a
+/// subscription list buys you — and that copy was good, but it was answering a
+/// question nobody has yet. Somebody who has just installed this has one thing
+/// to do, and the four tabs disagreeing about how to say it made the app look
+/// like four apps.
+///
+/// So the words are held here, once. Only the pose changes: he is doing the
+/// job of whichever screen you are on. See `Blank`.
+///
+/// It names the button by its label rather than describing where it is,
+/// because a button that moves in a later version leaves an instruction that
+/// is wrong rather than merely vague.
+const String firstThing = 'Nothing stashed yet.\n\nTap Stash it to add your '
+    'first thing.';
+
 /// What an empty list should say, which is never nothing.
 class Blank extends StatelessWidget {
   const Blank(this.message, {this.pose, this.poseHeight = 170, super.key});

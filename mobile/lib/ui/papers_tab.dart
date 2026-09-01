@@ -183,12 +183,10 @@ class _PapersTabState extends State<PapersTab> {
         }
 
         if (all.isEmpty) {
-          return const Blank(
-            'Passports, licenses, insurance — the things that expire on you.\n\n'
-            'Dates and general details only. No scans, no document numbers.\n\n'
-            'Tap Stash it to add one.',
-            pose: ScoutPose.clipboard,
-          );
+          // The same sentence as the other three tabs; only the pose differs —
+          // a clipboard, because this is Documents. See `firstThing`, which says
+          // why the explanatory copy that used to be here went.
+          return const Blank(firstThing, pose: ScoutPose.clipboard);
         }
 
         final sorted = sortPapers(all);

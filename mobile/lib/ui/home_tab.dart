@@ -57,6 +57,22 @@ class HomeTab extends StatelessWidget {
             if (data == null) {
               return const Center(child: CircularProgressIndicator());
             }
+            /*
+              ── The first screen, before there is anything to show ──────────
+
+              A dashboard summarising nothing is worse than no dashboard: a
+              ring at nought per cent, four zeroes, an empty Coming up and a
+              backup warning about data that does not exist. All of it true,
+              none of it useful, and the first impression of the app.
+
+              So the whole body is replaced rather than each card hiding
+              itself. Scout with the acorn — the thing being guarded — and the
+              one sentence the other three tabs also say.
+            */
+            if (data.empty) {
+              return const Blank(firstThing, pose: ScoutPose.acorn);
+            }
+
             return _HomeBody(repo: repo, data: data, onGo: onGo);
           },
         );
@@ -67,6 +83,7 @@ class HomeTab extends StatelessWidget {
 
 class _Home {
   const _Home({
+    required this.empty,
     required this.tally,
     required this.line,
     required this.backup,
@@ -75,6 +92,17 @@ class _Home {
     required this.recent,
     required this.subs,
   });
+
+  /*
+    ── Nothing has ever been stashed ─────────────────────────────────────────
+
+    Not derivable from the fields below it, which is why it is its own. The
+    tally is all zeroes on an empty app, but it is ALSO all zeroes on an app
+    holding forty things with no dates on any of them — and those two screens
+    should not look alike. One is a beginning and the other is a dashboard
+    with work to do.
+  */
+  final bool empty;
 
   final DatedTally tally;
   final List<Entry> line;
