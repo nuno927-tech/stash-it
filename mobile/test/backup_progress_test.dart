@@ -34,13 +34,26 @@ void main() {
     });
 
     test('packing never reaches the end of its own share', () {
-      // Sealing still has to happen, and a bar sitting at 100% through the
-      // longest single operation is the thing that made this look crashed.
+      // Sealing still has to happen, and a bar sitting at 100% through it
+      // would be the same lie the old weights told.
       final full =
           const BackupProgress(BackupStage.packing, done: 10, total: 10)
               .fraction;
       expect(full, lessThan(1));
       expect(full, const BackupProgress(BackupStage.sealing).fraction);
+    });
+
+    test('the counted stage owns most of the bar', () {
+      /*
+        The reason this is pinned: packing used to end at 0.82, which left two
+        of eight acorns to a stage that cannot report and so never filled them.
+        Whatever the weights become, the part that can be measured has to be
+        the part that moves.
+      */
+      final packing = const BackupProgress(BackupStage.sealing).fraction -
+          const BackupProgress(BackupStage.packing).fraction;
+      expect(packing, greaterThan(0.8),
+          reason: 'packing spans $packing of the bar');
     });
   });
 

@@ -8,10 +8,9 @@
 /// system spinner.
 ///
 /// ── And a bar as well as the acorns ───────────────────────────────────────
-/// Ten acorns is a coarse readout: on a hundred files each one covers ten of
-/// them and the picture sits still for a long time. The hairline underneath
-/// moves continuously, so there is always something saying the app is alive
-/// even when the count has not ticked over.
+/// Eight acorns is a coarse readout on its own. They fill continuously rather
+/// than one at a time — see `_FillingAcorn` — and the hairline underneath says
+/// the same thing in a form that is easy to read at a glance.
 library;
 
 import 'package:flutter/material.dart';
@@ -69,31 +68,42 @@ class AcornProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
-    final filled = (progress.fraction * count).floor().clamp(0, count);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < count; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                /*
-                  Each one fades rather than switching on, and they are
-                  staggered by their own position — so the row fills like
-                  something being gathered rather than like a meter flicking
-                  between two states.
-                */
-                child: AnimatedOpacity(
-                  duration: Duration(milliseconds: 260 + i * 20),
-                  curve: Curves.easeOut,
-                  opacity: i < filled ? 1 : 0.22,
-                  child: Acorn(color: i < filled ? c.gold : c.muted, size: 20),
+        /*
+          ── The row fills continuously, not in eighths ───────────────────────
+
+          Each acorn used to be on or off, so with eight of them the picture
+          only changed every twelfth of the job — long enough on a slow step to
+          look stuck. Now the whole row is tweened: an acorn's share of the
+          fraction decides how much of it is gold, and the one at the leading
+          edge is part-filled while the work moves through it.
+
+          Tweened here rather than at each acorn so they cannot drift out of
+          step with the bar underneath, which reads the same value.
+        */
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: progress.fraction),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOut,
+          builder: (context, value, _) => Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < count; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: _FillingAcorn(
+                    // 0 for one not reached, 1 for one behind the edge, and
+                    // the remainder for the one being worked through.
+                    fill: (value * count - i).clamp(0, 1),
+                    lit: c.gold,
+                    unlit: c.slate600,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -125,4 +135,59 @@ class AcornProgress extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One acorn, filled from the bottom up.
+///
+/// Two copies stacked: the unlit one always drawn, the gold one clipped to the
+/// bottom [fill] of its height. Drawing it bottom-up rather than left-to-right
+/// because an acorn is a container and that is how containers fill.
+class _FillingAcorn extends StatelessWidget {
+  const _FillingAcorn({
+    required this.fill,
+    required this.lit,
+    required this.unlit,
+  });
+
+  /// 0..1.
+  final double fill;
+  final Color lit;
+  final Color unlit;
+
+  static const double _size = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: Stack(
+        children: [
+          Acorn(color: unlit, size: _size),
+          if (fill > 0)
+            ClipRect(
+              clipper: _FromTheBottom(fill),
+              child: Acorn(color: lit, size: _size),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FromTheBottom extends CustomClipper<Rect> {
+  const _FromTheBottom(this.fill);
+
+  final double fill;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+        0,
+        size.height * (1 - fill),
+        size.width,
+        size.height,
+      );
+
+  @override
+  bool shouldReclip(_FromTheBottom old) => old.fill != fill;
 }

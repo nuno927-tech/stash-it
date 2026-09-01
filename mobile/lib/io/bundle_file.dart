@@ -109,8 +109,29 @@ List<int> writeBundle({
 
   final archive = Archive();
   final all = {...entries, 'manifest.json': utf8.encode(jsonEncode(manifest))};
+
   for (final e in all.entries) {
-    archive.addFile(ArchiveFile(e.key, e.value.length, e.value));
+    final file = ArchiveFile(e.key, e.value.length, e.value);
+
+    /*
+      ── Photographs are stored, not deflated ─────────────────────────────────
+
+      This was the whole reason a backup took long enough to look like a crash.
+      Deflate was being run over every JPEG and WebP in the collection, and
+      those formats are already compressed — the pass costs seconds on a
+      hundred and sixty megabytes and saves a fraction of a percent, because
+      there is nothing left in them to squeeze.
+
+      The JSON still deflates, where it earns its keep: a table of dates and
+      names compresses to a fraction of its size.
+
+      Stored entries are ordinary zip members — method 0 rather than 8 — so
+      every reader, including this app's own, opens them without knowing the
+      difference.
+    */
+    if (e.key.startsWith('blobs/')) file.compress = false;
+
+    archive.addFile(file);
   }
 
   final encoded = ZipEncoder().encode(archive);

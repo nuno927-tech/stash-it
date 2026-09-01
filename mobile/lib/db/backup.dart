@@ -64,7 +64,9 @@ Future<BackupContents> gatherBackup(
       .get();
 
   final blobFiles = <String, List<int>>{};
-  const batch = 8;
+  // Four, not eight. The batch size sets how often the bar can move, and a
+  // collection of a dozen photographs would otherwise report twice.
+  const batch = 4;
 
   for (var i = 0; i < ids.length; i += batch) {
     final slice = ids.sublist(i, (i + batch).clamp(0, ids.length));

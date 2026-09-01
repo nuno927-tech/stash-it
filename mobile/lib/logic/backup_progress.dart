@@ -42,17 +42,31 @@ class BackupProgress {
   final int done;
   final int total;
 
-  /// Where the stage begins, 0..1.
+  /*
+    ── The counted stage owns nearly all of the bar ─────────────────────────
+
+    Packing used to end at 0.82, so a collection that packed quickly showed six
+    acorns of eight within a second and then sat there — the two remaining
+    acorns belonged to sealing, which reports nothing from inside and so never
+    moved them. Six lit acorns and no movement is exactly the "did it crash"
+    picture the bar was added to remove.
+
+    Two things changed. Sealing is now fast, because photographs are stored
+    rather than deflated (see `writeBundle`), so the stretch that could not
+    report is a moment rather than the main event. And what it costs is
+    reflected here: packing runs 0.04 to 0.94, which is the part that can
+    count, so the acorns fill through the work rather than around it.
+  */
   static const Map<BackupStage, double> _startsAt = {
     BackupStage.reading: 0,
-    BackupStage.packing: 0.08,
-    BackupStage.sealing: 0.82,
+    BackupStage.packing: 0.04,
+    BackupStage.sealing: 0.94,
     BackupStage.done: 1,
   };
 
   static const Map<BackupStage, double> _endsAt = {
-    BackupStage.reading: 0.08,
-    BackupStage.packing: 0.82,
+    BackupStage.reading: 0.04,
+    BackupStage.packing: 0.94,
     BackupStage.sealing: 1,
     BackupStage.done: 1,
   };

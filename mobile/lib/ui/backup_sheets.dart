@@ -48,7 +48,23 @@ Future<T> runWithAcorns<T>(
   );
 
   try {
-    return await job((step) => progress.value = step);
+    final result = await job((step) => progress.value = step);
+
+    /*
+      ── The finish is held for a beat ────────────────────────────────────────
+
+      The last report and the sheet closing used to land in the same frame, so
+      the bar was never seen full — it went from most-of-the-way to gone. Half
+      a second is long enough to read as "that finished" and short enough that
+      nobody waits for it.
+
+      Set explicitly rather than trusting the job's last call: `restoreInto`
+      reports nothing at all, and a sheet that closes at whatever fraction it
+      happened to reach looks like it gave up.
+    */
+    progress.value = const BackupProgress(BackupStage.done);
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return result;
   } finally {
     /*
       Closed from here rather than by the sheet noticing it is finished.
