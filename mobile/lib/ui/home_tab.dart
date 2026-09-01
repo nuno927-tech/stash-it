@@ -28,7 +28,7 @@ import '../models/settings.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
-import 'item_form_sheet.dart';
+import 'item_wizard_sheet.dart';
 import 'item_view_sheet.dart';
 
 import 'paper_view_sheet.dart';
@@ -298,7 +298,7 @@ class _HomeBodyState extends State<_HomeBody> {
                     have first, and the three-way menu is still one tap away on
                     the button in the corner.
                   */
-                  onStash: () => showItemForm(context, repo: widget.repo),
+                  onStash: () => showItemWizard(context, repo: widget.repo),
                 )
               : _scroller(context, c, data, line, more),
         ),

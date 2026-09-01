@@ -65,24 +65,37 @@ Future<bool?> showItemForm(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) =>
-        SheetEntrance(child: _ItemFormSheet(repo: repo, existing: existing)),
+    builder: (context) => SheetEntrance(
+      child: _ItemFormSheet(
+        repo: repo,
+        existing: existing,
+        startingName: startingName,
+      ),
+    ),
   );
 }
 
 class _ItemFormSheet extends StatefulWidget {
-  const _ItemFormSheet({required this.repo, this.existing});
+  const _ItemFormSheet({
+    required this.repo,
+    this.existing,
+    this.startingName = '',
+  });
 
   final Repository repo;
   final Item? existing;
+
+  /// Typed on the step-by-step sheet before somebody asked for the long way.
+  final String startingName;
 
   @override
   State<_ItemFormSheet> createState() => _ItemFormSheetState();
 }
 
 class _ItemFormSheetState extends State<_ItemFormSheet> {
-  late final ItemDraft _draft =
-      widget.existing == null ? ItemDraft() : draftOf(widget.existing!);
+  late final ItemDraft _draft = widget.existing == null
+      ? ItemDraft(name: widget.startingName)
+      : draftOf(widget.existing!);
 
   /// Read once. A `FutureBuilder` handed a fresh future every frame reloads
   /// for ever.

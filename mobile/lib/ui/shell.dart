@@ -26,7 +26,7 @@ import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
 import 'add_button.dart';
 import 'card_arrival_screen.dart';
-import 'item_form_sheet.dart';
+import 'item_wizard_sheet.dart';
 import 'item_view_sheet.dart';
 import 'paper_form_sheet.dart';
 import 'paper_view_sheet.dart';
@@ -310,7 +310,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       switch (what) {
         case 'item':
           _goTo(Tab.items);
-          if (mounted) await showItemForm(context, repo: widget.repo);
+          if (mounted) await showItemWizard(context, repo: widget.repo);
         case 'paper':
           _goTo(Tab.papers);
           if (mounted) await showPaperForm(context, repo: widget.repo);

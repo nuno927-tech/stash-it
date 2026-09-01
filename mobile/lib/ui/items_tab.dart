@@ -28,7 +28,7 @@ import 'bin_screen.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'item_view_sheet.dart';
-import 'item_form_sheet.dart';
+import 'item_wizard_sheet.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
 import 'room_icon.dart';
@@ -376,7 +376,7 @@ class _ItemsTabState extends State<ItemsTab> {
                         // question nobody asked.
                         onStash: all.isEmpty
                             ? () async {
-                                await showItemForm(context, repo: widget.repo);
+                                await showItemWizard(context, repo: widget.repo);
                                 if (context.mounted) setState(() {});
                               }
                             : null,
@@ -782,7 +782,7 @@ class _ItemsTabState extends State<ItemsTab> {
   /// read about a record that does not exist yet.
   Future<void> _open(Item? item) async {
     if (item == null) {
-      await showItemForm(context, repo: widget.repo);
+      await showItemWizard(context, repo: widget.repo);
     } else {
       await showItemView(context, repo: widget.repo, item: item);
     }

@@ -400,8 +400,19 @@ void main() {
     receipt. One button, three answers — so this test taps through the sheet
     rather than landing straight on the form.
   */
-  testWidgets('the Stash it button asks what kind, then opens the form',
+  testWidgets('the Stash it button asks what kind, then asks what it is',
       (tester) async {
+    /*
+      ── Adding an item is four questions now, not a form ────────────────────
+
+      This asserted the full form's first card and its labels. Adding opens the
+      step-by-step sheet instead: a dozen labelled boxes is right for editing,
+      where somebody has come to change one specific thing and needs to find
+      it, and wrong for the first thirty seconds of owning the app.
+
+      Editing still opens the form, and that path is covered where an existing
+      item is tapped.
+    */
     final db = await show(tester);
     await goTo(tester, 'Items');
 
@@ -417,21 +428,51 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
+    // The first question, and the way out for anybody who wants every field
+    // at once.
+    expect(find.text('What is it?'), findsOneWidget);
+    expect(find.text('Add the long way'), findsOneWidget);
+
     /*
-      The form is a sheet now rather than a pushed screen, so there is no app
-      bar to name it. What identifies it is the first card.
+      "Next", not "Save item" — and disabled until there is a name.
+
+      The name is the one thing the app insists on, so the button says so by
+      being unavailable rather than by refusing four screens later.
     */
+    expect(find.text('Next'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    await db.close();
+  });
+
+  testWidgets('the long way out of the wizard carries the name across',
+      (tester) async {
+    // An escape hatch that throws away what was already typed is one people
+    // use once.
+    final db = await show(tester);
+    await goTo(tester, 'Items');
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Product'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.enterText(find.byType(TextField).first, 'Bosch dishwasher');
+    await tester.pump();
+
+    await tester.tap(find.text('Add the long way'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // The full form, with the name already in it.
     expect(find.text('Product information'), findsOneWidget);
-
-    // Uppercased by `FieldLabel`. Every field label on the three sheets is
-    // written sentence case in the source and drawn as a tracked-out
-    // annotation — see the scale note in theme.dart.
-    expect(find.text('PRODUCT NAME'), findsOneWidget);
-
-    // Name is the only field the app insists on, so the footer says so before
-    // the button is pressed rather than after — see `whyNotSaveable`.
-    expect(find.textContaining('Give it a name'), findsOneWidget);
     expect(find.text('Save item'), findsOneWidget);
+    expect(find.text('Bosch dishwasher'), findsOneWidget);
 
     await db.close();
   });

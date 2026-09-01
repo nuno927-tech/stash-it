@@ -32,7 +32,7 @@ import '../billing/current.dart';
 import '../db/repository.dart';
 import '../logic/limits.dart';
 import 'feedback.dart';
-import 'item_form_sheet.dart';
+import 'item_wizard_sheet.dart';
 import 'sub_form_sheet.dart';
 import 'paper_form_sheet.dart';
 import 'theme.dart';
@@ -178,7 +178,7 @@ class _StashItButtonState extends State<StashItButton>
     */
     switch (kind) {
       case AddKind.item:
-        await showItemForm(context, repo: widget.repo);
+        await showItemWizard(context, repo: widget.repo);
       case AddKind.subscription:
         await showSubForm(context, repo: widget.repo);
       case AddKind.paper:
