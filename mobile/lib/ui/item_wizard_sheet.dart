@@ -1,47 +1,49 @@
 /// Adding an item, one question at a time.
 ///
 /// ── Why a second way in ────────────────────────────────────────────────────
-/// `item_form_sheet.dart` shows every field at once: name, brand, model,
-/// serial, retailer, room, date, price, cover, notes, receipts. That is the
-/// right shape for EDITING, where somebody has arrived to change one specific
-/// thing and needs to find it.
+/// `item_form_sheet.dart` shows every field at once. That is the right shape
+/// for EDITING, where somebody has arrived to change one specific thing and
+/// needs to find it, and the wrong shape for the first thirty seconds of owning
+/// the app: a dozen labelled boxes is a form, and a form is a thing people put
+/// off.
 ///
-/// It is the wrong shape for the first thirty seconds of owning the app. A
-/// dozen labelled boxes is a form, and a form is a thing people put off — which
-/// is fatal for an app whose entire claim is that stashing something takes a
-/// moment.
+/// So creating is six questions, one screen each, in the order somebody would
+/// answer them. Editing still opens the full form.
 ///
-/// So creating is four questions, one screen each, in the order somebody would
-/// actually answer them. Editing still opens the full form.
+/// ── Everything after the name is optional ──────────────────────────────────
+/// Only the name is needed. "Save now" sits in the footer from the moment there
+/// is one, on every step, so nobody has to reach the end to get out with
+/// something.
 ///
-/// ── Everything after the name is optional, and it says so ─────────────────
-/// Only the name is needed. Every other step carries a visible way past it, and
-/// the button says "Save" rather than "Next" the moment there is a name to
-/// save — so nobody has to reach the end to get out with something.
+/// The one refusal the app allows itself survives: a warranty term with no
+/// purchase date is a number, not a countdown. See `whyNotSaveable`.
 ///
-/// The one refusal the app allows itself is still here: a warranty term with no
-/// purchase date is a number, not a countdown. See `whyNotSaveable`, which this
-/// asks before saving exactly as the form does.
-///
-/// ── The batch case, which this is worse at ─────────────────────────────────
-/// Somebody entering a drawerful of appliances on a Sunday is served better by
-/// the form: four taps per item beats four screens per item. That is what "Add
-/// the long way" at the bottom of the first step is for, and it carries the
-/// name across so nothing typed is lost.
+/// ── It moves on by itself ──────────────────────────────────────────────────
+/// A screen whose questions are all answered advances on its own, using the
+/// same rule the long form scrolls by — see `cardFilled`, and the note on
+/// `_advance` for the three guards that stop it firing while somebody is still
+/// working.
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
+import '../logic/attachments.dart';
+import '../logic/auto_advance.dart';
+import '../logic/card.dart' show longDate;
 import '../logic/dates.dart';
 import '../logic/item_form.dart';
+import '../logic/prefs.dart';
 import '../models/types.dart';
 import 'ask_text.dart';
+import 'doc_tiles.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'item_form_sheet.dart';
+import 'pick_doc.dart';
 import 'save_item.dart';
 import 'stash_the_paper.dart';
 import 'theme.dart';
@@ -63,13 +65,12 @@ Future<bool?> showItemWizard(BuildContext context, {required Repository repo}) {
   );
 }
 
-/// The four questions, in the order somebody answers them.
+/// The six questions, in the order somebody answers them.
 ///
-/// Name first because it is the only one that is required and the only one
-/// somebody always knows. Cover last because it is the one people most often
-/// have to go and look up, and a question you cannot answer is a better place
-/// to stop than a question you can.
-enum _Step { name, room, bought, cover }
+/// What it is comes first because it is the only required answer and the only
+/// one anybody always knows. The warning window comes last because it is the
+/// only question about the app rather than about the thing.
+enum _Step { what, room, bought, cover, papers, warning }
 
 class _Wizard extends StatefulWidget {
   const _Wizard({required this.repo});
@@ -86,29 +87,49 @@ class _WizardState extends State<_Wizard> {
   /*
     Owned here, not built beside the field.
 
-    A controller created in `build` is a new controller on every keystroke, and
-    one created beside an `await` is disposed while the sheet is still closing.
-    This app has been bitten by the second of those; see ask_text.dart.
+    A controller created in `build` is a new one on every keystroke, and one
+    created beside an `await` is disposed while the sheet is still closing. This
+    app has been bitten by the second; see ask_text.dart.
   */
   final TextEditingController _name = TextEditingController();
   final FocusNode _nameFocus = FocusNode();
 
   final PageController _pages = PageController();
-  _Step _at = _Step.name;
+  _Step _at = _Step.what;
+
+  Uint8List? _photo;
+  final List<PendingDoc> _pending = [];
 
   List<Room>? _rooms;
   bool _saving = false;
   String? _problem;
+
+  /*
+    ── Which steps have already thrown you forward ─────────────────────────
+
+    Once per step, on the false-to-true edge. Somebody who completes a screen,
+    swipes back to change an answer and completes it again should not be thrown
+    forward a second time — see the same rule in `ui/auto_advance.dart`, which
+    this is the paged version of.
+  */
+  final Set<_Step> _advanced = {};
+
+  /// Whether the calendar has been offered on this visit to the bought step.
+  bool _askedDate = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadRooms());
 
-    // The first question is a text field and there is nothing else on the
-    // screen to tap. Waiting for a tap that has only one possible target is
-    // the app asking somebody to confirm they meant to open it.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _nameFocus.requestFocus());
+    // Two weeks by default, as on the long form: the shortest useful notice.
+    _draft.leadDays = itemLeadChoices.first.days;
+
+    // The first question is a text field and nothing else on the screen can be
+    // tapped. Waiting for a tap with only one possible target is the app asking
+    // somebody to confirm they meant to open it.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _nameFocus.requestFocus());
   }
 
   Future<void> _loadRooms() async {
@@ -125,19 +146,24 @@ class _WizardState extends State<_Wizard> {
   }
 
   bool get _named => _name.text.trim().isNotEmpty;
-  bool get _last => _at == _Step.cover;
+  bool get _last => _at == _Step.values.last;
+
+  CoverageDraft? get _cover =>
+      _draft.coverages.isEmpty ? null : _draft.coverages.first;
+
+  /* ------------------------------------------------------------- moving on */
 
   void _go(_Step to) {
-    feedback(Cue.tap);
     _nameFocus.unfocus();
     _pages.animateToPage(
       to.index,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
     );
   }
 
   void _next() {
+    feedback(Cue.tap);
     if (_last) {
       unawaited(_save());
       return;
@@ -146,12 +172,47 @@ class _WizardState extends State<_Wizard> {
   }
 
   /*
+    ── Answering the last question on a screen moves you on ─────────────────
+
+    Moving the screen under somebody is one of the most unpleasant things an
+    interface can do, so this fires as rarely as it can while still being
+    useful. Three guards, each earned:
+
+      Every answer on the screen, not the important one. `cardFilled` takes the
+      whole inventory, so a screen with an optional price on it will simply not
+      advance until the price is there. A convenience that fires rarely is
+      strictly better than one that fires while you are still working.
+
+      Once per screen. Going back to change something must not throw you
+      forward again.
+
+      Never while the keyboard is up. A keyboard means somebody is still
+      typing, and it is also what stops the name field advancing mid-word.
+
+    The last two screens never advance: attachments can always take one more,
+    and the warning window is the end.
+  */
+  void _advance(_Step from, List<Object?> answers) {
+    if (from != _at || _advanced.contains(from)) return;
+    if (from == _Step.papers || _last) return;
+    if (!cardFilled(answers)) return;
+    if (MediaQuery.of(context).viewInsets.bottom > 0) return;
+
+    _advanced.add(from);
+
+    // A beat, so the chip somebody just pressed is seen to light up before the
+    // screen it is on leaves.
+    Future<void>.delayed(const Duration(milliseconds: 260), () {
+      if (mounted && _at == from) _go(_Step.values[from.index + 1]);
+    });
+  }
+
+  /*
     ── Out through the form, with the name ─────────────────────────────────
 
-    Somebody adding a drawerful of appliances is served worse by four screens
-    per item than by one form with everything on it, and somebody who wants a
-    field this does not ask about — a serial number, a price — cannot get there
-    from here at all.
+    Somebody adding a drawerful of appliances is served worse by six screens per
+    item than by one form, and somebody who wants a field this does not ask
+    about — a serial number, a retailer — cannot get there from here at all.
 
     The name goes with them. An escape hatch that throws away what was already
     typed is one people use once.
@@ -166,6 +227,95 @@ class _WizardState extends State<_Wizard> {
     await showItemForm(host, repo: widget.repo, startingName: _name.text.trim());
   }
 
+  /* --------------------------------------------------------------- answers */
+
+  Future<void> _pickPhoto() async {
+    final source = await askPickSource(
+      context,
+      title: 'Take or upload photo',
+      canRemove: _photo != null,
+      removeLabel: 'Remove the photo',
+      removeNote: 'The item keeps everything else',
+    );
+    if (source == null || !mounted) return;
+
+    if (source == PickSource.remove) {
+      setState(() => _photo = null);
+      return;
+    }
+
+    final picked = await pickDocs(DocKind.photo, source);
+
+    // Only a picture. The file picker will happily return a PDF, and a PDF as
+    // an item's thumbnail is a grey box on every row it appears on.
+    final images =
+        picked.where((d) => isImage(d.mime) && d.bytes != null).toList();
+    if (images.isEmpty || !mounted) return;
+
+    setState(() => _photo = images.first.bytes);
+  }
+
+  Future<void> _pickDate() async {
+    final today = startOfDay(DateTime.now());
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parseDate(_draft.purchaseDate) ?? today,
+      firstDate: DateTime(1970),
+      // A year ahead, for something ordered and not yet arrived.
+      lastDate: addDays(today, 366),
+    );
+
+    if (picked == null || !mounted) return;
+    setState(() => _draft.purchaseDate = toIsoDate(picked));
+  }
+
+  Future<void> _newRoom() async {
+    final name = await askText(context,
+        title: 'New room', hint: 'Kitchen, garage, loft');
+    if (name == null || name.trim().isEmpty || !mounted) return;
+
+    final id = await widget.repo.createRoom(name.trim());
+    if (!mounted) return;
+
+    await _loadRooms();
+    if (mounted) setState(() => _draft.roomId = id);
+  }
+
+  /// One policy, or none. Several with providers and phone numbers is what the
+  /// long form is for.
+  void _editCover(void Function(CoverageDraft) change) {
+    setState(() {
+      if (_draft.coverages.isEmpty) {
+        _draft.coverages.add(CoverageDraft(label: '', unit: CoverageUnit.years));
+      }
+      change(_draft.coverages.first);
+    });
+  }
+
+  Future<void> _attach(DocKind kind) async {
+    // The tile said what kind of thing this is; this asks where it comes from.
+    final source = await askPickSource(
+      context,
+      title: 'Add a ${docKindLabels[kind]!.toLowerCase()}',
+    );
+    if (source == null || source == PickSource.remove || !mounted) return;
+
+    final picked = await pickDocs(kind, source);
+    if (picked.isEmpty || !mounted) return;
+
+    // Nothing to point at yet, so they are held and written by `saveItemDraft`.
+    setState(() => _pending.addAll(picked));
+  }
+
+  Future<void> _attachLink() async {
+    final doc = await askForLink(context);
+    if (doc == null || !mounted) return;
+    setState(() => _pending.add(doc));
+  }
+
+  /* ---------------------------------------------------------------- saving */
+
   Future<void> _save() async {
     _draft.name = _name.text.trim();
 
@@ -174,13 +324,13 @@ class _WizardState extends State<_Wizard> {
       feedback(Cue.error);
       setState(() => _problem = problem.message);
 
-      // Taken to the step that can fix it. A refusal that names a field
+      // Taken to the screen that can fix it. A refusal that names a field
       // without showing it makes somebody hunt for a box they cannot picture —
-      // and on this sheet the box may be two screens back.
+      // and here the box may be three screens behind them.
       _go(switch (problem.where) {
-        Missing.name => _Step.name,
+        Missing.name => _Step.what,
         Missing.purchaseDate => _Step.bought,
-        _ => _at,
+        Missing.term => _Step.cover,
       });
       return;
     }
@@ -195,6 +345,8 @@ class _WizardState extends State<_Wizard> {
       repo: widget.repo,
       draft: _draft,
       isNew: true,
+      photo: _photo,
+      pending: _pending,
     );
 
     if (!mounted) return;
@@ -206,40 +358,47 @@ class _WizardState extends State<_Wizard> {
           _saving = false;
         });
 
-      case ItemSaved():
+      case ItemSaved(:final attached):
         // Closed before the receipt reminder, and the reminder shown from the
-        // navigator's context rather than this one — see the same note in
+        // navigator's context rather than this one — the same note as in
         // item_form_sheet.dart, which this deliberately matches.
         final navigator = Navigator.of(context);
         final host = navigator.context;
         navigator.pop(true);
-        if (host.mounted) await showStashThePaper(host);
+
+        if (!attached && host.mounted) await showStashThePaper(host);
     }
   }
+
+  /* ----------------------------------------------------------------- build */
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
     /*
-      ── The sheet gives way to the keyboard ─────────────────────────────────
+      ── Two thirds, and never behind the keyboard ───────────────────────────
 
-      Two thirds anchored to the bottom edge is exactly where the keyboard
-      appears, so the first question — a text field — would be typed into from
-      behind it. Lifting alone pushes the top off the screen, so the height
-      gives way as well. Same fix as the tour's name step.
+      Two thirds is the app's sheet, and two thirds anchored to the bottom edge
+      is also exactly where the keyboard appears — so the first question would
+      be typed into from behind it.
+
+      Lifting alone does not fix that: two thirds plus a keyboard is more than a
+      screen, so the top would go off the top. The height gives way as well, to
+      whatever is genuinely left, and every step scrolls inside whatever it
+      gets. Between them nothing is ever covered.
     */
     final insets = MediaQuery.viewInsetsOf(context).bottom;
     final screen = MediaQuery.sizeOf(context).height;
+    final room = screen - insets - 24;
+    final tall = screen * 0.66 < room ? screen * 0.66 : room;
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(bottom: insets),
       child: SizedBox(
-        height: screen * 0.72 < screen - insets - 24
-            ? screen * 0.72
-            : screen - insets - 24,
+        height: tall,
         child: SheetEntrance(
           child: SafeArea(
             top: false,
@@ -249,62 +408,20 @@ class _WizardState extends State<_Wizard> {
                 Expanded(
                   child: PageView(
                     controller: _pages,
-                    // Swipeable as well as tappable, but not past the name:
-                    // a wizard that lets you skip the one required answer is a
-                    // wizard that refuses to save four screens later.
+                    // Swipeable, but not past the one required answer: a wizard
+                    // that lets you skip the name is one that refuses to save
+                    // five screens later.
                     physics: _named
                         ? const ClampingScrollPhysics()
                         : const NeverScrollableScrollPhysics(),
-                    onPageChanged: (i) {
-                      setState(() => _at = _Step.values[i]);
-                      if (_Step.values[i] == _Step.name) {
-                        _nameFocus.requestFocus();
-                      }
-                    },
+                    onPageChanged: _arrived,
                     children: [
-                      _Ask(
-                        question: 'What is it?',
-                        hint: 'Anything you would call it.',
-                        answer: _NameField(
-                          controller: _name,
-                          focus: _nameFocus,
-                          onChanged: (_) => setState(() {}),
-                          onDone: _named ? _next : null,
-                        ),
-                        footer: _Quiet(
-                          label: 'Add the long way',
-                          onTap: _theLongWay,
-                        ),
-                      ),
-                      _Ask(
-                        question: 'Where does it live?',
-                        hint: 'So you can find it by room later.',
-                        answer: _Rooms(
-                          rooms: _rooms,
-                          chosen: _draft.roomId,
-                          onPick: (id) => setState(() => _draft.roomId = id),
-                          onNew: _newRoom,
-                        ),
-                      ),
-                      _Ask(
-                        question: 'When did you get it?',
-                        hint: 'Every countdown is measured from this.',
-                        answer: _Bought(
-                          date: _draft.purchaseDate,
-                          onPick: (iso) =>
-                              setState(() => _draft.purchaseDate = iso),
-                        ),
-                      ),
-                      _Ask(
-                        question: 'How long is it covered?',
-                        hint: 'Skip it if you are not sure.',
-                        answer: _Cover(
-                          chosen: _draft.coverages.isEmpty
-                              ? null
-                              : _draft.coverages.first,
-                          onPick: _setCover,
-                        ),
-                      ),
+                      _what(c),
+                      _room(),
+                      _bought(c),
+                      _coverage(c),
+                      _papers(c),
+                      _warning(c),
                     ],
                   ),
                 ),
@@ -327,10 +444,10 @@ class _WizardState extends State<_Wizard> {
                   named: _named,
                   saving: _saving,
                   onNext: _next,
-                  // Save is available from the moment there is a name, on
-                  // every step. Nothing after the first question is required,
-                  // so making somebody walk to the end to get out with an item
-                  // would be a wizard pretending its questions are demands.
+                  // Save is available from the moment there is a name, on every
+                  // step. Nothing after the first question is required, so
+                  // making somebody walk to the end would be a wizard
+                  // pretending its questions are demands.
                   onSaveNow: _named && !_last && !_saving ? _save : null,
                 ),
               ],
@@ -341,31 +458,341 @@ class _WizardState extends State<_Wizard> {
     );
   }
 
-  Future<void> _newRoom() async {
-    final name = await askText(context,
-        title: 'New room', hint: 'Kitchen, garage, loft');
-    if (name == null || name.trim().isEmpty || !mounted) return;
+  void _arrived(int i) {
+    final to = _Step.values[i];
+    setState(() => _at = to);
 
-    final id = await widget.repo.createRoom(name.trim());
-    if (!mounted) return;
+    if (to == _Step.what) {
+      _nameFocus.requestFocus();
+      return;
+    }
 
-    await _loadRooms();
-    if (mounted) setState(() => _draft.roomId = id);
+    _nameFocus.unfocus();
+
+    /*
+      The calendar opens itself.
+
+      There is nothing else on that screen, and a date is a thing people pick
+      rather than choose from a shortlist — the guesses that used to be there
+      were four right answers surrounded by three hundred and sixty wrong ones.
+
+      Only when there is no date yet, so swiping back to check what you chose
+      does not reopen the picker over it.
+    */
+    if (to == _Step.bought && _draft.purchaseDate.isEmpty && !_askedDate) {
+      _askedDate = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _at == _Step.bought) unawaited(_pickDate());
+      });
+    }
   }
 
-  /// One cover, or none. The form handles several; this asks the common
-  /// question and lets the form answer the uncommon one.
-  void _setCover(CoverageDraft? cover) {
-    setState(() {
-      _draft.coverages
-        ..clear()
-        ..addAll([if (cover != null) cover]);
-    });
+  /* ------------------------------------------------------------- the steps */
+
+  Widget _what(StashColors c) {
+    // Name, photograph and price. All three, because `cardFilled` takes the
+    // whole screen — see `_advance`.
+    _advance(_Step.what, [_name.text, _photo, _draft.priceText]);
+
+    return _Ask(
+      question: 'What is it?',
+      hint: 'A name is all this needs. The rest helps later.',
+      footer: _Quiet(label: 'Add the long way', onTap: _theLongWay),
+      answer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _NameField(
+            controller: _name,
+            focus: _nameFocus,
+            onChanged: (_) => setState(() {}),
+            onDone: _named ? _next : null,
+          ),
+          const SizedBox(height: 22),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PhotoSquare(photo: _photo, onTap: _pickPhoto),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('What it cost'),
+                    WhiteField(
+                      child: MoneyBox(
+                        initial: _draft.priceText,
+                        currency: _draft.currency,
+                        onChanged: (v) => setState(() => _draft.priceText = v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _room() {
+    _advance(_Step.room, [_draft.roomId]);
+
+    final all = _rooms;
+
+    return _Ask(
+      question: 'Where does it live?',
+      hint: 'So you can find it by room later.',
+      answer: all == null
+          ? const SizedBox(height: 60)
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final r in all)
+                  _Chip(
+                    label: r.name,
+                    on: _draft.roomId == r.id,
+                    // Tapping the lit one clears it. Every answer here is
+                    // optional, so every answer has to be undoable without a
+                    // second control to undo it with.
+                    onTap: () => setState(() => _draft.roomId =
+                        _draft.roomId == r.id ? null : r.id),
+                  ),
+                _Chip(label: '+ New room', on: false, onTap: _newRoom),
+              ],
+            ),
+    );
+  }
+
+  Widget _bought(StashColors c) {
+    _advance(_Step.bought, [_draft.purchaseDate]);
+
+    final chosen = parseDate(_draft.purchaseDate);
+
+    return _Ask(
+      question: 'When did you get it?',
+      hint: 'Every countdown is measured from this.',
+      answer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The calendar opened itself on arrival; this is the way back to it,
+          // and the answer, in one control.
+          _BigChoice(
+            label: chosen == null ? 'Pick a date' : longDate(chosen),
+            lit: chosen != null,
+            icon: Icons.calendar_today_outlined,
+            onTap: _pickDate,
+          ),
+          if (chosen != null) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: _Quiet(
+                label: 'Clear',
+                onTap: () => setState(() => _draft.purchaseDate = ''),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _coverage(StashColors c) {
+    final cover = _cover;
+    final lifetime = cover?.unit == CoverageUnit.lifetime;
+
+    _advance(_Step.cover, [
+      cover?.label,
+      // Lifetime has no length, so on that unit the length is not a question.
+      if (!lifetime) cover?.amountText,
+    ]);
+
+    final presets = coveragePresets[cover?.unit ?? CoverageUnit.years]!;
+    final custom = cover != null && isCustomLabel(cover.label);
+    final customTerm = cover != null &&
+        cover.amountText.trim().isNotEmpty &&
+        !presets.contains(int.tryParse(cover.amountText.trim()));
+
+    return _Ask(
+      question: "What's the coverage and how long?",
+      hint: 'Skip it if you are not sure — you can add it later.',
+      answer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const FieldLabel('What kind'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in coverageLabels)
+                _Chip(
+                  label: label,
+                  on: cover?.label == label,
+                  onTap: () => _editCover((v) =>
+                      v.label = v.label == label ? '' : label),
+                ),
+              _Chip(
+                label: custom ? cover.label : 'Custom',
+                on: custom,
+                onTap: () async {
+                  final typed = await askText(
+                    context,
+                    title: 'Call it what?',
+                    initial: custom ? cover.label : '',
+                  );
+                  if (typed == null) return;
+                  _editCover((v) => v.label = typed);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          const FieldLabel('How long'),
+          SegRow<CoverageUnit>(
+            value: cover?.unit ?? CoverageUnit.years,
+            options: [
+              for (final unit in CoverageUnit.values)
+                (unit, coverageUnitLabels[unit]!),
+            ],
+            lines: 1,
+            // The length comes with it. See `termAfterUnitChange`: a number the
+            // new row cannot light up would otherwise sit there as "Custom".
+            onPick: (unit) => _editCover((v) {
+              v.amountText = termAfterUnitChange(unit, v.amountText);
+              v.unit = unit;
+            }),
+          ),
+          if (!lifetime) ...[
+            const SizedBox(height: 12),
+            /*
+              The quick numbers, and they are not round ones.
+
+              14, 30, 60, 90, 180 — 3, 6, 12, 18, 24 — 1, 2, 3, 5, 10. These are
+              what is printed on warranties. A row of 10/20/30 would be tidy and
+              would be a number nobody has to enter.
+            */
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final n in presets)
+                  _Chip(
+                    label: '$n',
+                    on: !customTerm &&
+                        int.tryParse(cover?.amountText.trim() ?? '') == n,
+                    onTap: () => _editCover((v) => v.amountText = '$n'),
+                  ),
+                _Chip(
+                  label: customTerm ? cover.amountText.trim() : 'Custom',
+                  on: customTerm,
+                  onTap: () async {
+                    final unit = cover?.unit ?? CoverageUnit.years;
+                    final typed = await askText(
+                      context,
+                      title: 'How long?',
+                      hint: 'A number of '
+                          '${coverageUnitLabels[unit]!.toLowerCase()}',
+                      initial: cover?.amountText ?? '',
+                      number: true,
+                    );
+                    if (typed == null) return;
+                    _editCover((v) => v.amountText = typed.trim());
+                  },
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _papers(StashColors c) {
+    /*
+      No auto-advance here, deliberately.
+
+      Every other screen has an end — one room, one date, one term. This one can
+      always take another receipt, so "finished" is a judgement only the person
+      holding the phone can make.
+    */
+    return _Ask(
+      question: 'Anything to keep with it?',
+      hint: 'A receipt, a manual, a photo of the serial plate.',
+      answer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DocTiles(onPick: _attach, onLink: _attachLink),
+          if (_pending.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            for (final doc in _pending)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.check, size: 16, color: c.moss),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        doc.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: fontBody,
+                          fontSize: 13.5,
+                          color: c.text,
+                        ),
+                      ),
+                    ),
+                    // Staged, not written — so removing one is forgetting it
+                    // rather than deleting anything.
+                    IconButton(
+                      icon: Icon(Icons.close, size: 16, color: c.muted),
+                      onPressed: () => setState(() => _pending.remove(doc)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _warning(StashColors c) {
+    return _Ask(
+      question: 'How much warning?',
+      hint: 'Before the cover runs out.',
+      answer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SegRow<int?>(
+            value: _draft.leadDays,
+            options: [
+              for (final choice in itemLeadChoices) (choice.days, choice.label),
+            ],
+            lines: 1,
+            onPick: (v) => setState(() => _draft.leadDays = v),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Turns the item amber on the dashboard, and sends a notification if '
+            'you have them on.',
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 13,
+              height: 1.45,
+              color: c.muted,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-/// Four segments that fill as you go. Not a dot per step: a rail says how much
-/// is left in a shape somebody reads without counting.
+/// Segments that fill as you go. Not a dot per step: a rail says how much is
+/// left in a shape somebody reads without counting.
 class _Rail extends StatelessWidget {
   const _Rail({required this.at, required this.c});
 
@@ -374,7 +801,7 @@ class _Rail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 28, 22),
+        padding: const EdgeInsets.fromLTRB(28, 4, 28, 20),
         child: Row(
           children: [
             for (final step in _Step.values) ...[
@@ -409,10 +836,9 @@ class _Ask extends StatelessWidget {
 
   /// Whatever answers it — a field, or a row of chips.
   ///
-  /// Named `answer` rather than `child` on purpose. `child` last is a lint and
-  /// a convention, and this one wants to sit between the question and the way
-  /// past it; a name that says what it holds is worth more here than a name
-  /// that says where it goes.
+  /// Named `answer` rather than `child` on purpose: this one sits between the
+  /// question and the way past it, and a name that says what it holds is worth
+  /// more than one that says where it goes.
   final Widget answer;
 
   final Widget? footer;
@@ -421,6 +847,7 @@ class _Ask extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
+    // Scrolls, because a step can be taller than what the keyboard leaves.
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
       child: Column(
@@ -431,9 +858,9 @@ class _Ask extends StatelessWidget {
             style: TextStyle(
               fontFamily: fontDisplay,
               fontWeight: FontWeight.w800,
-              fontSize: 27,
+              fontSize: 25,
               height: 1.15,
-              letterSpacing: -0.8,
+              letterSpacing: -0.7,
               color: c.text,
             ),
           ),
@@ -447,10 +874,10 @@ class _Ask extends StatelessWidget {
               color: c.muted,
             ),
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 24),
           answer,
           if (footer != null) ...[
-            const SizedBox(height: 26),
+            const SizedBox(height: 22),
             Center(child: footer!),
           ],
         ],
@@ -486,7 +913,7 @@ class _NameField extends StatelessWidget {
       style: TextStyle(
         fontFamily: fontDisplay,
         fontWeight: FontWeight.w800,
-        fontSize: 24,
+        fontSize: 23,
         letterSpacing: -0.5,
         color: c.text,
       ),
@@ -495,15 +922,14 @@ class _NameField extends StatelessWidget {
         hintStyle: TextStyle(
           fontFamily: fontDisplay,
           fontWeight: FontWeight.w800,
-          fontSize: 24,
+          fontSize: 23,
           letterSpacing: -0.5,
           color: c.slate600,
         ),
         isDense: true,
         contentPadding: const EdgeInsets.only(bottom: 10),
-        // A rule, not a box. The field is the only thing on the screen; a
-        // filled rectangle round it would be drawing a border round the
-        // whole page.
+        // A rule, not a box. This is the only thing on the screen; a filled
+        // rectangle round it would be a border round the whole page.
         border: UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
         enabledBorder:
             UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
@@ -515,148 +941,105 @@ class _NameField extends StatelessWidget {
   }
 }
 
-class _Rooms extends StatelessWidget {
-  const _Rooms({
-    required this.rooms,
-    required this.chosen,
-    required this.onPick,
-    required this.onNew,
+/// The photograph, or the invitation to take one.
+class _PhotoSquare extends StatelessWidget {
+  const _PhotoSquare({required this.photo, required this.onTap});
+
+  final Uint8List? photo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 86,
+        height: 86,
+        decoration: BoxDecoration(
+          color: c.field,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(color: photo == null ? c.line : c.gold),
+          image: photo == null
+              ? null
+              : DecorationImage(image: MemoryImage(photo!), fit: BoxFit.cover),
+        ),
+        child: photo != null
+            ? null
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined, size: 22, color: c.muted),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Photo',
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 11.5,
+                      color: c.muted,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// A full-width answer that is one thing rather than a choice between several.
+class _BigChoice extends StatelessWidget {
+  const _BigChoice({
+    required this.label,
+    required this.lit,
+    required this.icon,
+    required this.onTap,
   });
 
-  final List<Room>? rooms;
-  final String? chosen;
-  final ValueChanged<String?> onPick;
-  final VoidCallback onNew;
+  final String label;
+  final bool lit;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final all = rooms;
-    if (all == null) return const SizedBox(height: 60);
+    final c = StashColors.of(context);
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final room in all)
-          _Chip(
-            label: room.name,
-            on: chosen == room.id,
-            // Tapping the lit one turns it off. Every answer here is
-            // optional, so every answer has to be undoable without a second
-            // control to undo it with.
-            onTap: () => onPick(chosen == room.id ? null : room.id),
+    return Material(
+      color: lit ? c.washGold : c.slate800,
+      borderRadius: BorderRadius.circular(Radii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.md),
+        onTap: () {
+          feedback(Cue.tap);
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(color: lit ? c.gold : c.line),
           ),
-        _Chip(label: '+ New room', on: false, onTap: onNew),
-      ],
-    );
-  }
-}
-
-class _Bought extends StatelessWidget {
-  const _Bought({required this.date, required this.onPick});
-
-  /// `YYYY-MM-DD`, or empty.
-  final String date;
-  final ValueChanged<String> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final today = startOfDay(DateTime.now());
-
-    /*
-      Four guesses and a date picker.
-
-      "Today" is right for something bought on the way home, which is when
-      somebody is most likely to be adding it. The others are the shapes people
-      say out loud — "a few months back", "last year" — offered as a rough
-      answer, because a rough purchase date makes the countdown roughly right
-      and no date makes it nothing at all.
-    */
-    final guesses = <(String, DateTime)>[
-      ('Today', today),
-      ('Last month', addDays(today, -30)),
-      ('6 months ago', addDays(today, -182)),
-      ('A year ago', addDays(today, -365)),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final (label, on) in guesses)
-              _Chip(
-                label: label,
-                on: date == toIsoDate(on),
-                onTap: () =>
-                    onPick(date == toIsoDate(on) ? '' : toIsoDate(on)),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: lit ? c.gold : c.muted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    letterSpacing: -0.3,
+                    color: c.text,
+                  ),
+                ),
               ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _Quiet(
-          label: date.isEmpty ? 'Pick a date' : 'Bought $date · change',
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: parseDate(date) ?? today,
-              firstDate: DateTime(1970),
-              lastDate: addDays(today, 366),
-            );
-            if (picked != null) onPick(toIsoDate(picked));
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _Cover extends StatelessWidget {
-  const _Cover({required this.chosen, required this.onPick});
-
-  final CoverageDraft? chosen;
-  final ValueChanged<CoverageDraft?> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    // The five answers that cover almost everything sold with a warranty.
-    // Anything else is a reason to open the full form, where several policies
-    // with providers and phone numbers are the point.
-    final terms = <(String, CoverageUnit, String)>[
-      ('1 year', CoverageUnit.years, '1'),
-      ('2 years', CoverageUnit.years, '2'),
-      ('3 years', CoverageUnit.years, '3'),
-      ('5 years', CoverageUnit.years, '5'),
-      ('Lifetime', CoverageUnit.lifetime, ''),
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final (label, unit, amount) in terms)
-          _Chip(
-            label: label,
-            on: chosen != null &&
-                chosen!.unit == unit &&
-                chosen!.amountText == amount,
-            onTap: () {
-              final already = chosen != null &&
-                  chosen!.unit == unit &&
-                  chosen!.amountText == amount;
-
-              onPick(already
-                  ? null
-                  : CoverageDraft(
-                      label: 'Warranty',
-                      unit: unit,
-                      amountText: amount,
-                    ));
-            },
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -683,7 +1066,7 @@ class _Chip extends StatelessWidget {
           onTap();
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: on ? c.gold : c.line),
@@ -693,7 +1076,7 @@ class _Chip extends StatelessWidget {
             style: TextStyle(
               fontFamily: fontBody,
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: 13.5,
               color: on ? c.onGold : c.text,
             ),
           ),
@@ -743,16 +1126,16 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 28, 14),
+        padding: const EdgeInsets.fromLTRB(28, 4, 28, 12),
         child: Row(
           children: [
             /*
               "Save now" rather than "Skip".
 
               Skip says the question was a step you got out of. Save says the
-              thing exists, which is true from the moment it has a name — and
-              it is the difference between a wizard you escape and a wizard you
-              can stop using whenever you like.
+              thing exists, which is true from the moment it has a name — the
+              difference between a wizard you escape and one you can stop using
+              whenever you like.
             */
             if (onSaveNow != null)
               TextButton(
@@ -774,7 +1157,7 @@ class _Footer extends StatelessWidget {
                 foregroundColor: c.onGold,
                 disabledBackgroundColor: c.slate600,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),

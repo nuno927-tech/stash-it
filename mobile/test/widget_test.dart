@@ -469,6 +469,33 @@ void main() {
     await db.close();
   });
 
+  testWidgets('the first question also takes a photo and a price',
+      (tester) async {
+    /*
+      Three answers on one screen, which is also what makes it the screen that
+      auto-advance will almost never fire on — `cardFilled` wants all of them.
+      That is the intended trade: a convenience that fires rarely beats one
+      that fires while somebody is still typing.
+    */
+    final db = await show(tester);
+    await goTo(tester, 'Items');
+
+    await tester.tap(find.descendant(
+      of: find.byType(StashItButton),
+      matching: find.byIcon(Icons.add),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Product'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Photo'), findsOneWidget);
+    expect(find.text('WHAT IT COST'), findsOneWidget);
+
+    await db.close();
+  });
+
   testWidgets('the long way out of the wizard carries the name across',
       (tester) async {
     // An escape hatch that throws away what was already typed is one people
