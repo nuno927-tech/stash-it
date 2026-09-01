@@ -27,12 +27,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../billing/current.dart';
 import '../db/repository.dart';
 import '../logic/attachments.dart';
 import '../logic/format.dart';
 import '../logic/item_form.dart';
-import '../logic/notify_offer.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
@@ -44,11 +42,11 @@ import 'doc_tiles.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'pick_doc.dart';
+import 'save_item.dart';
 import 'scout.dart';
 import 'stash_the_paper.dart';
 import 'theme.dart';
 import 'thumb.dart';
-import 'unlock_sheet.dart';
 
 /// Opens the form. Resolves true when something was saved.
 Future<bool?> showItemForm(
@@ -223,162 +221,86 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     });
 
     /*
-      Declared out here so the reminder can be shown AFTER the try finishes.
+      ── The write itself lives in save_item.dart ────────────────────────────
 
-      Inside it, a failure to open the reminder would be caught by the generic
-      `catch` below and reported as "That did not save" — about an item that
-      saved perfectly well — and that handler calls `setState` on a widget the
-      pop has already disposed.
+      It used to be a hundred lines here, and then a second screen learned to
+      create an item. A photograph written before the record so its id can go
+      on it, an id that only exists after the insert so staged documents have
+      something to point at, a cap that can refuse halfway, a reminder schedule
+      rebuilt rather than added to — every one of those is a thing to get wrong
+      twice.
+
+      What is left in this method is what belongs to this sheet: what to say
+      when it fails, when to close, and what to suggest afterwards.
     */
-    var wantsPaper = false;
-    BuildContext? host;
+    final outcome = await saveItemDraft(
+      context,
+      repo: widget.repo,
+      draft: _draft,
+      isNew: _isNew,
+      photo: _photo,
+      pending: _pending,
+      createdAt: widget.existing?.createdAt,
+    );
 
-    try {
-      // The item's picture, written first so its id can go on the record.
-      if (_photo != null) {
-        final id = newId();
-        await widget.repo.putBlob(id, _photo!, 'image/jpeg');
-        _draft.photoBlobId = id;
-        _draft.thumbBlobId = id;
-      }
+    if (!mounted) return;
 
-      final item = toItem(
-        _draft,
-        propertyId: widget.repo.propertyId,
-        createdAt: widget.existing?.createdAt,
-      );
+    switch (outcome) {
+      case ItemNotSaved(:final message):
+        setState(() {
+          _problem = message;
+          _saving = false;
+        });
 
-      /*
-        The id comes back from the insert, it is not on the draft.
+      case ItemSaved(:final attached):
+        _pending.clear();
 
-        `toItem` leaves `id` empty for something new and the repository mints
-        one — so writing the staged documents against `item.id` would file every
-        one of them against an item called "", which is not an error anywhere:
-        the insert succeeds, and the receipt simply never appears on anything.
-      */
-      final String itemId;
-      if (_isNew) {
-        itemId = await widget.repo.createItem(item);
-      } else {
-        await widget.repo.saveItem(item);
-        itemId = item.id;
-      }
+        /*
+          ── This form closes BEFORE the paper reminder opens ─────────────────
 
-      // And now there is something for the staged documents to point at.
-      final attached = _pending.isNotEmpty;
-      for (final doc in _pending) {
-        await _write(doc, itemId);
-      }
-      _pending.clear();
+          It used to be the other way round: the reminder was shown, awaited,
+          and only then was the form popped. So the sheet telling somebody to
+          go and file the receipt appeared on top of the form they had just
+          filled in — the item still sitting there in fields, looking unsaved,
+          behind a note about what to do next.
 
-      /*
-        A saved item can move a reminder in either direction — adding cover
-        creates one, deleting the purchase date removes one — so the schedule
-        is rebuilt rather than added to. Not awaited: the form should close on
-        the save, not on the notification tray.
-      */
-      unawaited(syncReminders(widget.repo));
+          The reminder is a note about the list, not about the form. Closing
+          first means it opens over the Items tab, which is where the thing
+          they just saved now is.
 
-      if (datedSave(
-        purchaseDate: _draft.purchaseDate,
-        hasCover: _draft.realCoverages.any((c) => c.hasTerm),
-      )) {
-        armNotifyOffer();
-      }
+          The navigator and its context are taken before the pop because this
+          State is gone immediately after it — `mounted` is false, `context` is
+          dead, and the reminder needs somewhere to be shown from that outlives
+          the sheet it was triggered by.
+        */
+        final navigator = Navigator.of(context);
+        final host = navigator.context;
 
-      // Not `save` — that is what a settings toggle gets. This is the app
-      // doing the one thing it is for. See the note on `Cue.stashed`.
-      feedback(Cue.stashed);
+        /*
+          The paper reminder, on a new item only, and only when nothing was
+          attached. Being told to go and file the receipt immediately after
+          filing the receipt is the kind of nagging that gets an app's own
+          advice ignored — and the tiles are right there on this form now,
+          which is the whole reason the check is worth making.
+        */
+        final wantsPaper = _isNew && !attached;
 
-      if (!mounted) return;
+        navigator.pop(true);
 
-      /*
-        ── This form closes BEFORE the paper reminder opens ──────────────────
+        /*
+          ── Guarded on the context's OWN mounted, not this widget's ──────────
 
-        It used to be the other way round: the reminder was shown, awaited,
-        and only then was the form popped. So the sheet telling somebody to go
-        and file the receipt appeared on top of the form they had just filled
-        in — the item still sitting there in fields, looking unsaved, behind a
-        note about what to do next.
+          `host` belongs to the Navigator, not to this State. So `this.mounted`
+          — which is false by now anyway, the pop saw to that — says nothing at
+          all about whether the context being used is still alive. It is an
+          unrelated check that happens to sit nearby, which is the most
+          convincing kind of wrong guard.
 
-        The reminder is a note about the list, not about the form. Closing
-        first means it opens over the Items tab, which is where the thing they
-        just saved now is.
-
-        The navigator and its context are taken before the pop because this
-        State is gone immediately after it — `mounted` is false, `context` is
-        dead, and the reminder needs somewhere to be shown from that outlives
-        the sheet it was triggered by.
-      */
-      final navigator = Navigator.of(context);
-      host = navigator.context;
-
-      /*
-        The paper reminder, on a new item only, and only when nothing was
-        attached.
-
-        Being told to go and file the receipt immediately after filing the
-        receipt is the kind of nagging that gets an app's own advice ignored —
-        and the tiles are right there on this form now, which is the whole
-        reason the check is worth making.
-      */
-      wantsPaper = _isNew && !attached;
-
-      navigator.pop(true);
-    } on CapReached catch (e) {
-      /*
-        The wall, and the way through it, in the same moment.
-
-        Showing the sentence alone leaves somebody holding a filled-in form
-        with nowhere to go — and the form is still filled in behind this
-        sheet, so unlocking and pressing Save again works with nothing
-        retyped. That is the whole reason the offer opens here rather than
-        sending them to Settings.
-      */
-      setState(() => _problem = e.message);
-      if (!mounted) return;
-
-      final unlocked = await showUnlock(
-        context,
-        repo: widget.repo,
-        billing: appBilling,
-        count: e.count,
-      );
-
-      // Straight back into the save they were already trying to make.
-      if (unlocked && mounted) {
-        setState(() => _problem = null);
-        await _save();
-      }
-    } catch (e) {
-      // Guarded like every other setState in here. Without it a failure
-      // arriving after the sheet has gone crashes on a disposed widget.
-      if (mounted) setState(() => _problem = 'That did not save: $e');
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-
-    /*
-      Outside the try, and after the form has gone: a note about the list,
-      shown over the list.
-
-      ── Guarded on the context's OWN mounted, not this widget's ────────────
-
-      The analyzer objected to the first version of this line and was right in
-      a way worth writing down: `host` belongs to the Navigator, not to this
-      State. So `this.mounted` — which is false by now anyway, the pop saw to
-      that — says nothing at all about whether the context being used is still
-      alive. It is an unrelated check that happens to sit nearby, which is the
-      most convincing kind of wrong guard.
-
-      `BuildContext.mounted` asks the only question that matters here: is the
-      element this context points at still in the tree. It would be false if
-      the whole route stack had gone during the save — closed by a back
-      gesture, or by a notification tap routing somewhere else.
-    */
-    final where = host;
-    if (wantsPaper && where != null && where.mounted) {
-      await showStashThePaper(where);
+          `BuildContext.mounted` asks the only question that matters: is the
+          element this context points at still in the tree. It would be false
+          if the whole route stack had gone during the save.
+        */
+        if (wantsPaper && host.mounted) await showStashThePaper(host);
     }
   }
 
