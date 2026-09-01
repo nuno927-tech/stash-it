@@ -405,6 +405,103 @@ class Wordmark extends StatelessWidget {
   }
 }
 
+/// The first-run sentence with a working button standing in it.
+///
+/// ── Why the button is not just below the text ─────────────────────────────
+/// A paragraph followed by a button is two things to read. This is one: the
+/// sentence tells you what to do and the thing to do it with is the word you
+/// are reading. The gap between understanding and acting is nothing.
+///
+/// `WidgetSpan` is what makes that possible — the pill flows inline and wraps
+/// with the text rather than sitting in its own row.
+class _Invitation extends StatelessWidget {
+  const _Invitation({required this.onStash});
+
+  final VoidCallback onStash;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Theme.of(context).textTheme.bodyMedium;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: firstThingBefore, style: body),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: StashPill(onTap: onStash),
+          ),
+          TextSpan(text: firstThingAfter, style: body),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+}
+
+/// The Stash it button, small enough to sit in a line of text.
+///
+/// ── Not the real one, and it cannot be ────────────────────────────────────
+/// `StashItButton` is a full-screen Stack: it fills the body so its scrim can
+/// dim the whole page when the menu unfolds. That is right for the pill in the
+/// corner and impossible inside a sentence.
+///
+/// So this is the same pill without the menu, and what it opens is decided by
+/// whichever screen supplied the callback — the item form on Items, documents
+/// on Documents, and so on. On a screen with nothing on it there is no choice
+/// worth offering: the answer to "which kind" is the tab you are already
+/// looking at.
+///
+/// Everything visual here is copied from `add_button.dart` and will drift if
+/// that changes. It is a smaller lie than a screenshot, which drifts too and
+/// cannot even be tapped.
+class StashPill extends StatelessWidget {
+  const StashPill({required this.onTap, super.key});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Material(
+      color: c.gold,
+      borderRadius: BorderRadius.circular(Radii.pill),
+      elevation: 4,
+      // A coloured object lit from behind throws its own colour, as on the
+      // real button — a grey shadow under a gold pill just reads as dirt.
+      shadowColor: c.gold.withValues(alpha: 0.5),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.pill),
+        onTap: () {
+          feedback(Cue.tap);
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(11, 7, 13, 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 16, color: c.onGold),
+              const SizedBox(width: 5),
+              Text(
+                stashItLabel,
+                style: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  letterSpacing: -0.3,
+                  color: c.onGold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// What every screen says before there is anything in the app.
 ///
 /// ── One sentence, four screens ────────────────────────────────────────────
@@ -420,12 +517,32 @@ class Wordmark extends StatelessWidget {
 /// It names the button by its label rather than describing where it is,
 /// because a button that moves in a later version leaves an instruction that
 /// is wrong rather than merely vague.
-const String firstThing = 'Nothing stashed yet.\n\nTap Stash it to add your '
-    'first thing.';
+const String firstThing = '$firstThingBefore$stashItLabel$firstThingAfter';
+
+/*
+  ── Split, so the button can stand in the sentence ─────────────────────────
+
+  The empty screens do not name the button in words any more — they put the
+  button itself in the line, and it works. "Tap Stash it" asks somebody to go
+  and find a thing; a button in the sentence IS the thing.
+
+  Which means the sentence has to come apart around it. These three are what
+  `Blank` reassembles, and `firstThing` above is the same sentence written out
+  for anywhere that only has room for words.
+*/
+const String firstThingBefore = 'Nothing stashed yet.\n\nTap ';
+const String stashItLabel = 'Stash it';
+const String firstThingAfter = ' to add your first thing.';
 
 /// What an empty list should say, which is never nothing.
 class Blank extends StatelessWidget {
-  const Blank(this.message, {this.pose, this.poseHeight = 170, super.key});
+  const Blank(
+    this.message, {
+    this.pose,
+    this.poseHeight = 170,
+    this.onStash,
+    super.key,
+  });
 
   final String message;
 
@@ -443,6 +560,23 @@ class Blank extends StatelessWidget {
   */
   final ScoutPose? pose;
   final double poseHeight;
+
+  /*
+    ── The button, in the sentence ───────────────────────────────────────────
+
+    When this is given, `message` is ignored and the line is rebuilt with a
+    working Stash it button where the words would have been. Somebody on a
+    screen with nothing on it can start without going anywhere.
+
+    It is a real button rather than a picture of one for the obvious reason
+    and a less obvious one: a picture would drift. The pill in the corner has
+    been restyled twice, and a screenshot of it would still be showing the old
+    one — accurately, and wrongly.
+
+    Null on the screens where the sentence is not an invitation. "Nothing here
+    matches that" is not fixed by adding something.
+  */
+  final VoidCallback? onStash;
 
   @override
   Widget build(BuildContext context) {
@@ -486,11 +620,14 @@ class Blank extends StatelessWidget {
                       ),
                       const SizedBox(height: 28),
                     ],
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    if (onStash == null)
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      )
+                    else
+                      _Invitation(onStash: onStash!),
                   ],
                 ),
               ),

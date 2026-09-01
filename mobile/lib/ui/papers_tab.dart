@@ -186,7 +186,17 @@ class _PapersTabState extends State<PapersTab> {
           // The same sentence as the other three tabs; only the pose differs —
           // a clipboard, because this is Documents. See `firstThing`, which says
           // why the explanatory copy that used to be here went.
-          return const Blank(firstThing, pose: ScoutPose.clipboard);
+          return Blank(
+            firstThing,
+            pose: ScoutPose.clipboard,
+            // The button in the sentence opens THIS tab's form. On a screen
+            // with nothing on it there is no "which kind" to ask about — the
+            // answer is the tab somebody is already looking at.
+            onStash: () async {
+              await showPaperForm(context, repo: widget.repo);
+              if (context.mounted) setState(() {});
+            },
+          );
         }
 
         final sorted = sortPapers(all);

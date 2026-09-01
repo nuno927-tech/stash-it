@@ -28,6 +28,7 @@ import '../models/settings.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
 import 'feedback.dart';
+import 'item_form_sheet.dart';
 import 'item_view_sheet.dart';
 
 import 'paper_view_sheet.dart';
@@ -57,22 +58,6 @@ class HomeTab extends StatelessWidget {
             if (data == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            /*
-              ── The first screen, before there is anything to show ──────────
-
-              A dashboard summarising nothing is worse than no dashboard: a
-              ring at nought per cent, four zeroes, an empty Coming up and a
-              backup warning about data that does not exist. All of it true,
-              none of it useful, and the first impression of the app.
-
-              So the whole body is replaced rather than each card hiding
-              itself. Scout with the acorn — the thing being guarded — and the
-              one sentence the other three tabs also say.
-            */
-            if (data.empty) {
-              return const Blank(firstThing, pose: ScoutPose.acorn);
-            }
-
             return _HomeBody(repo: repo, data: data, onGo: onGo);
           },
         );
@@ -285,7 +270,38 @@ class _HomeBodyState extends State<_HomeBody> {
             ),
           ),
         ),
-        Expanded(child: _scroller(context, c, data, line, more)),
+        /*
+          ── The first screen, before there is anything to show ──────────────
+
+          A dashboard summarising nothing is worse than no dashboard: a ring at
+          nought per cent, four zeroes, an empty Coming up and a backup warning
+          about data that does not exist. All true, none of it useful, and the
+          first impression of the app.
+
+          The cards go; the masthead above does not. The greeting is the one
+          part of this screen that is worth the same on day one as on day four
+          hundred — it is the app saying hello by name, which is exactly what
+          somebody who has just typed their name into the tour should see.
+        */
+        Expanded(
+          child: data.empty
+              ? Blank(
+                  firstThing,
+                  // The acorn: the thing being guarded, on the screen about
+                  // guarding things.
+                  pose: ScoutPose.acorn,
+                  /*
+                    An item, where the other tabs open their own kind.
+
+                    Home is the one screen with no kind of its own, so this is
+                    a guess — but not much of one. An item is what most people
+                    have first, and the three-way menu is still one tap away on
+                    the button in the corner.
+                  */
+                  onStash: () => showItemForm(context, repo: widget.repo),
+                )
+              : _scroller(context, c, data, line, more),
+        ),
       ],
     );
   }

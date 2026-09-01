@@ -370,6 +370,16 @@ class _ItemsTabState extends State<ItemsTab> {
                 child: shown.isEmpty
                     ? Blank(
                         all.isEmpty ? firstThing : 'Nothing here matches that.',
+                        // Only when the app is empty. "Nothing here matches
+                        // that" is not fixed by adding something, so offering
+                        // to add something there would be answering a
+                        // question nobody asked.
+                        onStash: all.isEmpty
+                            ? () async {
+                                await showItemForm(context, repo: widget.repo);
+                                if (context.mounted) setState(() {});
+                              }
+                            : null,
                         // Paperwork when the list has never had anything in it;
                         // ears up when a search found nothing, because those are
                         // different situations and only one of them is a

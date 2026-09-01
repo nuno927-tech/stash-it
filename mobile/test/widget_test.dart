@@ -28,6 +28,7 @@ import 'package:stash_it/main.dart';
 import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
+import 'package:stash_it/ui/parts.dart' show StashPill;
 import 'package:stash_it/ui/prefs_scope.dart';
 import 'package:stash_it/ui/settings_tab.dart' show appVersion;
 
@@ -268,11 +269,35 @@ void main() {
       sees. See `firstThing`.
     */
     expect(find.textContaining('Nothing stashed yet'), findsOneWidget);
-    expect(find.textContaining('Tap Stash it'), findsOneWidget);
+    /*
+      The button, not the words.
+
+      The sentence used to say "Tap Stash it" and now puts a real, working
+      Stash it button in the line where those words were — so there is no
+      such text to find any more, and `textContaining` would pass on a
+      screen where the button had silently vanished.
+
+      Finding the widget is the assertion that matches what the screen
+      actually promises: something tappable, right there.
+    */
+    expect(find.byType(StashPill), findsOneWidget);
 
     // And the dashboard is genuinely not there, rather than merely scrolled
     // out of view behind it.
     expect(find.text('ITEMS AND DOCUMENTS'), findsNothing);
+
+    /*
+      The greeting stays, though, and that is the point of it.
+
+      It is the one line on this screen worth the same on day one as on day
+      four hundred: the app saying hello, by name, to somebody who has just
+      typed that name into the tour. Losing it on an empty install would make
+      the first screen the coldest one.
+    */
+    // 'Good ' rather than 'Good morning': the test suite runs at whatever
+    // hour somebody happens to run it, and pinning one of the three would be
+    // a test that fails after lunch.
+    expect(find.textContaining('Good '), findsOneWidget);
 
     await db.close();
   });
@@ -341,7 +366,18 @@ void main() {
     // Named, not drawn as a symbol: the button is a pill with the app's name
     // on it now, and "tap +" would send somebody looking for a plus that is
     // only half of what the button says.
-    expect(find.textContaining('Tap Stash it'), findsOneWidget);
+    /*
+      The button, not the words.
+
+      The sentence used to say "Tap Stash it" and now puts a real, working
+      Stash it button in the line where those words were — so there is no
+      such text to find any more, and `textContaining` would pass on a
+      screen where the button had silently vanished.
+
+      Finding the widget is the assertion that matches what the screen
+      actually promises: something tappable, right there.
+    */
+    expect(find.byType(StashPill), findsOneWidget);
 
     /*
       And the header is gone with it.
@@ -440,7 +476,18 @@ void main() {
     await goTo(tester, 'Documents');
 
     expect(find.textContaining('Nothing stashed yet'), findsOneWidget);
-    expect(find.textContaining('Tap Stash it'), findsOneWidget);
+    /*
+      The button, not the words.
+
+      The sentence used to say "Tap Stash it" and now puts a real, working
+      Stash it button in the line where those words were — so there is no
+      such text to find any more, and `textContaining` would pass on a
+      screen where the button had silently vanished.
+
+      Finding the widget is the assertion that matches what the screen
+      actually promises: something tappable, right there.
+    */
+    expect(find.byType(StashPill), findsOneWidget);
 
     await db.close();
   });

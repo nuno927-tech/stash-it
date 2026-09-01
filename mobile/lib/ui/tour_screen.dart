@@ -14,6 +14,8 @@
 /// worth the tap it costs.**
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../logic/tour.dart' as tour;
@@ -83,12 +85,28 @@ class _Tour extends StatefulWidget {
 class _TourState extends State<_Tour> {
   final PageController _pages = PageController();
   final TextEditingController _name = TextEditingController();
+
+  /*
+    ── Held here, not in the step ──────────────────────────────────────────
+
+    The step that asks for a name is a `_Step`, and `_Step` is rebuilt every
+    time the PageView scrolls. A focus node created there would be a new node
+    on every frame of the swipe, which is the quiet version of the controller
+    bug this app has already been bitten by: focus would be requested on an
+    object that is thrown away before the keyboard finishes opening.
+
+    It lives beside the controller it belongs with, for the same reason that
+    one does.
+  */
+  final FocusNode _nameFocus = FocusNode();
+
   int _at = 0;
 
   @override
   void dispose() {
     _pages.dispose();
     _name.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
@@ -136,9 +154,37 @@ class _TourState extends State<_Tour> {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return FractionallySizedBox(
-      heightFactor: 0.66,
-      child: SafeArea(
+    /*
+      ── Making room for the keyboard ────────────────────────────────────────
+
+      This was a flat two thirds of the screen, anchored to the bottom. That is
+      right for eight of the nine steps and wrong for the one with a field in
+      it: a sheet pinned to the bottom edge is exactly where the keyboard
+      appears, so the field somebody just tapped ended up behind it.
+
+      Two things fix it together, and neither works alone.
+
+      The padding lifts the whole sheet clear of the keyboard. On its own that
+      pushes the top of the sheet off the screen, because two thirds plus a
+      keyboard is more than a screen.
+
+      So the height gives way as well: still two thirds when there is nothing
+      in the way, and never more than the space actually left. `24` is a margin
+      so the sheet does not meet the status bar.
+
+      Animated because the keyboard is — an instant jump next to a sliding
+      keyboard reads as a glitch rather than as the same movement.
+    */
+    final insets = MediaQuery.viewInsetsOf(context).bottom;
+    final screen = MediaQuery.sizeOf(context).height;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: insets),
+      child: SizedBox(
+        height: math.min(screen * 0.66, screen - insets - 24),
+        child: SafeArea(
         top: false,
         child: Column(
           children: [
@@ -152,9 +198,34 @@ class _TourState extends State<_Tour> {
                 onPageChanged: (i) {
                   feedback(Cue.tap);
                   setState(() => _at = i);
+
+                  /*
+                    ── The keyboard opens itself on the last step ────────────
+
+                    Somebody who has swiped through eight screens and arrived
+                    at a single field should not then have to tap it. The step
+                    exists to be answered, and the extra tap is the one that
+                    makes an optional field feel like a form.
+
+                    Driven from here rather than by `autofocus` on the field,
+                    because a PageView builds the page either side of the one
+                    you are on: autofocus would fire while the name step was
+                    still off-screen, opening the keyboard a screen early.
+
+                    And unfocused on the way out, or swiping back leaves the
+                    keyboard up over a step that has nothing to type into.
+                  */
+                  if (tour.stepAt(i).key == tour.nameStepKey) {
+                    _nameFocus.requestFocus();
+                  } else {
+                    _nameFocus.unfocus();
+                  }
                 },
-                itemBuilder: (context, i) =>
-                    _Step(step: tour.stepAt(i), name: _name),
+                itemBuilder: (context, i) => _Step(
+                  step: tour.stepAt(i),
+                  name: _name,
+                  focus: _nameFocus,
+                ),
               ),
             ),
 
@@ -233,12 +304,17 @@ class _TourState extends State<_Tour> {
           ],
         ),
       ),
+      ),
     );
   }
 }
 
 class _Step extends StatelessWidget {
-  const _Step({required this.step, required this.name});
+  const _Step({
+    required this.step,
+    required this.name,
+    required this.focus,
+  });
 
   final tour.TourStep step;
 
@@ -246,10 +322,14 @@ class _Step extends StatelessWidget {
   /// forth and is still there to be saved on the last tap.
   final TextEditingController name;
 
+  /// Owned by the sheet, not by this — see the note there.
+  final FocusNode focus;
+
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
     final asks = step.key == tour.nameStepKey;
+    final typing = asks && MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
@@ -259,9 +339,16 @@ class _Step extends StatelessWidget {
             child: Center(
               child: Scout(
                 pose: _poses[step.pose]!,
-                // Smaller on the step that has a field under it, so the
-                // keyboard does not push the whole thing off the sheet.
-                height: asks ? 118 : 168,
+                /*
+                  Smaller on the step that has a field under it, and smaller
+                  again once the keyboard is actually up.
+
+                  He is not dropped entirely while typing, though there is
+                  room to. The whole point of this step is that it is Scout
+                  asking your name — losing him mid-answer turns a greeting
+                  into a form field.
+                */
+                height: typing ? 64 : (asks ? 118 : 168),
                 motion: const [ScoutMotion.float, ScoutMotion.breathe],
                 shadow: true,
               ),
@@ -294,6 +381,7 @@ class _Step extends StatelessWidget {
             const SizedBox(height: 16),
             TextField(
               controller: name,
+              focusNode: focus,
               textAlign: TextAlign.center,
               textCapitalization: TextCapitalization.words,
               // Done rather than next: this is the last step, and a keyboard

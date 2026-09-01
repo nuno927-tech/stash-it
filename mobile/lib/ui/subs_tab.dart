@@ -131,7 +131,14 @@ class _SubsTabState extends State<SubsTab> {
 
         if (subs.isEmpty) {
           // Same sentence, calendar pose. See `firstThing`.
-          return const Blank(firstThing, pose: ScoutPose.calendar);
+          return Blank(
+            firstThing,
+            pose: ScoutPose.calendar,
+            onStash: () async {
+              await showSubForm(context, repo: widget.repo);
+              if (context.mounted) setState(() {});
+            },
+          );
         }
 
         final theme = Theme.of(context);
