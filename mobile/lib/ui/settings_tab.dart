@@ -40,6 +40,7 @@ import 'privacy.dart';
 import 'tour_screen.dart';
 import 'pro_badge.dart';
 import '../io/card_file.dart';
+import 'ask_text.dart';
 import 'card_arrival_screen.dart';
 import 'unlock_sheet.dart';
 import 'rooms_screen.dart';
@@ -47,7 +48,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.79.0';
+const appVersion = '0.81.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1606,52 +1607,57 @@ Future<bool?> _askErase(BuildContext context) {
 
   return showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: c.slate700,
-      title: Text(
-        'Type ERASE',
-        style: TextStyle(
-          fontFamily: fontDisplay,
-          fontWeight: FontWeight.w800,
-          fontSize: 19,
-          color: c.text,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'There is no bin behind this one, and no undo. If you have a '
-            'backup file it can be restored; if you do not, this is the end '
-            'of it.',
-            style: TextStyle(
-                fontFamily: fontBody,
-                fontSize: 13,
-                height: 1.45,
-                color: c.muted),
+    // The controller outlives the await by exactly as long as the dialog
+    // does — see `OwnsControllers`. It was never disposed at all here.
+    builder: (context) => OwnsControllers(
+      controllers: [controller],
+      child: AlertDialog(
+        backgroundColor: c.slate700,
+        title: Text(
+          'Type ERASE',
+          style: TextStyle(
+            fontFamily: fontDisplay,
+            fontWeight: FontWeight.w800,
+            fontSize: 19,
+            color: c.text,
           ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.characters,
-            style: TextStyle(fontFamily: fontMono, color: c.text),
-            decoration: const InputDecoration(hintText: 'ERASE'),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'There is no bin behind this one, and no undo. If you have a '
+              'backup file it can be restored; if you do not, this is the end '
+              'of it.',
+              style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  height: 1.45,
+                  color: c.muted),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              style: TextStyle(fontFamily: fontMono, color: c.text),
+              decoration: const InputDecoration(hintText: 'ERASE'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep everything'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context)
+                .pop(controller.text.trim().toUpperCase() == 'ERASE'),
+            child: Text('Erase', style: TextStyle(color: c.ember)),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Keep everything'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context)
-              .pop(controller.text.trim().toUpperCase() == 'ERASE'),
-          child: Text('Erase', style: TextStyle(color: c.ember)),
-        ),
-      ],
     ),
   );
 }

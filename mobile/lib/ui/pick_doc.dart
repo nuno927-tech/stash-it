@@ -13,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../logic/attachments.dart';
 import '../models/types.dart';
+import 'ask_text.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'theme.dart';
@@ -46,14 +47,23 @@ Future<PickSource?> askPickSource(
   String removeLabel = 'Remove it',
   String removeNote = 'Everything else is kept',
 }) {
-  final c = StashColors.of(context);
+  /*
+    Takes the sheet's own context.
 
-  Widget row(
-      IconData icon, String label, String note, PickSource value, Color ink) {
+    It used to close over the caller's — both for the pop and for the colours —
+    which registers a dependency belonging to one route on a widget built by
+    another. See the note at the top of ask_text.dart: that is the
+    `_dependents.isEmpty` assertion, and this sheet opens from inside the item
+    form exactly as that one does.
+  */
+  Widget row(BuildContext ctx, IconData icon, String label, String note,
+      PickSource value, Color ink) {
+    final c = StashColors.of(ctx);
+
     return InkWell(
       onTap: () {
         feedback(Cue.tap);
-        Navigator.of(context).pop(value);
+        Navigator.of(ctx).pop(value);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -93,42 +103,46 @@ Future<PickSource?> askPickSource(
     context: context,
     useRootNavigator: true,
     showDragHandle: true,
-    backgroundColor: c.slate700,
+    backgroundColor: StashColors.of(context).slate700,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: c.text,
+    builder: (context) {
+      final c = StashColors.of(context);
+
+      return SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: c.text,
+                ),
               ),
             ),
-          ),
-          row(Icons.photo_camera_outlined, 'Take a photo', 'Opens the camera',
-              PickSource.camera, c.text),
-          Container(height: 1, color: c.line),
-          row(Icons.folder_outlined, 'Choose a file',
-              'Something already on this phone', PickSource.files, c.text),
-          if (canRemove) ...[
+            row(context, Icons.photo_camera_outlined, 'Take a photo',
+                'Opens the camera', PickSource.camera, c.text),
             Container(height: 1, color: c.line),
-            row(Icons.delete_outline, removeLabel, removeNote,
-                PickSource.remove, c.ember),
+            row(context, Icons.folder_outlined, 'Choose a file',
+                'Something already on this phone', PickSource.files, c.text),
+            if (canRemove) ...[
+              Container(height: 1, color: c.line),
+              row(context, Icons.delete_outline, removeLabel, removeNote,
+                  PickSource.remove, c.ember),
+            ],
+            const SizedBox(height: 8),
           ],
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 }
 
@@ -208,7 +222,6 @@ Future<List<PendingDoc>> _photograph(DocKind kind) async {
 /// A sheet rather than a dialog, so it sits where every other question in this
 /// app sits and the keyboard has somewhere to go.
 Future<PendingDoc?> askForLink(BuildContext context) async {
-  final c = StashColors.of(context);
   final url = TextEditingController();
   final title = TextEditingController();
 
@@ -217,83 +230,90 @@ Future<PendingDoc?> askForLink(BuildContext context) async {
     useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
-    backgroundColor: c.slate700,
+    backgroundColor: StashColors.of(context).slate700,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'On the web',
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              color: c.text,
-            ),
+    builder: (context) {
+      final c = StashColors.of(context);
+
+      // The two controllers live exactly as long as this subtree — see
+      // `OwnsControllers`. They used to be disposed the moment the sheet
+      // popped, while the fields were still on screen.
+      return OwnsControllers(
+        controllers: [url, title],
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
-          const SizedBox(height: 6),
-          Text(
-            'For a receipt that lives in your email, or a manual on the '
-            "maker's site. Nothing is downloaded — this is a link.",
-            style:
-                TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: url,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration:
-                sunkenInput(hint: 'example.com/my-receipt', fill: c.slate600),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: title,
-            style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration: sunkenInput(
-                hint: 'What to call it (optional)', fill: c.slate600),
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.gold,
-              foregroundColor: c.onGold,
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.pill),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'On the web',
+                style: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: c.text,
+                ),
               ),
-            ),
-            child: Text(
-              'Link it',
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                color: c.onGold,
+              const SizedBox(height: 6),
+              Text(
+                'For a receipt that lives in your email, or a manual on the '
+                "maker's site. Nothing is downloaded — this is a link.",
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 13, color: c.muted),
               ),
-            ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: url,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                style: TextStyle(fontFamily: fontBody, color: c.text),
+                decoration: sunkenInput(
+                    hint: 'example.com/my-receipt', fill: c.slate600),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: title,
+                style: TextStyle(fontFamily: fontBody, color: c.text),
+                decoration: sunkenInput(
+                    hint: 'What to call it (optional)', fill: c.slate600),
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: c.gold,
+                  foregroundColor: c.onGold,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                  ),
+                ),
+                child: Text(
+                  'Link it',
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: c.onGold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 
   final tidied = saved == true ? tidyUrl(url.text) : null;
   final named = title.text.trim();
-
-  url.dispose();
-  title.dispose();
 
   if (tidied == null) return null;
 

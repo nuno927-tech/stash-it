@@ -26,6 +26,14 @@ import 'bundle_file.dart';
 /// restore replaces the database — see the note beside `cardFormat`.
 const String cardExtension = 'stashcard';
 
+/// Declared on the attachment so Android has something better than a guess.
+///
+/// It matches the manifest's own filter — see AndroidManifest.xml — which is
+/// what lets a card that arrives by mail or chat offer this app as a way to
+/// open it. Left unset, share_plus infers from the extension, and an unknown
+/// extension becomes `application/octet-stream`, which fewer apps accept.
+const String cardMimeType = 'application/x-stash-it-card';
+
 /// `kettle.stashcard`, or `3-things.stashcard`.
 ///
 /// Named after what is inside rather than after a timestamp, because this file
@@ -70,11 +78,27 @@ ParsedBundle parseCardBytes(List<int> bytes) => parseBundle(
       format: cardFormat,
     );
 
-/// Gathers, writes and hands the whole thing to the share sheet.
-///
-/// The summary text goes as the message body and the file as the attachment,
-/// which is the whole point of the format decision: a recipient without the
-/// app reads the message and is done, and one with it taps the file.
+/*
+  ── Two ways to send, because the phone has two ─────────────────────────────
+
+  A card is a file, and **a text message cannot carry a file**. SMS has no
+  attachment at all and MMS takes pictures and contact cards, not an
+  application's own format — so Android filters every messaging app out of the
+  share sheet the moment an attachment is on it. Nothing in this app can change
+  that; it is what the transport is.
+
+  What CAN go by text is the message, and the message was always written to
+  stand on its own — see `cardSummary`. So there are two sends rather than one
+  send that quietly fails half the time:
+
+    `shareCard`     the file plus the words, for mail, chat apps, a drive
+    `shareSummary`  the words alone, which every keyboard on earth accepts
+
+  The alternative was one button that offers a share sheet with the messaging
+  apps mysteriously missing, and no way to find out why.
+*/
+
+/// Gathers, writes and hands the file and the words to the share sheet.
 Future<void> shareCard(StashDatabase db, CardPick pick) async {
   final contents = await gatherCard(db, pick);
   final bytes = writeCard(contents);
@@ -83,17 +107,24 @@ Future<void> shareCard(StashDatabase db, CardPick pick) async {
   final file = File(p.join(dir.path, cardFileName(contents.summarySource)));
   await file.writeAsBytes(bytes);
 
-  final text = cardSummary(
-    items: contents.summarySource.items,
-    papers: contents.summarySource.papers,
-    subscriptions: contents.summarySource.subscriptions,
-  );
-
   // share_plus 10's API, the same call the backup uses — see the note in
   // settings_tab.dart about version 11.
   await Share.shareXFiles(
-    [XFile(file.path)],
-    text: text,
+    [XFile(file.path, mimeType: cardMimeType)],
+    text: summaryFor(contents),
     subject: 'From my Stash it',
   );
 }
+
+/// The words on their own — no attachment, so nothing is filtered out.
+Future<void> shareSummary(StashDatabase db, CardPick pick) async {
+  final contents = await gatherCard(db, pick);
+  await Share.share(summaryFor(contents), subject: 'From my Stash it');
+}
+
+/// The message body, from the rows the card was built from.
+String summaryFor(CardContents contents) => cardSummary(
+      items: contents.summarySource.items,
+      papers: contents.summarySource.papers,
+      subscriptions: contents.summarySource.subscriptions,
+    );

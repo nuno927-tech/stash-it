@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import '../db/repository.dart';
 import '../models/types.dart';
 import 'confirm_delete.dart';
+import 'ask_text.dart';
 import 'feedback.dart';
 import 'scout.dart';
 import 'theme.dart';
@@ -98,7 +99,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
   }
 
   Future<void> _add() async {
-    final name = await _askName(context, title: 'Add a room');
+    final name = await askText(context, title: 'Add a room');
     if (name == null || name.isEmpty) return;
 
     feedback(Cue.save);
@@ -107,7 +108,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
   }
 
   Future<void> _rename(Room room) async {
-    final name = await _askName(context, title: 'Rename', initial: room.name);
+    final name = await askText(context, title: 'Rename', initial: room.name);
     if (name == null || name.isEmpty || name == room.name) return;
 
     feedback(Cue.save);
@@ -352,59 +353,4 @@ class _Row extends StatelessWidget {
       ),
     );
   }
-}
-
-/// One field, in a dialog rather than a sheet.
-///
-/// A sheet would cover the list you are naming something in relation to, and a
-/// room name is two words — the smallest question the app asks, and the only
-/// one that does not need a screen.
-Future<String?> _askName(
-  BuildContext context, {
-  required String title,
-  String initial = '',
-}) async {
-  final controller = TextEditingController(text: initial);
-  final c = StashColors.of(context);
-
-  final answer = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: c.slate700,
-      title: Text(
-        title,
-        style: TextStyle(
-          fontFamily: fontDisplay,
-          fontWeight: FontWeight.w800,
-          fontSize: 19,
-          color: c.text,
-        ),
-      ),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        onSubmitted: (v) => Navigator.of(context).pop(v),
-        style: TextStyle(fontFamily: fontBody, color: c.text),
-        // Third example is a possessive on purpose — rooms are often "whose"
-        // rather than "where", and the hint is the only place that gets said.
-        // It used to be the developer's own name.
-        decoration:
-            const InputDecoration(hintText: 'Garage, loft, Sam\'s office'),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(controller.text),
-          child: const Text('Save'),
-        ),
-      ],
-    ),
-  );
-
-  controller.dispose();
-  return answer?.trim();
 }

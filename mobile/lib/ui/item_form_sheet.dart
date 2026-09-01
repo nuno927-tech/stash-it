@@ -37,6 +37,7 @@ import '../logic/prefs.dart';
 import '../models/types.dart';
 import '../notify/sync.dart';
 import '../logic/auto_advance.dart';
+import 'ask_text.dart';
 import 'auto_advance.dart';
 import 'confirm_delete.dart';
 import 'doc_tiles.dart';
@@ -531,7 +532,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* --------------------------------------------------------------- room */
 
   Future<void> _newRoom() async {
-    final name = await _askName(context,
+    final name = await askText(context,
         title: 'New room', hint: 'Kitchen, garage, loft');
     if (name == null || name.trim().isEmpty) return;
 
@@ -955,7 +956,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               return;
             }
 
-            final name = await _askName(
+            final name = await askText(
               context,
               title: 'Call it what it is',
               hint: 'Roof guarantee, screen cover',
@@ -1022,7 +1023,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                   label: customTerm ? cov.amountText.trim() : 'Custom',
                   on: customTerm,
                   onTap: () async {
-                    final typed = await _askName(
+                    final typed = await askText(
                       context,
                       title: 'How long?',
                       hint:
@@ -1415,90 +1416,4 @@ class _DocRow extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Asks for one short string.
-///
-/// A sheet rather than an `AlertDialog`, so the keyboard has somewhere to go
-/// and it matches every other question the app asks.
-Future<String?> _askName(
-  BuildContext context, {
-  required String title,
-  String? hint,
-  String initial = '',
-  bool number = false,
-}) async {
-  final c = StashColors.of(context);
-  final field = TextEditingController(text: initial);
-
-  final ok = await showModalBottomSheet<bool>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: c.slate700,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-    ),
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              color: c.text,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: field,
-            autofocus: true,
-            keyboardType: number ? TextInputType.number : TextInputType.text,
-            textCapitalization:
-                number ? TextCapitalization.none : TextCapitalization.sentences,
-            style: TextStyle(fontFamily: fontBody, fontSize: 16, color: c.text),
-            onSubmitted: (_) => Navigator.of(context).pop(true),
-            // Filled, and nothing else. Setting only `border` leaves the
-            // theme's `enabledBorder` in place — see `bareInput`.
-            decoration: sunkenInput(hint: hint, fill: c.slate600),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.gold,
-              foregroundColor: c.onGold,
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-            ),
-            child: Text(
-              'Done',
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                color: c.onGold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  final text = ok == true ? field.text : null;
-  field.dispose();
-  return text;
 }

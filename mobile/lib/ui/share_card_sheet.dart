@@ -77,10 +77,24 @@ class _ShareSheetState extends State<_ShareSheet> {
         ));
   }
 
-  Future<void> _send() async {
+  /*
+    ── Two sends, because a text message cannot carry a file ────────────────
+
+    Attach anything and Android drops every messaging app from the share sheet
+    — SMS has no attachment and MMS does not take an app's own format. That is
+    the transport, not a setting.
+
+    So the card and the words are separate offers. See the note in
+    `io/card_file.dart`; the words were always written to stand alone.
+  */
+  Future<void> _send({required bool withCard}) async {
     setState(() => _busy = true);
     try {
-      await shareCard(widget.repo.db, _pick);
+      if (withCard) {
+        await shareCard(widget.repo.db, _pick);
+      } else {
+        await shareSummary(widget.repo.db, _pick);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -238,7 +252,9 @@ class _ShareSheetState extends State<_ShareSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: FilledButton(
-                onPressed: _busy || _preview == null ? null : _send,
+                onPressed: _busy || _preview == null
+                    ? null
+                    : () => _send(withCard: true),
                 style: FilledButton.styleFrom(
                   backgroundColor: c.gold,
                   disabledBackgroundColor: c.slate600,
@@ -248,13 +264,34 @@ class _ShareSheetState extends State<_ShareSheet> {
                   ),
                 ),
                 child: Text(
-                  _busy ? 'Preparing…' : 'Choose how to send',
+                  _busy ? 'Preparing…' : 'Send with the card',
                   style: TextStyle(
                     fontFamily: fontDisplay,
                     fontWeight: FontWeight.w800,
                     fontSize: 15.5,
                     color: _busy || _preview == null ? c.muted : c.onGold,
                   ),
+                ),
+              ),
+            ),
+
+            /*
+              The quieter of the two, but the one that reaches a phone number.
+              Named for what the recipient gets rather than for what is left
+              out — "without the attachment" describes the mechanism, and the
+              person choosing is thinking about who they are sending to.
+            */
+            TextButton(
+              onPressed: _busy || _preview == null
+                  ? null
+                  : () => _send(withCard: false),
+              child: Text(
+                'Send as a text message',
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _busy || _preview == null ? c.muted : c.gold,
                 ),
               ),
             ),
