@@ -225,7 +225,7 @@ class SubServiceCard extends StatelessWidget {
 /* ---------------------------------------------------------------- billing */
 
 /// How often, how much, since when, and who it is split with.
-class SubBillingCard extends StatelessWidget {
+class SubBillingCard extends StatefulWidget {
   const SubBillingCard({
     required this.draft,
     required this.onChanged,
@@ -237,10 +237,32 @@ class SubBillingCard extends StatelessWidget {
   final VoidCallback onChanged;
   final String title;
 
-  Future<void> _pickDate(BuildContext context, {required bool anchor}) async {
+  @override
+  State<SubBillingCard> createState() => _SubBillingCardState();
+}
+
+class _SubBillingCardState extends State<SubBillingCard> {
+  /*
+    ── Owned here, so the action key has somewhere to go ────────────────────
+
+    Two focus nodes for the two split fields. They have to belong to a State:
+    a `FocusNode` built in `build` is a new one on every keystroke, which is
+    the same trap as a controller built there.
+  */
+  final FocusNode _payTo = FocusNode();
+  final FocusNode _payHow = FocusNode();
+
+  @override
+  void dispose() {
+    _payTo.dispose();
+    _payHow.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate({required bool anchor}) async {
     final now = DateTime.now();
-    final current =
-        DateTime.tryParse(anchor ? draft.anchorDate : (draft.startedDate ?? ''));
+    final current = DateTime.tryParse(
+        anchor ? widget.draft.anchorDate : (widget.draft.startedDate ?? ''));
 
     final picked = await showDatePicker(
       context: context,
@@ -264,11 +286,11 @@ class SubBillingCard extends StatelessWidget {
         '-${picked.day.toString().padLeft(2, '0')}';
 
     if (anchor) {
-      draft.anchorDate = iso;
+      widget.draft.anchorDate = iso;
     } else {
-      draft.startedDate = iso;
+      widget.draft.startedDate = iso;
     }
-    onChanged();
+    widget.onChanged();
   }
 
   /// What this will cost per month, while it is being typed.
@@ -278,22 +300,22 @@ class SubBillingCard extends StatelessWidget {
   /// look believable and wrong. This is how somebody notices that £5 a week is
   /// not £20 a month.
   String? get _monthly {
-    final cents = parseMoneyToCents(draft.amountText);
+    final cents = parseMoneyToCents(widget.draft.amountText);
     if (cents == null || cents == 0) return null;
-    if (draft.cadence == Cadence.monthly) return null;
+    if (widget.draft.cadence == Cadence.monthly) return null;
 
     final sub = toSubscription(
       SubscriptionDraft(
         name: 'x',
         anchorDate: '2026-01-01',
-        cadence: draft.cadence,
-        amountText: draft.amountText,
+        cadence: widget.draft.cadence,
+        amountText: widget.draft.amountText,
       ),
       propertyId: 'x',
     );
 
     final per = (monthlyCents(sub) / 100).toStringAsFixed(2);
-    return 'That is ${currencySymbol(draft.currency)}$per a month.';
+    return 'That is ${currencySymbol(widget.draft.currency)}$per a month.';
   }
 
   @override
@@ -302,11 +324,11 @@ class SubBillingCard extends StatelessWidget {
     final monthly = _monthly;
 
     return SheetCard(
-      title: title,
+      title: widget.title,
       children: [
         const FieldLabel('How often'),
         SegRow<Cadence>(
-          value: draft.cadence,
+          value: widget.draft.cadence,
           options: const [
             (Cadence.weekly, 'Weekly'),
             (Cadence.monthly, 'Monthly'),
@@ -314,8 +336,8 @@ class SubBillingCard extends StatelessWidget {
             (Cadence.yearly, 'Yearly'),
           ],
           onPick: (v) {
-            draft.cadence = v;
-            onChanged();
+            widget.draft.cadence = v;
+            widget.onChanged();
           },
         ),
         const SizedBox(height: 14),
@@ -337,8 +359,8 @@ class SubBillingCard extends StatelessWidget {
                   */
                   const FieldLabel('Next renewal'),
                   DateBox(
-                    value: draft.anchorDate,
-                    onTap: () => _pickDate(context, anchor: true),
+                    value: widget.draft.anchorDate,
+                    onTap: () => _pickDate(anchor: true),
                   ),
                 ],
               ),
@@ -350,11 +372,11 @@ class SubBillingCard extends StatelessWidget {
                 children: [
                   const FieldLabel('Amount'),
                   MoneyBox(
-                    initial: draft.amountText,
-                    currency: draft.currency,
+                    initial: widget.draft.amountText,
+                    currency: widget.draft.currency,
                     onChanged: (v) {
-                      draft.amountText = v;
-                      onChanged();
+                      widget.draft.amountText = v;
+                      widget.onChanged();
                     },
                   ),
                 ],
@@ -373,8 +395,8 @@ class SubBillingCard extends StatelessWidget {
         const SizedBox(height: 14),
         const FieldLabel('Started'),
         DateBox(
-          value: draft.startedDate ?? '',
-          onTap: () => _pickDate(context, anchor: false),
+          value: widget.draft.startedDate ?? '',
+          onTap: () => _pickDate(anchor: false),
         ),
         const SizedBox(height: 16),
         Container(height: 1, color: c.line),
@@ -411,40 +433,57 @@ class SubBillingCard extends StatelessWidget {
                 ],
               ),
             ),
-            // The theme's own switch, unstyled here. Settings has three of these
-            // and a fourth that looked almost the same would be a fourth thing
-            // to keep in step.
+            // The theme's own switch, unstyled here. Settings has three of
+            // these and a fourth that looked almost the same would be a
+            // fourth thing to keep in step.
             Switch(
-              value: draft.shared,
+              value: widget.draft.shared,
               onChanged: (v) {
                 // On and off both. A switch that only buzzes one way feels
                 // broken in the direction it stays silent.
                 feedback(v ? Cue.expand : Cue.collapse);
-                draft.shared = v;
-                onChanged();
+                widget.draft.shared = v;
+                widget.onChanged();
               },
             ),
           ],
         ),
-        if (draft.shared) ...[
+        if (widget.draft.shared) ...[
           const SizedBox(height: 12),
           const FieldLabel('Who it goes to'),
+          /*
+            The action key goes to the next box, not away.
+
+            It was a tick, which put the keyboard down and left somebody
+            looking at a field they still had to reach past it to tap. These
+            two are one answer in two halves — who, and how — so finishing the
+            first means starting the second.
+          */
           TextBox(
-            initial: draft.payTo,
+            initial: widget.draft.payTo,
+            focus: _payTo,
             hint: 'Mum, my flatmate, the group',
+            action: TextInputAction.next,
+            onSubmitted: _payHow.requestFocus,
             onChanged: (v) {
-              draft.payTo = v;
-              onChanged();
+              widget.draft.payTo = v;
+              widget.onChanged();
             },
           ),
           const SizedBox(height: 12),
           const FieldLabel('How they get it'),
+          // The last box on the card keeps the tick: there is genuinely
+          // nothing after it, and a "next" that went nowhere would be worse
+          // than the tick was.
           TextBox(
-            initial: draft.payHow,
+            initial: widget.draft.payHow,
+            focus: _payHow,
             hint: 'Standing order on the 1st',
+            action: TextInputAction.done,
+            onSubmitted: _payHow.unfocus,
             onChanged: (v) {
-              draft.payHow = v;
-              onChanged();
+              widget.draft.payHow = v;
+              widget.onChanged();
             },
           ),
         ],

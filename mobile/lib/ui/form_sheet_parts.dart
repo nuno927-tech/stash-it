@@ -296,12 +296,15 @@ class TextBox extends StatelessWidget {
     required this.initial,
     required this.onChanged,
     this.controller,
+    this.focus,
     this.hint,
     this.lines = 1,
     this.keyboard,
     this.format,
     this.autofocus = false,
     this.big = false,
+    this.action,
+    this.onSubmitted,
     super.key,
   });
 
@@ -326,6 +329,25 @@ class TextBox extends StatelessWidget {
   /// The one field on a form that is the point of it — the product name, the
   /// service.
   final bool big;
+
+  /*
+    ── The key in the corner of the keyboard ───────────────────────────────
+
+    Left alone it is a tick, and a tick means "finished" — it puts the keyboard
+    away and nothing else. On a card with two boxes one under the other that is
+    a dead end: the second field is right there, and somebody who has just
+    finished the first has to reach past the keyboard to tap it.
+
+    So a field with another field under it asks for `TextInputAction.next` and
+    sends `onSubmitted` to that field's focus node. The last one keeps the tick,
+    which is honest — there IS nothing after it.
+
+    Never "next the screen". The action key means "I have finished this field",
+    which is a smaller claim than having finished the card.
+  */
+  final FocusNode? focus;
+  final TextInputAction? action;
+  final VoidCallback? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -363,9 +385,13 @@ class TextBox extends StatelessWidget {
       child: controller != null
           ? TextField(
               controller: controller,
+              focusNode: focus,
               autofocus: autofocus,
               maxLines: lines,
               keyboardType: keyboard,
+              textInputAction: action,
+              onSubmitted:
+                  onSubmitted == null ? null : (_) => onSubmitted!.call(),
               style: style,
               cursorColor: c.gold,
               decoration: decoration,
@@ -374,9 +400,13 @@ class TextBox extends StatelessWidget {
             )
           : TextFormField(
               initialValue: initial,
+              focusNode: focus,
               autofocus: autofocus,
               maxLines: lines,
               keyboardType: keyboard,
+              textInputAction: action,
+              onFieldSubmitted:
+                  onSubmitted == null ? null : (_) => onSubmitted!.call(),
               style: style,
               cursorColor: c.gold,
               decoration: decoration,

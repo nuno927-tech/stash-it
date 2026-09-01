@@ -8,9 +8,9 @@
 /// is a thing people put off.
 ///
 /// So creating is those same three cards on three screens, in the order
-/// somebody would answer them. They are not simplified copies — `sub_cards.dart`
-/// draws both, so the grid, the split toggle and the reminder choices here are
-/// the ones on the long form, and always will be.
+/// somebody would answer them. They are not simplified copies —
+/// `sub_cards.dart` draws both, so the grid, the split toggle and the reminder
+/// choices here are the ones on the long form, and always will be.
 ///
 /// Editing still opens the full form.
 ///
@@ -155,12 +155,25 @@ class _WizardState extends State<_Wizard> {
   */
   List<Object?> _answersFor(_Step step) => switch (step) {
         _Step.service => [_draft.name],
-        _Step.billing => [
-            _draft.anchorDate,
-            _draft.amountText,
-            _draft.startedDate,
-            if (_draft.shared) ...[_draft.payTo, _draft.payHow],
-          ],
+        /*
+          ── Billing never advances on its own ────────────────────────────────
+
+          It did, on the same rule the long form scrolls by — renewal, amount
+          and started — and it threw people past the split toggle, which sits
+          under those three and is the last thing on the card.
+
+          The rule cannot be fixed by adding the toggle to this list: a switch
+          that is off reads as unanswered to `cardFilled`, so listing it would
+          mean the screen only ever advanced for somebody who splits, which is
+          the smaller half of everybody.
+
+          And the toggle is not really the point. This screen has more on it
+          than any other in the app — two dates, an amount, a cadence, and a
+          branch that opens two more boxes — so "finished with it" is a
+          judgement only the person holding the phone can make. Same call as
+          the attachments screen on the item wizard, for the same reason.
+        */
+        _Step.billing => const [null],
         // The last screen never advances; there is nowhere to go.
         _Step.reminder => const [null],
       };
@@ -396,8 +409,7 @@ class _WizardState extends State<_Wizard> {
   }
 
   Widget _billing() {
-    _advance(_Step.billing);
-
+    // No `_advance` here, deliberately — see the note in `_answersFor`.
     return WizardAsk(
       question: 'What does it cost?',
       hint: 'The next renewal is the one date everything else is worked out '
