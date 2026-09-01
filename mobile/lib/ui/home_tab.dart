@@ -120,6 +120,7 @@ class _Home {
     final settings = await repo.settings();
 
     return _Home(
+      empty: items.isEmpty && papers.isEmpty && subs.isEmpty,
       tally: datedTally(items, papers),
       line: buildTimeline(items, subs, papers),
       backup: backupStatus(
