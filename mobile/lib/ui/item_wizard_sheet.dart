@@ -523,40 +523,50 @@ class _WizardState extends State<_Wizard> {
       question: 'What is it?',
       hint: 'A name is all this needs. The rest helps later.',
       footer: _Quiet(label: 'Add the long way', onTap: _theLongWay),
-      answer: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _NameField(
-            controller: _name,
-            focus: _nameFocus,
-            onChanged: (_) => setState(() {}),
-            onDone: _named ? _next : null,
-          ),
-          const SizedBox(height: 22),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PhotoSquare(photo: _photo, onTap: _pickPhoto),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FieldLabel('What it cost'),
-                    // No WhiteField around it: `MoneyBox` draws its own, and
-                    // one inside another in the same flat colour reads as no
-                    // bubble at all — which is exactly how it looked.
-                    MoneyBox(
-                      initial: _draft.priceText,
-                      currency: _draft.currency,
-                      onChanged: (v) => setState(() => _draft.priceText = v),
-                    ),
-                  ],
-                ),
+      /*
+        ── The picture stands beside both fields ───────────────────────────────
+
+        Name on top, cost under it, and the photograph to the left of the pair
+        rather than beside one of them. A square that lines up with only the
+        cost box reads as belonging to the cost.
+
+        `IntrinsicHeight` is what lets it match: the Row has to measure the
+        column before it can stretch the square to it. It costs an extra layout
+        pass over two children, which is nothing here and would be worth
+        watching in a list.
+      */
+      answer: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _PhotoSquare(photo: _photo, onTap: _pickPhoto),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _NameField(
+                    controller: _name,
+                    focus: _nameFocus,
+                    onChanged: (_) => setState(() {}),
+                    onDone: _named ? _next : null,
+                  ),
+                  const SizedBox(height: 18),
+                  const FieldLabel('What it cost'),
+                  // No WhiteField around it: `MoneyBox` draws its own, and one
+                  // inside another in the same flat colour reads as no bubble
+                  // at all — which is exactly how it looked.
+                  MoneyBox(
+                    initial: _draft.priceText,
+                    currency: _draft.currency,
+                    onChanged: (v) => setState(() => _draft.priceText = v),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -921,6 +931,11 @@ class _PhotoSquare extends StatelessWidget {
   final Uint8List? photo;
   final VoidCallback onTap;
 
+  /// Wide enough to be a picture rather than a button, narrow enough to leave
+  /// the name the room it needs. The HEIGHT is not set here — the row stretches
+  /// it to whatever the two fields beside it come to.
+  static const double _width = 92;
+
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
@@ -928,8 +943,7 @@ class _PhotoSquare extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 86,
-        height: 86,
+        width: _width,
         decoration: BoxDecoration(
           color: c.field,
           borderRadius: BorderRadius.circular(Radii.sm),
