@@ -444,7 +444,13 @@ void main() {
     // The first question, and the way out for anybody who wants every field
     // at once.
     expect(find.text('What is it?'), findsOneWidget);
-    expect(find.text('Add the long way'), findsOneWidget);
+    /*
+      The way out sits in the footer beside Next now rather than under the
+      question on its own. That row is what paid for the sheet going back to
+      two thirds — the first screen is a question, three answers and one row of
+      buttons, and it fits without scrolling.
+    */
+    expect(find.text('Use the full form instead'), findsOneWidget);
 
     /*
       "Next", not "Save item" — and disabled until there is a name.
@@ -525,7 +531,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'Bosch dishwasher');
     await tester.pump();
 
-    await tester.tap(find.text('Add the long way'));
+    await tester.tap(find.text('Use the full form instead'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 

@@ -423,20 +423,18 @@ class _WizardState extends State<_Wizard> {
     final screen = MediaQuery.sizeOf(context).height;
 
     /*
-      A little over two thirds.
+      Two thirds, like every other sheet in the app.
 
-      Two thirds is the app's sheet and it is what every other step wants. The
-      first one asks three questions — a name, a picture and a price — and at
-      0.66 the last of them sat under the fold, so the screen that is supposed
-      to be the quickest opened asking to be scrolled.
+      It went to 0.78 for one reason: the first screen asks three questions and
+      the price sat under the fold. Raising the sheet was the wrong end of that
+      problem — five screens got taller so that one would fit.
 
-      0.78 fits all three without scrolling on a normal phone and is still
-      visibly a sheet with the list behind it. One height for every step, not a
-      height per step: a sheet that changes size as you swipe is worse than a
-      sheet that is slightly taller than it needs to be on five screens.
+      The row that used to hold "Add the long way" on its own is what pays for
+      it now. That link moved into the footer beside Next, so the first screen
+      is a question, three answers and one row of buttons, and it fits.
     */
     return SizedBox(
-      height: screen * 0.78,
+      height: screen * 0.66,
       child: SheetEntrance(
         child: SafeArea(
           top: false,
@@ -494,17 +492,32 @@ class _WizardState extends State<_Wizard> {
                       ),
                     ),
                   ),
+                /*
+                  ── One row, two jobs, and the left one changes ──────────────
+
+                  On the first screen the quiet button is the way out into the
+                  full form. Everywhere after it, it is "Save now" — which is
+                  available from the moment there is a name, because nothing
+                  after the first question is required and making somebody walk
+                  to the end would be a wizard pretending its questions are
+                  demands.
+
+                  They never both apply: on the first screen there is nothing
+                  saved to save, and after it the way out has already been
+                  offered. So they share a slot rather than costing a row each.
+                */
                 _Footer(
                   c: c,
                   last: _last,
                   named: _named,
                   saving: _saving,
                   onNext: _next,
-                  // Save is available from the moment there is a name, on every
-                  // step. Nothing after the first question is required, so
-                  // making somebody walk to the end would be a wizard
-                  // pretending its questions are demands.
-                  onSaveNow: _named && !_last && !_saving ? _save : null,
+                  quietLabel: _at == _Step.what
+                      ? 'Use the full form instead'
+                      : 'Save now',
+                  onQuiet: _at == _Step.what
+                      ? _theLongWay
+                      : (_named && !_last && !_saving ? _save : null),
                 ),
               ],
             ),
@@ -548,7 +561,6 @@ class _WizardState extends State<_Wizard> {
     return _Ask(
       question: 'What is it?',
       hint: 'A name is all this needs. The rest helps later.',
-      footer: _Quiet(label: 'Add the long way', onTap: _theLongWay),
       /*
         ── The picture stands beside both fields ─────────────────────────────
 
@@ -653,14 +665,30 @@ class _WizardState extends State<_Wizard> {
               borderRadius: BorderRadius.circular(Radii.md),
               border: Border.all(color: c.line),
             ),
-            child: CalendarDatePicker(
-              // Opens on what was chosen, or on today for a first visit.
-              initialDate: chosen ?? today,
-              firstDate: DateTime(1970),
-              // A year ahead, for something ordered and not yet arrived.
-              lastDate: addDays(today, 366),
-              onDateChanged: (picked) =>
-                  setState(() => _draft.purchaseDate = toIsoDate(picked)),
+            /*
+              ── Held to six week-rows ─────────────────────────────────────────
+
+              `CalendarDatePicker` reserves room for six of them whatever month
+              it is on, so February on a Sunday start left two empty rows of
+              nothing at the bottom of the card. It also keeps a fixed
+              sub-header for the month name and arrows.
+
+              318 is the sub-header plus five rows, which every month reaches
+              and only a handful exceed — and the widget scrolls a month that
+              needs the sixth rather than clipping it. Trading two rows of
+              permanent whitespace for a rare scroll is the right way round.
+            */
+            child: SizedBox(
+              height: 318,
+              child: CalendarDatePicker(
+                // Opens on what was chosen, or on today for a first visit.
+                initialDate: chosen ?? today,
+                firstDate: DateTime(1970),
+                // A year ahead, for something ordered and not yet arrived.
+                lastDate: addDays(today, 366),
+                onDateChanged: (picked) =>
+                    setState(() => _draft.purchaseDate = toIsoDate(picked)),
+              ),
             ),
           ),
           if (chosen != null) ...[
@@ -833,7 +861,6 @@ class _Ask extends StatelessWidget {
     required this.question,
     required this.hint,
     required this.answer,
-    this.footer,
   });
 
   final String question;
@@ -845,8 +872,6 @@ class _Ask extends StatelessWidget {
   /// question and the way past it, and a name that says what it holds is worth
   /// more than one that says where it goes.
   final Widget answer;
-
-  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -881,10 +906,6 @@ class _Ask extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           answer,
-          if (footer != null) ...[
-            const SizedBox(height: 22),
-            Center(child: footer!),
-          ],
         ],
       ),
     );
@@ -1174,7 +1195,8 @@ class _Footer extends StatelessWidget {
     required this.named,
     required this.saving,
     required this.onNext,
-    required this.onSaveNow,
+    required this.quietLabel,
+    required this.onQuiet,
   });
 
   final StashColors c;
@@ -1182,34 +1204,53 @@ class _Footer extends StatelessWidget {
   final bool named;
   final bool saving;
   final VoidCallback onNext;
-  final VoidCallback? onSaveNow;
+
+  /// "Use the full form instead" on the first screen, "Save now" after it.
+  final String quietLabel;
+
+  /// Null hides the quiet button — on the last screen, where the gold one
+  /// already says "Save item", and before there is a name to save.
+  final VoidCallback? onQuiet;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 28, 12),
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
         child: Row(
           children: [
             /*
-              "Save now" rather than "Skip".
+              Quiet, and it never competes with the gold one.
 
-              Skip says the question was a step you got out of. Save says the
-              thing exists, which is true from the moment it has a name — the
-              difference between a wizard you escape and one you can stop using
-              whenever you like.
+              "Save now" rather than "Skip": skip says the question was a step
+              you got out of, save says the thing exists — which is true from
+              the moment it has a name.
+
+              Flexible with an ellipsis because "Use the full form instead" is
+              long, and a Row that runs out of width does not shrink politely,
+              it draws a yellow stripe across the footer.
             */
-            if (onSaveNow != null)
-              TextButton(
-                onPressed: onSaveNow,
-                child: Text(
-                  'Save now',
-                  style: TextStyle(
-                    fontFamily: fontBody,
-                    fontSize: 13.5,
-                    color: c.muted,
+            if (onQuiet != null)
+              Flexible(
+                child: TextButton(
+                  onPressed: onQuiet,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 44),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    quietLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 13,
+                      color: c.muted,
+                    ),
                   ),
                 ),
               ),
             const Spacer(),
+            const SizedBox(width: 8),
             FilledButton(
               onPressed: saving || !named ? null : onNext,
               style: FilledButton.styleFrom(
@@ -1217,7 +1258,7 @@ class _Footer extends StatelessWidget {
                 foregroundColor: c.onGold,
                 disabledBackgroundColor: c.slate600,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),
