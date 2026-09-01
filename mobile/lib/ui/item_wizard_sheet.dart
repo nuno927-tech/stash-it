@@ -33,12 +33,12 @@ import 'package:flutter/material.dart';
 import '../db/repository.dart';
 import '../logic/attachments.dart';
 import '../logic/auto_advance.dart';
-import '../logic/card.dart' show longDate;
 import '../logic/dates.dart';
 import '../logic/item_form.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
 import 'ask_text.dart';
+import 'coverage_list.dart';
 import 'doc_tiles.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
@@ -113,9 +113,6 @@ class _WizardState extends State<_Wizard> {
     this is the paged version of.
   */
   final Set<_Step> _advanced = {};
-
-  /// Whether the calendar has been offered on this visit to the bought step.
-  bool _askedDate = false;
 
   @override
   void initState() {
@@ -255,21 +252,6 @@ class _WizardState extends State<_Wizard> {
     setState(() => _photo = images.first.bytes);
   }
 
-  Future<void> _pickDate() async {
-    final today = startOfDay(DateTime.now());
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: parseDate(_draft.purchaseDate) ?? today,
-      firstDate: DateTime(1970),
-      // A year ahead, for something ordered and not yet arrived.
-      lastDate: addDays(today, 366),
-    );
-
-    if (picked == null || !mounted) return;
-    setState(() => _draft.purchaseDate = toIsoDate(picked));
-  }
-
   Future<void> _newRoom() async {
     final name = await askText(context,
         title: 'New room', hint: 'Kitchen, garage, loft');
@@ -280,17 +262,6 @@ class _WizardState extends State<_Wizard> {
 
     await _loadRooms();
     if (mounted) setState(() => _draft.roomId = id);
-  }
-
-  /// One policy, or none. Several with providers and phone numbers is what the
-  /// long form is for.
-  void _editCover(void Function(CoverageDraft) change) {
-    setState(() {
-      if (_draft.coverages.isEmpty) {
-        _draft.coverages.add(CoverageDraft(label: '', unit: CoverageUnit.years));
-      }
-      change(_draft.coverages.first);
-    });
   }
 
   Future<void> _attach(DocKind kind) async {
@@ -390,18 +361,30 @@ class _WizardState extends State<_Wizard> {
     */
     final insets = MediaQuery.viewInsetsOf(context).bottom;
     final screen = MediaQuery.sizeOf(context).height;
-    final room = screen - insets - 24;
-    final tall = screen * 0.66 < room ? screen * 0.66 : room;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: insets),
-      child: SizedBox(
-        height: tall,
-        child: SheetEntrance(
-          child: SafeArea(
-            top: false,
+    return SizedBox(
+      height: screen * 0.66,
+      child: SheetEntrance(
+        child: SafeArea(
+          top: false,
+          /*
+            The padding is INSIDE the sheet, not under it.
+
+            Lifting the whole sheet by the keyboard was the first attempt, and
+            it traded one problem for another: two thirds plus a keyboard is
+            more than a screen, so the top ran off the top and the sheet no
+            longer looked like the app's other sheets.
+
+            A modal sheet is anchored to the bottom and the keyboard simply
+            covers it. So the sheet keeps its two thirds and the CONTENTS move
+            up inside it by exactly what the keyboard takes — the footer lands
+            just above the keys, the question stays visible, and every step
+            scrolls in whatever is left between them.
+          */
+          child: AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: insets),
             child: Column(
               children: [
                 _Rail(at: _at, c: c),
@@ -470,21 +453,12 @@ class _WizardState extends State<_Wizard> {
     _nameFocus.unfocus();
 
     /*
-      The calendar opens itself.
+      Nothing to open on arrival any more.
 
-      There is nothing else on that screen, and a date is a thing people pick
-      rather than choose from a shortlist — the guesses that used to be there
-      were four right answers surrounded by three hundred and sixty wrong ones.
-
-      Only when there is no date yet, so swiping back to check what you chose
-      does not reopen the picker over it.
+      The calendar used to be a dialog and this opened it. It is on the card
+      now, so arriving at that step IS arriving at the calendar — which is the
+      version that has no Cancel to leave somebody staring at an empty screen.
     */
-    if (to == _Step.bought && _draft.purchaseDate.isEmpty && !_askedDate) {
-      _askedDate = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _at == _Step.bought) unawaited(_pickDate());
-      });
-    }
   }
 
   /* ------------------------------------------------------------- the steps */
@@ -518,12 +492,13 @@ class _WizardState extends State<_Wizard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const FieldLabel('What it cost'),
-                    WhiteField(
-                      child: MoneyBox(
-                        initial: _draft.priceText,
-                        currency: _draft.currency,
-                        onChanged: (v) => setState(() => _draft.priceText = v),
-                      ),
+                    // No WhiteField around it: `MoneyBox` draws its own, and
+                    // one inside another in the same flat colour reads as no
+                    // bubble at all — which is exactly how it looked.
+                    MoneyBox(
+                      initial: _draft.priceText,
+                      currency: _draft.currency,
+                      onChanged: (v) => setState(() => _draft.priceText = v),
                     ),
                   ],
                 ),
@@ -569,6 +544,7 @@ class _WizardState extends State<_Wizard> {
     _advance(_Step.bought, [_draft.purchaseDate]);
 
     final chosen = parseDate(_draft.purchaseDate);
+    final today = startOfDay(DateTime.now());
 
     return _Ask(
       question: 'When did you get it?',
@@ -576,16 +552,36 @@ class _WizardState extends State<_Wizard> {
       answer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // The calendar opened itself on arrival; this is the way back to it,
-          // and the answer, in one control.
-          _BigChoice(
-            label: chosen == null ? 'Pick a date' : longDate(chosen),
-            lit: chosen != null,
-            icon: Icons.calendar_today_outlined,
-            onTap: _pickDate,
+          /*
+            ── The calendar is on the card, not over it ────────────────────────
+
+            It used to open `showDatePicker`, which is a dialog on top of a
+            sheet: two floating layers, the sheet dimmed behind its own
+            question, and a Cancel that leaves somebody looking at a screen
+            with nothing on it.
+
+            There is only one question here and a whole screen for it, so the
+            calendar simply IS the screen. `CalendarDatePicker` is the same
+            widget the dialog wraps, without the dialog.
+          */
+          Container(
+            decoration: BoxDecoration(
+              color: c.slate800,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(color: c.line),
+            ),
+            child: CalendarDatePicker(
+              // Opens on what was chosen, or on today for a first visit.
+              initialDate: chosen ?? today,
+              firstDate: DateTime(1970),
+              // A year ahead, for something ordered and not yet arrived.
+              lastDate: addDays(today, 366),
+              onDateChanged: (picked) =>
+                  setState(() => _draft.purchaseDate = toIsoDate(picked)),
+            ),
           ),
           if (chosen != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Center(
               child: _Quiet(
                 label: 'Clear',
@@ -598,115 +594,42 @@ class _WizardState extends State<_Wizard> {
     );
   }
 
+
   Widget _coverage(StashColors c) {
     final cover = _cover;
-    final lifetime = cover?.unit == CoverageUnit.lifetime;
 
     _advance(_Step.cover, [
       cover?.label,
       // Lifetime has no length, so on that unit the length is not a question.
-      if (!lifetime) cover?.amountText,
+      if (cover?.unit != CoverageUnit.lifetime) cover?.amountText,
     ]);
-
-    final presets = coveragePresets[cover?.unit ?? CoverageUnit.years]!;
-    final custom = cover != null && isCustomLabel(cover.label);
-    final customTerm = cover != null &&
-        cover.amountText.trim().isNotEmpty &&
-        !presets.contains(int.tryParse(cover.amountText.trim()));
 
     return _Ask(
       question: "What's the coverage and how long?",
       hint: 'Skip it if you are not sure — you can add it later.',
-      answer: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const FieldLabel('What kind'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final label in coverageLabels)
-                _Chip(
-                  label: label,
-                  on: cover?.label == label,
-                  onTap: () => _editCover((v) =>
-                      v.label = v.label == label ? '' : label),
-                ),
-              _Chip(
-                label: custom ? cover.label : 'Custom',
-                on: custom,
-                onTap: () async {
-                  final typed = await askText(
-                    context,
-                    title: 'Call it what?',
-                    initial: custom ? cover.label : '',
-                  );
-                  if (typed == null) return;
-                  _editCover((v) => v.label = typed);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          const FieldLabel('How long'),
-          SegRow<CoverageUnit>(
-            value: cover?.unit ?? CoverageUnit.years,
-            options: [
-              for (final unit in CoverageUnit.values)
-                (unit, coverageUnitLabels[unit]!),
-            ],
-            lines: 1,
-            // The length comes with it. See `termAfterUnitChange`: a number the
-            // new row cannot light up would otherwise sit there as "Custom".
-            onPick: (unit) => _editCover((v) {
-              v.amountText = termAfterUnitChange(unit, v.amountText);
-              v.unit = unit;
-            }),
-          ),
-          if (!lifetime) ...[
-            const SizedBox(height: 12),
-            /*
-              The quick numbers, and they are not round ones.
+      /*
+        ── The same control the long form draws ──────────────────────────────
 
-              14, 30, 60, 90, 180 — 3, 6, 12, 18, 24 — 1, 2, 3, 5, 10. These are
-              what is printed on warranties. A row of 10/20/30 would be tidy and
-              would be a number nobody has to enter.
-            */
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final n in presets)
-                  _Chip(
-                    label: '$n',
-                    on: !customTerm &&
-                        int.tryParse(cover?.amountText.trim() ?? '') == n,
-                    onTap: () => _editCover((v) => v.amountText = '$n'),
-                  ),
-                _Chip(
-                  label: customTerm ? cover.amountText.trim() : 'Custom',
-                  on: customTerm,
-                  onTap: () async {
-                    final unit = cover?.unit ?? CoverageUnit.years;
-                    final typed = await askText(
-                      context,
-                      title: 'How long?',
-                      hint: 'A number of '
-                          '${coverageUnitLabels[unit]!.toLowerCase()}',
-                      initial: cover?.amountText ?? '',
-                      number: true,
-                    );
-                    if (typed == null) return;
-                    _editCover((v) => v.amountText = typed.trim());
-                  },
-                ),
-              ],
-            ),
-          ],
-        ],
+        Not a simplified version of it. The same six names and Custom, the same
+        four units, the same presets that are printed on real warranties, the
+        same Additional details disclosure, and the same "+ Add another policy"
+        — because a couch has a lifetime frame, ten years on the cushions, five
+        on the springs and one on the fabric.
+
+        Shared rather than copied. Two versions of this would have started
+        identical and drifted the first time either was touched, which is what
+        happened to the widget palette three versions ago and took a while to
+        notice.
+      */
+      answer: CoverageList(
+        coverages: _draft.coverages,
+        // The wizard's own auto-advance reads this list, so it has to hear
+        // about a change made inside a control that owns its own state.
+        onChanged: () => setState(() {}),
       ),
     );
   }
+
 
   Widget _papers(StashColors c) {
     /*
@@ -982,63 +905,6 @@ class _PhotoSquare extends StatelessWidget {
                   ),
                 ],
               ),
-      ),
-    );
-  }
-}
-
-/// A full-width answer that is one thing rather than a choice between several.
-class _BigChoice extends StatelessWidget {
-  const _BigChoice({
-    required this.label,
-    required this.lit,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool lit;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Material(
-      color: lit ? c.washGold : c.slate800,
-      borderRadius: BorderRadius.circular(Radii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.md),
-        onTap: () {
-          feedback(Cue.tap);
-          onTap();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.md),
-            border: Border.all(color: lit ? c.gold : c.line),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: lit ? c.gold : c.muted),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: fontDisplay,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 17,
-                    letterSpacing: -0.3,
-                    color: c.text,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
