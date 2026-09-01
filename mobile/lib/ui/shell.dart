@@ -18,6 +18,7 @@ import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
 import '../io/incoming_card.dart';
+import '../io/widget_mirror.dart';
 import '../logic/bundle.dart';
 import '../logic/item_filter.dart';
 import '../logic/deep_link.dart';
@@ -231,6 +232,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       _handleLink();
       unawaited(_takeCard());
       unawaited(_takeAdd());
+      unawaited(mirrorWidgets(widget.repo));
     });
   }
 
@@ -267,6 +269,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         // what they just accepted.
         _goTo(Tab.items);
         _say('Added $added ${added == 1 ? 'thing' : 'things'} to your stash.');
+        // A card that arrived is data that changed, and the home screen has no
+        // other way to hear about it.
+        unawaited(mirrorWidgets(widget.repo));
       }
     } on BundleError catch (e) {
       // Including "that is a full backup, not a shared card".
@@ -318,6 +323,20 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     }
   }
 
+  /*
+    Something was added, edited or thrown away.
+
+    The list rebuild is what this was always for. The home screen redraw is new
+    and rides along deliberately: this is the one callback the app already has
+    that means "the data is different now", and a second mechanism for the same
+    fact is a second one to forget to call.
+  */
+  void _changed() {
+    if (!mounted) return;
+    setState(() => _generation++);
+    unawaited(mirrorWidgets(widget.repo));
+  }
+
   void _say(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -334,6 +353,17 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       unawaited(_takeCard());
       unawaited(_takeAdd());
+
+      /*
+        And redraw the home screen, because a day may have passed.
+
+        The counts a widget shows move at midnight whether the app was open or
+        not, and nothing wakes it to notice. Resume is the first moment it can
+        honestly know, which makes this the cheapest correction available: by
+        the time somebody has gone back out to their home screen, the picture
+        is right.
+      */
+      unawaited(mirrorWidgets(widget.repo));
     }
   }
 
@@ -435,7 +465,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
           Positioned.fill(
             child: StashItButton(
               repo: widget.repo,
-              onDone: () => setState(() => _generation++),
+              onDone: _changed,
             ),
           ),
       ],

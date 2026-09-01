@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The ring: one picture on one surface.
+
+    Almost nothing here, and that is the design. RemoteViews cannot draw an arc,
+    so everything interesting was drawn by the app into a PNG (see
+    RingWidget.kt and lib/io/widget_mirror.dart) and this is the frame it hangs
+    in.
+
+    The background stays a real drawable rather than part of the picture,
+    because the launcher swaps @drawable/widget_background for its night version
+    by itself, instantly, without the app having to be running. Only the ink
+    inside the picture is fixed at drawing time — which is why two pictures are
+    rendered and the provider picks.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="8dp">
+
+    <!--
+        fitCenter, so a square picture in an oblong cell keeps its circle round.
+        A stretched ring is worse than a small one.
+    -->
+    <ImageView
+        android:id="@+id/ring_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/widget_ring_label" />
+</FrameLayout>

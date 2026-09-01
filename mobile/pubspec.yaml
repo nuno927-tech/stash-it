@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.85.2+51
+version: 0.86.0+52
 
 environment:
   sdk: ^3.5.0

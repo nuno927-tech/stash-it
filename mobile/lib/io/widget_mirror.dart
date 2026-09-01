@@ -1,0 +1,128 @@
+/// Copying just enough out of the encrypted database for the home screen.
+///
+/// ── The unavoidable bargain ────────────────────────────────────────────────
+/// A widget is drawn by the launcher, while the app is not running, with no
+/// key to the database and no way to ask for one. So whatever a widget shows
+/// has to exist a second time, in the clear, outside the encryption.
+///
+/// That is not a flaw in this file — it is what a widget IS — and the only
+/// honest response is to keep the copy as small as the picture on the screen.
+/// `buildWidgetPayload` decides what that is: a title, a countdown, a tone.
+/// No prices, no serial numbers, no notes, no photographs. The privacy policy
+/// says so out loud, including the part people do not expect: a notification
+/// redacts itself on a locked phone and a widget cannot.
+///
+/// ── Two pictures, every time ───────────────────────────────────────────────
+/// The ring is an arc with a thin number in it, and RemoteViews can draw
+/// neither, so the app renders its own face into a PNG and the launcher shows
+/// the picture. Both palettes are rendered on every pass rather than "the
+/// current one", because the phone can be switched to dark mode while the app
+/// is not running to notice — and a picture's colours are fixed the moment it
+/// is drawn. Two files is cheaper than a light card on a dark home screen.
+///
+/// ── How fresh it is ────────────────────────────────────────────────────────
+/// As fresh as the last time the app ran, and no fresher. That is a real
+/// limitation and worth being plain about: the counts move at midnight, and
+/// nothing wakes the app at midnight to redraw them.
+///
+/// So this runs at every moment the app can honestly claim to know something
+/// new — on launch, on resume, and whenever the shell sees the data change —
+/// which between them cover every case except a phone left untouched across a
+/// midnight. Fixing that last one means opening an encrypted database from a
+/// background alarm, which is a much larger thing than it sounds and is not
+/// worth it for a number that is one tap from being right.
+library;
+
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:home_widget/home_widget.dart';
+
+import '../db/repository.dart';
+import '../logic/widget_payload.dart';
+import '../ui/widget_face.dart';
+
+/// The provider classes Android should be told to redraw.
+///
+/// Fully qualified, because `updateWidget` resolves a bare name against the
+/// package it thinks is running and gets that wrong in a flavoured build.
+const List<String> _providers = ['app.stashit.RingWidget'];
+
+/// Keys the Kotlin side reads. Changing one here changes nothing there, which
+/// is exactly the sort of break that shows up as a blank widget and no error,
+/// so they are named once and listed together.
+const String ringDarkKey = 'ring_dark';
+const String ringLightKey = 'ring_light';
+const String ringWordsKey = 'ring_words';
+
+/// Rendered at 3x, so a picture drawn for a 2x2 cell is still sharp when
+/// somebody stretches it across four. Cheap: it is one 480px square.
+const double _pixelRatio = 3;
+
+/// Redraws every home screen widget from the current contents of the database.
+///
+/// Never throws. A widget that fails to update is a stale picture on a home
+/// screen; an exception here would be a crash in the app somebody is actually
+/// using, which is much worse for the same cause.
+Future<void> mirrorWidgets(Repository repo) async {
+  try {
+    final payload = buildWidgetPayload(
+      items: await repo.activeItems(),
+      papers: await repo.activePapers(),
+      subscriptions: await repo.activeSubscriptions(),
+    );
+
+    await _renderRing(payload);
+
+    /*
+      Said in words as well as drawn.
+
+      A screen reader cannot read a PNG, and a ring that announces itself as
+      "image" is a widget somebody blind has no reason to keep. The Kotlin side
+      puts this on the ImageView's contentDescription.
+    */
+    await HomeWidget.saveWidgetData<String>(
+      ringWordsKey,
+      '${payload.percent} per cent still in date. '
+      '${payload.inDate} in date, '
+      '${payload.needsAction} needing action, '
+      '${payload.lapsed} lapsed.',
+    );
+
+    for (final provider in _providers) {
+      await HomeWidget.updateWidget(qualifiedAndroidName: provider);
+    }
+  } on MissingPluginException {
+    // No launcher here — the desktop test runs, and iOS if it ever exists.
+  } catch (_) {
+    // Anything else: leave the last good picture where it is.
+  }
+}
+
+Future<void> _renderRing(WidgetPayload payload) async {
+  for (final (key, dark) in [(ringDarkKey, true), (ringLightKey, false)]) {
+    await HomeWidget.renderFlutterWidget(
+      /*
+        Wrapped by hand, because this is rendered outside the app's widget
+        tree: there is no MediaQuery above it and no Directionality, and a Row
+        without a text direction is an assertion rather than a picture.
+
+        `noScaling` is deliberate and is the one place the app overrides an
+        accessibility setting. A widget cannot reflow — the launcher gives it a
+        fixed cell and scales whatever arrives — so honouring a large font
+        setting here would push the number out of the ring rather than make it
+        easier to read. The app's own dashboard scales properly, and that is
+        the screen with room to.
+      */
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.noScaling),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: RingFace(payload: payload, dark: dark),
+        ),
+      ),
+      key: key,
+      logicalSize: ringFaceSize,
+      pixelRatio: _pixelRatio,
+    );
+  }
+}

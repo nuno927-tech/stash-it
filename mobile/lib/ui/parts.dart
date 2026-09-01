@@ -709,7 +709,7 @@ class _RingFace extends StatelessWidget {
       height: 176,
       width: 176,
       child: CustomPaint(
-        painter: _RingPainter(
+        painter: RingPainter(
           covered: inDate,
           soon: needsStarting,
           lapsed: lapsed,
@@ -799,8 +799,14 @@ class _RingFace extends StatelessWidget {
   }
 }
 
-class _RingPainter extends CustomPainter {
-  _RingPainter({
+/// The dial itself, without the number in the middle.
+///
+/// Public because the home screen widget draws the same ring, and a second
+/// painter is a second set of arcs to keep in step — including the round-cap
+/// gap below, which is the sort of detail that gets fixed once and copied
+/// never.
+class RingPainter extends CustomPainter {
+  RingPainter({
     required this.covered,
     required this.soon,
     required this.lapsed,
@@ -897,7 +903,7 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) =>
+  bool shouldRepaint(RingPainter old) =>
       old.covered != covered || old.soon != soon || old.lapsed != lapsed;
 }
 

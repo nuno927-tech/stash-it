@@ -356,6 +356,18 @@ TextStyle hintStyle(StashColors c) => TextStyle(
       color: c.muted,
     );
 
+/// The palette on its own, without a BuildContext to ask.
+///
+/// `StashColors.of(context)` is the normal way in and stays the normal way in.
+/// This exists for the one place that has no context worth asking: the home
+/// screen widget faces are rendered off-screen, into a picture, by code that is
+/// not inside the app's widget tree at all.
+///
+/// Both are handed out rather than "the current one", because the launcher
+/// decides which it needs — the phone can be in dark mode while the app that
+/// drew the picture was not running to notice.
+StashColors stashColors({required bool dark}) => dark ? _dark : _light;
+
 ThemeData stashTheme({required bool dark}) {
   final c = dark ? _dark : _light;
 

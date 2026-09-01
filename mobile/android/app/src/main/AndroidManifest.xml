@@ -141,6 +141,25 @@
             anything.
         -->
         <!--
+            ── The ring ───────────────────────────────────────────────────
+
+            Extends home_widget's provider rather than AppWidgetProvider, which
+            is what hands it the SharedPreferences the Dart side wrote the
+            rendered face into.
+        -->
+        <receiver
+            android:name=".RingWidget"
+            android:exported="true"
+            android:label="@string/widget_ring_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_ring_info" />
+        </receiver>
+
+        <!--
             ── Quick add ──────────────────────────────────────────────────
 
             Exported, because the launcher is a different app and has to be
