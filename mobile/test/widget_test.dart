@@ -28,6 +28,7 @@ import 'package:stash_it/main.dart';
 import 'package:stash_it/models/paper.dart';
 import 'package:stash_it/models/subscription.dart';
 import 'package:stash_it/models/types.dart';
+import 'package:stash_it/ui/add_button.dart' show StashItButton;
 import 'package:stash_it/ui/parts.dart' show StashPill;
 import 'package:stash_it/ui/prefs_scope.dart';
 import 'package:stash_it/ui/settings_tab.dart' show appVersion;
@@ -416,7 +417,19 @@ void main() {
     final db = await show(tester);
     await goTo(tester, 'Items');
 
-    await tester.tap(find.byIcon(Icons.add));
+    /*
+      The floating button's plus, not the other one.
+
+      The empty screens now put a working Stash it button in the middle of
+      their sentence, and it has a plus on it too — so `byIcon(Icons.add)`
+      finds two and `tap` refuses to guess. Naming the widget it belongs to is
+      the durable fix; matching on size would break the first time either is
+      restyled.
+    */
+    await tester.tap(find.descendant(
+      of: find.byType(StashItButton),
+      matching: find.byIcon(Icons.add),
+    ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -440,8 +453,16 @@ void main() {
       being unavailable rather than by refusing four screens later.
     */
     expect(find.text('Next'), findsOneWidget);
+    // Found through its own label rather than by type. The screens behind
+    // this sheet have buttons too, and a bare byType finder is one restyle
+    // away from asserting about the wrong one.
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<FilledButton>(find.ancestor(
+            of: find.text('Next'),
+            matching: find.byType(FilledButton),
+          ))
+          .onPressed,
       isNull,
     );
 
@@ -455,7 +476,19 @@ void main() {
     final db = await show(tester);
     await goTo(tester, 'Items');
 
-    await tester.tap(find.byIcon(Icons.add));
+    /*
+      The floating button's plus, not the other one.
+
+      The empty screens now put a working Stash it button in the middle of
+      their sentence, and it has a plus on it too — so `byIcon(Icons.add)`
+      finds two and `tap` refuses to guess. Naming the widget it belongs to is
+      the durable fix; matching on size would break the first time either is
+      restyled.
+    */
+    await tester.tap(find.descendant(
+      of: find.byType(StashItButton),
+      matching: find.byIcon(Icons.add),
+    ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('Product'));
