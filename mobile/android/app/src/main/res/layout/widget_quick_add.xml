@@ -10,6 +10,27 @@
     render: three labels and three tap targets, which is exactly what RemoteViews
     is good at. The two widgets that draw the app's own type and colour are the
     ones worth rendering in Flutter.
+
+    ── Two rules this file broke, and the error they gave ──────────────────────
+
+    "An error occurred when loading widget" is what a launcher says when it
+    cannot inflate this layout. The launcher does that in ITS process, from an
+    allowlist, and two things here were outside it:
+
+      A bare <View>. Obvious as a divider, and not on the list — RemoteViews
+      permits LinearLayout, FrameLayout, TextView, ImageView, Button,
+      ProgressBar and a handful of others, and nothing else at all. The
+      dividers below are ImageViews with a background, which is the same one
+      pixel drawn by a class the launcher will accept.
+
+      ?android:attr/selectableItemBackground. A theme attribute is a question,
+      and the launcher's theme is the one being asked — not this app's. Tap
+      feedback now comes from @drawable/widget_row, a resource of our own with
+      no questions in it.
+
+    The rule behind both: everything a widget layout names must be a concrete
+    resource in this package. Anything resolved against a theme is resolved
+    against somebody else's.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -28,7 +49,6 @@
         android:text="@string/widget_quick_add_title"
         android:textColor="@color/widget_muted"
         android:textSize="11sp"
-        android:letterSpacing="0.04"
         android:maxLines="1"
         android:ellipsize="end" />
 
@@ -44,7 +64,7 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="?android:attr/selectableItemBackground"
+        android:background="@drawable/widget_row"
         android:paddingStart="6dp"
         android:paddingEnd="6dp">
 
@@ -65,10 +85,11 @@
             android:ellipsize="end" />
     </LinearLayout>
 
-    <View
+    <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/widget_line" />
+        android:background="@color/widget_line"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:id="@+id/quick_add_paper"
@@ -77,7 +98,7 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="?android:attr/selectableItemBackground"
+        android:background="@drawable/widget_row"
         android:paddingStart="6dp"
         android:paddingEnd="6dp">
 
@@ -98,10 +119,11 @@
             android:ellipsize="end" />
     </LinearLayout>
 
-    <View
+    <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/widget_line" />
+        android:background="@color/widget_line"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:id="@+id/quick_add_sub"
@@ -110,7 +132,7 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="?android:attr/selectableItemBackground"
+        android:background="@drawable/widget_row"
         android:paddingStart="6dp"
         android:paddingEnd="6dp">
 

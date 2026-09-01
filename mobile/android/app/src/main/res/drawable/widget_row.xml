@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tap feedback for a widget row.
+
+    A literal colour, not ?android:attr/colorControlHighlight. The launcher
+    inflates this in its own process against its own theme, so a theme
+    attribute here asks the wrong app what colour to be — and on the launchers
+    that cannot answer, the whole widget fails to load rather than merely
+    looking wrong.
+
+    Nothing is drawn at rest: the row sits on @drawable/widget_background and
+    should show it.
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33808A94" />
