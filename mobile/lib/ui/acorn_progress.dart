@@ -32,7 +32,7 @@ const String _acornPath = '''
 ''';
 
 class Acorn extends StatelessWidget {
-  const Acorn({required this.color, this.size = 18, super.key});
+  const Acorn({required this.color, this.size = 24, super.key});
 
   final Color color;
   final double size;
@@ -56,8 +56,27 @@ $_acornPath
   }
 }
 
+/// How long the row takes to fill end to end, at its own steady rate.
+///
+/// ── The rate is the fix, not the duration ─────────────────────────────────
+///
+/// The acorns opened most of the way full, and the cause was not the
+/// animation — it was that the animation had no speed limit.
+///
+/// `fraction` is driven by the file count, and on a small collection the very
+/// first report is already most of the job: one file of two is 0.49, and one
+/// of one is 0.94. Every step was then tweened over a fixed 320ms regardless
+/// of how far it travelled, so a jump from nothing to seven acorns took
+/// exactly as long as a jump of half an acorn — which is to say it was not a
+/// jump anybody could see.
+///
+/// So the DISTANCE sets the duration now. Crossing the whole row always takes
+/// this long, whatever the collection, and a big jump therefore sweeps through
+/// every acorn on the way rather than teleporting past them.
+const Duration acornSweep = Duration(milliseconds: 1100);
+
 /// A row of acorns that fill, with the stage said underneath.
-class AcornProgress extends StatelessWidget {
+class AcornProgress extends StatefulWidget {
   const AcornProgress({required this.progress, this.count = 8, super.key});
 
   final BackupProgress progress;
@@ -66,73 +85,142 @@ class AcornProgress extends StatelessWidget {
   final int count;
 
   @override
+  State<AcornProgress> createState() => _AcornProgressState();
+}
+
+class _AcornProgressState extends State<AcornProgress>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(vsync: this);
+
+  /// What is on screen. Starts empty, and only ever moves at the rate above.
+  Animation<double> _shown = const AlwaysStoppedAnimation(0);
+
+  /// Where the last move was heading, so the next one starts from there rather
+  /// than from whatever the work has since reported.
+  double _to = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _driveTo(widget.progress.fraction);
+  }
+
+  @override
+  void didUpdateWidget(AcornProgress old) {
+    super.didUpdateWidget(old);
+    if (widget.progress.fraction != old.progress.fraction) {
+      _driveTo(widget.progress.fraction);
+    }
+  }
+
+  void _driveTo(double target) {
+    final from = _sweep.isAnimating ? _shown.value : _to;
+    final distance = (target - from).abs();
+    if (distance == 0) return;
+
+    _to = target;
+
+    /*
+      Proportional, with a floor.
+
+      Without the floor a run of tiny steps — one file in forty — would each
+      get a few milliseconds and the row would flicker rather than move. Ninety
+      is short enough to keep up with fast work and long enough to be a
+      movement rather than a jump.
+    */
+    _sweep.duration = Duration(
+      milliseconds: (acornSweep.inMilliseconds * distance)
+          .round()
+          .clamp(90, acornSweep.inMilliseconds),
+    );
+
+    _shown = Tween<double>(begin: from, end: target).animate(
+      CurvedAnimation(parent: _sweep, curve: Curves.easeOut),
+    );
+    _sweep.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        /*
-          ── The row fills continuously, not in eighths ───────────────────────
+    /*
+      ── The OS setting wins ──────────────────────────────────────────────────
 
-          Each acorn used to be on or off, so with eight of them the picture
-          only changed every twelfth of the job — long enough on a slow step to
-          look stuck. Now the whole row is tweened: an acorn's share of the
-          fraction decides how much of it is gold, and the one at the leading
-          edge is part-filled while the work moves through it.
+      "Remove animations" is not a taste preference — people turn it on for
+      motion sickness and for vestibular disorders. A row of eight things
+      filling smoothly is exactly what it means, so with it on the acorns
+      simply report where the work is.
 
-          Tweened here rather than at each acorn so they cannot drift out of
-          step with the bar underneath, which reads the same value.
-        */
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: progress.fraction),
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOut,
-          builder: (context, value, _) => Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < count; i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: _FillingAcorn(
-                    // 0 for one not reached, 1 for one behind the edge, and
-                    // the remainder for the one being worked through.
-                    fill: (value * count - i).clamp(0, 1),
-                    lit: c.gold,
-                    unlit: c.slate600,
+      Read in `build` so it takes effect the moment the setting changes.
+    */
+    final still = MediaQuery.of(context).disableAnimations;
+
+    return AnimatedBuilder(
+      animation: _sweep,
+      builder: (context, _) {
+        final value = still ? widget.progress.fraction : _shown.value;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            /*
+              ── The row fills continuously, not in eighths ───────────────────
+
+              Each acorn used to be on or off, so with eight of them the
+              picture only changed every eighth of the job — long enough on a
+              slow step to look stuck. The whole row is tweened instead: an
+              acorn's share of the fraction decides how much of it is gold, and
+              the one at the leading edge is part-filled while the work moves
+              through it.
+
+              One value drives both this and the bar below, so they cannot
+              drift out of step.
+            */
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < widget.count; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _FillingAcorn(
+                      // 0 for one not reached, 1 for one behind the edge, and
+                      // the remainder for the one being worked through.
+                      fill: (value * widget.count - i).clamp(0, 1),
+                      lit: c.gold,
+                      unlit: c.slate600,
+                    ),
                   ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // The continuous half. `TweenAnimationBuilder` rather than setting the
-        // value straight, so a jump from one batch to the next slides.
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: progress.fraction),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-          builder: (context, value, _) => ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: value,
-              minHeight: 5,
-              backgroundColor: c.slate600,
-              valueColor: AlwaysStoppedAnimation<Color>(c.gold),
+              ],
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          progress.label,
-          style: TextStyle(
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: c.muted,
-          ),
-        ),
-      ],
+            const SizedBox(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 5,
+                backgroundColor: c.slate600,
+                valueColor: AlwaysStoppedAnimation<Color>(c.gold),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.progress.label,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 12.5,
+                color: c.muted,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -154,7 +242,15 @@ class _FillingAcorn extends StatelessWidget {
   final Color lit;
   final Color unlit;
 
-  static const double _size = 20;
+  /*
+    26 rather than 20.
+
+    Eight acorns at 20 read as a dotted line — the shape only became an acorn
+    if you went looking for it, which defeats the point of using one instead of
+    a spinner. At 26 the cap and the stalk are legible at arm's length, and
+    eight of them plus their padding still sit well inside a phone's width.
+  */
+  static const double _size = 26;
 
   @override
   Widget build(BuildContext context) {

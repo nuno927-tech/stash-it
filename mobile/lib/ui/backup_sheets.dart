@@ -33,6 +33,8 @@ Future<T> runWithAcorns<T>(
     const BackupProgress(BackupStage.reading),
   );
 
+  final opened = DateTime.now();
+
   // Shown without awaiting: the sheet has to be on screen while the work runs,
   // not after it.
   final shown = showModalBottomSheet<void>(
@@ -63,7 +65,30 @@ Future<T> runWithAcorns<T>(
       happened to reach looks like it gave up.
     */
     progress.value = const BackupProgress(BackupStage.done);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    /*
+      ── Long enough for the acorns to have filled ────────────────────────────
+
+      The row fills at a fixed rate — see `acornSweep` — so a backup of four
+      files finishes in a fraction of the time the animation needs to cross
+      eight acorns. Closing on the job rather than on the animation would show
+      three acorns and a closing sheet, which is the same "did that work"
+      picture the whole thing was built to remove.
+
+      So the sheet stays until the sweep can have finished, and then holds the
+      full row for a beat. On a real collection with photographs the work is
+      the slow part and neither of these waits is ever reached.
+
+      Held against the moment the sheet OPENED rather than a flat delay, so a
+      slow backup is not made slower by a pause it has already earned.
+    */
+    final sweeping = acornSweep + const Duration(milliseconds: 200);
+    final left = sweeping - DateTime.now().difference(opened);
+    if (left > Duration.zero) await Future<void>.delayed(left);
+
+    // And a beat on the full row, so it is seen finished rather than seen
+    // vanishing.
+    await Future<void>.delayed(const Duration(milliseconds: 420));
     return result;
   } finally {
     /*
