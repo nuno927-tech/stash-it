@@ -220,7 +220,8 @@ class WhiteField extends StatelessWidget {
     final c = StashColors.of(context);
 
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: c.field,
         borderRadius: BorderRadius.circular(Radii.sm),
@@ -249,7 +250,8 @@ class WhiteField extends StatelessWidget {
 
   Every state has to be cleared by name, which is what this does.
 */
-InputDecoration bareInput({String? hint, TextStyle? hintStyle, EdgeInsets? padding}) {
+InputDecoration bareInput(
+    {String? hint, TextStyle? hintStyle, EdgeInsets? padding}) {
   return InputDecoration(
     hintText: hint,
     hintStyle: hintStyle,
@@ -335,11 +337,13 @@ class TextBox extends StatelessWidget {
 
     final decoration = bareInput(
       hint: hint,
-      hintStyle: TextStyle(fontFamily: fontBody, fontSize: size, color: c.muted),
+      hintStyle:
+          TextStyle(fontFamily: fontBody, fontSize: size, color: c.muted),
       padding: EdgeInsets.symmetric(vertical: lines > 1 ? 2 : 14),
     );
 
-    final style = TextStyle(fontFamily: fontBody, fontSize: size, color: c.text);
+    final style =
+        TextStyle(fontFamily: fontBody, fontSize: size, color: c.text);
 
     final formatters = format == null
         ? null
@@ -354,7 +358,8 @@ class TextBox extends StatelessWidget {
           ];
 
     return WhiteField(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: lines > 1 ? 10 : 2),
+      padding:
+          EdgeInsets.symmetric(horizontal: 14, vertical: lines > 1 ? 10 : 2),
       child: controller != null
           ? TextField(
               controller: controller,
@@ -412,25 +417,30 @@ class MoneyBox extends StatelessWidget {
         children: [
           Text(
             currencySymbol(currency),
-            style: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.muted),
+            style:
+                TextStyle(fontFamily: fontBody, fontSize: 15, color: c.muted),
           ),
           const SizedBox(width: 6),
           Expanded(
             child: TextFormField(
               initialValue: initial,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.text),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              style:
+                  TextStyle(fontFamily: fontBody, fontSize: 17, color: c.text),
               cursorColor: c.gold,
               decoration: bareInput(
                 hint: hint,
-                hintStyle: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
+                hintStyle: TextStyle(
+                    fontFamily: fontBody, fontSize: 17, color: c.muted),
               ),
               inputFormatters: [
                 TextInputFormatter.withFunction((old, now) {
                   final formatted = formatMoneyInput(now.text, currency);
                   return TextEditingValue(
                     text: formatted,
-                    selection: TextSelection.collapsed(offset: formatted.length),
+                    selection:
+                        TextSelection.collapsed(offset: formatted.length),
                   );
                 }),
               ],
@@ -526,7 +536,8 @@ class SegRow<T> extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 3),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 11, horizontal: 3),
                   decoration: BoxDecoration(
                     color: key == value ? c.slate600 : Colors.transparent,
                     borderRadius: BorderRadius.circular(Radii.pill),
@@ -539,7 +550,8 @@ class SegRow<T> extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: fontBody,
                       fontSize: 12.5,
-                      fontWeight: key == value ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight:
+                          key == value ? FontWeight.w700 : FontWeight.w500,
                       color: key == value ? c.text : c.muted,
                     ),
                   ),
@@ -592,7 +604,8 @@ class SheetFooter extends StatelessWidget {
             Text(
               problem!,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
+              style:
+                  TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
             ),
             const SizedBox(height: 8),
           ],

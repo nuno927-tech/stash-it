@@ -260,9 +260,11 @@ class SettingsTable extends Table {
 
   TextColumn get currency => text().withDefault(const Constant('USD'))();
   DateTimeColumn get lastBackupAt => dateTime().nullable()();
-  IntColumn get backupReminderDays => integer().withDefault(const Constant(30))();
+  IntColumn get backupReminderDays =>
+      integer().withDefault(const Constant(30))();
 
-  BoolColumn get devModeEnabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get devModeEnabled =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get displayName => text().nullable()();
   DateTimeColumn get onboardedAt => dateTime().nullable()();
 

@@ -48,7 +48,8 @@ Future<PickSource?> askPickSource(
 }) {
   final c = StashColors.of(context);
 
-  Widget row(IconData icon, String label, String note, PickSource value, Color ink) {
+  Widget row(
+      IconData icon, String label, String note, PickSource value, Color ink) {
     return InkWell(
       onTap: () {
         feedback(Cue.tap);
@@ -76,7 +77,8 @@ Future<PickSource?> askPickSource(
                   const SizedBox(height: 2),
                   Text(
                     note,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 12.5, color: c.muted),
                   ),
                 ],
               ),
@@ -116,11 +118,12 @@ Future<PickSource?> askPickSource(
           row(Icons.photo_camera_outlined, 'Take a photo', 'Opens the camera',
               PickSource.camera, c.text),
           Container(height: 1, color: c.line),
-          row(Icons.folder_outlined, 'Choose a file', 'Something already on this phone',
-              PickSource.files, c.text),
+          row(Icons.folder_outlined, 'Choose a file',
+              'Something already on this phone', PickSource.files, c.text),
           if (canRemove) ...[
             Container(height: 1, color: c.line),
-            row(Icons.delete_outline, removeLabel, removeNote, PickSource.remove, c.ember),
+            row(Icons.delete_outline, removeLabel, removeNote,
+                PickSource.remove, c.ember),
           ],
           const SizedBox(height: 8),
         ],
@@ -241,7 +244,8 @@ Future<PendingDoc?> askForLink(BuildContext context) async {
           Text(
             'For a receipt that lives in your email, or a manual on the '
             "maker's site. Nothing is downloaded — this is a link.",
-            style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
+            style:
+                TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
           ),
           const SizedBox(height: 18),
           TextField(
@@ -249,13 +253,15 @@ Future<PendingDoc?> askForLink(BuildContext context) async {
             autofocus: true,
             keyboardType: TextInputType.url,
             style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration: sunkenInput(hint: 'example.com/my-receipt', fill: c.slate600),
+            decoration:
+                sunkenInput(hint: 'example.com/my-receipt', fill: c.slate600),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: title,
             style: TextStyle(fontFamily: fontBody, color: c.text),
-            decoration: sunkenInput(hint: 'What to call it (optional)', fill: c.slate600),
+            decoration: sunkenInput(
+                hint: 'What to call it (optional)', fill: c.slate600),
           ),
           const SizedBox(height: 18),
           FilledButton(

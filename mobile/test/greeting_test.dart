@@ -17,7 +17,8 @@ void main() {
     // and anything cleverer for the small hours is a joke that stops being
     // funny the second time — and it is read every day. Evening runs long.
     test('midnight is evening', () => expect(dayPart(at(0)), DayPart.evening));
-    test('04:59 is still evening', () => expect(dayPart(at(4, 59)), DayPart.evening));
+    test('04:59 is still evening',
+        () => expect(dayPart(at(4, 59)), DayPart.evening));
     test('05:00 turns morning', () => expect(dayPart(at(5)), DayPart.morning));
     test('11:59 is the last of the morning', () {
       expect(dayPart(at(11, 59)), DayPart.morning);
@@ -31,20 +32,27 @@ void main() {
   });
 
   group('the greeting', () {
-    test('a name is used', () => expect(greeting('Nuno', at(9)), 'Good morning, Nuno'));
-    test('afternoon', () => expect(greeting('Nuno', at(14)), 'Good afternoon, Nuno'));
-    test('evening', () => expect(greeting('Nuno', at(21)), 'Good evening, Nuno'));
+    test('a name is used',
+        () => expect(greeting('Nuno', at(9)), 'Good morning, Nuno'));
+    test('afternoon',
+        () => expect(greeting('Nuno', at(14)), 'Good afternoon, Nuno'));
+    test('evening',
+        () => expect(greeting('Nuno', at(21)), 'Good evening, Nuno'));
 
-    test('no name, no comma', () => expect(greeting(null, at(9)), 'Good morning'));
+    test('no name, no comma',
+        () => expect(greeting(null, at(9)), 'Good morning'));
     test('an empty name is the same as none', () {
       expect(greeting('', at(9)), 'Good morning');
     });
-    test('so is whitespace', () => expect(greeting('   ', at(9)), 'Good morning'));
+    test('so is whitespace',
+        () => expect(greeting('   ', at(9)), 'Good morning'));
   });
 
   group('the name', () {
-    test('a full name greets the first', () => expect(cleanName('Nuno Silva'), 'Nuno'));
-    test('spacing is collapsed', () => expect(cleanName('  Nuno   Silva '), 'Nuno'));
+    test('a full name greets the first',
+        () => expect(cleanName('Nuno Silva'), 'Nuno'));
+    test('spacing is collapsed',
+        () => expect(cleanName('  Nuno   Silva '), 'Nuno'));
     test('an absurd name is cut', () => expect(cleanName('a' * 80).length, 24));
     test('nothing in, nothing out', () => expect(cleanName(null), ''));
 

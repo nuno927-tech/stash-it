@@ -86,7 +86,8 @@ void main() {
     */
     test('and the list is watchable', () async {
       final seen = <int>[];
-      final sub = repo.watchActiveItems().listen((rows) => seen.add(rows.length));
+      final sub =
+          repo.watchActiveItems().listen((rows) => seen.add(rows.length));
 
       // Let the initial query land before writing, so the first emission is
       // reliably the empty table rather than a race with the inserts.
@@ -147,7 +148,8 @@ void main() {
     */
     test('a full free tier refuses the next save', () async {
       await fillTo(freeItemLimit);
-      expect(repo.createItem(draft('One too many')), throwsA(isA<CapReached>()));
+      expect(
+          repo.createItem(draft('One too many')), throwsA(isA<CapReached>()));
     });
 
     test('and writes nothing when it refuses', () async {
@@ -160,7 +162,8 @@ void main() {
       expect(await repo.cappedCount(), freeItemLimit);
     });
 
-    test('the refusal says how to fix it and promises nothing is lost', () async {
+    test('the refusal says how to fix it and promises nothing is lost',
+        () async {
       await fillTo(freeItemLimit);
       try {
         await repo.createItem(draft('One too many'));
@@ -325,7 +328,8 @@ void main() {
         } on CapReached {
           // expected
         }
-        expect((await repo.deletedItems()).map((i) => i.id), contains(victim.id));
+        expect(
+            (await repo.deletedItems()).map((i) => i.id), contains(victim.id));
       });
     });
 
@@ -342,7 +346,8 @@ void main() {
       await (db.update(db.items)..where((t) => t.id.equals(newest)))
           .write(ItemsCompanion(deletedAt: Value(DateTime(2026, 8, 1))));
 
-      expect((await repo.deletedItems()).map((i) => i.name), ['Oldest', 'Newest']);
+      expect(
+          (await repo.deletedItems()).map((i) => i.name), ['Oldest', 'Newest']);
     });
   });
 
@@ -415,7 +420,8 @@ void main() {
       final id = await repo.createItem(draft('Old $days'));
       await (db.update(db.items)..where((t) => t.id.equals(id))).write(
         ItemsCompanion(
-          deletedAt: Value(DateTime(2026, 8, 24).subtract(Duration(days: days))),
+          deletedAt:
+              Value(DateTime(2026, 8, 24).subtract(Duration(days: days))),
         ),
       );
       return id;
@@ -431,7 +437,9 @@ void main() {
       expect(await repo.purgeExpiredDeletes(DateTime(2026, 8, 24)), 0);
       expect(await repo.deletedItems(), hasLength(1));
       expect(
-        daysLeft(DateTime(2026, 8, 24).subtract(const Duration(days: purgeAfterDays - 1)),
+        daysLeft(
+            DateTime(2026, 8, 24)
+                .subtract(const Duration(days: purgeAfterDays - 1)),
             DateTime(2026, 8, 24)),
         1,
       );
@@ -442,7 +450,9 @@ void main() {
       expect(await repo.purgeExpiredDeletes(DateTime(2026, 8, 24)), 1);
       expect(await repo.deletedItems(), isEmpty);
       expect(
-        daysLeft(DateTime(2026, 8, 24).subtract(const Duration(days: purgeAfterDays + 1)),
+        daysLeft(
+            DateTime(2026, 8, 24)
+                .subtract(const Duration(days: purgeAfterDays + 1)),
             DateTime(2026, 8, 24)),
         0,
       );

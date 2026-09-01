@@ -85,7 +85,8 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
       appBar: AppBar(
         title: Text(_isNew ? 'Add a document' : _draft.label),
         actions: [
-          TextButton(onPressed: _saving ? null : _save, child: const Text('Save')),
+          TextButton(
+              onPressed: _saving ? null : _save, child: const Text('Save')),
         ],
       ),
       body: ListView(
@@ -112,9 +113,7 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
                 ),
             ],
           ),
-
           const SizedBox(height: 20),
-
           LabelledField(
             label: 'Call it',
             initial: _draft.label,
@@ -134,7 +133,6 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
             initial: _draft.holder,
             onChanged: (v) => _draft.holder = v,
           ),
-
           DateField(
             label: 'Expires',
             value: _draft.expiresOn,
@@ -142,9 +140,7 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
             // is exactly what the red rows are — so there is no lower bound.
             onChanged: (v) => setState(() => _draft.expiresOn = v),
           ),
-
           const SizedBox(height: 8),
-
           DropdownButtonFormField<int?>(
             initialValue: _draft.leadDays,
             decoration: const InputDecoration(
@@ -152,7 +148,8 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: null, child: Text('Default for this kind')),
+              DropdownMenuItem(
+                  value: null, child: Text('Default for this kind')),
               DropdownMenuItem(value: 0, child: Text('On the day')),
               DropdownMenuItem(value: 30, child: Text('1 month before')),
               DropdownMenuItem(value: 90, child: Text('3 months before')),
@@ -162,12 +159,11 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
             ],
             onChanged: (v) => setState(() => _draft.leadDays = v),
           ),
-
           Padding(
             padding: const EdgeInsets.only(top: 6, bottom: 14),
-            child: Text(leadExplanation(_draft), style: theme.textTheme.bodySmall),
+            child:
+                Text(leadExplanation(_draft), style: theme.textTheme.bodySmall),
           ),
-
           LabelledField(
             label: 'Who issued it',
             initial: _draft.authority,
@@ -206,9 +202,7 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
           if (!_isNew)
             DeleteButton(
               name: _draft.label,
@@ -219,7 +213,6 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
                 if (context.mounted) Navigator.of(context).pop(true);
               },
             ),
-
           const SizedBox(height: 40),
         ],
       ),

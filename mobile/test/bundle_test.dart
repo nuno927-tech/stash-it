@@ -71,7 +71,10 @@ String failureOf(Map<String, List<int>> entries) {
 void main() {
   group('refusing a file', () {
     test('something that is not a backup at all', () {
-      expect(failureOf({'manifest.json': jsonBytes({'format': 'something else'})}),
+      expect(
+          failureOf({
+            'manifest.json': jsonBytes({'format': 'something else'})
+          }),
           contains('not a Stash it backup'));
       expect(failureOf({}), contains('not a Stash it backup'));
     });
@@ -147,7 +150,8 @@ void main() {
       expect(checksumInput({}), isEmpty);
     });
 
-    test('the order is items, docs, properties, rooms, maintenance, settings,'
+    test(
+        'the order is items, docs, properties, rooms, maintenance, settings,'
         ' subscriptions, papers', () {
       expect(tableOrder, [
         'items',
@@ -171,7 +175,11 @@ void main() {
     });
 
     test('blobs are not in it', () {
-      expect(checksumInput({'blobs/abc.webp': [9, 9, 9]}), isEmpty);
+      expect(
+          checksumInput({
+            'blobs/abc.webp': [9, 9, 9]
+          }),
+          isEmpty);
     });
   });
 
@@ -220,10 +228,21 @@ void main() {
             },
           ],
           'docs': [
-            {'id': 'd1', 'itemId': 'kettle', 'kind': 'receipt', 'title': 'Receipt'},
+            {
+              'id': 'd1',
+              'itemId': 'kettle',
+              'kind': 'receipt',
+              'title': 'Receipt'
+            },
           ],
           'rooms': [
-            {'id': 'r1', 'propertyId': 'p1', 'name': 'Kitchen', 'sortOrder': 1, 'isSeed': true},
+            {
+              'id': 'r1',
+              'propertyId': 'p1',
+              'name': 'Kitchen',
+              'sortOrder': 1,
+              'isSeed': true
+            },
           ],
         }));
 
@@ -369,7 +388,12 @@ void main() {
     test('an item with a broken purchase date keeps everything else', () {
       final parsed = parse(bundle(tables: {
         'items': [
-          {'id': 'a', 'name': 'Kettle', 'propertyId': 'p', 'purchaseDate': '31/02/2026'},
+          {
+            'id': 'a',
+            'name': 'Kettle',
+            'propertyId': 'p',
+            'purchaseDate': '31/02/2026'
+          },
         ],
       }));
       final kettle = parsed.data.items.single;
@@ -385,7 +409,12 @@ void main() {
     test('an unknown kind falls back rather than throwing', () {
       final parsed = parse(bundle(tables: {
         'papers': [
-          {'id': 'x', 'propertyId': 'p', 'kind': 'fishing-permit', 'label': 'Permit'},
+          {
+            'id': 'x',
+            'propertyId': 'p',
+            'kind': 'fishing-permit',
+            'label': 'Permit'
+          },
         ],
         'docs': [
           {'id': 'd', 'itemId': 'x', 'kind': 'hologram'},
@@ -397,7 +426,8 @@ void main() {
     });
 
     test('and case does not decide it', () {
-      expect(enumOf('MONTHLY', Cadence.values, Cadence.weekly), Cadence.monthly);
+      expect(
+          enumOf('MONTHLY', Cadence.values, Cadence.weekly), Cadence.monthly);
       expect(enumOf(null, Cadence.values, Cadence.weekly), Cadence.weekly);
     });
 
@@ -515,7 +545,12 @@ void main() {
       final entries = bundle(
         tables: {
           'items': [
-            {'id': 'a', 'name': 'Kettle', 'propertyId': 'p', 'category': 'kitchen'},
+            {
+              'id': 'a',
+              'name': 'Kettle',
+              'propertyId': 'p',
+              'category': 'kitchen'
+            },
           ],
         },
         manifestOverrides: {'schemaVersion': 1},

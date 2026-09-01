@@ -24,7 +24,8 @@ void main() {
       that a compile error; this asserts the order anyway.
     */
     test('the order matches the bar', () {
-      expect(Tab.values, [Tab.home, Tab.items, Tab.subs, Tab.papers, Tab.settings]);
+      expect(Tab.values,
+          [Tab.home, Tab.items, Tab.subs, Tab.papers, Tab.settings]);
     });
 
     test('left goes forward', () {
@@ -140,16 +141,23 @@ void main() {
 
   group('throwing a card away', () {
     test('a firm drag either way dismisses', () {
-      expect(dismissedByDrag(Drag(dy: 50, elapsed: const Duration(seconds: 2))), isTrue);
-      expect(dismissedByDrag(Drag(dy: -50, elapsed: const Duration(seconds: 2))), isTrue);
+      expect(dismissedByDrag(Drag(dy: 50, elapsed: const Duration(seconds: 2))),
+          isTrue);
+      expect(
+          dismissedByDrag(Drag(dy: -50, elapsed: const Duration(seconds: 2))),
+          isTrue);
     });
 
     test('a quick flick does too', () {
-      expect(dismissedByDrag(const Drag(dy: 30, elapsed: Duration(milliseconds: 150))), isTrue);
+      expect(
+          dismissedByDrag(
+              const Drag(dy: 30, elapsed: Duration(milliseconds: 150))),
+          isTrue);
     });
 
     test('a small slow nudge does not', () {
-      expect(dismissedByDrag(const Drag(dy: 30, elapsed: Duration(seconds: 2))), isFalse);
+      expect(dismissedByDrag(const Drag(dy: 30, elapsed: Duration(seconds: 2))),
+          isFalse);
     });
 
     /*

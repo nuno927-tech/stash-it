@@ -64,7 +64,8 @@ void main() {
           provider: 'Ercol',
           policyNumber: 'ER-LIFE-8891',
         ),
-        Coverage(id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
+        Coverage(
+            id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
       ],
     ));
 
@@ -73,7 +74,8 @@ void main() {
       propertyId: 'default',
       name: 'Kettle',
       purchaseDate: '2026-01-01',
-      warranty: Warranty(months: 24, unit: WarrantyUnit.months, amount: 24, provider: 'Bosch'),
+      warranty: Warranty(
+          months: 24, unit: WarrantyUnit.months, amount: 24, provider: 'Bosch'),
     ));
 
     await repo.createPaper(const Paper(
@@ -100,7 +102,8 @@ void main() {
       notes: 'Shared with Kelly',
     ));
 
-    await repo.putBlob('b1', Uint8List.fromList([82, 73, 70, 70]), 'image/webp');
+    await repo.putBlob(
+        'b1', Uint8List.fromList([82, 73, 70, 70]), 'image/webp');
 
     /*
       ── A document WITH A FILE ON IT, which was missing from this fixture ────
@@ -114,7 +117,8 @@ void main() {
       A fixture with no documents in it cannot catch that, which is the actual
       lesson: the round trip is only as good as the awkwardness in `fill`.
     */
-    await repo.putBlob('receipt-pdf', Uint8List.fromList([37, 80, 68, 70]), 'application/pdf');
+    await repo.putBlob(
+        'receipt-pdf', Uint8List.fromList([37, 80, 68, 70]), 'application/pdf');
     await repo.createDoc(const Doc(
       id: 'd1',
       itemId: 'couch',
@@ -270,8 +274,8 @@ void main() {
       await fill();
       final there = await roundTrip();
 
-      final kettle =
-          (await there.repo.activeItems()).firstWhere((i) => i.name == 'Kettle');
+      final kettle = (await there.repo.activeItems())
+          .firstWhere((i) => i.name == 'Kettle');
       expect(kettle.warranty!.months, 24);
       expect(kettle.warranty!.provider, 'Bosch');
       expect(coveragesOf(kettle), hasLength(1));

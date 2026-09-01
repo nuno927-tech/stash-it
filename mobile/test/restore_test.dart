@@ -77,7 +77,12 @@ void main() {
           {'id': 'r1', 'propertyId': 'p-from-the-web-app', 'name': 'Kitchen'},
         ],
         'docs': [
-          {'id': 'd1', 'itemId': 'kettle', 'kind': 'receipt', 'title': 'Receipt'},
+          {
+            'id': 'd1',
+            'itemId': 'kettle',
+            'kind': 'receipt',
+            'title': 'Receipt'
+          },
         ],
       }, blobs: {
         'blobs/b1.webp': [1, 2, 3],

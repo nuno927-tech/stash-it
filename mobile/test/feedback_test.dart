@@ -17,7 +17,8 @@ import 'package:stash_it/ui/feedback.dart';
 void main() {
   test('every cue has a tone', () {
     for (final cue in Cue.values) {
-      expect(hasVoice(cue), isTrue, reason: '$cue has no entry in the voice table');
+      expect(hasVoice(cue), isTrue,
+          reason: '$cue has no entry in the voice table');
     }
   });
 

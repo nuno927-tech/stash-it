@@ -122,14 +122,14 @@ class _SubFormScreenState extends State<SubFormScreen> {
       appBar: AppBar(
         title: Text(_isNew ? 'Add a subscription' : _draft.name),
         actions: [
-          TextButton(onPressed: _saving ? null : _save, child: const Text('Save')),
+          TextButton(
+              onPressed: _saving ? null : _save, child: const Text('Save')),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (_problem != null) ProblemCard(_problem!),
-
           LabelledField(
             label: 'What is it',
             hint: 'Netflix, the gym, car insurance',
@@ -137,7 +137,6 @@ class _SubFormScreenState extends State<SubFormScreen> {
             autofocus: _isNew,
             onChanged: (v) => _draft.name = v,
           ),
-
           LabelledField(
             label: 'How much',
             initial: _draft.amountText,
@@ -145,7 +144,6 @@ class _SubFormScreenState extends State<SubFormScreen> {
             format: (v) => formatMoneyInput(v, _draft.currency),
             onChanged: (v) => setState(() => _draft.amountText = v),
           ),
-
           DropdownButtonFormField<Cadence>(
             initialValue: _draft.cadence,
             decoration: const InputDecoration(
@@ -156,15 +154,14 @@ class _SubFormScreenState extends State<SubFormScreen> {
               for (final c in Cadence.values)
                 DropdownMenuItem(value: c, child: Text(cadenceLabel[c]!)),
             ],
-            onChanged: (v) => setState(() => _draft.cadence = v ?? Cadence.monthly),
+            onChanged: (v) =>
+                setState(() => _draft.cadence = v ?? Cadence.monthly),
           ),
-
           if (monthly != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(monthly, style: theme.textTheme.bodySmall),
             ),
-
           const SizedBox(height: 8),
 
           /*
@@ -180,9 +177,7 @@ class _SubFormScreenState extends State<SubFormScreen> {
             value: _draft.anchorDate,
             onChanged: (v) => setState(() => _draft.anchorDate = v),
           ),
-
           if (_draft.anchorDate.isNotEmpty) _renewalPreview(theme),
-
           const SizedBox(height: 12),
 
           /*
@@ -207,18 +202,14 @@ class _SubFormScreenState extends State<SubFormScreen> {
             ],
             onChanged: (v) => setState(() => _draft.remindDays = v),
           ),
-
           const SizedBox(height: 14),
-
           LabelledField(
             label: 'Notes',
             initial: _draft.notes,
             lines: 3,
             onChanged: (v) => _draft.notes = v,
           ),
-
           const SizedBox(height: 20),
-
           if (!_isNew)
             DeleteButton(
               name: _draft.name,
@@ -228,7 +219,6 @@ class _SubFormScreenState extends State<SubFormScreen> {
                 if (context.mounted) Navigator.of(context).pop(true);
               },
             ),
-
           const SizedBox(height: 40),
         ],
       ),

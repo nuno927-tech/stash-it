@@ -84,7 +84,8 @@ bool shouldOffer(OfferInput o) {
 /// bought last week and covered for three years does not count, which is
 /// exactly backwards — that is the one most worth a reminder, because it is the
 /// one nobody will still be thinking about.
-bool datedSave({String? expiresOn, String? purchaseDate, bool hasCover = false}) {
+bool datedSave(
+    {String? expiresOn, String? purchaseDate, bool hasCover = false}) {
   if (expiresOn != null && expiresOn.trim().isNotEmpty) return true;
   return purchaseDate != null && purchaseDate.trim().isNotEmpty && hasCover;
 }

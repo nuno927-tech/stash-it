@@ -146,7 +146,8 @@ class Figure extends StatelessWidget {
                   Container(
                     width: 7,
                     height: 7,
-                    decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+                    decoration:
+                        BoxDecoration(color: tone, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 5),
                 ],
@@ -186,7 +187,8 @@ class Figure extends StatelessWidget {
 /// from wherever it had got to — the same rule the ring follows, for the same
 /// reason. Adding one item should nudge a figure, not replay it from zero.
 class _Counted extends StatelessWidget {
-  const _Counted({required this.value, required this.count, required this.style});
+  const _Counted(
+      {required this.value, required this.count, required this.style});
 
   final String value;
   final int? count;
@@ -230,7 +232,8 @@ class FigureRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: StashColors.of(context).slate600)),
+        border:
+            Border(top: BorderSide(color: StashColors.of(context).slate600)),
       ),
       child: Row(
         children: [for (final f in figures) Expanded(child: f)],
@@ -252,7 +255,9 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
       child: Row(
         children: [
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.titleMedium)),
+          Expanded(
+              child:
+                  Text(text, style: Theme.of(context).textTheme.titleMedium)),
           if (trailing != null) trailing!,
         ],
       ),
@@ -382,10 +387,8 @@ class Wordmark extends StatelessWidget {
 
       Nothing else here changed. Same 34, same weight, same style object.
     */
-    final base = Theme.of(context)
-        .textTheme
-        .headlineSmall!
-        .copyWith(fontSize: fontSize);
+    final base =
+        Theme.of(context).textTheme.headlineSmall!.copyWith(fontSize: fontSize);
 
     return Text.rich(
       TextSpan(

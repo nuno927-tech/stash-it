@@ -47,7 +47,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.77.1';
+const appVersion = '0.79.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -382,10 +382,14 @@ class _SettingsTabState extends State<SettingsTab> {
   Future<String> _readBinLine() async {
     final entries = [
       for (final i in await widget.repo.deletedItems())
-        BinEntry(id: i.id, kind: BinKind.item, name: i.name, deletedAt: i.deletedAt),
+        BinEntry(
+            id: i.id, kind: BinKind.item, name: i.name, deletedAt: i.deletedAt),
       for (final p in await widget.repo.deletedPapers())
         BinEntry(
-            id: p.id, kind: BinKind.paper, name: p.label, deletedAt: p.deletedAt),
+            id: p.id,
+            kind: BinKind.paper,
+            name: p.label,
+            deletedAt: p.deletedAt),
       for (final s in await widget.repo.deletedSubscriptions())
         BinEntry(
             id: s.id,
@@ -553,8 +557,8 @@ class _SettingsTabState extends State<SettingsTab> {
 
       await write('items', itemsCsv(await widget.repo.activeItems()));
       await write('documents', papersCsv(await widget.repo.activePapers()));
-      await write(
-          'subscriptions', subscriptionsCsv(await widget.repo.activeSubscriptions()));
+      await write('subscriptions',
+          subscriptionsCsv(await widget.repo.activeSubscriptions()));
 
       await Share.shareXFiles(files, subject: 'Stash it — spreadsheets');
 
@@ -692,7 +696,6 @@ class _SettingsTabState extends State<SettingsTab> {
                 ],
               ),
             ),
-
             Expanded(child: _cards(context, c, settings, prefs)),
           ],
         );
@@ -718,9 +721,9 @@ class _SettingsTabState extends State<SettingsTab> {
       */
       padding: const EdgeInsets.only(bottom: 24),
       children: [
-            /* ---------------------------------------------------- go pro */
+        /* ---------------------------------------------------- go pro */
 
-            /*
+        /*
               ── Why this is first, and why it looks different ─────────────
 
               It was ninth of ten, styled as a card like every other card,
@@ -740,13 +743,13 @@ class _SettingsTabState extends State<SettingsTab> {
               to somebody who has already paid is a receipt, and a receipt is
               what the Play Store is for.
             */
-            FutureBuilder<Settings>(
-              future: _settings,
-              builder: (context, settingsSnap) {
-                final entitlements = settingsSnap.data?.entitlements;
-                if (entitlements == null) return const SizedBox.shrink();
+        FutureBuilder<Settings>(
+          future: _settings,
+          builder: (context, settingsSnap) {
+            final entitlements = settingsSnap.data?.entitlements;
+            if (entitlements == null) return const SizedBox.shrink();
 
-                /*
+            /*
                   ── Paid, so the offer becomes a receipt ────────────────────
 
                   This used to return nothing at all, which meant the single
@@ -760,93 +763,92 @@ class _SettingsTabState extends State<SettingsTab> {
                   edge, first thing on the page — so what changes is the
                   sentence rather than the layout.
                 */
-                if (entitlements.proUnlock) {
-                  return _ProCard(
-                    onTap: () async {
-                      final count = await _count;
-                      if (!context.mounted) return;
-                      await showUnlock(
-                        context,
-                        repo: widget.repo,
-                        billing: appBilling,
-                        count: count,
-                        owned: true,
-                      );
-                    },
+            if (entitlements.proUnlock) {
+              return _ProCard(
+                onTap: () async {
+                  final count = await _count;
+                  if (!context.mounted) return;
+                  await showUnlock(
+                    context,
+                    repo: widget.repo,
+                    billing: appBilling,
+                    count: count,
+                    owned: true,
                   );
-                }
+                },
+              );
+            }
 
-                return FutureBuilder<int>(
-                  future: _count,
-                  builder: (context, countSnap) {
-                    final count = countSnap.data;
-                    if (count == null) return const SizedBox.shrink();
+            return FutureBuilder<int>(
+              future: _count,
+              builder: (context, countSnap) {
+                final count = countSnap.data;
+                if (count == null) return const SizedBox.shrink();
 
-                    final left = remainingFree(count, entitlements) ?? 0;
-                    final full = left == 0;
+                final left = remainingFree(count, entitlements) ?? 0;
+                final full = left == 0;
 
-                    return Container(
-                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-                      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
-                      decoration: BoxDecoration(
-                        color: c.washGold,
-                        borderRadius: BorderRadius.circular(Radii.lg),
-                        border: Border.all(color: c.gold.withValues(alpha: 0.45)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+                  padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+                  decoration: BoxDecoration(
+                    color: c.washGold,
+                    borderRadius: BorderRadius.circular(Radii.lg),
+                    border: Border.all(color: c.gold.withValues(alpha: 0.45)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Icon(Icons.workspace_premium_outlined,
-                                  size: 20, color: c.gold),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Go Pro',
-                                  style: TextStyle(
-                                    fontFamily: fontDisplay,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.6,
-                                    color: c.text,
-                                  ),
-                                ),
+                          Icon(Icons.workspace_premium_outlined,
+                              size: 20, color: c.gold),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Go Pro',
+                              style: TextStyle(
+                                fontFamily: fontDisplay,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.6,
+                                color: c.text,
                               ),
-                              Text(
-                                'One payment',
-                                style: TextStyle(
-                                  fontFamily: fontBody,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: c.gold,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 14),
-
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('$count', style: figureStyle(c, size: 34)),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4, left: 5),
-                                child: Text(
-                                  'of $freeItemLimit saved',
-                                  style: TextStyle(
-                                    fontFamily: fontBody,
-                                    fontSize: 14,
-                                    color: c.muted,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'One payment',
+                            style: TextStyle(
+                              fontFamily: fontBody,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: c.gold,
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('$count', style: figureStyle(c, size: 34)),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4, left: 5),
+                            child: Text(
+                              'of $freeItemLimit saved',
+                              style: TextStyle(
+                                fontFamily: fontBody,
+                                fontSize: 14,
+                                color: c.muted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
 
-                          /*
+                      /*
                             A bar, because "14 of 20" is a fact and a bar is a
                             feeling — and the feeling is the useful half of the
                             answer here. It turns amber inside the last five,
@@ -854,7 +856,7 @@ class _SettingsTabState extends State<SettingsTab> {
                             colour and the wording can never disagree about
                             what "nearly full" means.
                           */
-                          /*
+                      /*
                             Filled rather than drawn.
 
                             The bar is the one thing on this card that is a
@@ -868,99 +870,102 @@ class _SettingsTabState extends State<SettingsTab> {
                             nudges the bar along instead of jumping it, so the
                             movement is legible as "that one you just added".
                           */
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(Radii.pill),
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(
-                                begin: 0,
-                                end: (count / freeItemLimit).clamp(0.0, 1.0),
-                              ),
-                              duration: const Duration(milliseconds: 850),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, filled, _) => LinearProgressIndicator(
-                                value: MediaQuery.of(context).disableAnimations
-                                    ? (count / freeItemLimit).clamp(0.0, 1.0)
-                                    : filled,
-                                minHeight: 7,
-                                backgroundColor: c.field,
-                                valueColor: AlwaysStoppedAnimation(
-                                  full ? c.ember : (left <= warnWhenLeft ? c.honey : c.gold),
-                                ),
-                              ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(
+                            begin: 0,
+                            end: (count / freeItemLimit).clamp(0.0, 1.0),
+                          ),
+                          duration: const Duration(milliseconds: 850),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, filled, _) =>
+                              LinearProgressIndicator(
+                            value: MediaQuery.of(context).disableAnimations
+                                ? (count / freeItemLimit).clamp(0.0, 1.0)
+                                : filled,
+                            minHeight: 7,
+                            backgroundColor: c.field,
+                            valueColor: AlwaysStoppedAnimation(
+                              full
+                                  ? c.ember
+                                  : (left <= warnWhenLeft ? c.honey : c.gold),
                             ),
                           ),
-                          const SizedBox(height: 12),
-
-                          Text(
-                            full
-                                ? 'Full. Nothing is lost and nothing is hidden — '
-                                    'the limit only stops new ones.'
-                                : 'Unlimited items, documents and subscriptions '
-                                    'for one payment. No subscription, no ads, '
-                                    'and nothing leaves your phone.',
-                            style: hintStyle(c),
-                          ),
-                          const SizedBox(height: 14),
-
-                          _BigButton(
-                            label: 'Go Pro',
-                            icon: Icons.lock_open_outlined,
-                            onTap: () async {
-                              final unlocked = await showUnlock(
-                                context,
-                                repo: widget.repo,
-                                billing: appBilling,
-                                count: count,
-                              );
-                              if (unlocked) _refresh();
-                            },
-                          ),
-                        ],
+                        ),
                       ),
-                    );
-                  },
+                      const SizedBox(height: 12),
+                      Text(
+                        full
+                            ? 'Full. Nothing is lost and nothing is hidden — '
+                                'the limit only stops new ones.'
+                            : 'Unlimited items, documents and subscriptions '
+                                'for one payment. No subscription, no ads, '
+                                'and nothing leaves your phone.',
+                        style: hintStyle(c),
+                      ),
+                      const SizedBox(height: 14),
+                      _BigButton(
+                        label: 'Go Pro',
+                        icon: Icons.lock_open_outlined,
+                        onTap: () async {
+                          final unlocked = await showUnlock(
+                            context,
+                            repo: widget.repo,
+                            billing: appBilling,
+                            count: count,
+                          );
+                          if (unlocked) _refresh();
+                        },
+                      ),
+                    ],
+                  ),
                 );
               },
+            );
+          },
+        ),
+
+        /* ------------------------------------------------ appearance */
+
+        _Card(
+          title: 'Appearance',
+          children: [
+            _SegRow<ThemeChoice>(
+              value: prefs.theme,
+              options: const [
+                (ThemeChoice.light, 'Light'),
+                (ThemeChoice.dark, 'Dark'),
+                (ThemeChoice.system, 'Auto'),
+              ],
+              onChange: (v) => prefs.set(theme: v),
             ),
+            _Rule(c),
+            _SwitchRow(
+              label: 'Sounds',
+              value: prefs.sounds,
+              onChanged: (on) {
+                prefs.set(sounds: on);
+                // Demonstrated with `save`, the one with a shape to it.
+                // Previewing `tap` would prove almost nothing — it is
+                // deliberately the least interesting sound in the set.
+                if (on) {
+                  previewCue(Cue.save, sounds: true, haptics: prefs.haptics);
+                }
+              },
+            ),
+            _Rule(c),
+            _SwitchRow(
+              label: 'Haptics',
+              value: prefs.haptics,
+              onChanged: (on) {
+                prefs.set(haptics: on);
+                if (on) previewCue(Cue.delete, sounds: false, haptics: true);
+              },
+            ),
+            _Rule(c),
 
-            /* ------------------------------------------------ appearance */
-
-            _Card(
-              title: 'Appearance',
-              children: [
-                _SegRow<ThemeChoice>(
-                  value: prefs.theme,
-                  options: const [
-                    (ThemeChoice.light, 'Light'),
-                    (ThemeChoice.dark, 'Dark'),
-                    (ThemeChoice.system, 'Auto'),
-                  ],
-                  onChange: (v) => prefs.set(theme: v),
-                ),
-                _Rule(c),
-                _SwitchRow(
-                  label: 'Sounds',
-                  value: prefs.sounds,
-                  onChanged: (on) {
-                    prefs.set(sounds: on);
-                    // Demonstrated with `save`, the one with a shape to it.
-                    // Previewing `tap` would prove almost nothing — it is
-                    // deliberately the least interesting sound in the set.
-                    if (on) previewCue(Cue.save, sounds: true, haptics: prefs.haptics);
-                  },
-                ),
-                _Rule(c),
-                _SwitchRow(
-                  label: 'Haptics',
-                  value: prefs.haptics,
-                  onChanged: (on) {
-                    prefs.set(haptics: on);
-                    if (on) previewCue(Cue.delete, sounds: false, haptics: true);
-                  },
-                ),
-                _Rule(c),
-
-                /*
+            /*
                   ── On by default, and offered anyway ────────────────────
 
                   Every screen in this app is a column — a list of items, a
@@ -976,52 +981,52 @@ class _SettingsTabState extends State<SettingsTab> {
                   device that is already sideways is an app somebody cannot
                   use at all.
                 */
-                _SwitchRow(
-                  // No note. "Lock to portrait" is the whole explanation, and a
-                  // line under it restating the label in longer words is the
-                  // kind of help that makes a settings page feel like a manual.
-                  label: 'Lock to portrait',
-                  value: prefs.lockPortrait,
-                  onChanged: (on) => prefs.set(lockPortrait: on),
-                ),
-              ],
+            _SwitchRow(
+              // No note. "Lock to portrait" is the whole explanation, and a
+              // line under it restating the label in longer words is the
+              // kind of help that makes a settings page feel like a manual.
+              label: 'Lock to portrait',
+              value: prefs.lockPortrait,
+              onChanged: (on) => prefs.set(lockPortrait: on),
             ),
+          ],
+        ),
 
-            /* ------------------------------- notifications, then the lock */
+        /* ------------------------------- notifications, then the lock */
 
-            _Card(
-              title: 'Push Notifications',
-              trailing: Switch(
-                // On unless somebody has said otherwise. Null is a record
-                // written before the field existed and is not a decision — see
-                // `notifyEnabled` in models/settings.dart.
-                value: settings.notifyEnabled ?? true,
-                onChanged: _busy
-                    ? null
-                    : (v) {
-                        feedback(v ? Cue.expand : Cue.collapse);
-                        _setNotify(v);
-                      },
+        _Card(
+          title: 'Push Notifications',
+          trailing: Switch(
+            // On unless somebody has said otherwise. Null is a record
+            // written before the field existed and is not a decision — see
+            // `notifyEnabled` in models/settings.dart.
+            value: settings.notifyEnabled ?? true,
+            onChanged: _busy
+                ? null
+                : (v) {
+                    feedback(v ? Cue.expand : Cue.collapse);
+                    _setNotify(v);
+                  },
+          ),
+          children: [
+            if (settings.notifyEnabled ?? true)
+              _PickRow(
+                label: 'What time',
+                value: _hourLabel(settings.reminderHour ?? defaultSendHour),
+                options: [for (var h = 6; h <= 22; h++) _hourLabel(h)],
+                onChange: (v) => _saveSettings(
+                  (s) => s.copyWith(reminderHour: _hourOf(v)),
+                ).then((_) => _refresh(reminders: true)),
               ),
-              children: [
-                if (settings.notifyEnabled ?? true)
-                  _PickRow(
-                    label: 'What time',
-                    value: _hourLabel(settings.reminderHour ?? defaultSendHour),
-                    options: [for (var h = 6; h <= 22; h++) _hourLabel(h)],
-                    onChange: (v) => _saveSettings(
-                      (s) => s.copyWith(reminderHour: _hourOf(v)),
-                    ).then((_) => _refresh(reminders: true)),
-                  ),
-              ],
-            ),
+          ],
+        ),
 
-            FutureBuilder<bool>(
-              future: _biometricsAvailable,
-              builder: (context, probe) {
-                if (probe.data != true) return const SizedBox.shrink();
+        FutureBuilder<bool>(
+          future: _biometricsAvailable,
+          builder: (context, probe) {
+            if (probe.data != true) return const SizedBox.shrink();
 
-                /*
+            /*
                   The whole card is the control.
 
                   It was a heading called "Lock", a row that repeated it as
@@ -1031,89 +1036,92 @@ class _SettingsTabState extends State<SettingsTab> {
                   rest of what is and is not protected; the switch says what it
                   does in its own title.
                 */
-                return _Card(
-                  title: 'Biometrics to unlock',
-                  trailing: Switch(
-                    value: biometricLockOf(settings),
-                    onChanged: _busy
-                        ? null
-                        : (v) {
-                            feedback(v ? Cue.expand : Cue.collapse);
-                            _setLock(v);
-                          },
-                  ),
-                  children: const [],
-                );
+            return _Card(
+              title: 'Biometrics to unlock',
+              trailing: Switch(
+                value: biometricLockOf(settings),
+                onChanged: _busy
+                    ? null
+                    : (v) {
+                        feedback(v ? Cue.expand : Cue.collapse);
+                        _setLock(v);
+                      },
+              ),
+              children: const [],
+            );
+          },
+        ),
+
+        /* ------------------------------------------------- your home */
+
+        _Card(
+          title: 'Your home',
+          children: [
+            _FieldRow(
+              label: 'Your name',
+              note: 'Only used in the greeting.',
+              value: settings.displayName ?? '',
+              // A placeholder, not a default — nothing is saved until
+              // something is typed. "Nuno" was the developer's own name
+              // shipping to every user as the example of what a name looks
+              // like, which is a small thing that reads as an oversight.
+              hint: 'Scout',
+              onSubmit: (v) =>
+                  _saveSettings((s) => s.copyWith(displayName: v.trim())),
+            ),
+            _Rule(c),
+            _LinkRow(
+              label: 'Bin',
+              trailing: FutureBuilder<String>(
+                future: _bin,
+                builder: (context, snap) => Text(
+                  snap.data ?? '',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12, color: c.muted),
+                ),
+              ),
+              onTap: () async {
+                feedback(Cue.tap);
+                await showBin(context, widget.repo);
+                if (mounted) setState(() {});
               },
             ),
-
-            /* ------------------------------------------------- your home */
-
-            _Card(
-              title: 'Your home',
-              children: [
-                _FieldRow(
-                  label: 'Your name',
-                  note: 'Only used in the greeting.',
-                  value: settings.displayName ?? '',
-                  // A placeholder, not a default — nothing is saved until
-                  // something is typed. "Nuno" was the developer's own name
-                  // shipping to every user as the example of what a name looks
-                  // like, which is a small thing that reads as an oversight.
-                  hint: 'Scout',
-                  onSubmit: (v) => _saveSettings((s) => s.copyWith(displayName: v.trim())),
+            _Rule(c),
+            _LinkRow(
+              label: 'Rooms',
+              note: 'Where things live, in your own order.',
+              trailing: FutureBuilder<List<Room>>(
+                future: widget.repo.rooms(),
+                builder: (context, snap) => Text(
+                  snap.data == null ? '' : '${snap.data!.length}',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.muted),
                 ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Bin',
-                  trailing: FutureBuilder<String>(
-                    future: _bin,
-                    builder: (context, snap) => Text(
-                      snap.data ?? '',
-                      style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
-                    ),
-                  ),
-                  onTap: () async {
-                    feedback(Cue.tap);
-                    await showBin(context, widget.repo);
-                    if (mounted) setState(() {});
-                  },
-                ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Rooms',
-                  note: 'Where things live, in your own order.',
-                  trailing: FutureBuilder<List<Room>>(
-                    future: widget.repo.rooms(),
-                    builder: (context, snap) => Text(
-                      snap.data == null ? '' : '${snap.data!.length}',
-                      style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
-                    ),
-                  ),
-                  onTap: () async {
-                    await showRooms(context, widget.repo);
-                    _refresh();
-                  },
-                ),
-                _Rule(c),
-                _SegRow<RoomsView>(
-                  label: 'Rooms start',
-                  value: prefsFrom(settings).roomsView,
-                  options: const [
-                    (RoomsView.collapsed, 'Collapsed'),
-                    (RoomsView.expanded, 'Expanded'),
-                  ],
-                  onChange: (v) => _saveSettings((s) => s.copyWith(roomsView: v)),
-                ),
-                _Rule(c),
-                _PickRow(
-                  label: 'Currency',
-                  note: 'New items only.',
-                  value: settings.currency,
-                  options: currencies,
-                  onChange: (v) => _saveSettings((s) => s.copyWith(currency: v)),
-                ),
-                /*
+              ),
+              onTap: () async {
+                await showRooms(context, widget.repo);
+                _refresh();
+              },
+            ),
+            _Rule(c),
+            _SegRow<RoomsView>(
+              label: 'Rooms start',
+              value: prefsFrom(settings).roomsView,
+              options: const [
+                (RoomsView.collapsed, 'Collapsed'),
+                (RoomsView.expanded, 'Expanded'),
+              ],
+              onChange: (v) => _saveSettings((s) => s.copyWith(roomsView: v)),
+            ),
+            _Rule(c),
+            _PickRow(
+              label: 'Currency',
+              note: 'New items only.',
+              value: settings.currency,
+              options: currencies,
+              onChange: (v) => _saveSettings((s) => s.copyWith(currency: v)),
+            ),
+            /*
                   ── "Warn me before a warranty ends" is not here ────────────
 
                   It moved to the item form, where it belongs: a roof and a
@@ -1126,21 +1134,21 @@ class _SettingsTabState extends State<SettingsTab> {
                   that would be wrong for most of the collection whatever it
                   was set to.
                 */
-              ],
-            ),
+          ],
+        ),
 
-            /* ---------------------------------------------------- backup */
+        /* ---------------------------------------------------- backup */
 
-            /*
+        /*
               Keyed and washable, because the dashboard's backup line sends
               people straight here — see `settingsJump`. The wash fades after
               a beat: it says "this is the one" and then gets out of the way,
               rather than leaving a highlight somebody has to work out how to
               clear.
             */
-            KeyedSubtree(
-              key: _backupKey,
-              /*
+        KeyedSubtree(
+          key: _backupKey,
+          /*
                 ── The twelve pixels the wash costs ────────────────────────
 
                 The wrapper's margin and the card's own inset ADD. Left as
@@ -1152,26 +1160,27 @@ class _SettingsTabState extends State<SettingsTab> {
                 4 inside is the same 16, and the difference is a ring of gold
                 in the gap rather than a band across the page.
               */
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 320),
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                // Gold above comes free from the card's own 10px top padding.
-                // Below there is none, so it is added here — as padding, which
-                // grows the wash, rather than as margin, which would move the
-                // card.
-                padding: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: _lit ? c.washGold : Colors.transparent,
-                  borderRadius: BorderRadius.circular(Radii.lg + 6),
-                ),
-                child: _Card(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            // Gold above comes free from the card's own 10px top padding.
+            // Below there is none, so it is added here — as padding, which
+            // grows the wash, rather than as margin, which would move the
+            // card.
+            padding: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: _lit ? c.washGold : Colors.transparent,
+              borderRadius: BorderRadius.circular(Radii.lg + 6),
+            ),
+            child: _Card(
               inset: 4,
               title: 'Backup',
               trailing: Text(
                 settings.lastBackupAt == null
                     ? 'Never'
                     : settings.lastBackupAt!.toIso8601String().substring(0, 10),
-                style: TextStyle(fontFamily: fontMono, fontSize: 12, color: c.muted),
+                style: TextStyle(
+                    fontFamily: fontMono, fontSize: 12, color: c.muted),
               ),
               children: [
                 Padding(
@@ -1186,16 +1195,15 @@ class _SettingsTabState extends State<SettingsTab> {
                     ),
                   ),
                 ),
-
                 _SegRow<int>(
                   value: settings.backupReminderDays,
                   options: [
-                    for (final choice in backupReminderChoices) (choice.days!, choice.label),
+                    for (final choice in backupReminderChoices)
+                      (choice.days!, choice.label),
                   ],
-                  onChange: (days) =>
-                      _saveSettings((s) => s.copyWith(backupReminderDays: days)),
+                  onChange: (days) => _saveSettings(
+                      (s) => s.copyWith(backupReminderDays: days)),
                 ),
-
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Back up now',
@@ -1210,14 +1218,12 @@ class _SettingsTabState extends State<SettingsTab> {
                   'somewhere you will still have if the phone goes.',
                   c,
                 ),
-
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Import from a backup',
                   onTap: _busy ? null : _restore,
                 ),
                 _Note('This replaces what is on the phone.', c),
-
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Add a card someone sent',
@@ -1229,14 +1235,12 @@ class _SettingsTabState extends State<SettingsTab> {
                   'replacing it.',
                   c,
                 ),
-
                 _Rule(c),
                 _LinkRow(
                   label: 'Export as a spreadsheet',
                   note: 'Three CSV files. Opens anywhere; not a backup.',
                   onTap: _busy ? null : _exportCsv,
                 ),
-
                 _Rule(c),
                 _LinkRow(
                   label: 'Erase everything',
@@ -1245,35 +1249,35 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
               ],
             ),
-              ),
+          ),
+        ),
+
+        /* --------------------------------------------------- notices */
+
+        /* -------------------------------------------------- stash it */
+
+        // The Go Pro card used to sit here, ninth of ten. It is now the
+        // first thing on the page — see `_GoPro` at the top of the list.
+
+        _Card(
+          title: 'Stash it',
+          children: [
+            // Shown in the app rather than opened in a browser — see
+            // lib/ui/privacy.dart on why the words ship with the build
+            // they describe.
+            _LinkRow(
+              label: 'Take the tour',
+              note: 'Eight screens. What it does and how to feed it.',
+              onTap: () => showTour(context, repo: widget.repo),
             ),
+            _Rule(c),
+            _LinkRow(
+              label: 'Privacy policy',
+              onTap: () => showPrivacy(context),
+            ),
+            _Rule(c),
 
-            /* --------------------------------------------------- notices */
-
-            /* -------------------------------------------------- stash it */
-
-            // The Go Pro card used to sit here, ninth of ten. It is now the
-            // first thing on the page — see `_GoPro` at the top of the list.
-
-            _Card(
-              title: 'Stash it',
-              children: [
-                // Shown in the app rather than opened in a browser — see
-                // lib/ui/privacy.dart on why the words ship with the build
-                // they describe.
-                _LinkRow(
-                  label: 'Take the tour',
-                  note: 'Eight screens. What it does and how to feed it.',
-                  onTap: () => showTour(context, repo: widget.repo),
-                ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Privacy policy',
-                  onTap: () => showPrivacy(context),
-                ),
-                _Rule(c),
-
-                /*
+            /*
                   ── One heading, three buttons ────────────────────────────────
 
                   These were three rows in the same list as Take the tour and
@@ -1286,24 +1290,25 @@ class _SettingsTabState extends State<SettingsTab> {
                   A heading says who they reach once, and the three buttons say
                   what to write about. Which is what the choice actually is.
                 */
-                const SizedBox(height: 6),
-                Text(
-                  'Contact the developer',
-                  style: TextStyle(
-                    fontFamily: fontBody,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: c.text,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Opens your mail app.',
-                  style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
-                ),
-                const SizedBox(height: 12),
+            const SizedBox(height: 6),
+            Text(
+              'Contact the developer',
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: c.text,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'Opens your mail app.',
+              style: TextStyle(
+                  fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+            ),
+            const SizedBox(height: 12),
 
-                /*
+            /*
                   ── One line, three equal shares ──────────────────────────────
 
                   A Wrap was tried first and the labels defeated it: "Suggest a
@@ -1319,46 +1324,48 @@ class _SettingsTabState extends State<SettingsTab> {
                   `Expanded` so all three are the same width whatever the words
                   are, and a Row is safe now that the widest is seven letters.
                 */
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ContactChip(
-                        label: 'Question',
-                        onTap: () => _open(contactUri(ContactKind.question, appVersion)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ContactChip(
-                        label: 'Idea',
-                        onTap: () => _open(contactUri(ContactKind.idea, appVersion)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ContactChip(
-                        label: 'Problem',
-                        onTap: () => _open(contactUri(ContactKind.bug, appVersion)),
-                      ),
-                    ),
-                  ],
+            Row(
+              children: [
+                Expanded(
+                  child: _ContactChip(
+                    label: 'Question',
+                    onTap: () =>
+                        _open(contactUri(ContactKind.question, appVersion)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ContactChip(
+                    label: 'Idea',
+                    onTap: () =>
+                        _open(contactUri(ContactKind.idea, appVersion)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ContactChip(
+                    label: 'Problem',
+                    onTap: () => _open(contactUri(ContactKind.bug, appVersion)),
+                  ),
                 ),
               ],
             ),
+          ],
+        ),
 
-            Padding(
-              // Above the version card. The version card is the app signing
-              // off, and a button pressed under a signature reads as part of
-              // it rather than as a thing you can press.
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: _BigButton(
-                label: 'Share Stash it',
-                icon: Icons.ios_share,
-                onTap: _share,
-              ),
-            ),
+        Padding(
+          // Above the version card. The version card is the app signing
+          // off, and a button pressed under a signature reads as part of
+          // it rather than as a thing you can press.
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: _BigButton(
+            label: 'Share Stash it',
+            icon: Icons.ios_share,
+            onTap: _share,
+          ),
+        ),
 
-            /*
+        /*
               ── The version, and the second hidden gesture ──────────────────
 
               Ten taps here opens the developer tools. It is a separate run from
@@ -1371,75 +1378,79 @@ class _SettingsTabState extends State<SettingsTab> {
               reached deliberately, because anybody who wants it knows to come
               here.
             */
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _tapVersion,
-                child: StashCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                    child: Column(
-                      children: [
-                        // The wordmark itself, not a version of it. One widget
-                        // means the gold "it" here and the gold "it" on Home
-                        // cannot drift apart — they are the same object at a
-                        // different size.
-                        const Wordmark(fontSize: 26),
-                        const SizedBox(height: 2),
-                        Text(
-                          'v$appVersion',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: fontMono,
-                            fontSize: 13,
-                            color: c.gold,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          tapHint(_taps) ?? 'Everything you own, on your own phone.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 14,
-                            color: c.muted,
-                          ),
-                        ),
-                      ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _tapVersion,
+            child: StashCard(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                child: Column(
+                  children: [
+                    // The wordmark itself, not a version of it. One widget
+                    // means the gold "it" here and the gold "it" on Home
+                    // cannot drift apart — they are the same object at a
+                    // different size.
+                    const Wordmark(fontSize: 26),
+                    const SizedBox(height: 2),
+                    Text(
+                      'v$appVersion',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: fontMono,
+                        fontSize: 13,
+                        color: c.gold,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 5),
+                    Text(
+                      tapHint(_taps) ??
+                          'Everything you own, on your own phone.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 14,
+                        color: c.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
 
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: LinearProgressIndicator(),
+        if (_busy)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: LinearProgressIndicator(),
+          ),
+        if (_status != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              _status!,
+              style: TextStyle(
+                  fontFamily: fontBody, fontSize: 12.5, color: c.text),
+            ),
+          ),
+
+        if (readUnlocked()) ...[
+          _Card(
+            title: 'Developer',
+            children: [
+              Text(
+                'SQLCipher, with a key from the Android Keystore. The app '
+                'refuses to open if the library did not load, rather than '
+                'writing a plaintext database it believes is encrypted.',
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 12, color: c.muted),
               ),
-            if (_status != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text(
-                  _status!,
-                  style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.text),
-                ),
-              ),
+              _Rule(c),
 
-            if (readUnlocked()) ...[
-              _Card(
-                title: 'Developer',
-                children: [
-                  Text(
-                    'SQLCipher, with a key from the Android Keystore. The app '
-                    'refuses to open if the library did not load, rather than '
-                    'writing a plaintext database it believes is encrypted.',
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
-                  ),
-                  _Rule(c),
-
-                  /*
+              /*
                     ── Read-only, and that is why it ships ──────────────────────
 
                     Nothing on the diagnostics sheet writes a record, grants
@@ -1452,14 +1463,14 @@ class _SettingsTabState extends State<SettingsTab> {
                     that somebody can paste it to a stranger without reading it
                     carefully first.
                   */
-                  _LinkRow(
-                    label: 'Diagnostics',
-                    note: 'Counts and versions, copyable. Nothing private.',
-                    onTap: () => showDiagnostics(context, widget.repo),
-                  ),
-                  _Rule(c),
+              _LinkRow(
+                label: 'Diagnostics',
+                note: 'Counts and versions, copyable. Nothing private.',
+                onTap: () => showDiagnostics(context, widget.repo),
+              ),
+              _Rule(c),
 
-                  /*
+              /*
                     ── Debug builds only, and that is not a detail ──────────────
 
                     This grants the unlock, and for one version it shipped
@@ -1485,40 +1496,43 @@ class _SettingsTabState extends State<SettingsTab> {
                     and they exercise the buy path so a broken one is found
                     before release rather than after.
                   */
-                  if (kDebugMode) FutureBuilder<Settings>(
-                    future: _settings,
-                    builder: (context, snap) {
-                      final on = snap.data?.entitlements;
-                      if (on == null) return const SizedBox.shrink();
+              if (kDebugMode)
+                FutureBuilder<Settings>(
+                  future: _settings,
+                  builder: (context, snap) {
+                    final on = snap.data?.entitlements;
+                    if (on == null) return const SizedBox.shrink();
 
-                      return _LinkRow(
-                        label: on.proUnlock ? 'Unlocked' : 'Grant unlock (debug build)',
-                        note: on.proUnlock
-                            ? 'Source: ${on.source ?? 'unknown'}'
-                            : 'Not compiled into release builds. Testers get promo codes.',
-                        onTap: on.proUnlock
-                            ? null
-                            : () async {
-                                await widget.repo.grantUnlock('dev');
-                                feedback(Cue.unlock);
-                                _refresh();
-                              },
-                      );
-                    },
-                  ),
-                  _Rule(c),
-                  _LinkRow(
-                    label: 'Hide developer tools',
-                    onTap: () => setState(() {
-                      rememberUnlocked(false);
-                      // The run is reset too, or the next single tap on the
-                      // version lands on nine and puts them straight back.
-                      _taps = noTaps;
-                    }),
-                  ),
-                ],
+                    return _LinkRow(
+                      label: on.proUnlock
+                          ? 'Unlocked'
+                          : 'Grant unlock (debug build)',
+                      note: on.proUnlock
+                          ? 'Source: ${on.source ?? 'unknown'}'
+                          : 'Not compiled into release builds. Testers get promo codes.',
+                      onTap: on.proUnlock
+                          ? null
+                          : () async {
+                              await widget.repo.grantUnlock('dev');
+                              feedback(Cue.unlock);
+                              _refresh();
+                            },
+                    );
+                  },
+                ),
+              _Rule(c),
+              _LinkRow(
+                label: 'Hide developer tools',
+                onTap: () => setState(() {
+                  rememberUnlocked(false);
+                  // The run is reset too, or the next single tap on the
+                  // version lands on nine and puts them straight back.
+                  _taps = noTaps;
+                }),
               ),
-          ],
+            ],
+          ),
+        ],
 
         /*
           ── The maker's plate ─────────────────────────────────────────────────
@@ -1611,7 +1625,11 @@ Future<bool?> _askErase(BuildContext context) {
             'There is no bin behind this one, and no undo. If you have a '
             'backup file it can be restored; if you do not, this is the end '
             'of it.',
-            style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+            style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13,
+                height: 1.45,
+                color: c.muted),
           ),
           const SizedBox(height: 14),
           TextField(
@@ -1762,8 +1780,10 @@ class _Rule extends StatelessWidget {
   final StashColors c;
 
   @override
-  Widget build(BuildContext context) =>
-      Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 4), color: c.line);
+  Widget build(BuildContext context) => Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: c.line);
 }
 
 class _Note extends StatelessWidget {
@@ -1776,7 +1796,8 @@ class _Note extends StatelessWidget {
         padding: const EdgeInsets.only(top: 8),
         child: Text(
           text,
-          style: TextStyle(fontFamily: fontBody, fontSize: 12, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 12, height: 1.45, color: c.muted),
         ),
       );
 }
@@ -1855,7 +1876,8 @@ class _SegRow<T> extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: fontBody,
                             fontSize: 12.5,
-                            fontWeight: v == value ? FontWeight.w700 : FontWeight.w400,
+                            fontWeight:
+                                v == value ? FontWeight.w700 : FontWeight.w400,
                             color: v == value ? c.text : c.muted,
                           ),
                         ),
@@ -1995,7 +2017,8 @@ class _FieldRowState extends State<_FieldRow> {
                   const SizedBox(height: 3),
                   Text(
                     widget.note!,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                   ),
                 ],
               ],
@@ -2012,13 +2035,15 @@ class _FieldRowState extends State<_FieldRow> {
                 FocusScope.of(context).unfocus();
                 widget.onSubmit(_controller.text);
               },
-              style: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
+              style: TextStyle(
+                  fontFamily: fontBody, fontSize: 13.5, color: c.text),
               decoration: InputDecoration(
                 isDense: true,
                 filled: true,
                 fillColor: c.slate800,
                 hintText: widget.hint,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(Radii.pill),
                   borderSide: BorderSide(color: c.line),
@@ -2081,7 +2106,8 @@ class _PickRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     note!,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                   ),
                 ],
               ],
@@ -2100,7 +2126,8 @@ class _PickRow extends StatelessWidget {
                 isDense: true,
                 borderRadius: BorderRadius.circular(Radii.md),
                 dropdownColor: c.slate700,
-                style: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 13.5, color: c.text),
                 items: [
                   for (final o in options)
                     DropdownMenuItem(value: o, child: Text(o)),
@@ -2208,7 +2235,8 @@ class _LinkRow extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       note!,
-                      style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+                      style: TextStyle(
+                          fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                     ),
                   ],
                 ],
@@ -2264,7 +2292,8 @@ class _ProCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.workspace_premium_outlined, size: 20, color: c.gold),
+                    Icon(Icons.workspace_premium_outlined,
+                        size: 20, color: c.gold),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

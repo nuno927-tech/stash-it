@@ -24,7 +24,8 @@ void main() {
     });
 
     test('sounds default to on', () => expect(prefsFrom(fresh).sounds, isTrue));
-    test('haptics default to on', () => expect(prefsFrom(fresh).haptics, isTrue));
+    test('haptics default to on',
+        () => expect(prefsFrom(fresh).haptics, isTrue));
 
     test('rooms start collapsed', () {
       // With a dozen rooms the expanded list is a long scroll, and the question
@@ -52,7 +53,8 @@ void main() {
     });
 
     test('and unlocking it is a real answer, not an absence', () {
-      expect(prefsFrom(const Settings(lockPortrait: false)).lockPortrait, isFalse);
+      expect(
+          prefsFrom(const Settings(lockPortrait: false)).lockPortrait, isFalse);
     });
 
     test('no settings at all still yields defaults', () {
@@ -63,7 +65,8 @@ void main() {
 
   group('a set value wins', () {
     test('a chosen theme', () {
-      expect(prefsFrom(const Settings(theme: ThemeChoice.light)).theme, ThemeChoice.light);
+      expect(prefsFrom(const Settings(theme: ThemeChoice.light)).theme,
+          ThemeChoice.light);
     });
 
     test('and turning something off is not "no opinion"', () {
@@ -136,7 +139,11 @@ void main() {
     });
 
     test('every choice has a label, and no duplicates', () {
-      for (final list in [reminderChoices, itemLeadChoices, backupReminderChoices]) {
+      for (final list in [
+        reminderChoices,
+        itemLeadChoices,
+        backupReminderChoices
+      ]) {
         for (final c in list) {
           expect(c.label, isNotEmpty);
         }

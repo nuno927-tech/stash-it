@@ -48,8 +48,9 @@ class ReceiptGuess {
 /* ------------------------------------------------------------- merchant */
 
 /// Mail clients prefix these; they are never part of the merchant's name.
-final RegExp _subjectNoise =
-    RegExp(r'^\s*(re|fwd|fw|forwarded message|tr|aw|wg)\s*:\s*', caseSensitive: false);
+final RegExp _subjectNoise = RegExp(
+    r'^\s*(re|fwd|fw|forwarded message|tr|aw|wg)\s*:\s*',
+    caseSensitive: false);
 
 /// Patterns in the order we trust them. Each captures the merchant in group 1.
 /// Ordered most-specific first: "Your receipt from Apple" is a stronger signal
@@ -134,7 +135,8 @@ String? _merchantFromUrl(String? url) {
   final m = _host.firstMatch(url.trim());
   if (m == null) return null;
 
-  final parts = m.group(1)!.toLowerCase().split('.').where((p) => p != 'www').toList();
+  final parts =
+      m.group(1)!.toLowerCase().split('.').where((p) => p != 'www').toList();
 
   // Drop the TLD, and the second-level part of things like .co.uk.
   while (parts.length > 1 && _publicSuffix.hasMatch(parts.last)) {
@@ -142,7 +144,9 @@ String? _merchantFromUrl(String? url) {
   }
 
   final name = parts.isEmpty ? null : parts.last;
-  if (name == null || name.length < 2 || _notAMerchant.contains(name)) return null;
+  if (name == null || name.length < 2 || _notAMerchant.contains(name)) {
+    return null;
+  }
   return name[0].toUpperCase() + name.substring(1);
 }
 
@@ -285,7 +289,8 @@ const Map<String, int> _months = {
   'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
 };
 
-const String _monthName = '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*';
+const String _monthName =
+    '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*';
 
 class _DatePattern {
   const _DatePattern(this.re, this.read);
@@ -310,12 +315,17 @@ String? parseLooseDate(String? text, [DateTime? today]) {
     // 2026-08-09
     _DatePattern(
       RegExp(r'\b(\d{4})-(\d{2})-(\d{2})\b'),
-      (m) => [int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!)],
+      (m) => [
+        int.parse(m.group(1)!),
+        int.parse(m.group(2)!),
+        int.parse(m.group(3)!)
+      ],
     ),
 
     // 9 August 2026 · 9 Aug 2026
     _DatePattern(
-      RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+$_monthName\\.?,?\\s+(\\d{4})\\b',
+      RegExp(
+          '\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+$_monthName\\.?,?\\s+(\\d{4})\\b',
           caseSensitive: false),
       (m) => [
         int.parse(m.group(3)!),
@@ -326,7 +336,8 @@ String? parseLooseDate(String? text, [DateTime? today]) {
 
     // August 9, 2026 · Aug 9 2026
     _DatePattern(
-      RegExp('\\b$_monthName\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b',
+      RegExp(
+          '\\b$_monthName\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b',
           caseSensitive: false),
       (m) => [
         int.parse(m.group(3)!),
@@ -406,7 +417,8 @@ String? guessOrderNumber(String? text) {
 final RegExp _separatorish = RegExp(r'[-_.]+');
 final RegExp _warrantyish =
     RegExp(r'warrant|guarantee|protection plan|cover(age)? plan|service plan');
-final RegExp _manualish = RegExp(r'manual|instruction|user guide|handbook|spec sheet');
+final RegExp _manualish =
+    RegExp(r'manual|instruction|user guide|handbook|spec sheet');
 final RegExp _receiptish =
     RegExp(r'receipt|invoice|order|purchase|payment|confirmation|billing');
 
@@ -420,7 +432,8 @@ final RegExp _receiptish =
 /// followed by a bare `return 'receipt'`. The two were identical, so the check
 /// never changed an outcome. Its reasoning survives as the comment below, which
 /// is the part that was actually load-bearing.
-DocKind guessDocKind(String? filename, [SharedText shared = const SharedText()]) {
+DocKind guessDocKind(String? filename,
+    [SharedText shared = const SharedText()]) {
   // Separators normalised first: "user-guide.pdf" and "user guide.pdf" are the
   // same statement about the file, and only one of them contains "user guide".
   final hay = '${filename ?? ''} ${shared.title ?? ''}'

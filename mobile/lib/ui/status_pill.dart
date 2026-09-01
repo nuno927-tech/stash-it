@@ -63,7 +63,9 @@ enum StashStatus {
 /// Fades to nothing by 55% of the width. Any further and the text sits on
 /// colour; any less and it reads as a stripe rather than as the row being lit.
 Gradient? statusWash(StashColors c, StashStatus status) {
-  if (status == StashStatus.settled || status == StashStatus.unknown) return null;
+  if (status == StashStatus.settled || status == StashStatus.unknown) {
+    return null;
+  }
 
   final (_, wash) = statusInk(c, status);
 

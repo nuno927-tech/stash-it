@@ -47,17 +47,23 @@ Map<String, List<int>> cardEntries({
   };
 
   final entries = <String, List<int>>{
-    for (final e in tables.entries) '${e.key}.json': utf8.encode(jsonEncode(e.value)),
+    for (final e in tables.entries)
+      '${e.key}.json': utf8.encode(jsonEncode(e.value)),
     ...blobs,
   };
 
   entries['manifest.json'] = utf8.encode(jsonEncode({
     'format': format,
-    'formatVersion': format == cardFormat ? cardFormatVersion : backupFormatVersion,
+    'formatVersion':
+        format == cardFormat ? cardFormatVersion : backupFormatVersion,
     'schemaVersion': schemaVersion,
     'appVersion': 'test',
     'exportedAt': DateTime.now().toUtc().toIso8601String(),
-    'counts': {'items': items.length, 'docs': docs.length, 'blobs': blobs.length},
+    'counts': {
+      'items': items.length,
+      'docs': docs.length,
+      'blobs': blobs.length
+    },
     'sha256': fakeSha(checksumInput(entries)),
     'encrypted': false,
   }));
@@ -79,7 +85,8 @@ Item anItem({
       roomId: roomId,
       purchaseDate: '2025-03-04',
       coverages: const [
-        Coverage(id: 'w', label: 'Warranty', unit: CoverageUnit.years, amount: 2),
+        Coverage(
+            id: 'w', label: 'Warranty', unit: CoverageUnit.years, amount: 2),
       ],
       thumbBlobId: thumbBlobId,
       deletedAt: deletedAt,
@@ -153,7 +160,9 @@ void main() {
         the recipient already had.
       */
       final merged = planCardMerge(
-        parse(cardEntries(items: [anItem(id: 'i1')], papers: [aPaper(id: 'p1')],
+        parse(cardEntries(
+            items: [anItem(id: 'i1')],
+            papers: [aPaper(id: 'p1')],
             subs: [aSub(id: 's1')])),
         propertyId: 'mine',
         existingRooms: const [],
@@ -167,8 +176,8 @@ void main() {
 
     test('everything is reassigned to the recipient property', () {
       final merged = planCardMerge(
-        parse(cardEntries(
-            items: [anItem()], papers: [aPaper()], subs: [aSub()])),
+        parse(
+            cardEntries(items: [anItem()], papers: [aPaper()], subs: [aSub()])),
         propertyId: 'mine',
         existingRooms: const [],
         newId: ids,
@@ -184,7 +193,9 @@ void main() {
       final merged = planCardMerge(
         parse(cardEntries(
           items: [anItem(roomId: 'r-theirs')],
-          rooms: [const Room(id: 'r-theirs', propertyId: 'theirs', name: 'kitchen ')],
+          rooms: [
+            const Room(id: 'r-theirs', propertyId: 'theirs', name: 'kitchen ')
+          ],
         )),
         propertyId: 'mine',
         existingRooms: const [
@@ -201,7 +212,9 @@ void main() {
       final merged = planCardMerge(
         parse(cardEntries(
           items: [anItem(roomId: 'r-theirs')],
-          rooms: [const Room(id: 'r-theirs', propertyId: 'theirs', name: 'Boat')],
+          rooms: [
+            const Room(id: 'r-theirs', propertyId: 'theirs', name: 'Boat')
+          ],
         )),
         propertyId: 'mine',
         existingRooms: const [],
@@ -262,7 +275,10 @@ void main() {
       final merged = planCardMerge(
         parse(cardEntries(
           items: [anItem(thumbBlobId: 'b1')],
-          blobs: {'blobs/b1.webp': [1, 2, 3], 'blobs/b9.webp': [9]},
+          blobs: {
+            'blobs/b1.webp': [1, 2, 3],
+            'blobs/b9.webp': [9]
+          },
         )),
         propertyId: 'mine',
         existingRooms: const [],

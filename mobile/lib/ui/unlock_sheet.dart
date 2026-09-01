@@ -104,7 +104,8 @@ class _UnlockState extends State<_Unlock> {
   bool _busy = false;
   String? _said;
 
-  Future<void> _run(Future<BuyResult> Function() action, {required bool buying}) async {
+  Future<void> _run(Future<BuyResult> Function() action,
+      {required bool buying}) async {
     setState(() {
       _busy = true;
       _said = null;
@@ -229,38 +230,38 @@ class _UnlockState extends State<_Unlock> {
               wifi. That is the test a claim on this screen has to pass.
             */
             const _Perk(
-              icon:Icons.all_inclusive,
+              icon: Icons.all_inclusive,
               title: 'Unlimited everything',
               body: 'Items, documents and subscriptions, as many as you like. '
                   'Photos, receipts and manuals with them.',
             ),
             const _Perk(
-              icon:Icons.check_circle_outline,
+              icon: Icons.check_circle_outline,
               title: 'Paid once, yours for good',
               body: 'Not a subscription. No renewal, no expiry, and it comes '
                   'back on a new phone with the same Google account.',
             ),
             const _Perk(
-              icon:Icons.phone_android_outlined,
+              icon: Icons.phone_android_outlined,
               title: 'Everything stays on your phone',
               body: 'No account to make, no cloud to sign into. Nothing is '
                   'uploaded, so nothing can be sold or read.',
             ),
             const _Perk(
-              icon:Icons.cloud_off_outlined,
+              icon: Icons.cloud_off_outlined,
               title: 'No servers, nothing to leak',
               body: 'There is no company database holding your receipts. '
                   'There is nothing to breach, because there is nothing there.',
             ),
             const _Perk(
-              icon:Icons.lock_outline,
+              icon: Icons.lock_outline,
               title: 'Encrypted on the device',
               body: 'The database is encrypted with a key held in the phone\'s '
                   'own secure storage, and can be locked behind your '
                   'fingerprint.',
             ),
             const _Perk(
-              icon:Icons.block_outlined,
+              icon: Icons.block_outlined,
               title: 'No ads, ever',
               body: 'Nothing to dismiss, nothing tracking you between apps, '
                   'and no reason for either — you paid instead.',
@@ -310,108 +311,114 @@ class _UnlockState extends State<_Unlock> {
                 ),
               ),
             ] else
-            FutureBuilder<Offer>(
-              future: _offer,
-              builder: (context, snap) {
-                final offer = snap.data;
+              FutureBuilder<Offer>(
+                future: _offer,
+                builder: (context, snap) {
+                  final offer = snap.data;
 
-                if (offer == null) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 18),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
+                  if (offer == null) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 18),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
 
-                /*
+                  /*
                   A store that is not answering gets a sentence, not a dead
                   button. Three different causes look identical from the app —
                   no connection, the product not set up, the account not on the
                   testers list — so it says what is observable and stops.
                 */
-                if (!offer.available) {
+                  if (!offer.available) {
+                    return Column(
+                      children: [
+                        Text(
+                          'The store is not answering right now, so there is '
+                          'nothing to show you here. Everything you have saved '
+                          'is fine — this only affects buying.',
+                          textAlign: TextAlign.center,
+                          style: hintStyle(c),
+                        ),
+                        const SizedBox(height: 14),
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _offer = widget.billing.offer()),
+                          child: Text(
+                            'Try again',
+                            style:
+                                TextStyle(fontFamily: fontBody, color: c.gold),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
                   return Column(
                     children: [
-                      Text(
-                        'The store is not answering right now, so there is '
-                        'nothing to show you here. Everything you have saved '
-                        'is fine — this only affects buying.',
-                        textAlign: TextAlign.center,
-                        style: hintStyle(c),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _run(widget.billing.buy, buying: true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: c.gold,
+                            foregroundColor: c.onGold,
+                            disabledBackgroundColor: c.gold,
+                            padding: const EdgeInsets.symmetric(vertical: 17),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(Radii.md),
+                            ),
+                          ),
+                          child: Text(
+                            // The store's own price, localised. Never assembled
+                            // here — see the note in billing.dart.
+                            'Go Pro for ${offer.price}',
+                            style: TextStyle(
+                              fontFamily: fontDisplay,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              color: c.onGold,
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 14),
-                      TextButton(
-                        onPressed: () => setState(() => _offer = widget.billing.offer()),
-                        child: Text(
-                          'Try again',
-                          style: TextStyle(fontFamily: fontBody, color: c.gold),
+                      const SizedBox(height: 10),
+
+                      // Same width, same shape, one step quieter. See the note
+                      // at the top of the file on why this is not a link.
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _busy
+                              ? null
+                              : () =>
+                                  _run(widget.billing.restore, buying: false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: c.text,
+                            side: BorderSide(color: c.line),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(Radii.md),
+                            ),
+                          ),
+                          child: Text(
+                            'I already paid',
+                            style: TextStyle(
+                              fontFamily: fontBody,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: c.text,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   );
-                }
-
-                return Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _busy ? null : () => _run(widget.billing.buy, buying: true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: c.gold,
-                          foregroundColor: c.onGold,
-                          disabledBackgroundColor: c.gold,
-                          padding: const EdgeInsets.symmetric(vertical: 17),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(Radii.md),
-                          ),
-                        ),
-                        child: Text(
-                          // The store's own price, localised. Never assembled
-                          // here — see the note in billing.dart.
-                          'Go Pro for ${offer.price}',
-                          style: TextStyle(
-                            fontFamily: fontDisplay,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
-                            color: c.onGold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Same width, same shape, one step quieter. See the note
-                    // at the top of the file on why this is not a link.
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed:
-                            _busy ? null : () => _run(widget.billing.restore, buying: false),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: c.text,
-                          side: BorderSide(color: c.line),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(Radii.md),
-                          ),
-                        ),
-                        child: Text(
-                          'I already paid',
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: c.text,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                },
+              ),
 
             if (_busy) ...[
               const SizedBox(height: 16),
@@ -441,7 +448,11 @@ class _UnlockState extends State<_Unlock> {
                 'Everything you have saved stays exactly as it is either way. '
                 'The limit only stops new ones.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: fontBody, fontSize: 12, height: 1.5, color: c.muted),
+                style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 12,
+                    height: 1.5,
+                    color: c.muted),
               ),
           ],
         ),

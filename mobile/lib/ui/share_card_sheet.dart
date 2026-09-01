@@ -100,7 +100,8 @@ class _ShareSheetState extends State<_ShareSheet> {
     return Container(
       decoration: BoxDecoration(
         color: c.slate800,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
@@ -123,7 +124,6 @@ class _ShareSheetState extends State<_ShareSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
@@ -151,7 +151,6 @@ class _ShareSheetState extends State<_ShareSheet> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -177,15 +176,16 @@ class _ShareSheetState extends State<_ShareSheet> {
                 ),
               ),
             ),
-
             const SizedBox(height: 14),
             InkWell(
               onTap: () {
                 feedback(Cue.tap);
-                setState(() => _pick = _pick.withAttachments(!_pick.attachments));
+                setState(
+                    () => _pick = _pick.withAttachments(!_pick.attachments));
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
                     Expanded(
@@ -229,13 +229,11 @@ class _ShareSheetState extends State<_ShareSheet> {
                 ),
               ),
             ),
-
             if (_said != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
                 child: Text(_said!, style: hintStyle(c)),
               ),
-
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

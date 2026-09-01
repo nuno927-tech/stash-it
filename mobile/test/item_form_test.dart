@@ -30,7 +30,8 @@ void main() {
     });
 
     test('and neither is whitespace', () {
-      expect(whyNotSaveable(ItemDraft(name: '   '))!.message, contains('Give it a name'));
+      expect(whyNotSaveable(ItemDraft(name: '   '))!.message,
+          contains('Give it a name'));
     });
 
     // No date, no price, no cover — all fine. Most things people own are like
@@ -141,7 +142,8 @@ void main() {
       final d = ItemDraft(
         name: 'Couch',
         coverages: [
-          CoverageDraft(label: 'Frame', unit: CoverageUnit.lifetime, amountText: '99'),
+          CoverageDraft(
+              label: 'Frame', unit: CoverageUnit.lifetime, amountText: '99'),
         ],
       );
       final c = toItem(d, propertyId: 'default').coverages.single;
@@ -155,7 +157,9 @@ void main() {
       until somebody's roof stopped warning them a year early.
     */
     test('a zero lead time survives, and so does no lead time', () {
-      expect(toItem(ItemDraft(name: 'A', leadDays: 0), propertyId: 'p').leadDays, 0);
+      expect(
+          toItem(ItemDraft(name: 'A', leadDays: 0), propertyId: 'p').leadDays,
+          0);
       expect(toItem(ItemDraft(name: 'A'), propertyId: 'p').leadDays, isNull);
     });
   });
@@ -178,7 +182,8 @@ void main() {
           amount: 0,
           provider: 'Ercol',
         ),
-        Coverage(id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
+        Coverage(
+            id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
       ],
     );
 
@@ -314,8 +319,8 @@ void main() {
       // And the app reads the same cover afterwards, which is the point of
       // completing the migration rather than merely not losing it.
       expect(coveragesOf(back), hasLength(1));
-      expect(effectiveExpiry(back, DateTime(2026, 8, 24)),
-          DateTime(2028, 1, 1));
+      expect(
+          effectiveExpiry(back, DateTime(2026, 8, 24)), DateTime(2028, 1, 1));
     });
   });
   group('the length a policy opens on', () {
@@ -340,7 +345,11 @@ void main() {
     // showing "Custom 12" — a number the user never typed, presented as
     // though they had.
     test('every default is one of the buttons', () {
-      for (final unit in [CoverageUnit.days, CoverageUnit.months, CoverageUnit.years]) {
+      for (final unit in [
+        CoverageUnit.days,
+        CoverageUnit.months,
+        CoverageUnit.years
+      ]) {
         expect(
           isCustomTerm(unit, defaultTermText(unit)),
           isFalse,
@@ -378,5 +387,4 @@ void main() {
       expect(termAfterUnitChange(CoverageUnit.months, ''), '12');
     });
   });
-
 }

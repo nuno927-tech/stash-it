@@ -10,14 +10,18 @@ import 'package:stash_it/logic/item_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 IconKey iconFor({String? name, String? brand, String? model, String? notes}) =>
-    iconKeyFor(IconSubject(name: name, brand: brand, model: model, notes: notes));
+    iconKeyFor(
+        IconSubject(name: name, brand: brand, model: model, notes: notes));
 
 void main() {
   group('the obvious ones', () {
     test('a fridge', () => expect(iconFor(name: 'Fridge'), IconKey.fridge));
-    test('a dishwasher', () => expect(iconFor(name: 'Bosch Dishwasher'), IconKey.dishwasher));
-    test('a synonym counts', () => expect(iconFor(name: 'Refrigerator'), IconKey.fridge));
-    test('and case does not', () => expect(iconFor(name: 'KETTLE'), IconKey.kettle));
+    test('a dishwasher',
+        () => expect(iconFor(name: 'Bosch Dishwasher'), IconKey.dishwasher));
+    test('a synonym counts',
+        () => expect(iconFor(name: 'Refrigerator'), IconKey.fridge));
+    test('and case does not',
+        () => expect(iconFor(name: 'KETTLE'), IconKey.kettle));
   });
 
   group('the floor', () {
@@ -92,7 +96,8 @@ void main() {
     });
 
     test('but the rest is used when the name says nothing', () {
-      expect(iconFor(name: 'The big one', notes: 'chest freezer'), IconKey.fridge);
+      expect(
+          iconFor(name: 'The big one', notes: 'chest freezer'), IconKey.fridge);
     });
 
     test('brand and model are searched too', () {
@@ -103,7 +108,8 @@ void main() {
   test('every key except box has at least one keyword', () {
     for (final key in IconKey.values) {
       final words = keywords[key];
-      expect(words, isNotNull, reason: '$key is missing from the keyword table');
+      expect(words, isNotNull,
+          reason: '$key is missing from the keyword table');
       if (key != IconKey.box) {
         expect(words, isNotEmpty, reason: '$key has no keywords');
       }

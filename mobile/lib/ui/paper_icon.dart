@@ -122,7 +122,8 @@ class PaperGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hex = '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+    final hex =
+        '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
     return SvgPicture.string(
       '''

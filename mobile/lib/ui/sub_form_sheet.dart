@@ -186,7 +186,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
 
   Future<void> _pickDate({required bool anchor}) async {
     final now = DateTime.now();
-    final current = DateTime.tryParse(anchor ? _draft.anchorDate : (_draft.startedDate ?? ''));
+    final current = DateTime.tryParse(
+        anchor ? _draft.anchorDate : (_draft.startedDate ?? ''));
 
     final picked = await showDatePicker(
       context: context,
@@ -288,13 +289,13 @@ class _SubFormSheetState extends State<_SubFormSheet> {
                 KeyedSubtree(key: _billingCardKey, child: _billingCard(c)),
                 const SizedBox(height: 14),
                 KeyedSubtree(key: _reminderCardKey, child: _reminderCard(c)),
-
                 if (!_isNew) ...[
                   const SizedBox(height: 18),
                   Center(
                     child: TextButton.icon(
                       onPressed: _saving ? null : _delete,
-                      icon: Icon(Icons.delete_outline, size: 18, color: c.ember),
+                      icon:
+                          Icon(Icons.delete_outline, size: 18, color: c.ember),
                       label: Text(
                         'Delete this subscription',
                         style: TextStyle(fontFamily: fontBody, color: c.ember),
@@ -372,7 +373,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
                   },
                   child: Text(
                     'Choose a different one',
-                    style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 13, color: c.muted),
                   ),
                 ),
               ],
@@ -384,7 +386,11 @@ class _SubFormSheetState extends State<_SubFormSheet> {
             child: Text(
               'Not one we know. That is fine — it saves under whatever you '
               'called it, with its initials for a mark.',
-              style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+              style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  height: 1.45,
+                  color: c.muted),
             ),
           )
         else
@@ -412,7 +418,6 @@ class _SubFormSheetState extends State<_SubFormSheet> {
               );
             },
           ),
-
         const SizedBox(height: 14),
 
         /*
@@ -438,7 +443,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
             cursorColor: c.gold,
             decoration: bareInput(
               hint: 'Netflix, Spotify, the gym...',
-              hintStyle: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
+              hintStyle:
+                  TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
             ),
             onChanged: (v) => setState(() {
               _draft.name = v;
@@ -475,7 +481,6 @@ class _SubFormSheetState extends State<_SubFormSheet> {
           onPick: (v) => setState(() => _draft.cadence = v),
         ),
         const SizedBox(height: 14),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -516,22 +521,20 @@ class _SubFormSheetState extends State<_SubFormSheet> {
             ),
           ],
         ),
-
         if (monthly != null) ...[
           const SizedBox(height: 8),
           Text(
             monthly,
-            style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.gold),
+            style:
+                TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.gold),
           ),
         ],
-
         const SizedBox(height: 14),
         const FieldLabel('Started'),
         DateBox(
           value: _draft.startedDate ?? '',
           onTap: () => _pickDate(anchor: false),
         ),
-
         const SizedBox(height: 16),
         Container(height: 1, color: c.line),
         const SizedBox(height: 14),
@@ -561,7 +564,8 @@ class _SubFormSheetState extends State<_SubFormSheet> {
                   const SizedBox(height: 2),
                   Text(
                     'Records who the money goes to, not what it costs',
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 12.5, color: c.muted),
                   ),
                 ],
               ),
@@ -580,7 +584,6 @@ class _SubFormSheetState extends State<_SubFormSheet> {
             ),
           ],
         ),
-
         if (_draft.shared) ...[
           const SizedBox(height: 12),
           const FieldLabel('Who it goes to'),
@@ -634,10 +637,10 @@ class _SubFormSheetState extends State<_SubFormSheet> {
             1 => 'A notification the day before it renews.',
             final int d => 'A notification $d days before it renews.',
           },
-          style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
         const SizedBox(height: 14),
-
         const FieldLabel('Notes'),
         TextBox(
           initial: _draft.notes,
@@ -658,7 +661,6 @@ class _SubFormSheetState extends State<_SubFormSheet> {
         problem: _problem ?? whyNotSaveableSubscription(_draft),
         onSave: _saving ? null : _save,
       );
-
 }
 
 /* ------------------------------------------------------------- the pieces */
@@ -688,7 +690,6 @@ class _ServiceTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.sm),
-            
           ),
           child: Column(
             children: [
@@ -718,10 +719,4 @@ class _ServiceTile extends StatelessWidget {
   }
 }
 
-
-
-
-
 /// The amount, with the currency symbol inside the box rather than beside it.
-
-

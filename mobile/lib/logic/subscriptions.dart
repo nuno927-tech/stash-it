@@ -233,7 +233,8 @@ class MonthSpend {
 /// Whole months, including the part of this one already spent. A first bar
 /// showing only what is left would be a different measurement from the five
 /// beside it, which is the one thing a bar chart must never do.
-List<MonthSpend> spendByMonth(List<Subscription> subs, int months, [DateTime? now]) {
+List<MonthSpend> spendByMonth(List<Subscription> subs, int months,
+    [DateTime? now]) {
   final at = now ?? DateTime.now();
   final out = <MonthSpend>[];
 

@@ -54,40 +54,40 @@ Future<void> showScoutAlbum(BuildContext context) {
 const Map<ScoutPose, String> _quips = {
   ScoutPose.acorn:
       'Buried this one in 2019. Dug it up on the first go. Do not ask me '
-      'about the other four thousand.',
+          'about the other four thousand.',
   ScoutPose.waving:
       'Hello. I have read your warranties. All of them. It was a quiet week.',
   ScoutPose.report:
       'Eighty-three per cent. I checked it twice, and then once more because '
-      'I enjoy being right.',
+          'I enjoy being right.',
   ScoutPose.receipt:
       'I can photograph this. I cannot make a shop reprint it in 2029. Guess '
-      'which one they ask for.',
+          'which one they ask for.',
   ScoutPose.folder:
       'A drawer. Dry, findable, does not need digging up in February. '
-      'Honestly, humans are ahead on this one.',
+          'Honestly, humans are ahead on this one.',
   ScoutPose.bin:
       'Thirty days. After that it is gone, and not even I know where — '
-      'which for me is saying something.',
+          'which for me is saying something.',
   ScoutPose.clipboard:
       'Glasses on. This is the part where I write down a model number you '
-      'will never read and will one day desperately need.',
+          'will never read and will one day desperately need.',
   ScoutPose.calendar:
       'Nine things renew this month. I am not judging you. I am holding a '
-      'calendar in a way that judges you.',
+          'calendar in a way that judges you.',
   ScoutPose.dancing:
       'No screen has earned this. I have been warmed up since March.',
   ScoutPose.settings:
       'Every switch on this desk does something. I checked. Twice. One of '
-      'them makes a noise and I am very proud of it.',
+          'them makes a noise and I am very proud of it.',
   ScoutPose.alert:
       'Ears up. Something expires soon and you were about to make a cup of tea.',
   ScoutPose.resting:
       'Nothing needs you. This is not me being lazy, it is me being the '
-      'entire point of the app.',
+          'entire point of the app.',
   ScoutPose.lounge:
       'Everything is covered until August. I have earned this. Do not add '
-      'a subscription.',
+          'a subscription.',
 };
 
 class _Album extends StatelessWidget {
@@ -123,7 +123,6 @@ class _Album extends StatelessWidget {
                 ],
               ),
             ),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
@@ -182,9 +181,7 @@ class _Album extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 22),
-
                   for (final entry in roster) ...[
                     _Row(pose: entry.key, name: entry.value.$1),
                     const SizedBox(height: 18),
@@ -192,9 +189,7 @@ class _Album extends StatelessWidget {
                 ],
               ),
             ),
-
             Container(height: 1, color: c.line),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
               child: FilledButton(

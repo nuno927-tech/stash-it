@@ -31,7 +31,8 @@ void main() {
   group('somebody who finished it', () {
     test('is never shown it again', () {
       expect(
-        tourOnLaunch(TourState(doneAt: now.subtract(const Duration(days: 1))), now),
+        tourOnLaunch(
+            TourState(doneAt: now.subtract(const Duration(days: 1))), now),
         isFalse,
       );
     });
@@ -42,7 +43,8 @@ void main() {
     test('even with a reminder still on the record', () {
       expect(
         tourOnLaunch(
-          TourState(doneAt: now, remindAt: now.subtract(const Duration(days: 9))),
+          TourState(
+              doneAt: now, remindAt: now.subtract(const Duration(days: 9))),
           now,
         ),
         isFalse,

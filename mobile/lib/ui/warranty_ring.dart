@@ -160,7 +160,8 @@ class ItemArt extends StatelessWidget {
     final arcs = coverageArcs(item);
     final policies = coveragesOf(item).length;
 
-    final inset = stroke / 2 + 3 + (math.min(arcs.length, maxRings) - 1) * ringStep;
+    final inset =
+        stroke / 2 + 3 + (math.min(arcs.length, maxRings) - 1) * ringStep;
 
     return SizedBox(
       width: size,
@@ -176,7 +177,10 @@ class ItemArt extends StatelessWidget {
                 child: Container(
                   color: c.slate700,
                   child: thumb == null
-                      ? Center(child: fallback ?? Icon(Icons.inventory_2_outlined, size: size * 0.4, color: c.muted))
+                      ? Center(
+                          child: fallback ??
+                              Icon(Icons.inventory_2_outlined,
+                                  size: size * 0.4, color: c.muted))
                       : Image(image: thumb!, fit: BoxFit.cover),
                 ),
               ),
@@ -224,21 +228,33 @@ class ItemArt extends StatelessWidget {
 /// left" on the other, and the number that mattered was the small one on the
 /// screen you land on first. One widget, one answer.
 class TimeLeft extends StatelessWidget {
-  const TimeLeft({required this.item, super.key});
+  const TimeLeft({required this.parts, required this.colour, super.key});
 
-  final Item item;
+  /*
+    Takes the parts and the colour rather than an Item.
+
+    Documents count down to a date too, and their list used to answer with the
+    kind of document — "Passport" where the items list puts a number. Same slot,
+    same question, two different kinds of answer. Handing this the pieces
+    instead of the record is what lets both lists draw the identical thing.
+  */
+  factory TimeLeft.item(Item item, StashColors c) => TimeLeft(
+        parts: warrantyParts(item),
+        colour: switch (warrantyState(item)) {
+          WarrantyState.covered => c.moss,
+          WarrantyState.endingSoon => c.honey,
+          WarrantyState.expired => c.ember,
+          WarrantyState.unknown => c.muted,
+        },
+      );
+
+  final WarrantyParts parts;
+  final Color colour;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
-    final left = warrantyParts(item);
-
-    final colour = switch (warrantyState(item)) {
-      WarrantyState.covered => c.moss,
-      WarrantyState.endingSoon => c.honey,
-      WarrantyState.expired => c.ember,
-      WarrantyState.unknown => c.muted,
-    };
+    final left = parts;
 
     // "Ended", "Today" and "2y 4m" are words, not a two-digit number, and at
     // 27px they crowd the item name off the row. Decided here rather than left

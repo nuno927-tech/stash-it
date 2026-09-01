@@ -135,7 +135,8 @@ class Repository {
   }
 
   Future<Subscription?> subscription(String id) async {
-    final row = await (db.select(db.subscriptions)..where((t) => t.id.equals(id)))
+    final row = await (db.select(db.subscriptions)
+          ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     return row == null ? null : subscriptionOf(row);
   }
@@ -255,15 +256,16 @@ class Repository {
   }
 
   Future<void> renameRoom(String id, String name) =>
-      (db.update(db.rooms)..where((t) => t.id.equals(id)))
-          .write(RoomsCompanion(name: Value(name.trim()), isSeed: const Value(false)));
+      (db.update(db.rooms)..where((t) => t.id.equals(id))).write(
+          RoomsCompanion(name: Value(name.trim()), isSeed: const Value(false)));
 
   /// Writes the whole order at once.
   ///
   /// One transaction, because a half-applied reorder is a list with two rooms
   /// claiming the same position — and the sort is stable, so it would not even
   /// look broken, just wrong.
-  Future<void> reorderRooms(List<String> idsInOrder) => db.transaction(() async {
+  Future<void> reorderRooms(List<String> idsInOrder) =>
+      db.transaction(() async {
         for (var i = 0; i < idsInOrder.length; i++) {
           await (db.update(db.rooms)..where((t) => t.id.equals(idsInOrder[i])))
               .write(RoomsCompanion(sortOrder: Value(i)));
@@ -276,7 +278,8 @@ class Repository {
   /// not delete the lawnmower — so every item pointing at it loses the label
   /// and keeps everything else.
   Future<int> deleteRoom(String id) async {
-    final orphaned = await (db.update(db.items)..where((t) => t.roomId.equals(id)))
+    final orphaned = await (db.update(db.items)
+          ..where((t) => t.roomId.equals(id)))
         .write(const ItemsCompanion(roomId: Value(null)));
 
     await (db.update(db.rooms)..where((t) => t.id.equals(id)))
@@ -354,27 +357,29 @@ class Repository {
     final id = draft.id.isEmpty ? newId() : draft.id;
     final now = DateTime.now();
     await db.into(db.items).insert(
-          itemToRow(Item(
-            id: id,
-            name: draft.name,
-            propertyId: propertyId,
-            brand: draft.brand,
-            model: draft.model,
-            serial: draft.serial,
-            roomId: draft.roomId,
-            purchaseDate: draft.purchaseDate,
-            purchasePriceCents: draft.purchasePriceCents,
-            currency: draft.currency,
-            retailer: draft.retailer,
-            coverages: draft.coverages,
-            warranty: draft.warranty,
-            extendedWarranty: draft.extendedWarranty,
-            leadDays: draft.leadDays,
-            notes: draft.notes,
-            thumbBlobId: draft.thumbBlobId,
-            photoBlobId: draft.photoBlobId,
-            createdAt: now,
-          ), now: now),
+          itemToRow(
+              Item(
+                id: id,
+                name: draft.name,
+                propertyId: propertyId,
+                brand: draft.brand,
+                model: draft.model,
+                serial: draft.serial,
+                roomId: draft.roomId,
+                purchaseDate: draft.purchaseDate,
+                purchasePriceCents: draft.purchasePriceCents,
+                currency: draft.currency,
+                retailer: draft.retailer,
+                coverages: draft.coverages,
+                warranty: draft.warranty,
+                extendedWarranty: draft.extendedWarranty,
+                leadDays: draft.leadDays,
+                notes: draft.notes,
+                thumbBlobId: draft.thumbBlobId,
+                photoBlobId: draft.photoBlobId,
+                createdAt: now,
+              ),
+              now: now),
         );
     return id;
   }
@@ -532,12 +537,14 @@ class Repository {
   /// between deleting the blobs and deleting the item used to leave a row
   /// pointing at pictures that no longer existed.
   Future<void> _erase(String itemId) => db.transaction(() async {
-        final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+        final row = await (db.select(db.items)
+              ..where((t) => t.id.equals(itemId)))
             .getSingleOrNull();
         if (row == null) return;
 
-        final docs =
-            await (db.select(db.docs)..where((t) => t.itemId.equals(itemId))).get();
+        final docs = await (db.select(db.docs)
+              ..where((t) => t.itemId.equals(itemId)))
+            .get();
 
         final blobIds = <String>{
           for (final d in docs)
@@ -547,7 +554,8 @@ class Repository {
         };
 
         if (blobIds.isNotEmpty) {
-          await (db.delete(db.blobs)..where((t) => t.id.isIn(blobIds.toList()))).go();
+          await (db.delete(db.blobs)..where((t) => t.id.isIn(blobIds.toList())))
+              .go();
         }
         await (db.delete(db.docs)..where((t) => t.itemId.equals(itemId))).go();
         await (db.delete(db.items)..where((t) => t.id.equals(itemId))).go();

@@ -123,11 +123,14 @@ Settings settingsOf(SettingsRow r) => Settings(
       displayName: r.displayName,
       onboardedAt: r.onboardedAt,
       tourRemindAt: r.tourRemindAt,
-      theme: r.theme == null ? null : enumOf(r.theme, ThemeChoice.values, ThemeChoice.system),
+      theme: r.theme == null
+          ? null
+          : enumOf(r.theme, ThemeChoice.values, ThemeChoice.system),
       sounds: r.sounds,
       haptics: r.haptics,
-      roomsView:
-          r.roomsView == null ? null : enumOf(r.roomsView, RoomsView.values, RoomsView.collapsed),
+      roomsView: r.roomsView == null
+          ? null
+          : enumOf(r.roomsView, RoomsView.values, RoomsView.collapsed),
       biometricLock: r.biometricLock,
       lockPortrait: r.lockPortrait,
       notifyEnabled: r.notifyEnabled,
@@ -149,10 +152,14 @@ ItemsCompanion itemToRow(Item i, {DateTime? now}) => ItemsCompanion.insert(
       purchasePriceCents: Value(i.purchasePriceCents),
       currency: Value(i.currency),
       retailer: Value(i.retailer),
-      coveragesJson: Value(jsonEncode([for (final c in i.coverages) _coverageToJson(c)])),
-      warrantyJson: Value(i.warranty == null ? null : jsonEncode(_warrantyToJson(i.warranty!))),
+      coveragesJson:
+          Value(jsonEncode([for (final c in i.coverages) _coverageToJson(c)])),
+      warrantyJson: Value(
+          i.warranty == null ? null : jsonEncode(_warrantyToJson(i.warranty!))),
       extendedWarrantyJson: Value(
-        i.extendedWarranty == null ? null : jsonEncode(_warrantyToJson(i.extendedWarranty!)),
+        i.extendedWarranty == null
+            ? null
+            : jsonEncode(_warrantyToJson(i.extendedWarranty!)),
       ),
       leadDays: Value(i.leadDays),
       notes: Value(i.notes),
@@ -182,7 +189,8 @@ RoomsCompanion roomToRow(Room r) => RoomsCompanion.insert(
       deletedAt: Value(r.deletedAt),
     );
 
-SubscriptionsCompanion subscriptionToRow(Subscription s) => SubscriptionsCompanion.insert(
+SubscriptionsCompanion subscriptionToRow(Subscription s) =>
+    SubscriptionsCompanion.insert(
       id: s.id,
       propertyId: s.propertyId,
       name: s.name,

@@ -48,7 +48,8 @@ class _Confetti extends StatefulWidget {
   State<_Confetti> createState() => _ConfettiState();
 }
 
-class _ConfettiState extends State<_Confetti> with SingleTickerProviderStateMixin {
+class _ConfettiState extends State<_Confetti>
+    with SingleTickerProviderStateMixin {
   static const int _count = 26;
 
   late final AnimationController _c = AnimationController(

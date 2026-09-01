@@ -32,17 +32,20 @@ Subscription sub({
 void main() {
   group('nextRenewal', () {
     test('an anchor in the future is the answer', () {
-      final at = nextRenewal(sub(anchorDate: '2026-09-01'), DateTime(2026, 8, 17));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-09-01'), DateTime(2026, 8, 17));
       expect(at, DateTime(2026, 9, 1));
     });
 
     test('today counts as due, not passed', () {
-      final at = nextRenewal(sub(anchorDate: '2026-08-17'), DateTime(2026, 8, 17));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-08-17'), DateTime(2026, 8, 17));
       expect(at, DateTime(2026, 8, 17));
     });
 
     test('a monthly plan steps to the next month', () {
-      final at = nextRenewal(sub(anchorDate: '2026-01-10'), DateTime(2026, 8, 17));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-01-10'), DateTime(2026, 8, 17));
       expect(at, DateTime(2026, 9, 10));
     });
 
@@ -69,17 +72,20 @@ void main() {
       previous result would leave it stuck on the 28th for the rest of time.
     */
     test('the 31st clamps into February', () {
-      final at = nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 2, 5));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 2, 5));
       expect(at, DateTime(2026, 2, 28));
     });
 
     test('and comes back to the 31st in March', () {
-      final at = nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 3, 1));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 3, 1));
       expect(at, DateTime(2026, 3, 31));
     });
 
     test('and to the 30th in April', () {
-      final at = nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 4, 1));
+      final at =
+          nextRenewal(sub(anchorDate: '2026-01-31'), DateTime(2026, 4, 1));
       expect(at, DateTime(2026, 4, 30));
     });
 
@@ -108,18 +114,26 @@ void main() {
     });
 
     test('an unreadable anchor is null rather than a throw', () {
-      expect(nextRenewal(sub(anchorDate: 'soon'), DateTime(2026, 8, 17)), isNull);
-      expect(nextRenewal(sub(anchorDate: '2026-02-31'), DateTime(2026, 8, 17)), isNull);
+      expect(
+          nextRenewal(sub(anchorDate: 'soon'), DateTime(2026, 8, 17)), isNull);
+      expect(nextRenewal(sub(anchorDate: '2026-02-31'), DateTime(2026, 8, 17)),
+          isNull);
     });
   });
 
   group('daysUntilRenewal', () {
     test('counts the days', () {
-      expect(daysUntilRenewal(sub(anchorDate: '2026-08-22'), DateTime(2026, 8, 17)), 5);
+      expect(
+          daysUntilRenewal(
+              sub(anchorDate: '2026-08-22'), DateTime(2026, 8, 17)),
+          5);
     });
 
     test('today is zero', () {
-      expect(daysUntilRenewal(sub(anchorDate: '2026-08-17'), DateTime(2026, 8, 17)), 0);
+      expect(
+          daysUntilRenewal(
+              sub(anchorDate: '2026-08-17'), DateTime(2026, 8, 17)),
+          0);
     });
   });
 
@@ -129,11 +143,13 @@ void main() {
     });
 
     test('a yearly plan is a twelfth', () {
-      expect(monthlyCents(sub(cadence: Cadence.yearly, amountCents: 12000)), 1000);
+      expect(
+          monthlyCents(sub(cadence: Cadence.yearly, amountCents: 12000)), 1000);
     });
 
     test('a quarterly plan is a third', () {
-      expect(monthlyCents(sub(cadence: Cadence.quarterly, amountCents: 3000)), 1000);
+      expect(monthlyCents(sub(cadence: Cadence.quarterly, amountCents: 3000)),
+          1000);
     });
 
     /*
@@ -142,7 +158,8 @@ void main() {
       and wrong.
     */
     test('a weekly plan is more than four times itself', () {
-      expect(monthlyCents(sub(cadence: Cadence.weekly, amountCents: 1000)), 4348);
+      expect(
+          monthlyCents(sub(cadence: Cadence.weekly, amountCents: 1000)), 4348);
     });
 
     test('nonsense costs nothing rather than throwing', () {
@@ -179,7 +196,12 @@ void main() {
       contributes a twelfth of itself to the monthly total.
     */
     test('a yearly renewal counts at full price', () {
-      final all = [sub(cadence: Cadence.yearly, anchorDate: '2026-08-20', amountCents: 12000)];
+      final all = [
+        sub(
+            cadence: Cadence.yearly,
+            anchorDate: '2026-08-20',
+            amountCents: 12000)
+      ];
       final due = dueWithin(all, 7, DateTime(2026, 8, 17));
       expect(due.count, 1);
       expect(due.cents, 12000);
@@ -216,8 +238,14 @@ void main() {
     */
     test('a yearly plan hits in one month of twelve', () {
       final annual = sub(cadence: Cadence.yearly, anchorDate: '2026-11-14');
-      expect(renewalsBetween(annual, DateTime(2026, 10, 1), DateTime(2026, 10, 31)), isEmpty);
-      expect(renewalsBetween(annual, DateTime(2026, 11, 1), DateTime(2026, 11, 30)).length, 1);
+      expect(
+          renewalsBetween(
+              annual, DateTime(2026, 10, 1), DateTime(2026, 10, 31)),
+          isEmpty);
+      expect(
+          renewalsBetween(annual, DateTime(2026, 11, 1), DateTime(2026, 11, 30))
+              .length,
+          1);
     });
 
     test('both ends are inclusive', () {
@@ -239,13 +267,18 @@ void main() {
     test('an annual renewal makes one month heavy', () {
       final all = [
         sub(id: 'm', amountCents: 1000),
-        sub(id: 'a', cadence: Cadence.yearly, anchorDate: '2026-11-14', amountCents: 12000),
+        sub(
+            id: 'a',
+            cadence: Cadence.yearly,
+            anchorDate: '2026-11-14',
+            amountCents: 12000),
       ];
       final spend = spendByMonth(all, 6, DateTime(2026, 8, 17));
 
       expect(spend.length, 6);
       expect(spend.first.year, 2026);
-      expect(spend.first.month, 8, reason: 'months are 1-based in Dart, 0-based in the TS');
+      expect(spend.first.month, 8,
+          reason: 'months are 1-based in Dart, 0-based in the TS');
 
       final november = spend.firstWhere((m) => m.month == 11);
       expect(november.cents, 13000);
@@ -277,24 +310,29 @@ void main() {
     */
     test('no reminder is the default', () {
       expect(reminderDue(sub(anchorDate: '2026-08-22'), now), isFalse);
-      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 0), now), isFalse);
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 0), now),
+          isFalse);
     });
 
     test('inside the window is due', () {
       // Renews in 5 days.
-      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 7), now), isTrue);
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 7), now),
+          isTrue);
     });
 
     test('outside it is not', () {
-      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 3), now), isFalse);
+      expect(reminderDue(sub(anchorDate: '2026-08-22', remindDays: 3), now),
+          isFalse);
     });
 
     test('the boundary counts', () {
-      expect(reminderDue(sub(anchorDate: '2026-08-20', remindDays: 3), now), isTrue);
+      expect(reminderDue(sub(anchorDate: '2026-08-20', remindDays: 3), now),
+          isTrue);
     });
 
     test('the day itself counts', () {
-      expect(reminderDue(sub(anchorDate: '2026-08-17', remindDays: 1), now), isTrue);
+      expect(reminderDue(sub(anchorDate: '2026-08-17', remindDays: 1), now),
+          isTrue);
     });
 
     test('an unreadable anchor is not due', () {

@@ -59,7 +59,8 @@ class Notifications {
 
     try {
       tzdata.initializeTimeZones();
-      tz.setLocalLocation(tz.getLocation(await FlutterTimezone.getLocalTimezone()));
+      tz.setLocalLocation(
+          tz.getLocation(await FlutterTimezone.getLocalTimezone()));
     } catch (_) {
       // Falls back to UTC, which is wrong by up to half a day. The reschedule
       // below still runs; a reminder at the wrong hour beats no reminder, and
@@ -229,7 +230,8 @@ class Notifications {
   /// Anything already in the past is skipped rather than fired. Scheduling
   /// 9am today at 3pm this afternoon would deliver immediately, which reads as
   /// a bug to the person holding the phone.
-  Future<int> reschedule(List<Wake> schedule, {int hour = defaultSendHour}) async {
+  Future<int> reschedule(List<Wake> schedule,
+      {int hour = defaultSendHour}) async {
     await init();
     if (!_ready) return 0;
 

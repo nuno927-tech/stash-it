@@ -270,7 +270,8 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
       is, including "Whose" and "Call it" — see `cardFilled` for why the
       inventory is written out rather than reduced to the field that matters.
     */
-    _toDates.update(context, complete: cardFilled([_draft.label, _draft.holder]));
+    _toDates.update(context,
+        complete: cardFilled([_draft.label, _draft.holder]));
     _toWarning.update(
       context,
       complete: cardFilled([
@@ -298,13 +299,13 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
                 KeyedSubtree(key: _datesCardKey, child: _datesCard(c)),
                 const SizedBox(height: 14),
                 KeyedSubtree(key: _warningCardKey, child: _warningCard(c)),
-
                 if (!_isNew) ...[
                   const SizedBox(height: 18),
                   Center(
                     child: TextButton.icon(
                       onPressed: _saving ? null : _delete,
-                      icon: Icon(Icons.delete_outline, size: 18, color: c.ember),
+                      icon:
+                          Icon(Icons.delete_outline, size: 18, color: c.ember),
                       label: Text(
                         'Delete this document',
                         style: TextStyle(fontFamily: fontBody, color: c.ember),
@@ -388,18 +389,19 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
             child: TextField(
               controller: _label,
               autofocus: true,
-              style: TextStyle(fontFamily: fontBody, fontSize: 16, color: c.text),
+              style:
+                  TextStyle(fontFamily: fontBody, fontSize: 16, color: c.text),
               cursorColor: c.gold,
               decoration: bareInput(
                 hint: 'What is it?',
-                hintStyle: TextStyle(fontFamily: fontBody, fontSize: 16, color: c.muted),
+                hintStyle: TextStyle(
+                    fontFamily: fontBody, fontSize: 16, color: c.muted),
               ),
               onChanged: (v) => setState(() => _draft.label = v),
             ),
           ),
           const SizedBox(height: 12),
         ],
-
         const FieldLabel('Whose'),
         TextBox(
           initial: _draft.holder,
@@ -423,7 +425,8 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
         Text(
           "No scans or document numbers, just what's needed so Scout can remind "
           'you when the time comes. Because your privacy matters.',
-          style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
       ],
     );
@@ -466,7 +469,6 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
           ],
         ),
         const SizedBox(height: 14),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -530,10 +532,10 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
         const SizedBox(height: 12),
         Text(
           leadExplanation(_draft),
-          style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
         const SizedBox(height: 14),
-
         const FieldLabel('Notes'),
         TextBox(
           initial: _draft.notes,
@@ -554,7 +556,6 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
         problem: _problem ?? whyNotSaveablePaper(_draft),
         onSave: _saving ? null : _save,
       );
-
 }
 
 /* ------------------------------------------------------------- the pieces */
@@ -600,10 +601,13 @@ class _KindTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.sm),
         onTap: onTap,
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: wide ? 12 : 12, horizontal: 6),
+          padding:
+              EdgeInsets.symmetric(vertical: wide ? 12 : 12, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.sm),
-            border: Border.all(color: on ? c.washGoldLine : Colors.transparent, width: on ? 1.5 : 1),
+            border: Border.all(
+                color: on ? c.washGoldLine : Colors.transparent,
+                width: on ? 1.5 : 1),
           ),
           child: wide
               ? Row(
@@ -626,9 +630,3 @@ class _KindTile extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-

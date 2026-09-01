@@ -60,10 +60,8 @@ class CardPick {
   int get count => items.length + papers.length + subscriptions.length;
   bool get isEmpty => count == 0;
 
-  CardPick toggleItem(String id) =>
-      _copy(items: _flip(items, id));
-  CardPick togglePaper(String id) =>
-      _copy(papers: _flip(papers, id));
+  CardPick toggleItem(String id) => _copy(items: _flip(items, id));
+  CardPick togglePaper(String id) => _copy(papers: _flip(papers, id));
   CardPick toggleSubscription(String id) =>
       _copy(subscriptions: _flip(subscriptions, id));
   CardPick withAttachments(bool on) => _copy(attachments: on);
@@ -148,8 +146,18 @@ String cardSummary({
 String longDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
 const List<String> _months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// "£9.99 a month" / "£120 a year", for the summary line.

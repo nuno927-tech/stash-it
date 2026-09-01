@@ -18,7 +18,8 @@ import '../notify/sync.dart';
 
 /// Called by each tab after a form closes. Does nothing unless the save that
 /// just happened armed it.
-Future<void> maybeOfferNotifications(BuildContext context, Repository repo) async {
+Future<void> maybeOfferNotifications(
+    BuildContext context, Repository repo) async {
   if (!notifyOfferArmed()) return;
   clearNotifyOffer();
 

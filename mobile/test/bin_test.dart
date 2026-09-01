@@ -56,16 +56,19 @@ void main() {
     // Rounded up: any part of a day remaining is still a day you have. Deleted
     // 28½ days ago leaves 1½ days, which is told to the user as 2.
     test('a part-day counts as a whole one', () {
-      final halfway = daysAgo(purgeAfterDays - 1).add(const Duration(hours: 12));
+      final halfway =
+          daysAgo(purgeAfterDays - 1).add(const Duration(hours: 12));
       expect(daysLeft(halfway, now), 2);
     });
   });
 
   group('the label', () {
     test('it counts', () => expect(daysLeftLabel(12), '12 days left'));
-    test('one day is named, not numbered', () => expect(daysLeftLabel(1), 'Last day'));
+    test('one day is named, not numbered',
+        () => expect(daysLeftLabel(1), 'Last day'));
     test('and today says so', () => expect(daysLeftLabel(0), 'Goes today'));
-    test('as does anything past it', () => expect(daysLeftLabel(-3), 'Goes today'));
+    test('as does anything past it',
+        () => expect(daysLeftLabel(-3), 'Goes today'));
   });
 
   group('counting', () {
@@ -79,7 +82,8 @@ void main() {
   });
 
   group('the summary', () {
-    test('an empty bin says so', () => expect(binSummary([], now), 'Nothing here'));
+    test('an empty bin says so',
+        () => expect(binSummary([], now), 'Nothing here'));
 
     // The soonest rather than an average — the only deadline that matters is
     // the next one.
@@ -165,16 +169,20 @@ void main() {
     setUp(() => capEnforced = true);
     tearDown(() => capEnforced = true);
 
-    test('a subscriber can always restore', () => expect(canRestore(999, pro), isTrue));
+    test('a subscriber can always restore',
+        () => expect(canRestore(999, pro), isTrue));
 
     test('with room, so can anyone', () {
       expect(canRestore(freeItemLimit - 1, free), isTrue);
     });
 
-    test('at the line, no', () => expect(canRestore(freeItemLimit, free), isFalse));
-    test('past it, no', () => expect(canRestore(freeItemLimit + 4, free), isFalse));
+    test('at the line, no',
+        () => expect(canRestore(freeItemLimit, free), isFalse));
+    test('past it, no',
+        () => expect(canRestore(freeItemLimit + 4, free), isFalse));
 
-    test('and the refusal says how to fix it, and promises nothing is lost', () {
+    test('and the refusal says how to fix it, and promises nothing is lost',
+        () {
       final why = restoreBlockedReason(freeItemLimit);
       // "Unlock", not "subscribe" — it is one payment, once, and offering the
       // wrong shape of deal answers a question nobody asked.

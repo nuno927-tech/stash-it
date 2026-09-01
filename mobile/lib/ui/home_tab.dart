@@ -30,9 +30,9 @@ import '../models/types.dart';
 import 'feedback.dart';
 import 'item_view_sheet.dart';
 
-import 'paper_form_sheet.dart';
+import 'paper_view_sheet.dart';
 import 'parts.dart';
-import 'sub_form_sheet.dart';
+import 'sub_view_sheet.dart';
 import 'scout.dart';
 import 'status_pill.dart';
 import 'settings_tab.dart' show SettingsAnchor, settingsJump;
@@ -170,12 +170,12 @@ class _HomeBodyState extends State<_HomeBody> {
       case TimelineKind.paper:
         final paper = await repo.paper(entry.id);
         if (paper == null || !mounted) return;
-        await showPaperForm(context, repo: repo, existing: paper);
+        await showPaperView(context, repo: repo, paper: paper);
 
       case TimelineKind.subscription:
         final sub = await repo.subscription(entry.id);
         if (sub == null || !mounted) return;
-        await showSubForm(context, repo: repo, existing: sub);
+        await showSubView(context, repo: repo, sub: sub);
     }
 
     // The countdowns on this screen are now one edit out of date.
@@ -256,7 +256,6 @@ class _HomeBodyState extends State<_HomeBody> {
             ),
           ),
         ),
-
         Expanded(child: _scroller(context, c, data, line, more)),
       ],
     );
@@ -290,9 +289,8 @@ class _HomeBodyState extends State<_HomeBody> {
       children: [
         const _Label('Items and documents'),
         _CoverCard(tally: t, tap: _tap),
-
-        if (data.backup != null) _BackupRow(status: data.backup!, onGo: widget.onGo),
-
+        if (data.backup != null)
+          _BackupRow(status: data.backup!, onGo: widget.onGo),
         if (data.subs.isNotEmpty) ...[
           _Label(
             'Subscriptions',
@@ -303,10 +301,8 @@ class _HomeBodyState extends State<_HomeBody> {
           ),
           _SpendChips(subs: data.subs),
         ],
-
         if (data.line.isNotEmpty) ...[
           const _Label('Coming up'),
-
           if (kinds.length > 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -333,7 +329,6 @@ class _HomeBodyState extends State<_HomeBody> {
                 ],
               ),
             ),
-
           for (final entry in line)
             _TimelineRow(entry: entry, onTap: () => _openEntry(entry)),
           if (more > 0)
@@ -356,14 +351,15 @@ class _HomeBodyState extends State<_HomeBody> {
               ),
             ),
         ] else
-          const Blank('Nothing needs you.', pose: ScoutPose.resting, poseHeight: 104),
-
-        if (data.gaps.isNotEmpty) _NeedsCard(gaps: data.gaps, onGo: widget.onGo),
-
+          const Blank('Nothing needs you.',
+              pose: ScoutPose.resting, poseHeight: 104),
+        if (data.gaps.isNotEmpty)
+          _NeedsCard(gaps: data.gaps, onGo: widget.onGo),
         if (data.recent.isNotEmpty) ...[
           _Label(
             'Recently added',
-            trailing: _OutlinePill('See all', onTap: () => widget.onGo(Tab.items)),
+            trailing:
+                _OutlinePill('See all', onTap: () => widget.onGo(Tab.items)),
           ),
           _RecentStrip(
             repo: widget.repo,
@@ -565,7 +561,6 @@ class _CoverCard extends StatelessWidget {
                 ],
               ),
             ),
-
             Divider(color: c.line, height: 1),
 
             /*
@@ -596,7 +591,8 @@ class _CoverCard extends StatelessWidget {
                     // did not, so this figure used to hand over an empty
                     // instruction and land you on the unfiltered list — the
                     // number said 3 and the screen showed everything.
-                    onTap: tap(tally.needsStartingBy, filter: ItemFilter.endingSoon),
+                    onTap: tap(tally.needsStartingBy,
+                        filter: ItemFilter.endingSoon),
                   ),
                 ),
                 Expanded(
@@ -639,9 +635,7 @@ class _CoverCard extends StatelessWidget {
                 ),
               ],
             ),
-
             Divider(color: c.line, height: 1),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 9, 14, 12),
               child: Align(
@@ -661,14 +655,19 @@ class _CoverCard extends StatelessWidget {
                       const TextSpan(text: 'Across '),
                       TextSpan(
                         text: '${tally.items}',
-                        style: TextStyle(fontWeight: FontWeight.w500, color: c.text),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w500, color: c.text),
                       ),
-                      TextSpan(text: tally.items == 1 ? ' item and ' : ' items and '),
+                      TextSpan(
+                          text:
+                              tally.items == 1 ? ' item and ' : ' items and '),
                       TextSpan(
                         text: '${tally.papers}',
-                        style: TextStyle(fontWeight: FontWeight.w500, color: c.text),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w500, color: c.text),
                       ),
-                      TextSpan(text: tally.papers == 1 ? ' document' : ' documents'),
+                      TextSpan(
+                          text: tally.papers == 1 ? ' document' : ' documents'),
                     ],
                   ),
                 ),
@@ -713,8 +712,8 @@ class _BackupRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.slate700,
           borderRadius: BorderRadius.circular(Radii.md),
-          
-          boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+          boxShadow: cardShadow(c,
+              dark: Theme.of(context).brightness == Brightness.dark),
         ),
         child: Row(
           children: [
@@ -735,7 +734,8 @@ class _BackupRow extends StatelessWidget {
                   time is furniture, and "backed up today" is the state it
                   spends nearly all its life in.
                 */
-                style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 12, color: c.muted),
               ),
             ),
             /*
@@ -824,7 +824,8 @@ class _Chip extends StatelessWidget {
         color: lead ? c.washGoldSoft : c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(color: lead ? c.washGoldLine : Colors.transparent),
-        boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+        boxShadow: cardShadow(c,
+            dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,7 +881,8 @@ class _TimelineRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
     final (big, unit) = whenPartsFor(entry);
-    final urgent = entry.urgency == Urgency.now || entry.urgency == Urgency.overdue;
+    final urgent =
+        entry.urgency == Urgency.now || entry.urgency == Urgency.overdue;
 
     final body = Row(
       children: [
@@ -905,7 +907,8 @@ class _TimelineRow extends StatelessWidget {
                 entry.detail,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 11, color: c.muted),
               ),
             ],
           ),
@@ -1128,7 +1131,8 @@ class _NeedsCard extends StatelessWidget {
                                     // The count is already in the column to the
                                     // left; leaving it in the sentence too puts
                                     // the same number twice on one row.
-                                    gap.label.replaceFirst(RegExp(r'^\d+\s+'), ''),
+                                    gap.label
+                                        .replaceFirst(RegExp(r'^\d+\s+'), ''),
                                     style: TextStyle(
                                       fontFamily: fontBody,
                                       fontSize: 13.5,
@@ -1152,7 +1156,8 @@ class _NeedsCard extends StatelessWidget {
                             ),
                             Padding(
                               padding: const EdgeInsets.only(left: 6, top: 2),
-                              child: Icon(Icons.chevron_right, size: 18, color: c.muted),
+                              child: Icon(Icons.chevron_right,
+                                  size: 18, color: c.muted),
                             ),
                           ],
                         ),
@@ -1218,63 +1223,64 @@ class _RecentStrip extends StatelessWidget {
               child: InkWell(
                 onTap: onOpen == null ? null : () => onOpen!(item),
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // The photograph fills the width, with the ring in the corner
-                  // rather than around it. At this size a ring round the whole
-                  // picture would be a hoop with a stamp inside it.
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(child: _Photo(repo: repo, item: item)),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: ItemArtLive(
-                            repo: repo,
-                            item: item,
-                            size: 30,
-                            stroke: 2.6,
-                            fallback: const SizedBox.shrink(),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // The photograph fills the width, with the ring in the corner
+                    // rather than around it. At this size a ring round the whole
+                    // picture would be a hoop with a stamp inside it.
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                              child: _Photo(repo: repo, item: item)),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: ItemArtLive(
+                              repo: repo,
+                              item: item,
+                              size: 30,
+                              stroke: 2.6,
+                              fallback: const SizedBox.shrink(),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: c.text,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: fontBody,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: c.text,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          left.unit == 'no warranty'
-                              ? 'No warranty'
-                              : left.value == 'Lifetime'
-                                  ? 'Covered for life'
-                                  : '${left.value} ${left.unit}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 12,
-                            color: c.muted,
+                          const SizedBox(height: 2),
+                          Text(
+                            left.unit == 'no warranty'
+                                ? 'No warranty'
+                                : left.value == 'Lifetime'
+                                    ? 'Covered for life'
+                                    : '${left.value} ${left.unit}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: fontBody,
+                              fontSize: 12,
+                              color: c.muted,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                   ],
                 ),
               ),

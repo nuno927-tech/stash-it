@@ -24,7 +24,8 @@ final Map<String, ImageProvider?> _cache = {};
 
 /// The decoded picture for a blob, cached. Public because the dashboard draws
 /// photographs without a ring around them.
-Future<ImageProvider?> thumbFor(Repository repo, String? blobId) => _load(repo, blobId);
+Future<ImageProvider?> thumbFor(Repository repo, String? blobId) =>
+    _load(repo, blobId);
 
 Future<ImageProvider?> _load(Repository repo, String? blobId) async {
   if (blobId == null) return null;
@@ -93,7 +94,10 @@ IconData itemIcon(Item item) {
 
   return switch (key) {
     IconKey.fridge => Icons.kitchen,
-    IconKey.dishwasher || IconKey.washer || IconKey.dryer => Icons.local_laundry_service,
+    IconKey.dishwasher ||
+    IconKey.washer ||
+    IconKey.dryer =>
+      Icons.local_laundry_service,
     IconKey.oven || IconKey.microwave => Icons.microwave,
     IconKey.kettle || IconKey.coffee => Icons.coffee,
     IconKey.tv => Icons.tv,
@@ -104,7 +108,11 @@ IconData itemIcon(Item item) {
     IconKey.router => Icons.router,
     IconKey.console => Icons.videogame_asset,
     IconKey.printer => Icons.print,
-    IconKey.saw || IconKey.drill || IconKey.hammer || IconKey.wrench => Icons.handyman,
+    IconKey.saw ||
+    IconKey.drill ||
+    IconKey.hammer ||
+    IconKey.wrench =>
+      Icons.handyman,
     IconKey.mower || IconKey.grill => Icons.grass,
     IconKey.bike => Icons.pedal_bike,
     IconKey.car => Icons.directions_car,

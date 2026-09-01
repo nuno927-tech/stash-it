@@ -194,16 +194,15 @@ class _RoomsScreenState extends State<RoomsScreen> {
                 ],
               ),
             ),
-
             if (_status != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
                 child: Text(
                   _status!,
-                  style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.text),
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.text),
                 ),
               ),
-
             Expanded(
               child: rooms == null
                   ? const Center(child: CircularProgressIndicator())
@@ -233,7 +232,8 @@ class _RoomsScreenState extends State<RoomsScreen> {
                           // more thing to aim at on a list whose rows are two
                           // words long.
                           buildDefaultDragHandles: false,
-                          itemBuilder: (context, i) => ReorderableDelayedDragStartListener(
+                          itemBuilder: (context, i) =>
+                              ReorderableDelayedDragStartListener(
                             key: ValueKey(rooms[i].id),
                             index: i,
                             child: _Row(
@@ -245,9 +245,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                           ),
                         ),
             ),
-
             Container(height: 1, color: c.line),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               child: FilledButton.icon(
@@ -391,7 +389,8 @@ Future<String?> _askName(
         // Third example is a possessive on purpose — rooms are often "whose"
         // rather than "where", and the hint is the only place that gets said.
         // It used to be the developer's own name.
-        decoration: const InputDecoration(hintText: 'Garage, loft, Sam\'s office'),
+        decoration:
+            const InputDecoration(hintText: 'Garage, loft, Sam\'s office'),
       ),
       actions: [
         TextButton(

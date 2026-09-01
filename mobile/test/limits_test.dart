@@ -30,7 +30,8 @@ void main() {
       twenty-one, and nothing else in the app would notice.
     */
     test('twenty saved is full', () => expect(canAddItem(20, free), isFalse));
-    test('and so is anything beyond', () => expect(canAddItem(40, free), isFalse));
+    test('and so is anything beyond',
+        () => expect(canAddItem(40, free), isFalse));
 
     test('paying removes the question', () {
       expect(canAddItem(20, paid), isTrue);

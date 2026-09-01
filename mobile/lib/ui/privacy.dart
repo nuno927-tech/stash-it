@@ -159,7 +159,6 @@ class _Sheet extends StatelessWidget {
                 ),
               ),
             ),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
@@ -199,7 +198,6 @@ class _Sheet extends StatelessWidget {
               height: 1,
               color: c.line,
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
               child: FilledButton(

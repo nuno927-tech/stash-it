@@ -12,6 +12,7 @@ library;
 
 import '../models/paper.dart';
 import 'dates.dart';
+import 'warranty.dart';
 
 /// What each kind is called on screen. American, deliberately — see the note
 /// on `PaperKind` for why the stored key is not.
@@ -74,7 +75,9 @@ DateTime? expiryOf(Paper paper) => parseDate(paper.expiresOn);
 /// This is the date the app counts down to, and the one the list sorts by.
 DateTime? renewBy(Paper paper) {
   final end = expiryOf(paper);
-  return end == null ? null : addDays(end, -leadDaysFor(paper.kind, paper.leadDays));
+  return end == null
+      ? null
+      : addDays(end, -leadDaysFor(paper.kind, paper.leadDays));
 }
 
 /// Days until the printed date. Negative once it has passed.
@@ -167,4 +170,46 @@ List<String> holders(List<Paper> papers) {
   }
   final out = seen.toList()..sort();
   return out;
+}
+
+/// The date a document is counting down to, or null when it has none.
+///
+/// The renew-by while that is still ahead, and the expiry once it is not. Past
+/// the renew-by but not past the expiry is not "ended" — it is the window the
+/// whole feature exists to warn about — so the countdown switches to the real
+/// date rather than going negative.
+///
+/// One function so the list row and the product sheet ask the same question.
+DateTime? actionDateOf(Paper paper, [DateTime? now]) {
+  final expires = expiryOf(paper);
+  if (expires == null) return null;
+
+  final at = now ?? DateTime.now();
+  final act = renewBy(paper) ?? expires;
+  return act.isBefore(startOfDay(at)) ? expires : act;
+}
+
+/*
+  ── The countdown a document shows in the list ──────────────────────────────
+
+  Same vocabulary as a warranty's — see `countdownParts`, which both call — so
+  a passport eleven months out and a warranty eleven months out read
+  identically. The documents list used to answer with the kind of document
+  instead of a number at all.
+
+  Counted to the renew-by date rather than the expiry: a passport you cannot
+  travel on for the last six months of its life expires in November and is
+  useless in May, so November is the wrong number to put in front of somebody.
+*/
+WarrantyParts paperParts(Paper paper, [DateTime? now]) {
+  final target = actionDateOf(paper, now);
+  if (target == null) return const WarrantyParts('—', 'no date');
+
+  final at = now ?? DateTime.now();
+  return countdownParts(
+    daysUntil(target, at),
+    inDays: inFinalStretch(target, at),
+    endedWord: 'Expired',
+    lastDayWord: 'expires today',
+  );
 }

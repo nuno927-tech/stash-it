@@ -112,12 +112,18 @@ Future<RestoreResult> restoreInto(
       four statements that plainly say what they do, against however many
       fields the models grow later.
     */
-    await db.update(db.items).write(ItemsCompanion(propertyId: Value(propertyId)));
-    await db.update(db.papers).write(PapersCompanion(propertyId: Value(propertyId)));
+    await db
+        .update(db.items)
+        .write(ItemsCompanion(propertyId: Value(propertyId)));
+    await db
+        .update(db.papers)
+        .write(PapersCompanion(propertyId: Value(propertyId)));
     await db
         .update(db.subscriptions)
         .write(SubscriptionsCompanion(propertyId: Value(propertyId)));
-    await db.update(db.rooms).write(RoomsCompanion(propertyId: Value(propertyId)));
+    await db
+        .update(db.rooms)
+        .write(RoomsCompanion(propertyId: Value(propertyId)));
 
     /*
       Settings restore, minus the entitlements — `settingsToRow` cannot write

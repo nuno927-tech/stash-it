@@ -397,16 +397,17 @@ ThemeData stashTheme({required bool dark}) {
     canvasColor: c.slate800,
     dividerColor: c.line,
     extensions: [c],
-
-    textTheme: base.textTheme.apply(
-      fontFamily: fontBody,
-      bodyColor: c.text,
-      displayColor: c.text,
-    ).copyWith(
-      // The masthead and the section headings are the display face; everything
-      // else is Inter. Mixing them per-widget is how a screen ends up with
-      // three typefaces by accident.
-      /*
+    textTheme: base.textTheme
+        .apply(
+          fontFamily: fontBody,
+          bodyColor: c.text,
+          displayColor: c.text,
+        )
+        .copyWith(
+          // The masthead and the section headings are the display face; everything
+          // else is Inter. Mixing them per-widget is how a screen ends up with
+          // three typefaces by accident.
+          /*
         The masthead: the wordmark on Home and the screen's name on every other
         tab, all one style.
 
@@ -418,26 +419,28 @@ ThemeData stashTheme({required bool dark}) {
         One place, five screens. The wordmark on Home reads the same style, so
         changing this number changes every heading in the app together.
       */
-      headlineSmall: TextStyle(
-        fontFamily: fontDisplay,
-        fontWeight: FontWeight.w800,
-        fontSize: 42,
-        letterSpacing: -1.05,
-        height: 1.05,
-        color: c.text,
-      ),
-      titleLarge: TextStyle(
-        fontFamily: fontDisplay,
-        fontWeight: FontWeight.w800,
-        fontSize: 25,
-        letterSpacing: -0.5,
-        color: c.text,
-      ),
-      titleMedium: TextStyle(fontFamily: fontDisplay, fontWeight: FontWeight.w700, color: c.text),
-      bodySmall: TextStyle(fontFamily: fontBody, color: c.muted),
-      labelSmall: TextStyle(fontFamily: fontBody, color: c.muted),
-    ),
-
+          headlineSmall: TextStyle(
+            fontFamily: fontDisplay,
+            fontWeight: FontWeight.w800,
+            fontSize: 42,
+            letterSpacing: -1.05,
+            height: 1.05,
+            color: c.text,
+          ),
+          titleLarge: TextStyle(
+            fontFamily: fontDisplay,
+            fontWeight: FontWeight.w800,
+            fontSize: 25,
+            letterSpacing: -0.5,
+            color: c.text,
+          ),
+          titleMedium: TextStyle(
+              fontFamily: fontDisplay,
+              fontWeight: FontWeight.w700,
+              color: c.text),
+          bodySmall: TextStyle(fontFamily: fontBody, color: c.muted),
+          labelSmall: TextStyle(fontFamily: fontBody, color: c.muted),
+        ),
     appBarTheme: AppBarTheme(
       backgroundColor: c.slate800,
       foregroundColor: c.text,
@@ -480,13 +483,12 @@ ThemeData stashTheme({required bool dark}) {
         borderRadius: BorderRadius.circular(Radii.lg),
       ),
     ),
-
     listTileTheme: ListTileThemeData(
       textColor: c.text,
       iconColor: c.muted,
-      subtitleTextStyle: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
+      subtitleTextStyle:
+          TextStyle(fontFamily: fontBody, fontSize: 13, color: c.muted),
     ),
-
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.slate700,
@@ -506,7 +508,6 @@ ThemeData stashTheme({required bool dark}) {
         borderSide: BorderSide(color: c.gold, width: 2),
       ),
     ),
-
     chipTheme: ChipThemeData(
       backgroundColor: c.slate700,
       selectedColor: c.washGold,
@@ -514,12 +515,10 @@ ThemeData stashTheme({required bool dark}) {
       labelStyle: TextStyle(fontFamily: fontBody, color: c.text),
       shape: const StadiumBorder(),
     ),
-
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: c.gold,
       foregroundColor: c.onGold,
     ),
-
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: c.slate800,
       indicatorColor: c.washGold,
@@ -538,12 +537,11 @@ ThemeData stashTheme({required bool dark}) {
         ),
       ),
     ),
-
     dialogTheme: DialogThemeData(
       backgroundColor: c.slate700,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.lg)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.lg)),
     ),
-
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.selected) ? c.onGold : c.muted,
@@ -562,13 +560,13 @@ ThemeData stashTheme({required bool dark}) {
       behavior: SnackBarBehavior.floating,
       insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 170),
       backgroundColor: c.slate600,
-      contentTextStyle: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
+      contentTextStyle:
+          TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
       actionTextColor: c.gold,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.md),
       ),
     ),
-
     progressIndicatorTheme: ProgressIndicatorThemeData(color: c.gold),
     dividerTheme: DividerThemeData(color: c.line, space: 1, thickness: 1),
   );

@@ -29,10 +29,23 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 
-enum Cue { tap, nav, expand, collapse, save, stashed, delete, error, attach, launch, unlock }
+enum Cue {
+  tap,
+  nav,
+  expand,
+  collapse,
+  save,
+  stashed,
+  delete,
+  error,
+  attach,
+  launch,
+  unlock
+}
 
 class _Voice {
-  const _Voice(this.notes, this.step, this.wave, this.gain, {this.holdLast = 1});
+  const _Voice(this.notes, this.step, this.wave, this.gain,
+      {this.holdLast = 1});
 
   /// Frequencies in hertz, played in sequence.
   final List<double> notes;
@@ -237,7 +250,8 @@ Future<void> _play(Cue cue) async {
 /// Play a cue regardless of the current preference, so Settings can demonstrate
 /// one as the switch is turned on. A toggle you cannot hear is a toggle you
 /// have to take on trust.
-Future<void> previewCue(Cue cue, {required bool sounds, required bool haptics}) async {
+Future<void> previewCue(Cue cue,
+    {required bool sounds, required bool haptics}) async {
   final was = (_sounds, _haptics);
   configureFeedback(sounds: sounds, haptics: haptics);
   feedback(cue);
@@ -291,8 +305,9 @@ Uint8List _wav(_Voice voice) {
       final tail = (length - i) / length;
       final decay = math.pow(tail, 2.2).toDouble();
 
-      samples[at + i] =
-          (shape * voice.gain * attack * decay * 32767).round().clamp(-32768, 32767);
+      samples[at + i] = (shape * voice.gain * attack * decay * 32767)
+          .round()
+          .clamp(-32768, 32767);
     }
 
     at += length;
@@ -307,8 +322,10 @@ Uint8List _riff(Int16List samples) {
   final out = BytesBuilder();
 
   void ascii(String s) => out.add(s.codeUnits);
-  void u32(int v) => out.add(Uint8List(4)..buffer.asByteData().setUint32(0, v, Endian.little));
-  void u16(int v) => out.add(Uint8List(2)..buffer.asByteData().setUint16(0, v, Endian.little));
+  void u32(int v) =>
+      out.add(Uint8List(4)..buffer.asByteData().setUint32(0, v, Endian.little));
+  void u16(int v) =>
+      out.add(Uint8List(2)..buffer.asByteData().setUint16(0, v, Endian.little));
 
   ascii('RIFF');
   u32(36 + data.length);

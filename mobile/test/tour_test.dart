@@ -35,11 +35,16 @@ void main() {
     });
 
     test('a reminder still in the future waits', () {
-      expect(tourDue(TourState(remindAt: now.add(const Duration(days: 1))), now), isFalse);
+      expect(
+          tourDue(TourState(remindAt: now.add(const Duration(days: 1))), now),
+          isFalse);
     });
 
     test('one that has come due fires', () {
-      expect(tourDue(TourState(remindAt: now.subtract(const Duration(days: 1))), now), isTrue);
+      expect(
+          tourDue(
+              TourState(remindAt: now.subtract(const Duration(days: 1))), now),
+          isTrue);
     });
 
     test('and the moment itself counts as due', () {
@@ -146,7 +151,11 @@ void main() {
     test('the notify step does not describe an upload', () {
       final notify = tourSteps.firstWhere((s) => s.key == 'notify');
       final body = notify.body.toLowerCase();
-      for (final gone in ['delivery address', 'leaves this phone', 'endpoint']) {
+      for (final gone in [
+        'delivery address',
+        'leaves this phone',
+        'endpoint'
+      ]) {
         expect(body.contains(gone), isFalse, reason: 'still says "$gone"');
       }
     });

@@ -103,9 +103,12 @@ Future<Diagnostics> gather(Repository repo, {required double textScale}) async {
         ('Version', appVersion),
         ('Backup schema', 'v$schemaVersion'),
         ('Cap', capEnforced ? 'on, $freeItemLimit' : 'off'),
-        ('Unlocked', settings.entitlements.proUnlock
-            ? 'yes (${settings.entitlements.source ?? 'unknown'})'
-            : 'no'),
+        (
+          'Unlocked',
+          settings.entitlements.proUnlock
+              ? 'yes (${settings.entitlements.source ?? 'unknown'})'
+              : 'no'
+        ),
       ],
     ),
     (
@@ -253,7 +256,6 @@ class _DiagnosticsState extends State<_Diagnostics> {
                         style: hintStyle(c),
                       ),
                       const SizedBox(height: 18),
-
                       for (final (heading, rows) in data.sections) ...[
                         Text(heading.toUpperCase(), style: fieldLabelStyle(c)),
                         const SizedBox(height: 6),
@@ -293,7 +295,6 @@ class _DiagnosticsState extends State<_Diagnostics> {
                           ),
                         const SizedBox(height: 16),
                       ],
-
                       if (_said != null) ...[
                         Text(_said!, style: hintStyle(c)),
                         const SizedBox(height: 8),
@@ -301,7 +302,6 @@ class _DiagnosticsState extends State<_Diagnostics> {
                     ],
                   ),
                 ),
-
                 Container(
                   padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
                   decoration: BoxDecoration(
@@ -343,10 +343,12 @@ class _DiagnosticsState extends State<_Diagnostics> {
                       Expanded(
                         child: FilledButton(
                           onPressed: () async {
-                            await Clipboard.setData(ClipboardData(text: data.text));
+                            await Clipboard.setData(
+                                ClipboardData(text: data.text));
                             feedback(Cue.save);
                             if (!context.mounted) return;
-                            setState(() => _said = 'Copied. Paste it into the email.');
+                            setState(() =>
+                                _said = 'Copied. Paste it into the email.');
                           },
                           style: FilledButton.styleFrom(
                             backgroundColor: c.gold,

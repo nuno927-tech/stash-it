@@ -121,8 +121,9 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
         _leftAt = DateTime.now();
 
       case AppLifecycleState.resumed:
-        final away =
-            _leftAt == null ? Duration.zero : DateTime.now().difference(_leftAt!);
+        final away = _leftAt == null
+            ? Duration.zero
+            : DateTime.now().difference(_leftAt!);
         if (shouldRelock(enabled: true, away: away)) {
           setState(() => _open = false);
           _ask();
@@ -192,7 +193,8 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
       setState(() {
         _asking = false;
         _open = true;
-        _said = 'This phone could not run the check, so the lock was skipped: $e';
+        _said =
+            'This phone could not run the check, so the lock was skipped: $e';
       });
     }
   }
@@ -257,7 +259,8 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
                   backgroundColor: c.gold,
                   foregroundColor: c.onGold,
                   disabledBackgroundColor: c.slate600,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),

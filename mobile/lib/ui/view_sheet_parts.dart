@@ -24,14 +24,32 @@ import 'theme.dart';
 /// Always the same height and inset, whatever is inside it, so three sheets
 /// opened one after another do not each start at a different place.
 class ViewFace extends StatelessWidget {
-  const ViewFace({required this.child, this.height = 150, super.key});
+  const ViewFace({required this.child, this.height = 150, super.key})
+      : boxed = true;
+
+  /// No panel, no border, tighter. For a glyph or a logo.
+  ///
+  /// A photograph needs a frame: it has its own edges and colours and collides
+  /// with the sheet without one. A glyph and a service mark do not — they are
+  /// already drawn to sit on a surface, and a small mark centred in a large
+  /// bordered box reads as an image that failed to load.
+  const ViewFace.bare({required this.child, this.height = 96, super.key})
+      : boxed = false;
 
   final Widget child;
   final double height;
+  final bool boxed;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
+
+    if (!boxed) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 6, 14, 2),
+        child: SizedBox(height: height, child: Center(child: child)),
+      );
+    }
 
     return Container(
       height: height,
@@ -65,6 +83,8 @@ class ViewHeadline extends StatelessWidget {
     this.subtitle,
     this.count,
     this.countUnit = 'left',
+    this.countColour,
+    this.tight = false,
     super.key,
   });
 
@@ -77,13 +97,27 @@ class ViewHeadline extends StatelessWidget {
   final int? count;
   final String countUnit;
 
+  /*
+    The colour the same number wears in the list — moss, honey, ember, muted.
+
+    It was `c.text` here and state-coloured two taps away, so the one figure
+    somebody had just tapped changed meaning between the row and the page. The
+    weight moves with it: 200 is the thinnest Bricolage has, and large-and-pale
+    on a dark sheet reads as decoration rather than as the answer.
+  */
+  final Color? countColour;
+
+  /// Less air above, for a sheet whose face is a bare glyph rather than a
+  /// framed photograph.
+  final bool tight;
+
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
     final n = count;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+      padding: EdgeInsets.fromLTRB(18, tight ? 6 : 16, 18, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -120,11 +154,12 @@ class ViewHeadline extends StatelessWidget {
                   '$n',
                   style: TextStyle(
                     fontFamily: fontDisplay,
-                    fontWeight: FontWeight.w200,
-                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 32,
                     height: 1,
-                    letterSpacing: -1,
-                    color: c.text,
+                    letterSpacing: -1.2,
+                    color: countColour ?? c.text,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
                 const SizedBox(width: 5),

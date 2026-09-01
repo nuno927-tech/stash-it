@@ -43,8 +43,18 @@ class _RenewalCalendarState extends State<RenewalCalendar> {
 
   static const List<String> _weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   static const List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   void _step(int by) {
@@ -78,7 +88,8 @@ class _RenewalCalendarState extends State<RenewalCalendar> {
     }
 
     final today = DateTime.now();
-    final isThisMonth = today.year == _month.year && today.month == _month.month;
+    final isThisMonth =
+        today.year == _month.year && today.month == _month.month;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -86,8 +97,8 @@ class _RenewalCalendarState extends State<RenewalCalendar> {
       decoration: BoxDecoration(
         color: c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
-        
-        boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+        boxShadow: cardShadow(c,
+            dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
         children: [
@@ -119,9 +130,7 @@ class _RenewalCalendarState extends State<RenewalCalendar> {
               ),
             ],
           ),
-
           const SizedBox(height: 4),
-
           Row(
             children: [
               for (final d in _weekdays)
@@ -129,14 +138,13 @@ class _RenewalCalendarState extends State<RenewalCalendar> {
                   child: Text(
                     d,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 11, color: c.muted),
                   ),
                 ),
             ],
           ),
-
           const SizedBox(height: 6),
-
           GridView.count(
             crossAxisCount: 7,
             shrinkWrap: true,

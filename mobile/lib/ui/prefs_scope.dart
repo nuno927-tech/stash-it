@@ -106,7 +106,10 @@ class PrefsController extends ChangeNotifier {
 
 /// Reached with `PrefsScope.of(context)`.
 class PrefsScope extends InheritedNotifier<PrefsController> {
-  const PrefsScope({required PrefsController super.notifier, required super.child, super.key});
+  const PrefsScope(
+      {required PrefsController super.notifier,
+      required super.child,
+      super.key});
 
   static PrefsController of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PrefsScope>()!.notifier!;

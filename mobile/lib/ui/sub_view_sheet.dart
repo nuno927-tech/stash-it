@@ -118,11 +118,12 @@ class _SubViewSheetState extends State<_SubViewSheet> {
               children: [
                 // The service's own mark, at size — the fastest way to know
                 // which of nine similarly-priced things this is.
-                ViewFace(
+                // Unframed: a logo already sits on a surface without help.
+                ViewFace.bare(
                   child: ServiceMark(
                     serviceId: _sub.serviceId,
                     name: _sub.name,
-                    size: 76,
+                    size: 72,
                   ),
                 ),
 
@@ -160,7 +161,8 @@ class _SubViewSheetState extends State<_SubViewSheet> {
 
   Widget _price(StashColors c, StashStatus status) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+      // Tight, to match the bare mark above it — see `ViewHeadline.tight`.
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -186,13 +188,15 @@ class _SubViewSheetState extends State<_SubViewSheet> {
               const Spacer(),
               Text(
                 _money(_sub.amountCents),
+                // Same weight and colour rule as the countdown on the other
+                // two sheets: the figure is the answer, not decoration.
                 style: TextStyle(
                   fontFamily: fontDisplay,
-                  fontWeight: FontWeight.w200,
-                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 32,
                   height: 1,
-                  letterSpacing: -1,
-                  color: c.text,
+                  letterSpacing: -1.2,
+                  color: status == StashStatus.soon ? c.honey : c.text,
                 ),
               ),
               const SizedBox(width: 5),

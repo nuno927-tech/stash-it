@@ -29,7 +29,8 @@ final items = [
     serial: 'FD-9401-22817',
     retailer: "Lowe's",
     roomId: 'r-kitchen',
-    warranty: const Warranty(months: 24, provider: 'Bosch Home', policyNumber: 'BH-77123'),
+    warranty: const Warranty(
+        months: 24, provider: 'Bosch Home', policyNumber: 'BH-77123'),
     notes: 'Installed by Kelly Plumbing',
   ),
   const Item(
@@ -57,7 +58,10 @@ final items = [
 ];
 
 final docs = [
-  const Doc(id: 'd1', itemId: 'dewalt-table-saw', title: 'Extended cover certificate'),
+  const Doc(
+      id: 'd1',
+      itemId: 'dewalt-table-saw',
+      title: 'Extended cover certificate'),
   Doc(
     id: 'd2',
     itemId: 'bosch-dishwasher',
@@ -116,7 +120,8 @@ final input = SearchInput(
   subs: subs,
 );
 
-List<String> names(String q) => searchAll(q, input).map((h) => h.title).toList();
+List<String> names(String q) =>
+    searchAll(q, input).map((h) => h.title).toList();
 
 void main() {
   group('normalising', () {
@@ -146,9 +151,12 @@ void main() {
   });
 
   group('the basics', () {
-    test('finds by name', () => expect(names('dishwasher').first, 'Bosch Dishwasher'));
-    test('finds by brand', () => expect(names('dewalt').first, 'DeWalt Table Saw'));
-    test('finds by model', () => expect(names('DWE7491').first, 'DeWalt Table Saw'));
+    test('finds by name',
+        () => expect(names('dishwasher').first, 'Bosch Dishwasher'));
+    test('finds by brand',
+        () => expect(names('dewalt').first, 'DeWalt Table Saw'));
+    test('finds by model',
+        () => expect(names('DWE7491').first, 'DeWalt Table Saw'));
     test('is case-insensitive', () => expect(names('BOSCH').length, 2));
 
     test('accented names answer to unaccented queries', () {
@@ -171,9 +179,12 @@ void main() {
   });
 
   group('the other fields', () {
-    test('finds by room', () => expect(names('garage').first, 'DeWalt Table Saw'));
-    test('finds by retailer', () => expect(names('lowe').first, 'Bosch Dishwasher'));
-    test('finds by notes', () => expect(names('kelly').first, 'Bosch Dishwasher'));
+    test('finds by room',
+        () => expect(names('garage').first, 'DeWalt Table Saw'));
+    test('finds by retailer',
+        () => expect(names('lowe').first, 'Bosch Dishwasher'));
+    test('finds by notes',
+        () => expect(names('kelly').first, 'Bosch Dishwasher'));
 
     test('finds by warranty provider', () {
       expect(names('BH-77123').first, 'Bosch Dishwasher');
@@ -234,15 +245,18 @@ void main() {
     });
 
     test('a serial match says so', () {
-      expect(matchSummary(searchAll('22817', input).first), 'Matched on serial number');
+      expect(matchSummary(searchAll('22817', input).first),
+          'Matched on serial number');
     });
 
     test('a document match says so', () {
-      expect(matchSummary(searchAll('certificate', input).first), 'Matched on a document');
+      expect(matchSummary(searchAll('certificate', input).first),
+          'Matched on a document');
     });
 
     test('and a document field is named properly', () {
-      expect(matchSummary(searchAll('drawer', input).first), 'Matched on where it is kept');
+      expect(matchSummary(searchAll('drawer', input).first),
+          'Matched on where it is kept');
     });
   });
 
@@ -287,7 +301,8 @@ void main() {
       expect(names('vehicle'), contains('Inspection'));
     });
 
-    test('by who it belongs to', () => expect(names('nuno'), contains('Passport')));
+    test('by who it belongs to',
+        () => expect(names('nuno'), contains('Passport')));
 
     test('by who issued it', () {
       expect(names('department of state'), contains('Passport'));
@@ -297,7 +312,8 @@ void main() {
       expect(names('drawer'), contains('Passport'));
     });
 
-    test('a subscription is findable', () => expect(names('netflix'), contains('Netflix')));
+    test('a subscription is findable',
+        () => expect(names('netflix'), contains('Netflix')));
 
     test('and an item by its notes', () {
       expect(names('kelly plumbing'), contains('Bosch Dishwasher'));

@@ -46,8 +46,18 @@ String _join(List<String> rows) => '${rows.join('\r\n')}\r\n';
 String itemsCsv(List<Item> items, {DateTime? now}) {
   final rows = <String>[
     _row([
-      'Name', 'Brand', 'Model', 'Serial', 'Bought', 'Price', 'Currency',
-      'Retailer', 'Cover ends', 'Days left', 'Policies', 'Notes',
+      'Name',
+      'Brand',
+      'Model',
+      'Serial',
+      'Bought',
+      'Price',
+      'Currency',
+      'Retailer',
+      'Cover ends',
+      'Days left',
+      'Policies',
+      'Notes',
     ]),
   ];
 
@@ -81,7 +91,16 @@ String itemsCsv(List<Item> items, {DateTime? now}) {
 
 String papersCsv(List<Paper> papers) {
   final rows = <String>[
-    _row(['Document', 'Kind', 'Whose', 'Expires', 'Issued', 'Authority', 'Kept', 'Notes']),
+    _row([
+      'Document',
+      'Kind',
+      'Whose',
+      'Expires',
+      'Issued',
+      'Authority',
+      'Kept',
+      'Notes'
+    ]),
   ];
 
   for (final p in papers) {
@@ -102,7 +121,15 @@ String papersCsv(List<Paper> papers) {
 
 String subscriptionsCsv(List<Subscription> subs, {DateTime? now}) {
   final rows = <String>[
-    _row(['Service', 'Amount', 'Currency', 'Every', 'Next renews', 'Per month', 'Notes']),
+    _row([
+      'Service',
+      'Amount',
+      'Currency',
+      'Every',
+      'Next renews',
+      'Per month',
+      'Notes'
+    ]),
   ];
 
   for (final s in subs) {
@@ -124,7 +151,6 @@ String subscriptionsCsv(List<Subscription> subs, {DateTime? now}) {
   return _join(rows);
 }
 
-String _iso(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
+String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';

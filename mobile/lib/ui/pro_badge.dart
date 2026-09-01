@@ -30,7 +30,8 @@ class ProBadge extends StatelessWidget {
     final c = StashColors.of(context);
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 2.5 * scale),
+      padding:
+          EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 2.5 * scale),
       decoration: BoxDecoration(
         color: c.washGold,
         borderRadius: BorderRadius.circular(Radii.pill),

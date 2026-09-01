@@ -232,5 +232,4 @@ DateTime remindLater([DateTime? now, int days = remindDays]) =>
 /// Where a step sits in the sequence, for the dots and the button label.
 bool isLastStep(int index) => index >= tourSteps.length - 1;
 
-TourStep stepAt(int index) =>
-    tourSteps[index.clamp(0, tourSteps.length - 1)];
+TourStep stepAt(int index) => tourSteps[index.clamp(0, tourSteps.length - 1)];

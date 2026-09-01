@@ -50,7 +50,9 @@ Future<BackupContents> gatherBackup(StashDatabase db) async {
     'items': [for (final r in items) itemToJson(itemOf(r))],
     'docs': [for (final r in docs) docToJson(docOf(r))],
     'rooms': [for (final r in rooms) roomToJson(roomOf(r))],
-    'subscriptions': [for (final r in subs) subscriptionToJson(subscriptionOf(r))],
+    'subscriptions': [
+      for (final r in subs) subscriptionToJson(subscriptionOf(r))
+    ],
     'papers': [for (final r in papers) paperToJson(paperOf(r))],
     if (settings != null) 'settings': settingsToJson(settingsOf(settings)),
   };

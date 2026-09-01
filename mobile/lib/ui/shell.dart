@@ -202,7 +202,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     */
     WidgetsBinding.instance.addObserver(this);
     onCardArrived((path) => unawaited(_openCard(path)));
-    _tourAt = Timer(splashTotal + const Duration(milliseconds: 240), _maybeTour);
+    _tourAt =
+        Timer(splashTotal + const Duration(milliseconds: 240), _maybeTour);
 
     /*
       And one read straight away, for the tap that WAS the launch.
@@ -506,7 +507,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                   */
                   layoutBuilder: (current, previous) => Stack(
                     children: [
-                      for (final child in previous) Positioned.fill(child: child),
+                      for (final child in previous)
+                        Positioned.fill(child: child),
                       if (current != null) Positioned.fill(child: current),
                     ],
                   ),
@@ -518,9 +520,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                     the opposite side rather than needing its own.
                   */
                   transitionBuilder: (child, animation) {
-                    final arriving =
-                        (child.key as ValueKey<String>).value ==
-                            '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}';
+                    final arriving = (child.key as ValueKey<String>).value ==
+                        '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}';
                     final from = _forward ? 1.0 : -1.0;
 
                     return SlideTransition(
@@ -532,7 +533,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                     );
                   },
                   child: KeyedSubtree(
-                    key: ValueKey('${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
+                    key: ValueKey(
+                        '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
                     child: switch (_tab) {
                       Tab.home => HomeTab(repo: widget.repo, onGo: _select),
                       Tab.items => ItemsTab(
@@ -551,7 +553,6 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
           ),
         ),
       ),
-
       bottomNavigationBar: NavigationBar(
         height: 74,
         backgroundColor: c.slate800,

@@ -155,7 +155,6 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
               ],
             ),
           ),
-
           if (items.isNotEmpty) ...[
             const _Head('Items'),
             for (final item in items)
@@ -166,7 +165,6 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
                 onTap: () => _flip(item.id),
               ),
           ],
-
           if (papers.isNotEmpty) ...[
             const _Head('Documents'),
             for (final paper in papers)
@@ -179,7 +177,6 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
                 onTap: () => _flip(paper.id),
               ),
           ],
-
           if (subs.isNotEmpty) ...[
             const _Head('Subscriptions'),
             for (final sub in subs)
@@ -211,7 +208,6 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
                 ),
               ),
             ),
-
           if (_said != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),

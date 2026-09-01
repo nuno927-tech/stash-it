@@ -164,10 +164,10 @@ void main() {
       expect(back.createdAt, theWorks.createdAt);
     });
 
-    test('and every field of its cover, including the ones not on the form', () {
-      final policy = toItem(draftOf(theWorks), propertyId: 'default')
-          .coverages
-          .single;
+    test('and every field of its cover, including the ones not on the form',
+        () {
+      final policy =
+          toItem(draftOf(theWorks), propertyId: 'default').coverages.single;
       final was = theWorks.coverages.single;
 
       expect(policy.id, was.id);
@@ -203,7 +203,8 @@ void main() {
 
       expect(back.name, theGym.name);
       expect(back.serviceId, theGym.serviceId);
-      expect(back.logoBlobId, theGym.logoBlobId, reason: 'the logo, orphaned before');
+      expect(back.logoBlobId, theGym.logoBlobId,
+          reason: 'the logo, orphaned before');
       expect(back.cadence, theGym.cadence);
       expect(back.anchorDate, theGym.anchorDate);
       expect(back.amountCents, theGym.amountCents);
@@ -239,8 +240,9 @@ void main() {
       asserting the representation instead would mean this file failing for
       anyone who ran it in a different time zone from mine.
     */
-    Matcher sameMoment(DateTime? d) =>
-        d == null ? isNull : predicate<DateTime?>((v) => v?.isAtSameMomentAs(d) ?? false);
+    Matcher sameMoment(DateTime? d) => d == null
+        ? isNull
+        : predicate<DateTime?>((v) => v?.isAtSameMomentAs(d) ?? false);
 
     test('keeps every field of an item', () async {
       await repo.createItem(theWorks);
@@ -281,7 +283,8 @@ void main() {
 
     test('keeps both halves of a document attachment', () async {
       await repo.createItem(theWorks);
-      await repo.putBlob('receipt-pdf', Uint8List.fromList([1]), 'application/pdf');
+      await repo.putBlob(
+          'receipt-pdf', Uint8List.fromList([1]), 'application/pdf');
       await repo.createDoc(theReceipt);
 
       final back = (await repo.docsForItem('tv')).single;

@@ -153,7 +153,8 @@ class _TourState extends State<_Tour> {
                   feedback(Cue.tap);
                   setState(() => _at = i);
                 },
-                itemBuilder: (context, i) => _Step(step: tour.stepAt(i), name: _name),
+                itemBuilder: (context, i) =>
+                    _Step(step: tour.stepAt(i), name: _name),
               ),
             ),
 
@@ -183,7 +184,6 @@ class _TourState extends State<_Tour> {
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Row(
@@ -211,7 +211,8 @@ class _TourState extends State<_Tour> {
                     style: FilledButton.styleFrom(
                       backgroundColor: c.gold,
                       foregroundColor: c.onGold,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.pill),
                       ),
@@ -289,7 +290,6 @@ class _Step extends StatelessWidget {
               color: c.muted,
             ),
           ),
-
           if (asks) ...[
             const SizedBox(height: 16),
             TextField(
@@ -333,7 +333,8 @@ class _Step extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Optional',
-              style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+              style: TextStyle(
+                  fontFamily: fontBody, fontSize: 11.5, color: c.muted),
             ),
           ],
         ],

@@ -207,7 +207,8 @@ void main() {
     final first = find.text('Everything you own, with its paperwork');
     await pumpUntil(tester, first);
 
-    expect(first, findsOneWidget, reason: 'on screen instead: ${onScreen(tester)}');
+    expect(first, findsOneWidget,
+        reason: 'on screen instead: ${onScreen(tester)}');
 
     /*
       ── Why this does not go on to tap Skip ─────────────────────────────────
@@ -329,7 +330,8 @@ void main() {
     // Named, not drawn as a symbol: the button is a pill with the app's name
     // on it now, and "tap +" would send somebody looking for a plus that is
     // only half of what the button says.
-    expect(find.textContaining('Tap Stash it to put something in'), findsOneWidget);
+    expect(find.textContaining('Tap Stash it to put something in'),
+        findsOneWidget);
 
     await db.close();
   });
@@ -401,16 +403,19 @@ void main() {
     before anyone has put anything in. Somebody being asked to record a
     passport is entitled to know what the app will hold first.
   */
-  testWidgets('and an empty one promises no scans and no numbers', (tester) async {
+  testWidgets('and an empty one promises no scans and no numbers',
+      (tester) async {
     final db = await show(tester);
     await goTo(tester, 'Documents');
 
-    expect(find.textContaining('No scans, no document numbers'), findsOneWidget);
+    expect(
+        find.textContaining('No scans, no document numbers'), findsOneWidget);
 
     await db.close();
   });
 
-  testWidgets('the subscriptions tab totals what a month costs', (tester) async {
+  testWidgets('the subscriptions tab totals what a month costs',
+      (tester) async {
     final db = await show(tester, subs: [
       const Subscription(
         id: '',
@@ -556,10 +561,12 @@ void main() {
 
       final control = tester.widget<Switch>(
         find.descendant(
-          of: find.ancestor(
-            of: find.text('Push Notifications'),
-            matching: find.byType(Row),
-          ).last,
+          of: find
+              .ancestor(
+                of: find.text('Push Notifications'),
+                matching: find.byType(Row),
+              )
+              .last,
           matching: find.byType(Switch),
         ),
       );

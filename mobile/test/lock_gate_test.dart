@@ -10,7 +10,8 @@ import 'package:stash_it/ui/lock_gate.dart';
 
 void main() {
   group('the grace period', () {
-    test('is thirty seconds', () => expect(lockGrace, const Duration(seconds: 30)));
+    test('is thirty seconds',
+        () => expect(lockGrace, const Duration(seconds: 30)));
 
     /*
       ── The case this exists for ────────────────────────────────────────────
@@ -25,14 +26,19 @@ void main() {
       trip away has to come back open.
     */
     test('a trip to the camera and back does not re-lock', () {
-      expect(shouldRelock(enabled: true, away: const Duration(seconds: 4)), isFalse);
-      expect(shouldRelock(enabled: true, away: const Duration(seconds: 29)), isFalse);
+      expect(shouldRelock(enabled: true, away: const Duration(seconds: 4)),
+          isFalse);
+      expect(shouldRelock(enabled: true, away: const Duration(seconds: 29)),
+          isFalse);
     });
 
     test('a phone put down on a table does', () {
-      expect(shouldRelock(enabled: true, away: const Duration(seconds: 30)), isTrue);
-      expect(shouldRelock(enabled: true, away: const Duration(minutes: 5)), isTrue);
-      expect(shouldRelock(enabled: true, away: const Duration(hours: 9)), isTrue);
+      expect(shouldRelock(enabled: true, away: const Duration(seconds: 30)),
+          isTrue);
+      expect(shouldRelock(enabled: true, away: const Duration(minutes: 5)),
+          isTrue);
+      expect(
+          shouldRelock(enabled: true, away: const Duration(hours: 9)), isTrue);
     });
 
     // At the boundary, not past it. Thirty seconds away is thirty seconds, and
@@ -54,8 +60,10 @@ void main() {
     */
     test('with the lock off, nothing re-locks', () {
       expect(shouldRelock(enabled: false, away: Duration.zero), isFalse);
-      expect(shouldRelock(enabled: false, away: const Duration(hours: 9)), isFalse);
-      expect(shouldRelock(enabled: false, away: const Duration(days: 30)), isFalse);
+      expect(shouldRelock(enabled: false, away: const Duration(hours: 9)),
+          isFalse);
+      expect(shouldRelock(enabled: false, away: const Duration(days: 30)),
+          isFalse);
     });
   });
 }

@@ -134,7 +134,8 @@ SubscriptionDraft draftOfSubscription(Subscription s) => SubscriptionDraft(
       name: s.name,
       cadence: s.cadence,
       anchorDate: s.anchorDate,
-      amountText: s.amountCents == 0 ? '' : (s.amountCents / 100).toStringAsFixed(2),
+      amountText:
+          s.amountCents == 0 ? '' : (s.amountCents / 100).toStringAsFixed(2),
       currency: s.currency,
       notes: s.notes ?? '',
       remindDays: s.remindDays,

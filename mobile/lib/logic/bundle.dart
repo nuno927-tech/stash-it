@@ -200,7 +200,8 @@ const Map<String, String> _mimeOfExtension = {
 /// Split out so the export side and this side cannot drift: whatever hashes
 /// this list is hashing the same thing the writer did, in the same order.
 List<int> checksumInput(Map<String, List<int>> entries) => [
-      for (final table in tableOrder) ...(entries['$table.json'] ?? const <int>[]),
+      for (final table in tableOrder)
+        ...(entries['$table.json'] ?? const <int>[]),
     ];
 
 /// Reads an already-unzipped bundle.
@@ -263,7 +264,8 @@ ParsedBundle parseBundle(
     );
   }
 
-  final ceiling = format == cardFormat ? cardFormatVersion : backupFormatVersion;
+  final ceiling =
+      format == cardFormat ? cardFormatVersion : backupFormatVersion;
   if (manifest.formatVersion > ceiling) {
     throw BundleError(
       'This $wanted uses format v${manifest.formatVersion}, newer than this '
@@ -311,19 +313,23 @@ ParsedBundle parseBundle(
     items: _rows(read('items.json')).map(readItem).toList(),
     docs: _rows(read('docs.json')).map(readDoc).toList(),
     rooms: _rows(read('rooms.json')).map(readRoom).toList(),
-    subscriptions: _rows(read('subscriptions.json')).map(readSubscription).toList(),
+    subscriptions:
+        _rows(read('subscriptions.json')).map(readSubscription).toList(),
     papers: _rows(read('papers.json')).map(readPaper).toList(),
     settings: _settingsOf(read('settings.json')),
     properties: _rows(read('properties.json')),
     maintenance: _rows(read('maintenance.json')),
   );
 
-  return ParsedBundle(manifest, migrateBundle(data, manifest.schemaVersion), blobs);
+  return ParsedBundle(
+      manifest, migrateBundle(data, manifest.schemaVersion), blobs);
 }
 
 BackupManifest _readManifest(Map<String, dynamic> m) {
   final counts = m['counts'];
-  final c = counts is Map ? counts.cast<String, dynamic>() : const <String, dynamic>{};
+  final c = counts is Map
+      ? counts.cast<String, dynamic>()
+      : const <String, dynamic>{};
 
   return BackupManifest(
     // A missing format version means the very first one. A missing schema
@@ -585,15 +591,19 @@ Settings? _settingsOf(Object? v) {
     lastBackupAt: dateOf(j['lastBackupAt']),
     backupReminderDays: intOf(j['backupReminderDays']) ?? 30,
     devModeEnabled: boolOf(j['devModeEnabled']) ?? false,
-    displayName: j['displayName'] is String ? (j['displayName'] as String).trim() : null,
+    displayName:
+        j['displayName'] is String ? (j['displayName'] as String).trim() : null,
     onboardedAt: dateOf(j['onboardedAt']),
     tourRemindAt: dateOf(j['tourRemindAt']),
-    theme: j['theme'] == null ? null : enumOf(j['theme'], ThemeChoice.values, ThemeChoice.system),
+    theme: j['theme'] == null
+        ? null
+        : enumOf(j['theme'], ThemeChoice.values, ThemeChoice.system),
     sounds: boolOf(j['sounds']),
     haptics: boolOf(j['haptics']),
     lockPortrait: boolOf(j['lockPortrait']),
-    roomsView:
-        j['roomsView'] == null ? null : enumOf(j['roomsView'], RoomsView.values, RoomsView.collapsed),
+    roomsView: j['roomsView'] == null
+        ? null
+        : enumOf(j['roomsView'], RoomsView.values, RoomsView.collapsed),
     biometricLock: null,
   );
 }

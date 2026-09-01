@@ -128,7 +128,8 @@ void main() {
     });
 
     test('so does a warranty document', () {
-      final m = metricsFor([item('A')], [doc('d1', 'A', DocKind.warranty)], now);
+      final m =
+          metricsFor([item('A')], [doc('d1', 'A', DocKind.warranty)], now);
       expect(m.missingPaperwork, 0);
     });
 
@@ -226,7 +227,8 @@ void main() {
       expect(m.recent.map((i) => i.id), ['newest', 'middle', 'old']);
     });
 
-    test('an item with no timestamp sinks rather than claiming to be newest', () {
+    test('an item with no timestamp sinks rather than claiming to be newest',
+        () {
       final m = metricsFor(
         [item('undated'), item('dated', createdAt: DateTime(2020, 1, 1))],
         [],
@@ -305,7 +307,11 @@ void main() {
         purchaseDate: '2026-01-01',
         thumbBlobId: 'b',
         coverages: const [
-          Coverage(id: 'frame', label: 'Frame', unit: CoverageUnit.lifetime, amount: 0),
+          Coverage(
+              id: 'frame',
+              label: 'Frame',
+              unit: CoverageUnit.lifetime,
+              amount: 0),
         ],
       );
       final gaps = gapsFor([couch], [doc('d', 'couch', DocKind.receipt)]);

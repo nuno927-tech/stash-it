@@ -104,6 +104,7 @@ class _PaperViewSheetState extends State<_PaperViewSheet> {
     final state = paperState(_paper);
     final expires = expiryOf(_paper);
     final renew = renewBy(_paper);
+    final action = actionDateOf(_paper);
     final top = sheetTop(context);
 
     final status = switch (state) {
@@ -141,16 +142,21 @@ class _PaperViewSheetState extends State<_PaperViewSheet> {
                   — so this is the face, at size, rather than a gap where a
                   photograph would have been.
                 */
-                ViewFace(
-                  child: PaperGlyph(_paper.kind, color: _tone(c, status), size: 58),
+                ViewFace.bare(
+                  child: PaperGlyph(_paper.kind,
+                      color: _tone(c, status), size: 64),
                 ),
                 ViewHeadline(
                   title: _paper.label,
                   subtitle: kindLabel[_paper.kind],
                   status: status,
                   statusWord: _word(state),
-                  count: expires == null ? null : daysUntil(expires),
-                  countUnit: 'left',
+                  // Counted and coloured exactly as the list row was: both ask
+                  // `actionDateOf`, so the figure cannot change meaning between
+                  // the row and the page it opens.
+                  count: action == null ? null : daysUntil(action),
+                  countColour: _tone(c, status),
+                  tight: true,
                 ),
                 if (cells.isNotEmpty) ViewCells(label: 'Details', cells: cells),
                 if ((_paper.notes ?? '').trim().isNotEmpty)

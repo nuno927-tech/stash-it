@@ -84,7 +84,8 @@ class LabelledField extends StatelessWidget {
                   final formatted = format!(now.text);
                   return TextEditingValue(
                     text: formatted,
-                    selection: TextSelection.collapsed(offset: formatted.length),
+                    selection:
+                        TextSelection.collapsed(offset: formatted.length),
                   );
                 }),
               ],

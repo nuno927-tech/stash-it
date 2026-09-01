@@ -95,7 +95,8 @@ class Due {
 
 /// One day the phone should be woken, and what to say when it is.
 class Wake {
-  const Wake(this.on, this.title, this.body, [this.payload = 'home', String? detail])
+  const Wake(this.on, this.title, this.body,
+      [this.payload = 'home', String? detail])
       : detail = detail ?? body;
 
   Wake.fromNote(this.on, Note note, [this.payload = 'home'])
@@ -255,7 +256,9 @@ List<Wake> reminderSchedule(
           A busy day goes to the dashboard, which is already sorted
           soonest-first and is exactly the list the notification summarised.
         */
-        encodeLink(byDay[on]!.length == 1 ? byDay[on]!.single.link : const DeepLink.home()),
+        encodeLink(byDay[on]!.length == 1
+            ? byDay[on]!.single.link
+            : const DeepLink.home()),
       ),
   ];
 }
@@ -294,7 +297,9 @@ List<Wake> reminderSchedule(
 Note compose(List<Due> due) {
   final sorted = [...due]..sort((a, b) => a.label.compareTo(b.label));
 
-  if (sorted.isEmpty) return const Note('Stash it', 'Needs a look in Stash it.');
+  if (sorted.isEmpty) {
+    return const Note('Stash it', 'Needs a look in Stash it.');
+  }
 
   // One line per record, for the expanded view. Same order as the collapsed
   // line, so the two read as the same list rather than as two lists.
@@ -316,8 +321,7 @@ Note compose(List<Due> due) {
 
 /// "expires Feb 11" becomes "Expires Feb 11." — the reason on its own line
 /// wants to read as a sentence, where the same words after a name do not.
-String _sentence(String why) =>
-    '${why[0].toUpperCase()}${why.substring(1)}.';
+String _sentence(String why) => '${why[0].toUpperCase()}${why.substring(1)}.';
 
 /// The dates alone, for showing someone what their schedule looks like.
 ///

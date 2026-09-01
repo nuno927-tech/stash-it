@@ -44,7 +44,8 @@ StashDatabase openInMemory() {
 ///
 /// For desktop runs and for the command-line tools. **Not what the phone
 /// uses** — see below.
-StashDatabase openFile(String path) => StashDatabase(NativeDatabase(File(path)));
+StashDatabase openFile(String path) =>
+    StashDatabase(NativeDatabase(File(path)));
 
 /*
   ── What the phone will do instead, and why it is not written yet ─────────

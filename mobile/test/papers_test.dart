@@ -74,7 +74,8 @@ void main() {
     });
 
     test('a zero lead is the printed date itself', () {
-      expect(renewBy(paper(expiresOn: '2027-02-11', leadDays: 0)), DateTime(2027, 2, 11));
+      expect(renewBy(paper(expiresOn: '2027-02-11', leadDays: 0)),
+          DateTime(2027, 2, 11));
     });
   });
 
@@ -93,11 +94,13 @@ void main() {
     });
 
     test('past the printed date is expired', () {
-      expect(paperState(paper(expiresOn: '2026-07-10'), now), PaperState.expired);
+      expect(
+          paperState(paper(expiresOn: '2026-07-10'), now), PaperState.expired);
     });
 
     test('today is not yet expired', () {
-      expect(paperState(paper(expiresOn: '2026-08-17', leadDays: 0), now), PaperState.renew);
+      expect(paperState(paper(expiresOn: '2026-08-17', leadDays: 0), now),
+          PaperState.renew);
     });
 
     /*
@@ -116,7 +119,8 @@ void main() {
       the other needs two. Sorted by the printed date they come out backwards.
     */
     test('by when to start, not by when they run out', () {
-      final passport = paper(id: 'pp', label: 'Passport', expiresOn: '2027-05-01');
+      final passport =
+          paper(id: 'pp', label: 'Passport', expiresOn: '2027-05-01');
       final license = paper(
         id: 'dl',
         kind: PaperKind.licence,
@@ -127,7 +131,8 @@ void main() {
       expect(expiryOf(passport)!.isAfter(expiryOf(license)!), isTrue,
           reason: 'the passport really does expire later');
 
-      final order = sortPapers([license, passport], now).map((p) => p.id).toList();
+      final order =
+          sortPapers([license, passport], now).map((p) => p.id).toList();
       expect(order, ['pp', 'dl']);
     });
 
@@ -144,7 +149,10 @@ void main() {
     });
 
     test('the original list is left alone', () {
-      final list = [paper(id: 'b', expiresOn: '2028-01-01'), paper(id: 'a', expiresOn: '2027-01-01')];
+      final list = [
+        paper(id: 'b', expiresOn: '2028-01-01'),
+        paper(id: 'a', expiresOn: '2027-01-01')
+      ];
       sortPapers(list, now);
       expect(list.map((p) => p.id), ['b', 'a']);
     });
@@ -175,12 +183,13 @@ void main() {
 
   group('naming from the tile', () {
     test('a tile names itself', () {
-      expect(renameForKind(PaperKind.licence, '', PaperKind.passport), 'Drivers license');
+      expect(renameForKind(PaperKind.licence, '', PaperKind.passport),
+          'Drivers license');
     });
 
     test('and replaces the previous tile’s name', () {
-      expect(
-          renameForKind(PaperKind.licence, 'Passport', PaperKind.passport), 'Drivers license');
+      expect(renameForKind(PaperKind.licence, 'Passport', PaperKind.passport),
+          'Drivers license');
     });
 
     /*
@@ -195,7 +204,8 @@ void main() {
     });
 
     test('Other names nothing', () {
-      expect(renameForKind(PaperKind.other, 'Passport', PaperKind.passport), '');
+      expect(
+          renameForKind(PaperKind.other, 'Passport', PaperKind.passport), '');
     });
   });
 
@@ -211,6 +221,49 @@ void main() {
 
     test('and blank ones cost nothing', () {
       expect(holders([paper(holder: '   '), paper(id: '2')]), isEmpty);
+    });
+  });
+
+  group('paperParts — the number the documents list shows', () {
+    /*
+      Documents and warranties now share `countdownParts`, so these check the
+      document side of that seam: that it counts to the renew-by date rather
+      than the expiry, and that a document with no date says so instead of
+      showing a zero.
+    */
+    Paper at(String expires, {int? lead}) => Paper(
+          id: 'p',
+          propertyId: 'h',
+          kind: PaperKind.passport,
+          label: 'Passport',
+          expiresOn: expires,
+          leadDays: lead,
+        );
+
+    test('no expiry recorded shows a dash, not a number', () {
+      final parts = paperParts(at(''));
+      expect(parts.value, '—');
+      expect(parts.unit, 'no date');
+    });
+
+    test('it counts to the renew-by date, not the expiry', () {
+      // Renew-by is 90 days before expiry here, so a passport expiring in 100
+      // days needs action in 10 — and 10 is the useful number.
+      final now = DateTime(2026, 1, 1);
+      final expires = now.add(const Duration(days: 100));
+      final iso = '${expires.year}-'
+          '${expires.month.toString().padLeft(2, '0')}-'
+          '${expires.day.toString().padLeft(2, '0')}';
+
+      final parts = paperParts(at(iso, lead: 90), now);
+      expect(parts.value, '10');
+      expect(parts.unit, 'days left');
+    });
+
+    test('past its expiry it says expired rather than a negative number', () {
+      final parts = paperParts(at('2020-01-01'), DateTime(2026, 1, 1));
+      expect(parts.value, 'Expired');
+      expect(parts.unit, contains('ago'));
     });
   });
 }

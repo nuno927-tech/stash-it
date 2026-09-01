@@ -24,6 +24,7 @@ import 'paper_form_sheet.dart';
 import 'paper_view_sheet.dart';
 import 'paper_icon.dart';
 import 'status_pill.dart';
+import 'warranty_ring.dart';
 import '../logic/card.dart';
 import 'parts.dart';
 import 'share_card_sheet.dart';
@@ -177,7 +178,9 @@ class _PapersTabState extends State<PapersTab> {
       future: widget.repo.activePapers(),
       builder: (context, snap) {
         final all = snap.data;
-        if (all == null) return const Center(child: CircularProgressIndicator());
+        if (all == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
         if (all.isEmpty) {
           return const Blank(
@@ -189,8 +192,11 @@ class _PapersTabState extends State<PapersTab> {
         }
 
         final sorted = sortPapers(all);
-        final needing = needsRenewing(all).where((p) => paperState(p) == PaperState.renew).length;
-        final expired = all.where((p) => paperState(p) == PaperState.expired).length;
+        final needing = needsRenewing(all)
+            .where((p) => paperState(p) == PaperState.renew)
+            .length;
+        final expired =
+            all.where((p) => paperState(p) == PaperState.expired).length;
         final next = sorted.isEmpty ? null : sorted.first;
 
         // A key per row, so a chip can scroll to the one it is about.
@@ -210,19 +216,17 @@ class _PapersTabState extends State<PapersTab> {
                 onSend: _picked!.isEmpty ? null : _sendPicked,
               )
             else
-            _Tiles(
-              total: all.length,
-              needing: needing,
-              expired: expired,
-              next: next,
-              // Each chip scrolls to the first row it is about and lights it
-              // up. A count that cannot take you to what it counted is a
-              // number you have to go and find by hand.
-              onFind: (state) => _find(sorted, state),
-            ),
-
+              _Tiles(
+                total: all.length,
+                needing: needing,
+                expired: expired,
+                next: next,
+                // Each chip scrolls to the first row it is about and lights it
+                // up. A count that cannot take you to what it counted is a
+                // number you have to go and find by hand.
+                onFind: (state) => _find(sorted, state),
+              ),
             const SectionTitle('Expiring'),
-
             for (final paper in sorted)
               _PaperTile(
                 key: _keys[paper.id],
@@ -230,8 +234,7 @@ class _PapersTabState extends State<PapersTab> {
                 lit: _lit == paper.id,
                 picking: _picked != null,
                 picked: _picked?.contains(paper.id) ?? false,
-                onTap: () =>
-                    _picked == null ? open(paper) : _pick(paper.id),
+                onTap: () => _picked == null ? open(paper) : _pick(paper.id),
                 onLongPress:
                     _picked == null ? () => _startPicking(paper.id) : null,
                 onDelete: () => _delete(paper),
@@ -284,7 +287,8 @@ class _Tiles extends StatelessWidget {
                         '$needing',
                         'NEEDS ACTION',
                         tone: needing > 0 ? c.honey : null,
-                        onTap: needing > 0 ? () => onFind(PaperState.renew) : null,
+                        onTap:
+                            needing > 0 ? () => onFind(PaperState.renew) : null,
                       ),
                     ),
                   ],
@@ -297,7 +301,9 @@ class _Tiles extends StatelessWidget {
                         '$expired',
                         'OUT OF DATE',
                         tone: expired > 0 ? c.ember : null,
-                        onTap: expired > 0 ? () => onFind(PaperState.expired) : null,
+                        onTap: expired > 0
+                            ? () => onFind(PaperState.expired)
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -360,8 +366,10 @@ class _Tile extends StatelessWidget {
         decoration: BoxDecoration(
           color: tone == null ? c.slate700 : c.washGoldSoft,
           borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(color: tone == null ? Colors.transparent : c.washGoldLine),
-          boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+          border: Border.all(
+              color: tone == null ? Colors.transparent : c.washGoldLine),
+          boxShadow: cardShadow(c,
+              dark: Theme.of(context).brightness == Brightness.dark),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +494,8 @@ class _PaperTile extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: acts ? tone : Colors.transparent, width: 2),
+            border:
+                Border.all(color: acts ? tone : Colors.transparent, width: 2),
           ),
           // The kind's own mark, not the same sheet of paper thirteen times.
           // A passport, a paw and a car are told apart before the label under
@@ -543,28 +552,21 @@ class _PaperTile extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
+
         /*
-          The kind, in the same gold as the other two lists' right-hand
-          columns. It is not a number, but it is the same slot answering the
-          same shape of question, and a muted 11pt label in the place where
-          the other two screens put their answer read as a leftover.
+          ── The number, where the kind of document used to be ───────────────
+
+          This column held "Passport" — already legible from the glyph on the
+          left and the label in the middle, so the one slot the eye goes to for
+          an answer was spending itself on a third statement of what the thing
+          is.
+
+          What somebody scanning wants is what they want on Items: how long
+          have I got. Identical widget, identical vocabulary — see `paperParts`
+          and `countdownParts` — so eleven months reads the same on both.
         */
-        Text(
-          kindLabel[paper.kind]!,
-          textAlign: TextAlign.right,
-          // The display face, like every other right-hand answer in the app —
-          // the item countdown, the subscription amount, the timeline's
-          // number. Inter was the odd one out in a column that is meant to
-          // read as the same thing four times.
-          style: TextStyle(
-            fontFamily: fontDisplay,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
-            color: c.gold,
-          ),
-        ),
+        TimeLeft(parts: paperParts(paper), colour: tone),
       ],
     );
 
@@ -613,10 +615,9 @@ class _PaperTile extends StatelessWidget {
       // `whenLabel`. Saying "62 days late" about a passport that does not
       // expire until February would be worse than saying nothing.
       PaperState.renew => 'Start now · expires ${dayMonthMaybeYear(expiry)}',
-      PaperState.valid =>
-        start == null
-            ? 'Expires ${dayMonthMaybeYear(expiry)}'
-            : 'Start ${dayMonthMaybeYear(start)}',
+      PaperState.valid => start == null
+          ? 'Expires ${dayMonthMaybeYear(expiry)}'
+          : 'Start ${dayMonthMaybeYear(start)}',
     };
   }
 }

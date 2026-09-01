@@ -42,8 +42,18 @@ enum AddKind { item, subscription, paper }
 
 const List<(AddKind, IconData, String, String)> _kinds = [
   (AddKind.item, Icons.work_outline, 'Product', 'Something you own'),
-  (AddKind.subscription, Icons.calendar_today_outlined, 'Subscription', 'Something you pay for'),
-  (AddKind.paper, Icons.description_outlined, 'Document', 'Something that expires'),
+  (
+    AddKind.subscription,
+    Icons.calendar_today_outlined,
+    'Subscription',
+    'Something you pay for'
+  ),
+  (
+    AddKind.paper,
+    Icons.description_outlined,
+    'Document',
+    'Something that expires'
+  ),
 ];
 
 class StashItButton extends StatefulWidget {
@@ -218,7 +228,9 @@ class _StashItButtonState extends State<StashItButton>
                   ignoring: t < 0.05,
                   child: GestureDetector(
                     onTap: _close,
-                    child: Container(color: const Color(0xFF06080C).withValues(alpha: 0.5 * t)),
+                    child: Container(
+                        color:
+                            const Color(0xFF06080C).withValues(alpha: 0.5 * t)),
                   ),
                 ),
               ),
@@ -268,7 +280,8 @@ class _StashItButtonState extends State<StashItButton>
 
     // Somebody who has asked their phone for less movement gets the menu
     // without the spring, not without the menu.
-    final eased = still ? (slice > 0 ? 1.0 : 0.0) : Curves.easeOutBack.transform(slice);
+    final eased =
+        still ? (slice > 0 ? 1.0 : 0.0) : Curves.easeOutBack.transform(slice);
 
     if (slice == 0) return const SizedBox.shrink();
 

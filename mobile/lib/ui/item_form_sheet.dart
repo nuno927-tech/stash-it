@@ -387,7 +387,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
     if (doc.bytes != null) {
       blobId = newId();
-      await widget.repo.putBlob(blobId, doc.bytes!, doc.mime ?? 'application/octet-stream');
+      await widget.repo
+          .putBlob(blobId, doc.bytes!, doc.mime ?? 'application/octet-stream');
     }
 
     await widget.repo.createDoc(Doc(
@@ -431,7 +432,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     for (final doc in picked) {
       await _write(doc, widget.existing!.id);
     }
-    if (mounted) setState(() => _filed = widget.repo.docsForItem(widget.existing!.id));
+    if (mounted) {
+      setState(() => _filed = widget.repo.docsForItem(widget.existing!.id));
+    }
   }
 
   Future<void> _attachLink() async {
@@ -444,7 +447,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     }
 
     await _write(doc, widget.existing!.id);
-    if (mounted) setState(() => _filed = widget.repo.docsForItem(widget.existing!.id));
+    if (mounted) {
+      setState(() => _filed = widget.repo.docsForItem(widget.existing!.id));
+    }
   }
 
   /*
@@ -493,7 +498,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
     // Only a picture. The file picker will happily return a PDF, and a PDF as
     // an item's thumbnail is a grey box on every row it appears on.
-    final images = picked.where((d) => isImage(d.mime) && d.bytes != null).toList();
+    final images =
+        picked.where((d) => isImage(d.mime) && d.bytes != null).toList();
     if (images.isEmpty || !mounted) return;
 
     setState(() => _photo = images.first.bytes);
@@ -525,7 +531,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   /* --------------------------------------------------------------- room */
 
   Future<void> _newRoom() async {
-    final name = await _askName(context, title: 'New room', hint: 'Kitchen, garage, loft');
+    final name = await _askName(context,
+        title: 'New room', hint: 'Kitchen, garage, loft');
     if (name == null || name.trim().isEmpty) return;
 
     final id = await widget.repo.createRoom(name.trim());
@@ -617,16 +624,17 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                 const SizedBox(height: 14),
                 KeyedSubtree(key: _warrantyCardKey, child: _warrantyCard(c)),
                 const SizedBox(height: 14),
-                KeyedSubtree(key: _attachmentsCardKey, child: _attachmentsCard(c)),
+                KeyedSubtree(
+                    key: _attachmentsCardKey, child: _attachmentsCard(c)),
                 const SizedBox(height: 14),
                 KeyedSubtree(key: _warningCardKey, child: _warningCard(c)),
-
                 if (!_isNew) ...[
                   const SizedBox(height: 18),
                   Center(
                     child: TextButton.icon(
                       onPressed: _saving ? null : _delete,
-                      icon: Icon(Icons.delete_outline, size: 18, color: c.ember),
+                      icon:
+                          Icon(Icons.delete_outline, size: 18, color: c.ember),
                       label: Text(
                         'Delete this item',
                         style: TextStyle(fontFamily: fontBody, color: c.ember),
@@ -694,11 +702,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           ],
         ),
         const SizedBox(height: 8),
-
         const FieldLabel('When did you buy it?'),
         DateBox(value: _draft.purchaseDate, onTap: _pickDate),
         const SizedBox(height: 8),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -710,7 +716,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                   TextBox(
                     initial: _draft.priceText,
                     hint: '0.00',
-                    keyboard: const TextInputType.numberWithOptions(decimal: true),
+                    keyboard:
+                        const TextInputType.numberWithOptions(decimal: true),
                     // Formats as you type rather than on blur. Correcting a
                     // field afterwards makes people wonder whether they typed
                     // it wrong.
@@ -737,7 +744,6 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           ],
         ),
         const SizedBox(height: 12),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -778,7 +784,6 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           ],
         ),
         const SizedBox(height: 12),
-
         const FieldLabel('Retailer'),
         TextBox(
           initial: _draft.retailer,
@@ -786,7 +791,6 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           onChanged: (v) => _draft.retailer = v,
         ),
         const SizedBox(height: 12),
-
         const FieldLabel('Notes'),
         TextBox(
           initial: _draft.notes,
@@ -821,7 +825,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                   isExpanded: true,
                   dropdownColor: c.slate700,
                   icon: Icon(Icons.expand_more, color: c.muted),
-                  style: TextStyle(fontFamily: fontBody, fontSize: 15, color: c.text),
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 15, color: c.text),
                   items: [
                     DropdownMenuItem(
                       value: null,
@@ -853,10 +858,11 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       title: 'Warranty information',
       children: [
         for (var i = 0; i < _draft.coverages.length; i++) ...[
-          if (i > 0) Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Container(height: 1, color: c.line),
-          ),
+          if (i > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(height: 1, color: c.line),
+            ),
           _coverage(c, i),
         ],
         const SizedBox(height: 14),
@@ -971,11 +977,11 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Container(height: 1, color: c.line),
         ),
-
         SegRow<CoverageUnit>(
           value: cov.unit,
           options: [
-            for (final unit in CoverageUnit.values) (unit, coverageUnitLabels[unit]!),
+            for (final unit in CoverageUnit.values)
+              (unit, coverageUnitLabels[unit]!),
           ],
           // The length comes with it. See `termAfterUnitChange`: a number that
           // the new row cannot light up would otherwise sit there as "Custom".
@@ -1019,7 +1025,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                     final typed = await _askName(
                       context,
                       title: 'How long?',
-                      hint: 'A number of ${coverageUnitLabels[cov.unit]!.toLowerCase()}',
+                      hint:
+                          'A number of ${coverageUnitLabels[cov.unit]!.toLowerCase()}',
                       initial: cov.amountText,
                       number: true,
                     );
@@ -1031,7 +1038,6 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             ),
           ),
         ],
-
         const SizedBox(height: 14),
 
         /*
@@ -1049,7 +1055,6 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             if (!_detailed.remove(i)) _detailed.add(i);
           }),
         ),
-
         if (_detailed.contains(i) || _hasDetails(cov)) ...[
           const SizedBox(height: 12),
           const FieldLabel('What it covers'),
@@ -1111,7 +1116,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
           'The receipt and the warranty are the two a claim will ask for. Tap '
           'to choose a file, the camera to photograph it, or the last one to '
           'link to something on the web.',
-          style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
         const SizedBox(height: 14),
         DocTiles(onPick: _attach, onLink: _attachLink),
@@ -1180,7 +1186,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         Text(
           'Turns the item amber on the dashboard, and sends a notification if '
           'you have them on.',
-          style: TextStyle(fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
+          style: TextStyle(
+              fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
         ),
       ],
     );
@@ -1195,17 +1202,13 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         problem: _problem ?? whyNotSaveable(_draft)?.message,
         onSave: _saving ? null : _save,
       );
-
 }
 
 /* ------------------------------------------------------------- the pieces */
 
 /// A titled card, with an optional control or a squirrel in the corner.
 
-
 /// The white rounded shape every input sits in.
-
-
 
 /// A row of choices in one pill, one of them lit.
 
@@ -1396,7 +1399,8 @@ class _DocRow extends StatelessWidget {
                 ),
                 Text(
                   note,
-                  style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                 ),
               ],
             ),

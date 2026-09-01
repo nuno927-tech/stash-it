@@ -87,10 +87,9 @@ class Nudge {
 /// moves to the backup importer in phase 2, which is where the untrusted bytes
 /// actually are.
 int endingSoonDays(Settings? settings) {
-  final asked =
-      settings != null && settings.reminderOffsetsDays.isNotEmpty
-          ? settings.reminderOffsetsDays.first
-          : null;
+  final asked = settings != null && settings.reminderOffsetsDays.isNotEmpty
+      ? settings.reminderOffsetsDays.first
+      : null;
   if (asked == null) return defaultEndingSoonDays;
   return asked.clamp(1, 365);
 }

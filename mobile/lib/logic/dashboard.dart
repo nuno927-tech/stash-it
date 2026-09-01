@@ -270,18 +270,24 @@ List<Gap> gapsFor(List<Item> items, List<Doc> docs) {
   final counts = {for (final k in GapKind.values) k: 0};
 
   for (final item in live) {
-    if (!withReceipt.contains(item.id)) counts[GapKind.receipt] = counts[GapKind.receipt]! + 1;
+    if (!withReceipt.contains(item.id)) {
+      counts[GapKind.receipt] = counts[GapKind.receipt]! + 1;
+    }
 
     // Warranty *length*, not the document: an item can have the paperwork
     // attached and still no term entered, and it is the term that drives every
     // countdown and every warning in the app.
-    if (!_hasTerm(item)) counts[GapKind.warranty] = counts[GapKind.warranty]! + 1;
+    if (!_hasTerm(item)) {
+      counts[GapKind.warranty] = counts[GapKind.warranty]! + 1;
+    }
 
     final bought = item.purchaseDate;
     if (bought == null || bought.isEmpty) {
       counts[GapKind.date] = counts[GapKind.date]! + 1;
     }
-    if (item.thumbBlobId == null) counts[GapKind.photo] = counts[GapKind.photo]! + 1;
+    if (item.thumbBlobId == null) {
+      counts[GapKind.photo] = counts[GapKind.photo]! + 1;
+    }
   }
 
   return [

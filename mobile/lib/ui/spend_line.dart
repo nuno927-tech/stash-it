@@ -27,8 +27,18 @@ class SpendLine extends StatelessWidget {
   final List<MonthSpend> spend;
 
   static const List<String> _short = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
   ];
 
   @override
@@ -45,8 +55,8 @@ class SpendLine extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
-        
-        boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+        boxShadow: cardShadow(c,
+            dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,9 +75,7 @@ class SpendLine extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
           Row(
             children: [
               for (var i = 0; i < spend.length; i++)
@@ -88,13 +96,13 @@ class SpendLine extends StatelessWidget {
                 ),
             ],
           ),
-
           if (peak != null) ...[
             const SizedBox(height: 12),
             Text(
               '${_month(peak.month)} is the heavy one: '
               '\$${(peak.cents / 100).toStringAsFixed(2)}.',
-              style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+              style: TextStyle(
+                  fontFamily: fontBody, fontSize: 11.5, color: c.muted),
             ),
           ],
         ],
@@ -103,8 +111,18 @@ class SpendLine extends StatelessWidget {
   }
 
   static String _month(int m) => const [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ][m - 1];
 }
 
@@ -195,7 +213,10 @@ class _LinePainter extends CustomPainter {
             // Heavier than it was. At 22% the fill was so close to the card
             // that the curve looked unattached to anything, and the area is
             // what turns a line into a quantity.
-            colors: [gold.withValues(alpha: 0.42), gold.withValues(alpha: 0.04)],
+            colors: [
+              gold.withValues(alpha: 0.42),
+              gold.withValues(alpha: 0.04)
+            ],
           ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
       );
 
@@ -255,5 +276,6 @@ class _LinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LinePainter old) => old.spend != spend || old.mean != mean;
+  bool shouldRepaint(_LinePainter old) =>
+      old.spend != spend || old.mean != mean;
 }

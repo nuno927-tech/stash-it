@@ -35,7 +35,8 @@ Item warranted(String name, int months, int ago, {int? leadDays}) {
     name: name,
     propertyId: 'p',
     purchaseDate: toIsoDate(addDays(now, -ago)),
-    warranty: Warranty(months: months, unit: WarrantyUnit.months, amount: months),
+    warranty:
+        Warranty(months: months, unit: WarrantyUnit.months, amount: months),
     leadDays: leadDays,
   );
 }
@@ -106,7 +107,8 @@ void main() {
       Sep 2026 — forty days of runway, turning amber in ten.
     */
     test('a warranty wakes you when it turns amber', () {
-      final s = reminderSchedule([warranted('Headphones', 24, 690)], [], [], now);
+      final s =
+          reminderSchedule([warranted('Headphones', 24, 690)], [], [], now);
       expect(s.length, 1);
       expect(s.first.on, '2026-08-27');
     });
@@ -202,7 +204,9 @@ void main() {
         due('Passport — Nuno', 'expires Feb 11'),
       ]);
 
-      expect(n.detail, 'Inspection — Golf · expires Mar 2\n'
+      expect(
+          n.detail,
+          'Inspection — Golf · expires Mar 2\n'
           'Passport — Nuno · expires Feb 11');
     });
 
@@ -224,7 +228,8 @@ void main() {
     });
 
     test('sorted, so the same day reads the same twice', () {
-      expect(compose([due('B'), due('A')]).body, compose([due('A'), due('B')]).body);
+      expect(compose([due('B'), due('A')]).body,
+          compose([due('A'), due('B')]).body);
       expect(compose([due('B'), due('A')]).body, 'A and B');
     });
 
@@ -331,7 +336,9 @@ void main() {
     List<Wake> mixed() => reminderSchedule(
           [warranted('Headphones', 24, 690)], // 27 Aug
           [sub(name: 'Netflix', remindDays: 3)], // 29 Aug
-          [paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno')], // 1 Sep
+          [
+            paper(expiresOn: '2026-10-01', leadDays: 30, holder: 'Nuno')
+          ], // 1 Sep
           now,
         );
 
@@ -360,7 +367,8 @@ void main() {
     */
     test('the dates carry no names', () {
       final dates = wakeDates(mixed());
-      expect(dates.every((d) => RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(d)), isTrue);
+      expect(dates.every((d) => RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(d)),
+          isTrue);
       final asText = dates.join(' ');
       for (final secret in ['Headphones', 'Netflix', 'Passport', 'Nuno']) {
         expect(asText.contains(secret), isFalse, reason: secret);
@@ -389,7 +397,8 @@ void main() {
     });
 
     test('and the hour can be asked for', () {
-      expect(wakeTimes([const Wake('2026-09-04', 't', 'b')], 18).first.hour, 18);
+      expect(
+          wakeTimes([const Wake('2026-09-04', 't', 'b')], 18).first.hour, 18);
     });
 
     test('they come back sorted', () {
@@ -425,7 +434,8 @@ void main() {
       final kept = pending(ninety());
       expect(kept.first.on, '2026-09-01');
       // 1 Sep plus 63 more days.
-      expect(kept.last.on, toIsoDate(addDays(DateTime(2026, 9, 1), maxPending - 1)));
+      expect(kept.last.on,
+          toIsoDate(addDays(DateTime(2026, 9, 1), maxPending - 1)));
       expect(kept.last.on, '2026-11-03');
     });
 
@@ -447,7 +457,10 @@ void main() {
       people check to find out whether the notification was real.
     */
     test('the default lead schedules one wake', () {
-      expect(reminderSchedule([warranted('Headphones', 24, 690)], [], [], now).length, 1);
+      expect(
+          reminderSchedule([warranted('Headphones', 24, 690)], [], [], now)
+              .length,
+          1);
     });
 
     /*
@@ -468,7 +481,8 @@ void main() {
         [],
         now,
       );
-      final defaulted = reminderSchedule([warranted('Headphones', 24, 690)], [], [], now);
+      final defaulted =
+          reminderSchedule([warranted('Headphones', 24, 690)], [], [], now);
       expect(late.length, 1);
       expect(late.first.on, '2026-09-23');
       expect(late.first.on.compareTo(defaulted.first.on), greaterThan(0));

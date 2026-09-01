@@ -48,8 +48,9 @@ Map<String, Object?> itemToJson(Item i) => _tidy({
       'retailer': i.retailer,
       'coverages': [for (final c in i.coverages) coverageToJson(c)],
       'warranty': i.warranty == null ? null : warrantyToJson(i.warranty!),
-      'extendedWarranty':
-          i.extendedWarranty == null ? null : warrantyToJson(i.extendedWarranty!),
+      'extendedWarranty': i.extendedWarranty == null
+          ? null
+          : warrantyToJson(i.extendedWarranty!),
       'leadDays': i.leadDays,
       'notes': i.notes,
       'thumbBlobId': i.thumbBlobId,

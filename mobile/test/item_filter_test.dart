@@ -99,10 +99,10 @@ void main() {
     final has = item(id: 'a');
     final hasnt = item(id: 'b');
 
-    expect(matchesFilter(ItemFilter.noReceipt, has, withReceipt: {'a'}),
-        isFalse);
-    expect(matchesFilter(ItemFilter.noReceipt, hasnt, withReceipt: {'a'}),
-        isTrue);
+    expect(
+        matchesFilter(ItemFilter.noReceipt, has, withReceipt: {'a'}), isFalse);
+    expect(
+        matchesFilter(ItemFilter.noReceipt, hasnt, withReceipt: {'a'}), isTrue);
   });
 
   test('an empty purchase date counts as missing, not just null', () {
@@ -123,7 +123,8 @@ void main() {
   });
 
   test('no photo reads the thumbnail, which is what the tile draws', () {
-    expect(matchesFilter(ItemFilter.noPhoto, item(), withReceipt: none), isTrue);
+    expect(
+        matchesFilter(ItemFilter.noPhoto, item(), withReceipt: none), isTrue);
     expect(
         matchesFilter(ItemFilter.noPhoto, item(thumbBlobId: 'b1'),
             withReceipt: none),

@@ -162,15 +162,18 @@ void main() {
     });
 
     test('crosses a year', () {
-      expect(addMonthsClamped(DateTime(2026, 12, 15), 1), DateTime(2027, 1, 15));
+      expect(
+          addMonthsClamped(DateTime(2026, 12, 15), 1), DateTime(2027, 1, 15));
     });
 
     test('goes backwards', () {
-      expect(addMonthsClamped(DateTime(2026, 1, 15), -1), DateTime(2025, 12, 15));
+      expect(
+          addMonthsClamped(DateTime(2026, 1, 15), -1), DateTime(2025, 12, 15));
     });
 
     test('twelve months is a year', () {
-      expect(addMonthsClamped(DateTime(2026, 6, 10), 12), DateTime(2027, 6, 10));
+      expect(
+          addMonthsClamped(DateTime(2026, 6, 10), 12), DateTime(2027, 6, 10));
     });
   });
 

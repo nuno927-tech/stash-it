@@ -126,7 +126,8 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
           final t = Curves.easeOutCubic.transform(_in.value);
           return Opacity(
             opacity: t,
-            child: Transform.translate(offset: Offset(0, 14 * (1 - t)), child: child),
+            child: Transform.translate(
+                offset: Offset(0, 14 * (1 - t)), child: child),
           );
         },
         child: Material(
@@ -144,7 +145,8 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
                     widget.message,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.text),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 12.5, color: c.text),
                   ),
                 ),
                 const SizedBox(width: 4),

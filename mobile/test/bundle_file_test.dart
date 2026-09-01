@@ -31,7 +31,8 @@ void main() {
     // a byte's worth of difference gives a different one. If this is not true
     // the checksum is decoration.
     test('is stable', () {
-      expect(sha256Hex(utf8.encode('stash it')), sha256Hex(utf8.encode('stash it')));
+      expect(sha256Hex(utf8.encode('stash it')),
+          sha256Hex(utf8.encode('stash it')));
     });
 
     test('and changes when the bytes do', () {
@@ -128,7 +129,8 @@ void main() {
     });
 
     test('a zip that is not a backup', () {
-      final notOurs = writeBundle(manifestOverrides: {'format': 'something else'});
+      final notOurs =
+          writeBundle(manifestOverrides: {'format': 'something else'});
       expect(
         () => parseBackupBytes(notOurs),
         throwsA(isA<BundleError>().having(

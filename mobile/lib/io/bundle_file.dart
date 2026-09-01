@@ -82,7 +82,8 @@ List<int> writeBundle({
   Map<String, Object?> manifestOverrides = const {},
 }) {
   final entries = <String, List<int>>{
-    for (final e in tables.entries) '${e.key}.json': utf8.encode(jsonEncode(e.value)),
+    for (final e in tables.entries)
+      '${e.key}.json': utf8.encode(jsonEncode(e.value)),
     ...blobs,
   };
 

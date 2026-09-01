@@ -54,7 +54,9 @@ void main() {
     */
     test('the body is the fallback when the subject says nothing', () {
       expect(
-        from(title: 'Your order', text: 'Thanks for your order at Wickes\nDetails below'),
+        from(
+            title: 'Your order',
+            text: 'Thanks for your order at Wickes\nDetails below'),
         'Wickes',
       );
     });
@@ -131,7 +133,10 @@ void main() {
   });
 
   group('the date', () {
-    test('ISO', () => expect(parseLooseDate('Ordered 2026-07-04', today), '2026-07-04'));
+    test(
+        'ISO',
+        () =>
+            expect(parseLooseDate('Ordered 2026-07-04', today), '2026-07-04'));
 
     test('9 August 2026', () {
       expect(parseLooseDate('Placed 9 August 2026', today), '2026-08-09');
@@ -191,7 +196,8 @@ void main() {
 
   group('the order number', () {
     test('an Amazon-style reference', () {
-      expect(guessOrderNumber('Order #114-2938475-1122 shipped'), '114-2938475-1122');
+      expect(guessOrderNumber('Order #114-2938475-1122 shipped'),
+          '114-2938475-1122');
     });
 
     test('an invoice reference', () {
@@ -214,7 +220,8 @@ void main() {
       expect(guessDocKind('protection plan.pdf'), DocKind.warranty);
     });
 
-    test('a manual', () => expect(guessDocKind('user-guide.pdf'), DocKind.manual));
+    test('a manual',
+        () => expect(guessDocKind('user-guide.pdf'), DocKind.manual));
 
     test('an invoice is a receipt', () {
       expect(guessDocKind('invoice-2026.pdf'), DocKind.receipt);
@@ -224,14 +231,16 @@ void main() {
     // the subject line of the email it arrived in.
     test('the filename beats the subject', () {
       expect(
-        guessDocKind('warranty.pdf', const SharedText(title: 'Your receipt from Apple')),
+        guessDocKind(
+            'warranty.pdf', const SharedText(title: 'Your receipt from Apple')),
         DocKind.warranty,
       );
     });
 
     test('but a nameless file falls back to the subject', () {
       expect(
-        guessDocKind('IMG_20260810.jpg', const SharedText(title: 'Your warranty certificate')),
+        guessDocKind('IMG_20260810.jpg',
+            const SharedText(title: 'Your warranty certificate')),
         DocKind.warranty,
       );
     });
@@ -246,7 +255,8 @@ void main() {
     final parsed = readReceipt(
       const SharedText(
         title: 'Your receipt from Currys',
-        text: 'Order #ORD-55912\nPurchased 9 August 2026\nOrder total £1,299.00',
+        text:
+            'Order #ORD-55912\nPurchased 9 August 2026\nOrder total £1,299.00',
       ),
       today,
     );

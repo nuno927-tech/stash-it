@@ -148,7 +148,8 @@ List<DatedCoverage> coverageSchedule(Item item, [DateTime? now]) {
 
   final dated = coveragesOf(item).map((coverage) {
     final end = coverageEnd(coverage, item.purchaseDate);
-    return DatedCoverage(coverage, end, end == null ? null : daysUntil(end, at));
+    return DatedCoverage(
+        coverage, end, end == null ? null : daysUntil(end, at));
   }).toList();
 
   dated.sort((a, b) {
@@ -280,11 +281,38 @@ String _sinceLabel(int daysAgo) {
 WarrantyParts coverageParts(DatedCoverage d, [DateTime? now]) {
   if (d.end == null) return const WarrantyParts('Lifetime', 'no end date');
 
-  final days = d.daysLeft!;
-  if (days < 0) return WarrantyParts('Ended', _sinceLabel(-days));
-  if (days == 0) return const WarrantyParts('Today', 'last day');
+  return countdownParts(
+    d.daysLeft!,
+    // A term entered in days counts down in days for its whole life — see
+    // above — and everything else switches to days near the end.
+    inDays: d.coverage.unit == CoverageUnit.days || inFinalStretch(d.end!, now),
+  );
+}
 
-  if (d.coverage.unit == CoverageUnit.days || inFinalStretch(d.end!, now)) {
+/*
+  ── One countdown vocabulary, for everything that expires ───────────────────
+
+  Warranties and documents both count down to a date, and both used to do it
+  their own way — the items list said "142 days left" and "8 months left", and
+  the documents list showed the kind of document instead of a number at all.
+
+  Pulled out here so the two screens cannot disagree about what a number means.
+  A passport eleven months out and a warranty eleven months out should read
+  identically, because they are the same fact about two different things.
+
+  Whether days are still the useful unit is the CALLER'S call, because it is a
+  calendar question — see `inFinalStretch` — and this only has a count.
+*/
+WarrantyParts countdownParts(
+  int days, {
+  bool inDays = false,
+  String endedWord = 'Ended',
+  String lastDayWord = 'last day',
+}) {
+  if (days < 0) return WarrantyParts(endedWord, _sinceLabel(-days));
+  if (days == 0) return WarrantyParts('Today', lastDayWord);
+
+  if (inDays) {
     return WarrantyParts('$days', days == 1 ? 'day left' : 'days left');
   }
 
@@ -302,7 +330,9 @@ WarrantyParts warrantyParts(Item item, [DateTime? now]) {
   final next = nextToLapse(item, now);
 
   if (next == null) {
-    if (hasLifetime(item)) return const WarrantyParts('Lifetime', 'no end date');
+    if (hasLifetime(item)) {
+      return const WarrantyParts('Lifetime', 'no end date');
+    }
 
     final last = _lastLapsed(item, now);
     if (last == null) {
@@ -359,7 +389,8 @@ List<CoverageArc> coverageArcs(Item item, [DateTime? now]) {
   }
 
   return [
-    for (final d in schedule) CoverageArc(coverageProgress(d, item), coverageState(d, item)),
+    for (final d in schedule)
+      CoverageArc(coverageProgress(d, item), coverageState(d, item)),
   ];
 }
 

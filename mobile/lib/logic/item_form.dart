@@ -66,7 +66,8 @@ class CoverageDraft {
 
   /// Lifetime has no number, so a blank amount is complete for it.
   bool get hasTerm =>
-      unit == CoverageUnit.lifetime || (int.tryParse(amountText.trim()) ?? 0) > 0;
+      unit == CoverageUnit.lifetime ||
+      (int.tryParse(amountText.trim()) ?? 0) > 0;
 }
 
 class ItemDraft {
@@ -395,7 +396,9 @@ String defaultTermText(CoverageUnit unit) => '${defaultTerm[unit] ?? ''}';
 String termAfterUnitChange(CoverageUnit to, String amountText) {
   if (to == CoverageUnit.lifetime) return '';
   final amount = int.tryParse(amountText.trim());
-  if (amount != null && coveragePresets[to]!.contains(amount)) return amountText;
+  if (amount != null && coveragePresets[to]!.contains(amount)) {
+    return amountText;
+  }
   return defaultTermText(to);
 }
 

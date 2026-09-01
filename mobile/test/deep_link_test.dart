@@ -62,7 +62,8 @@ void main() {
     // Used as a value in a ValueNotifier, so two equal links must not look
     // like a change — otherwise a rebuild re-opens the same record.
     test('two links with the same parts are the same link', () {
-      expect(const DeepLink(LinkKind.item, 'x'), const DeepLink(LinkKind.item, 'x'));
+      expect(const DeepLink(LinkKind.item, 'x'),
+          const DeepLink(LinkKind.item, 'x'));
       expect(
         const DeepLink(LinkKind.item, 'x').hashCode,
         const DeepLink(LinkKind.item, 'x').hashCode,

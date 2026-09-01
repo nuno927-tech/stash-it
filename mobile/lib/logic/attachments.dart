@@ -96,7 +96,10 @@ String titleFromFilename(String path) {
   final dot = name.lastIndexOf('.');
   final stem = dot > 0 ? name.substring(0, dot) : name;
 
-  final words = stem.replaceAll(RegExp(r'[_\-]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  final words = stem
+      .replaceAll(RegExp(r'[_\-]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 
   // A file called ".pdf", or one whose name was entirely underscores. The kind
   // is a better title than nothing, and the caller has it.

@@ -54,7 +54,9 @@ String formatMoneyInput(String raw, [String currency = 'USD']) {
   // Only the first dot counts; the rest are typos.
   final firstDot = cleaned.indexOf('.');
   final whole = firstDot == -1 ? cleaned : cleaned.substring(0, firstDot);
-  var frac = firstDot == -1 ? '' : cleaned.substring(firstDot + 1).replaceAll(_dots, '');
+  var frac = firstDot == -1
+      ? ''
+      : cleaned.substring(firstDot + 1).replaceAll(_dots, '');
 
   if (decimals == 0) return _group(whole);
   if (frac.length > decimals) frac = frac.substring(0, decimals);
@@ -71,7 +73,9 @@ String _group(String digits) =>
 /// Pads a half-finished decimal once the user has moved on.
 String completeMoneyInput(String raw, [String currency = 'USD']) {
   final decimals = decimalsFor(currency);
-  if (raw.trim().isEmpty || decimals == 0) return formatMoneyInput(raw, currency);
+  if (raw.trim().isEmpty || decimals == 0) {
+    return formatMoneyInput(raw, currency);
+  }
 
   final formatted = formatMoneyInput(raw, currency);
   if (formatted.isEmpty) return '';

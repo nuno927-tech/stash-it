@@ -23,7 +23,8 @@ void main() {
       it is answering the first one.
     */
     test('one important answer does not finish a card', () {
-      expect(cardFilled(['Passport', '']), isFalse, reason: 'Whose is still empty');
+      expect(cardFilled(['Passport', '']), isFalse,
+          reason: 'Whose is still empty');
     });
 
     test('a space bar is not an answer', () {

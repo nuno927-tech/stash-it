@@ -86,7 +86,6 @@ DateTime? parseDate(String iso) {
 }
 
 /// `YYYY-MM-DD` from a local date.
-String toIsoDate(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
+String toIsoDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';

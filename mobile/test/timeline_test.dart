@@ -41,7 +41,8 @@ Item warranted(String name, int months, int ago) {
     name: name,
     propertyId: 'p',
     purchaseDate: toIsoDate(bought),
-    warranty: Warranty(months: months, unit: WarrantyUnit.months, amount: months),
+    warranty:
+        Warranty(months: months, unit: WarrantyUnit.months, amount: months),
   );
 }
 
@@ -106,7 +107,11 @@ void main() {
               holder: 'Golf',
               expiresOn: '2026-07-10',
             ),
-            paper(id: 'pp', label: 'Passport', holder: 'Nuno', expiresOn: '2027-02-11'),
+            paper(
+                id: 'pp',
+                label: 'Passport',
+                holder: 'Nuno',
+                expiresOn: '2027-02-11'),
           ],
           now,
         );
@@ -150,7 +155,8 @@ void main() {
   });
 
   group('flagging', () {
-    test('overdue and needs-starting are flagged, an ordinary renewal is not', () {
+    test('overdue and needs-starting are flagged, an ordinary renewal is not',
+        () {
       final l = buildTimeline(
         [],
         [sub(id: 'nflx')],
@@ -193,8 +199,10 @@ void main() {
       expect(whenLabel(Urgency.overdue, -38), '38 days late');
     });
 
-    test('a countdown counts', () => expect(whenLabel(Urgency.soon, 5), '5 days'));
-    test('one day is named', () => expect(whenLabel(Urgency.soon, 1), 'tomorrow'));
+    test('a countdown counts',
+        () => expect(whenLabel(Urgency.soon, 5), '5 days'));
+    test('one day is named',
+        () => expect(whenLabel(Urgency.soon, 1), 'tomorrow'));
     test('and today is', () => expect(whenLabel(Urgency.soon, 0), 'today'));
 
     /*
@@ -256,7 +264,8 @@ void main() {
 
     test('and a real passport takes that path', () {
       final l = buildTimeline([], [], [paper(id: 'w', holder: 'Nuno')], now);
-      expect(l.first.days, lessThan(0), reason: 'the renew-by really has passed');
+      expect(l.first.days, lessThan(0),
+          reason: 'the renew-by really has passed');
       expect(whenLabelFor(l.first), 'now');
     });
   });
@@ -270,17 +279,20 @@ void main() {
       is the point.
     */
     test('a lapsed warranty is not in the list', () {
-      expect(buildTimeline([warranted('Old kettle', 12, 900)], [], [], now), isEmpty);
+      expect(buildTimeline([warranted('Old kettle', 12, 900)], [], [], now),
+          isEmpty);
     });
 
     test('but a lapsed document is', () {
-      final l = buildTimeline([], [], [paper(id: 'x', expiresOn: '2026-01-01')], now);
+      final l =
+          buildTimeline([], [], [paper(id: 'x', expiresOn: '2026-01-01')], now);
       expect(l.length, 1);
       expect(l.first.urgency, Urgency.overdue);
     });
 
     test('cover that runs for years is not news', () {
-      expect(buildTimeline([warranted('Fridge', 60, 30)], [], [], now), isEmpty);
+      expect(
+          buildTimeline([warranted('Fridge', 60, 30)], [], [], now), isEmpty);
     });
 
     test('a renewal past the horizon is out', () {
@@ -307,12 +319,14 @@ void main() {
     });
 
     test('and drops the dash when nobody is named', () {
-      final l = buildTimeline([], [], [paper(id: 'n', expiresOn: '2026-09-01')], now);
+      final l =
+          buildTimeline([], [], [paper(id: 'n', expiresOn: '2026-09-01')], now);
       expect(l.first.title, 'Passport');
     });
 
     test('a blank holder is nobody', () {
-      expect(buildTimeline([], [], [paper(holder: '  ')], now).first.title, 'Passport');
+      expect(buildTimeline([], [], [paper(holder: '  ')], now).first.title,
+          'Passport');
     });
   });
 
@@ -431,7 +445,8 @@ void main() {
     test('in date counts both kinds', () => expect(tally().inDate, 2));
     test('so does needs-starting', () => expect(tally().needsStarting, 2));
     test('and lapsed', () => expect(tally().lapsed, 2));
-    test('undated records are counted separately', () => expect(tally().noDate, 2));
+    test('undated records are counted separately',
+        () => expect(tally().noDate, 2));
 
     /*
       The divisor is the tracked three, not everything. Including blanks would
@@ -473,8 +488,15 @@ void main() {
     */
     test('the splits add back up', () {
       final t = datedTally(
-        [warranted('Headphones', 24, 710), warranted('Old kettle', 12, 900), item(id: 'b')],
-        [paper(id: 'due', expiresOn: '2026-10-01'), paper(id: 'nodate', expiresOn: '')],
+        [
+          warranted('Headphones', 24, 710),
+          warranted('Old kettle', 12, 900),
+          item(id: 'b')
+        ],
+        [
+          paper(id: 'due', expiresOn: '2026-10-01'),
+          paper(id: 'nodate', expiresOn: '')
+        ],
         now,
       );
       expect(t.needsStartingBy.total, t.needsStarting);
@@ -483,7 +505,8 @@ void main() {
     });
 
     test('a documents-only count goes to documents', () {
-      final t = datedTally([], [paper(id: 'due', expiresOn: '2026-10-01')], now);
+      final t =
+          datedTally([], [paper(id: 'due', expiresOn: '2026-10-01')], now);
       expect(destinationFor(t.needsStartingBy), Destination.papers);
     });
 
@@ -525,7 +548,8 @@ void main() {
     */
     test('and shown for anything that is not', () {
       expect(dayMonthMaybeYear(DateTime(2031, 4, 3), thisYear), 'Apr 3, 2031');
-      expect(dayMonthMaybeYear(DateTime(2024, 9, 16), thisYear), 'Sep 16, 2024');
+      expect(
+          dayMonthMaybeYear(DateTime(2024, 9, 16), thisYear), 'Sep 16, 2024');
     });
 
     // Not "within twelve months" — the calendar year. December 31st and
@@ -536,5 +560,4 @@ void main() {
           'Jan 1, 2027');
     });
   });
-
 }

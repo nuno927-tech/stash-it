@@ -11,7 +11,8 @@ import 'package:stash_it/logic/format.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void money(String input, String want, [String currency = 'USD']) {
-  test('money "$input" → "$want"${currency == 'USD' ? '' : ' ($currency)'}', () {
+  test('money "$input" → "$want"${currency == 'USD' ? '' : ' ($currency)'}',
+      () {
     expect(formatMoneyInput(input, currency), want);
   });
 }
@@ -90,7 +91,8 @@ void main() {
       expect(completeMoneyInput('1,234.56'), '1,234.56');
     });
 
-    test('an empty field stays empty', () => expect(completeMoneyInput(''), ''));
+    test(
+        'an empty field stays empty', () => expect(completeMoneyInput(''), ''));
 
     test('yen gains nothing', () {
       expect(completeMoneyInput('1234', 'JPY'), '1,234');
@@ -152,7 +154,8 @@ void main() {
     phone('(860) 555-1234', '(860) 555-1234');
 
     test('formatting twice changes nothing', () {
-      expect(formatPhoneInput(formatPhoneInput('8605551234')), '(860) 555-1234');
+      expect(
+          formatPhoneInput(formatPhoneInput('8605551234')), '(860) 555-1234');
     });
 
     // A leading 1 is kept visible, because that is how people read it aloud.

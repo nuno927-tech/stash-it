@@ -95,13 +95,16 @@ void main() {
           provider: 'Ercol',
           policyNumber: 'ER-LIFE-8891',
         ),
-        Coverage(id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
+        Coverage(
+            id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
       ],
     );
 
     Future<Item> saveAndRead() async {
       await db.into(db.items).insert(itemToRow(couch));
-      final row = await (db.select(db.items)..where((t) => t.id.equals('couch'))).getSingle();
+      final row = await (db.select(db.items)
+            ..where((t) => t.id.equals('couch')))
+          .getSingle();
       return itemOf(row);
     }
 
@@ -157,7 +160,8 @@ void main() {
     */
     test('and the schedule still reads it the same way', () async {
       final back = await saveAndRead();
-      final order = coverageSchedule(back, DateTime(2026, 8, 24)).map((d) => d.coverage.id);
+      final order = coverageSchedule(back, DateTime(2026, 8, 24))
+          .map((d) => d.coverage.id);
       expect(order, ['fabric', 'frame']);
       expect(nextToLapse(back, DateTime(2026, 8, 24))!.coverage.id, 'fabric');
     });
@@ -168,11 +172,16 @@ void main() {
         propertyId: 'default',
         name: 'Kettle',
         purchaseDate: '2026-01-01',
-        warranty: Warranty(months: 24, unit: WarrantyUnit.months, amount: 24, provider: 'Bosch'),
+        warranty: Warranty(
+            months: 24,
+            unit: WarrantyUnit.months,
+            amount: 24,
+            provider: 'Bosch'),
       );
       await db.into(db.items).insert(itemToRow(old));
       final back = itemOf(
-        await (db.select(db.items)..where((t) => t.id.equals('kettle'))).getSingle(),
+        await (db.select(db.items)..where((t) => t.id.equals('kettle')))
+            .getSingle(),
       );
 
       expect(back.warranty!.months, 24);
@@ -185,7 +194,8 @@ void main() {
       const bare = Item(id: 'lamp', propertyId: 'default', name: 'Lamp');
       await db.into(db.items).insert(itemToRow(bare));
       final back = itemOf(
-        await (db.select(db.items)..where((t) => t.id.equals('lamp'))).getSingle(),
+        await (db.select(db.items)..where((t) => t.id.equals('lamp')))
+            .getSingle(),
       );
       expect(back.coverages, isEmpty);
       expect(back.warranty, isNull);
@@ -214,7 +224,8 @@ void main() {
       await db.into(db.papers).insert(paperToRow(dl));
 
       final row = await db.select(db.papers).getSingle();
-      expect(row.kind, 'licence', reason: 'the stored key must not be Americanised');
+      expect(row.kind, 'licence',
+          reason: 'the stored key must not be Americanised');
 
       final back = paperOf(row);
       expect(back.kind, PaperKind.licence);
@@ -237,7 +248,8 @@ void main() {
         notes: 'Shared with Kelly',
       );
       await db.into(db.subscriptions).insert(subscriptionToRow(nflx));
-      final back = subscriptionOf(await db.select(db.subscriptions).getSingle());
+      final back =
+          subscriptionOf(await db.select(db.subscriptions).getSingle());
 
       expect(back.cadence, Cadence.monthly);
       expect(back.anchorDate, '2026-08-22');
@@ -247,8 +259,12 @@ void main() {
     });
 
     test('a room', () async {
-      const kitchen =
-          Room(id: 'r1', propertyId: 'default', name: 'Kitchen', sortOrder: 2, isSeed: true);
+      const kitchen = Room(
+          id: 'r1',
+          propertyId: 'default',
+          name: 'Kitchen',
+          sortOrder: 2,
+          isSeed: true);
       await db.into(db.rooms).insert(roomToRow(kitchen));
       final back = roomOf(await db.select(db.rooms).getSingle());
       expect(back.name, 'Kitchen');

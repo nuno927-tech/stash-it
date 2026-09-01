@@ -58,12 +58,14 @@ void main() {
     });
 
     test('but never over something typed', () {
-      final d = PaperDraft(label: "Nuno's passport")..pickKind(PaperKind.licence);
+      final d = PaperDraft(label: "Nuno's passport")
+        ..pickKind(PaperKind.licence);
       expect(d.label, "Nuno's passport");
     });
 
     test('the frozen key survives the form', () {
-      final d = PaperDraft(expiresOn: '2027-05-01')..pickKind(PaperKind.licence);
+      final d = PaperDraft(expiresOn: '2027-05-01')
+        ..pickKind(PaperKind.licence);
       expect(toPaper(d, propertyId: 'p').kind, PaperKind.licence);
     });
 
@@ -93,7 +95,9 @@ void main() {
 
   group('a subscription', () {
     test('needs a name', () {
-      expect(whyNotSaveableSubscription(SubscriptionDraft(anchorDate: '2026-09-01')),
+      expect(
+          whyNotSaveableSubscription(
+              SubscriptionDraft(anchorDate: '2026-09-01')),
           contains('called'));
     });
 
@@ -105,7 +109,8 @@ void main() {
     */
     test('and an anchor date, because everything derives from it', () {
       final d = SubscriptionDraft(name: 'Netflix');
-      expect(whyNotSaveableSubscription(d), contains('worked out from that one'));
+      expect(
+          whyNotSaveableSubscription(d), contains('worked out from that one'));
     });
 
     test('and is fine with both', () {
@@ -119,7 +124,8 @@ void main() {
       typing 0.01 to get past the form.
     */
     test('costing nothing is allowed', () {
-      final d = SubscriptionDraft(name: 'Spotify free', anchorDate: '2026-09-01');
+      final d =
+          SubscriptionDraft(name: 'Spotify free', anchorDate: '2026-09-01');
       expect(whyNotSaveableSubscription(d), isNull);
 
       final s = toSubscription(d, propertyId: 'p');
@@ -195,7 +201,8 @@ void main() {
         remindDays: 3,
       );
 
-      final back = toSubscription(draftOfSubscription(nflx), propertyId: 'default');
+      final back =
+          toSubscription(draftOfSubscription(nflx), propertyId: 'default');
       expect(back.id, 'nflx');
       expect(back.cadence, Cadence.yearly);
       expect(back.amountCents, 12000);

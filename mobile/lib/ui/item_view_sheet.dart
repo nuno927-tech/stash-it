@@ -93,8 +93,8 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
     if (_item.roomId == null) return;
     final rooms = await widget.repo.rooms();
     if (!mounted) return;
-    setState(() =>
-        _room = rooms.where((r) => r.id == _item.roomId).firstOrNull);
+    setState(
+        () => _room = rooms.where((r) => r.id == _item.roomId).firstOrNull);
   }
 
   Future<void> _edit() async {
@@ -151,7 +151,7 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
               children: [
                 _Hero(repo: widget.repo, item: _item, status: status),
-                _headline(status),
+                _headline(c, status),
                 if (schedule.isNotEmpty) _cover(c, schedule),
                 _facts(c),
                 _files(c),
@@ -166,7 +166,7 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
 
   /* ------------------------------------------------------------- headline */
 
-  Widget _headline(StashStatus status) {
+  Widget _headline(StashColors c, StashStatus status) {
     final end = effectiveExpiry(_item);
     return ViewHeadline(
       title: _item.name,
@@ -177,6 +177,13 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
       status: status,
       statusWord: _word(status),
       count: end == null ? null : daysUntil(end),
+      // The colour the row in the list was wearing — see `TimeLeft.item`.
+      countColour: switch (warrantyState(_item)) {
+        WarrantyState.covered => c.moss,
+        WarrantyState.endingSoon => c.honey,
+        WarrantyState.expired => c.ember,
+        WarrantyState.unknown => c.muted,
+      },
     );
   }
 
@@ -316,7 +323,8 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final doc in docs) _FileChip(repo: widget.repo, doc: doc),
+                    for (final doc in docs)
+                      _FileChip(repo: widget.repo, doc: doc),
                   ],
                 ),
             ],
@@ -408,7 +416,10 @@ class _Hero extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.center,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, c.slate900.withValues(alpha: 0.55)],
+                    colors: [
+                      Colors.transparent,
+                      c.slate900.withValues(alpha: 0.55)
+                    ],
                   ),
                 ),
               ),

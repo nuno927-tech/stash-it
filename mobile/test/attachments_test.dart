@@ -34,18 +34,21 @@ void main() {
 
   group('titleFromFilename', () {
     test('drops the path and the extension', () {
-      expect(titleFromFilename('/storage/emulated/0/Download/Sony TV.pdf'), 'Sony TV');
+      expect(titleFromFilename('/storage/emulated/0/Download/Sony TV.pdf'),
+          'Sony TV');
       expect(titleFromFilename(r'C:\Users\nuno\receipt.PDF'), 'receipt');
     });
 
     test('turns separators into spaces', () {
-      expect(titleFromFilename('john-lewis_receipt-2024.pdf'), 'john lewis receipt 2024');
+      expect(titleFromFilename('john-lewis_receipt-2024.pdf'),
+          'john lewis receipt 2024');
     });
 
     test('leaves a camera filename alone', () {
       // Decoding it into a date was tried and dropped: a camera filename is
       // meaningless either way, and a wrong date is worse than an ugly one.
-      expect(titleFromFilename('IMG_20240817_101233.jpg'), 'IMG 20240817 101233');
+      expect(
+          titleFromFilename('IMG_20240817_101233.jpg'), 'IMG 20240817 101233');
     });
 
     test('a dotfile keeps its name rather than becoming empty', () {
@@ -106,7 +109,8 @@ void main() {
       reads as the app being broken rather than the link being incomplete.
     */
     test('adds the scheme somebody did not paste', () {
-      expect(tidyUrl('drive.google.com/file/d/abc'), 'https://drive.google.com/file/d/abc');
+      expect(tidyUrl('drive.google.com/file/d/abc'),
+          'https://drive.google.com/file/d/abc');
     });
 
     test('leaves a real one alone', () {

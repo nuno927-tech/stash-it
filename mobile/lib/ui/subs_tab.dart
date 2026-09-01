@@ -125,7 +125,9 @@ class _SubsTabState extends State<SubsTab> {
       future: widget.repo.activeSubscriptions(),
       builder: (context, snap) {
         final subs = snap.data;
-        if (subs == null) return const Center(child: CircularProgressIndicator());
+        if (subs == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
         if (subs.isEmpty) {
           return const Blank(
@@ -179,35 +181,35 @@ class _SubsTabState extends State<SubsTab> {
               )
             else
               _Tiles(subs: subs, week: week),
-
             const SizedBox(height: 14),
             RenewalCalendar(
               subs: subs,
               selected: _day,
               onSelect: (d) => setState(() => _day = d),
             ),
-
             if (next != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: RichText(
                   text: TextSpan(
-                    style: TextStyle(fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 12.5, color: c.muted),
                     children: [
                       const TextSpan(text: 'Next up: '),
                       TextSpan(
                         text: next.name,
-                        style: TextStyle(fontWeight: FontWeight.w700, color: c.text),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, color: c.text),
                       ),
                       TextSpan(
-                        text: ' on the ${_ordinal(nextRenewal(next)?.day ?? 1)}, '
+                        text:
+                            ' on the ${_ordinal(nextRenewal(next)?.day ?? 1)}, '
                             '${_money(next.amountCents)}.',
                       ),
                     ],
                   ),
                 ),
               ),
-
             const SectionTitle('Everything you pay for'),
             for (final sub in sorted)
               _SubTile(
@@ -220,10 +222,8 @@ class _SubsTabState extends State<SubsTab> {
                     _picked == null ? () => _startPicking(sub.id) : null,
                 onDelete: () => _delete(sub),
               ),
-
             const SectionTitle('The year ahead'),
             SpendLine(spend: spend),
-
             if (top != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -286,10 +286,12 @@ class _Tiles extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _Tile(_money(totalMonthlyCents(subs)), 'A MONTH', lead: true),
+                      child: _Tile(_money(totalMonthlyCents(subs)), 'A MONTH',
+                          lead: true),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: _Tile(_money(totalYearlyCents(subs)), 'A YEAR')),
+                    Expanded(
+                        child: _Tile(_money(totalYearlyCents(subs)), 'A YEAR')),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -350,7 +352,8 @@ class _Tile extends StatelessWidget {
         color: lead ? c.washGoldSoft : c.slate700,
         borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(color: lead ? c.washGoldLine : Colors.transparent),
-        boxShadow: cardShadow(c, dark: Theme.of(context).brightness == Brightness.dark),
+        boxShadow: cardShadow(c,
+            dark: Theme.of(context).brightness == Brightness.dark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,7 +508,8 @@ class _SubTile extends StatelessWidget {
                   Row(
                     children: [
                       if (due) ...[
-                        const StatusPill(status: StashStatus.soon, label: 'Renewing'),
+                        const StatusPill(
+                            status: StashStatus.soon, label: 'Renewing'),
                         const SizedBox(width: 7),
                       ],
                       Flexible(
@@ -554,7 +558,8 @@ class _SubTile extends StatelessWidget {
                 if (sub.cadence != Cadence.monthly)
                   Text(
                     '\$${(monthly / 100).toStringAsFixed(2)}/mo',
-                    style: TextStyle(fontFamily: fontBody, fontSize: 11, color: c.muted),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 11, color: c.muted),
                   ),
               ],
             ),
@@ -563,5 +568,4 @@ class _SubTile extends StatelessWidget {
       ),
     );
   }
-
 }

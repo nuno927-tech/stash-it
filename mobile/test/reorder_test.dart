@@ -38,7 +38,8 @@ void main() {
         const Span(100, 150), // held, dragged down onto row 2
         const Span(100, 150),
       ];
-      final naive = overlapping.indexWhere((r) => 120 >= r.top && 120 <= r.bottom);
+      final naive =
+          overlapping.indexWhere((r) => 120 >= r.top && 120 <= r.bottom);
       expect(naive, 1, reason: 'the naive version returns the held row');
       expect(dropTarget(overlapping, 120, 1), 2);
     });
@@ -79,7 +80,8 @@ void main() {
 
     test('moving down', () => expect(moveWithin(list, 0, 2).join(), 'bcad'));
     test('moving up', () => expect(moveWithin(list, 3, 1).join(), 'adbc'));
-    test('moving to the end', () => expect(moveWithin(list, 0, 3).join(), 'bcda'));
+    test('moving to the end',
+        () => expect(moveWithin(list, 0, 3).join(), 'bcda'));
 
     // Identity, so a caller can use it to decide whether to rebuild.
     test('a move to the same place is the same list', () {

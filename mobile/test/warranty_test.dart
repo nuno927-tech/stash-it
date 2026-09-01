@@ -22,7 +22,8 @@ Coverage cover({
   int amount = 1,
   String? startsOn,
 }) =>
-    Coverage(id: id, label: label, unit: unit, amount: amount, startsOn: startsOn);
+    Coverage(
+        id: id, label: label, unit: unit, amount: amount, startsOn: startsOn);
 
 Item item({
   String? purchaseDate,
@@ -48,7 +49,8 @@ void main() {
 
   group('terms', () {
     test('a unit and amount are the source of truth', () {
-      final t = termOf(const Warranty(months: 24, unit: WarrantyUnit.days, amount: 90))!;
+      final t = termOf(
+          const Warranty(months: 24, unit: WarrantyUnit.days, amount: 90))!;
       expect(t.unit, WarrantyUnit.days);
       expect(t.amount, 90);
     });
@@ -80,7 +82,8 @@ void main() {
 
   group('when a policy ends', () {
     test('days are exact', () {
-      final end = coverageEnd(cover(unit: CoverageUnit.days, amount: 90), '2026-01-01');
+      final end =
+          coverageEnd(cover(unit: CoverageUnit.days, amount: 90), '2026-01-01');
       expect(end, DateTime(2026, 4, 1));
     });
 
@@ -90,22 +93,26 @@ void main() {
       it permanently.
     */
     test('months are calendar months', () {
-      final end = coverageEnd(cover(unit: CoverageUnit.months, amount: 24), '2026-01-31');
+      final end = coverageEnd(
+          cover(unit: CoverageUnit.months, amount: 24), '2026-01-31');
       expect(end, DateTime(2028, 1, 31));
     });
 
     test('and clamp into a short month', () {
-      final end = coverageEnd(cover(unit: CoverageUnit.months, amount: 1), '2026-01-31');
+      final end = coverageEnd(
+          cover(unit: CoverageUnit.months, amount: 1), '2026-01-31');
       expect(end, DateTime(2026, 2, 28));
     });
 
     test('years are twelve months each', () {
-      final end = coverageEnd(cover(unit: CoverageUnit.years, amount: 2), '2026-08-17');
+      final end =
+          coverageEnd(cover(unit: CoverageUnit.years, amount: 2), '2026-08-17');
       expect(end, DateTime(2028, 8, 17));
     });
 
     test('lifetime never ends', () {
-      expect(coverageEnd(cover(unit: CoverageUnit.lifetime), '2026-01-01'), isNull);
+      expect(coverageEnd(cover(unit: CoverageUnit.lifetime), '2026-01-01'),
+          isNull);
     });
 
     test('a policy with no start has no end', () {
@@ -134,11 +141,17 @@ void main() {
     test('soonest first, lifetime last', () {
       final couch = item(purchaseDate: '2026-01-01', coverages: [
         cover(id: 'frame', label: 'Frame', unit: CoverageUnit.lifetime),
-        cover(id: 'cushions', label: 'Cushions', unit: CoverageUnit.years, amount: 10),
-        cover(id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
+        cover(
+            id: 'cushions',
+            label: 'Cushions',
+            unit: CoverageUnit.years,
+            amount: 10),
+        cover(
+            id: 'fabric', label: 'Fabric', unit: CoverageUnit.years, amount: 1),
       ]);
 
-      final order = coverageSchedule(couch, now).map((d) => d.coverage.id).toList();
+      final order =
+          coverageSchedule(couch, now).map((d) => d.coverage.id).toList();
       expect(order, ['fabric', 'cushions', 'frame']);
     });
 
@@ -162,7 +175,8 @@ void main() {
 
   group('legacy records', () {
     test('a bare warranty reads as one policy', () {
-      final old = item(purchaseDate: '2026-01-01', warranty: const Warranty(months: 24));
+      final old = item(
+          purchaseDate: '2026-01-01', warranty: const Warranty(months: 24));
       expect(coveragesOf(old).length, 1);
       expect(coveragesOf(old).first.label, defaultCoverageLabel);
     });
@@ -212,7 +226,8 @@ void main() {
     });
 
     test('no policy at all is unknown', () {
-      expect(warrantyState(item(purchaseDate: '2026-01-01'), now), WarrantyState.unknown);
+      expect(warrantyState(item(purchaseDate: '2026-01-01'), now),
+          WarrantyState.unknown);
     });
 
     /*
@@ -221,7 +236,8 @@ void main() {
       may well still have.
     */
     test('a term with no date is unknown, not expired', () {
-      final dateless = item(coverages: [cover(unit: CoverageUnit.years, amount: 2)]);
+      final dateless =
+          item(coverages: [cover(unit: CoverageUnit.years, amount: 2)]);
       expect(warrantyState(dateless, now), WarrantyState.unknown);
     });
 
@@ -275,11 +291,15 @@ void main() {
         coverages: [cover(unit: CoverageUnit.months, amount: 12)],
       );
       expect(warrantyState(roof, now), WarrantyState.covered);
-      expect(warrantyState(item(
-        purchaseDate: '2026-03-01',
-        coverages: [cover(unit: CoverageUnit.months, amount: 12)],
-        leadDays: 365,
-      ), now), WarrantyState.endingSoon);
+      expect(
+          warrantyState(
+              item(
+                purchaseDate: '2026-03-01',
+                coverages: [cover(unit: CoverageUnit.months, amount: 12)],
+                leadDays: 365,
+              ),
+              now),
+          WarrantyState.endingSoon);
     });
 
     test('but the expiry itself never moves', () {

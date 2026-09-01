@@ -61,7 +61,8 @@ void main() {
     });
 
     test('an empty list falls back', () {
-      expect(endingSoonDays(settings(reminderOffsetsDays: [])), defaultEndingSoonDays);
+      expect(endingSoonDays(settings(reminderOffsetsDays: [])),
+          defaultEndingSoonDays);
     });
 
     test('so does a missing record', () {
@@ -107,14 +108,16 @@ void main() {
 
     test('a recent one does not', () {
       expect(
-        backupNudge(lastBackupAt: daysAgo(3), everyDays: 30, itemCount: 5, now: now),
+        backupNudge(
+            lastBackupAt: daysAgo(3), everyDays: 30, itemCount: 5, now: now),
         isNull,
       );
     });
 
     test('the day it comes due, it does', () {
       expect(
-        backupNudge(lastBackupAt: daysAgo(30), everyDays: 30, itemCount: 5, now: now),
+        backupNudge(
+            lastBackupAt: daysAgo(30), everyDays: 30, itemCount: 5, now: now),
         isNotNull,
       );
     });
@@ -213,7 +216,8 @@ void main() {
 
     test('and the nudge stays silent for it', () {
       expect(
-        backupNudge(lastBackupAt: daysAgo(200), everyDays: 0, itemCount: 5, now: now),
+        backupNudge(
+            lastBackupAt: daysAgo(200), everyDays: 0, itemCount: 5, now: now),
         isNull,
       );
     });
@@ -242,7 +246,8 @@ void main() {
     });
 
     test('the window quoted is the one that was set', () {
-      expect(warrantyNudge(endingSoon: 2, days: 90)!.title, contains('90 days'));
+      expect(
+          warrantyNudge(endingSoon: 2, days: 90)!.title, contains('90 days'));
     });
   });
 
@@ -309,9 +314,11 @@ void main() {
       expect(nudgePreviewArmed(), isFalse);
     });
 
-    test('the developer preview has one of each, and they are the real ones', () {
+    test('the developer preview has one of each, and they are the real ones',
+        () {
       final samples = sampleNudges(now);
-      expect(samples.map((n) => n.kind), [NudgeKind.backup, NudgeKind.warranty]);
+      expect(
+          samples.map((n) => n.kind), [NudgeKind.backup, NudgeKind.warranty]);
       for (final n in samples) {
         expect(n.title, isNotEmpty);
         expect(n.body, isNotEmpty);

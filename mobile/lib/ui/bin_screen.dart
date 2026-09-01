@@ -129,7 +129,8 @@ class _BinScreenState extends State<BinScreen> {
   /// place in the app where something actually leaves the database at a
   /// person's request rather than on a timer.
   Future<void> _purge(BinEntry entry) async {
-    final sure = await confirmDelete(context, name: entry.name, permanent: true);
+    final sure =
+        await confirmDelete(context, name: entry.name, permanent: true);
     if (!sure) return;
 
     switch (entry.kind) {
@@ -252,22 +253,21 @@ class _BinScreenState extends State<BinScreen> {
                 child: Text(
                   'Erased $purgeAfterDays days after you deleted it. Until '
                   'then it is still in your backups.',
-                  style: TextStyle(fontFamily: fontBody, fontSize: 12, color: c.muted),
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12, color: c.muted),
                 ),
               ),
-
               if (_status != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                   child: Text(
                     _status!,
-                    style: TextStyle(fontFamily: fontBody, fontSize: 13, color: c.text),
+                    style: TextStyle(
+                        fontFamily: fontBody, fontSize: 13, color: c.text),
                   ),
                 ),
               if (_busy) const LinearProgressIndicator(),
-
               for (final entry in entries) _row(entry, c),
-
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

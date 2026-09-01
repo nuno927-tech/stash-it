@@ -20,7 +20,6 @@ import '../models/settings.dart';
 import '../logic/card.dart';
 import '../logic/item_filter.dart';
 import '../logic/swipe.dart' show Tab;
-import '../logic/item_icon.dart';
 import '../logic/search.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
@@ -64,7 +63,8 @@ import 'warranty_ring.dart';
   "which tab, showing what" is one fact rather than two.
 */
 class ItemsTab extends StatefulWidget {
-  const ItemsTab({required this.repo, required this.onGo, this.filter, super.key});
+  const ItemsTab(
+      {required this.repo, required this.onGo, this.filter, super.key});
 
   final Repository repo;
 
@@ -242,8 +242,9 @@ class _ItemsTabState extends State<ItemsTab> {
       stream: widget.repo.watchActiveItems(),
       builder: (context, snap) {
         final all = snap.data;
-        if (all == null) return const Center(child: CircularProgressIndicator());
-
+        if (all == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
         /*
           One switch, four outcomes, and the default is the one with no chip
@@ -259,7 +260,9 @@ class _ItemsTabState extends State<ItemsTab> {
           editorial choice rather than anybody's filter.
         */
         var shown = _filter == null
-            ? all.where((i) => warrantyState(i) != WarrantyState.expired).toList()
+            ? all
+                .where((i) => warrantyState(i) != WarrantyState.expired)
+                .toList()
             : all
                 .where((i) =>
                     matchesFilter(_filter!, i, withReceipt: _withReceipt))
@@ -318,37 +321,35 @@ class _ItemsTabState extends State<ItemsTab> {
                   onSend: _picked!.isEmpty ? null : _sendPicked,
                 )
               else
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _worth(all, c),
-                          _search(c),
-                          const SizedBox(height: 10),
-                          _chips(all, c),
-                          _alsoDocuments(c),
-                        ],
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _worth(all, c),
+                            _search(c),
+                            const SizedBox(height: 10),
+                            _chips(all, c),
+                            _alsoDocuments(c),
+                          ],
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, top: 6),
-                      child: Scout(
-                        pose: ScoutPose.receipt,
-                        height: 132,
-                        motion: const [ScoutMotion.breathe],
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, top: 6),
+                        child: Scout(
+                          pose: ScoutPose.receipt,
+                          height: 132,
+                          motion: const [ScoutMotion.breathe],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
               const SizedBox(height: 10),
-
               Expanded(
                 child: shown.isEmpty
                     ? Blank(
@@ -365,27 +366,28 @@ class _ItemsTabState extends State<ItemsTab> {
                     : _sort == _Sort.room && _grouped
                         ? _roomList(shown, c)
                         : ListView.builder(
-                        // One past the end, for the way into the bin.
-                        itemCount: shown.length + 1,
-                        // Room for the button to sit over without covering the
-                        // last row, which is the row people most often want.
-                        padding: const EdgeInsets.only(bottom: 96),
-                        itemBuilder: (context, i) => i == shown.length
-                            ? _BinLink(repo: widget.repo)
-                            : _ItemTile(
-                                repo: widget.repo,
-                                item: shown[i],
-                                picking: _picked != null,
-                                picked: _picked?.contains(shown[i].id) ?? false,
-                                onTap: () => _picked == null
-                                    ? _open(shown[i])
-                                    : _pick(shown[i].id),
-                                onLongPress: _picked == null
-                                    ? () => _startPicking(shown[i].id)
-                                    : null,
-                                onDelete: () => _delete(shown[i]),
-                              ),
-                      ),
+                            // One past the end, for the way into the bin.
+                            itemCount: shown.length + 1,
+                            // Room for the button to sit over without covering the
+                            // last row, which is the row people most often want.
+                            padding: const EdgeInsets.only(bottom: 96),
+                            itemBuilder: (context, i) => i == shown.length
+                                ? _BinLink(repo: widget.repo)
+                                : _ItemTile(
+                                    repo: widget.repo,
+                                    item: shown[i],
+                                    picking: _picked != null,
+                                    picked:
+                                        _picked?.contains(shown[i].id) ?? false,
+                                    onTap: () => _picked == null
+                                        ? _open(shown[i])
+                                        : _pick(shown[i].id),
+                                    onLongPress: _picked == null
+                                        ? () => _startPicking(shown[i].id)
+                                        : null,
+                                    onDelete: () => _delete(shown[i]),
+                                  ),
+                          ),
               ),
             ],
           ),
@@ -453,7 +455,6 @@ class _ItemsTabState extends State<ItemsTab> {
           // A pill, like the chips under it. A square field above a row of
           // rounded buttons reads as two different kinds of control.
           borderRadius: BorderRadius.circular(Radii.pill),
-          
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
@@ -463,7 +464,8 @@ class _ItemsTabState extends State<ItemsTab> {
             Expanded(
               child: TextField(
                 onChanged: (v) => setState(() => _query = v),
-                style: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.text),
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 13.5, color: c.text),
                 decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
@@ -472,7 +474,8 @@ class _ItemsTabState extends State<ItemsTab> {
                   filled: false,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   hintText: 'Search name, brand, serial…',
-                  hintStyle: TextStyle(fontFamily: fontBody, fontSize: 13.5, color: c.muted),
+                  hintStyle: TextStyle(
+                      fontFamily: fontBody, fontSize: 13.5, color: c.muted),
                 ),
               ),
             ),
@@ -718,7 +721,8 @@ class _ItemsTabState extends State<ItemsTab> {
           return y.compareTo(x);
         });
       case _Sort.az:
-        out.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        out.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       case _Sort.room:
         // Grouping by room properly — headings and all — is a bigger piece of
         // work. Sorting by it puts each room's things together, which answers
@@ -778,7 +782,8 @@ int _soonestFirst(Item a, Item b) {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.on, required this.onTap, this.tone});
+  const _Chip(
+      {required this.label, required this.on, required this.onTap, this.tone});
 
   final String label;
   final bool on;
@@ -939,7 +944,11 @@ class _BinLink extends StatelessWidget {
 
         final entries = [
           for (final i in binned)
-            BinEntry(id: i.id, kind: BinKind.item, name: i.name, deletedAt: i.deletedAt),
+            BinEntry(
+                id: i.id,
+                kind: BinKind.item,
+                name: i.name,
+                deletedAt: i.deletedAt),
         ];
 
         return Padding(
@@ -954,10 +963,10 @@ class _BinLink extends StatelessWidget {
                 showBin(context, repo);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Radii.md),
-                  
                 ),
                 child: Row(
                   children: [
@@ -977,7 +986,8 @@ class _BinLink extends StatelessWidget {
                       // most urgent one has. The only deadline that matters is
                       // the next one.
                       binSummary(entries),
-                      style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+                      style: TextStyle(
+                          fontFamily: fontBody, fontSize: 11.5, color: c.muted),
                     ),
                   ],
                 ),
@@ -1188,7 +1198,7 @@ class _ItemTile extends StatelessWidget {
             // The number is the reason to open the row, so it gets the type.
             // The unit sits under it rather than beside it — "142 days left" on
             // one line at 27px wraps on a phone.
-            TimeLeft(item: item),
+            TimeLeft.item(item, c),
           ],
         ),
       ),

@@ -26,5 +26,6 @@ library;
 /// Strings are trimmed, so the space bar is not an answer. Everything else is
 /// judged on being non-null — a chosen room, a picked date, a set of bytes.
 bool cardFilled(List<Object?> fields) {
-  return fields.every((f) => f is String ? f.trim().isNotEmpty : f != null && f != false);
+  return fields.every(
+      (f) => f is String ? f.trim().isNotEmpty : f != null && f != false);
 }

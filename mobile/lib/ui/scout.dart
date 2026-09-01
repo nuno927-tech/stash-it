@@ -65,7 +65,10 @@ enum ScoutPose {
 /// What each pose is for. The album, and the only written-down record of the
 /// cast — a pose that exists but is not listed is a pose everyone forgets.
 const Map<ScoutPose, (String name, String where)> scoutRoster = {
-  ScoutPose.acorn: ('On guard', 'The launch screen, and the invitation to install'),
+  ScoutPose.acorn: (
+    'On guard',
+    'The launch screen, and the invitation to install'
+  ),
   ScoutPose.waving: ('Hello', 'First run, and only first run'),
   ScoutPose.report: ('The field report', 'Beside the ring on the dashboard'),
   ScoutPose.receipt: ('Paperwork', 'The items list'),
@@ -75,7 +78,10 @@ const Map<ScoutPose, (String name, String where)> scoutRoster = {
   ScoutPose.calendar: ('Minding the month', 'The subscriptions tab'),
   ScoutPose.dancing: ('Very pleased', 'Not on a screen yet'),
   ScoutPose.settings: ('At the desk', 'Settings'),
-  ScoutPose.alert: ('Ears up', 'When something needs a minute, or needs confirming'),
+  ScoutPose.alert: (
+    'Ears up',
+    'When something needs a minute, or needs confirming'
+  ),
   ScoutPose.resting: ('Off duty', 'When nothing does'),
   ScoutPose.lounge: ('Feet up', 'The one place he is off duty'),
 };
@@ -224,7 +230,8 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
       fit: BoxFit.contain,
       // The renders are large; letting Flutter decode them at display size
       // keeps thirteen mascots from costing more memory than the database.
-      cacheHeight: (widget.height * MediaQuery.of(context).devicePixelRatio).round(),
+      cacheHeight:
+          (widget.height * MediaQuery.of(context).devicePixelRatio).round(),
     );
 
     return AnimatedBuilder(
@@ -232,12 +239,15 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
       builder: (context, _) {
         // 0 → 1 → 0 over the cycle, eased. The CSS is `ease-in-out` on a
         // 0/50/100 keyframe set, which is this.
-        double wave(AnimationController c) =>
-            Curves.easeInOut.transform((math.sin(c.value * 2 * math.pi - math.pi / 2) + 1) / 2);
+        double wave(AnimationController c) => Curves.easeInOut
+            .transform((math.sin(c.value * 2 * math.pi - math.pi / 2) + 1) / 2);
 
-        final lift = widget.motion.contains(ScoutMotion.float) ? -9.0 * wave(_float) : 0.0;
+        final lift = widget.motion.contains(ScoutMotion.float)
+            ? -9.0 * wave(_float)
+            : 0.0;
 
-        final breath = widget.motion.contains(ScoutMotion.breathe) ? wave(_breathe) : 0.0;
+        final breath =
+            widget.motion.contains(ScoutMotion.breathe) ? wave(_breathe) : 0.0;
         final sx = 1 + 0.014 * breath;
         final sy = 1 - 0.012 * breath;
 
@@ -278,7 +288,8 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
           which is what makes the float read as height rather than as sliding
           around. Drawn behind, and outside the transform, for the same reason.
         */
-        final rise = widget.motion.contains(ScoutMotion.float) ? wave(_float) : 0.0;
+        final rise =
+            widget.motion.contains(ScoutMotion.float) ? wave(_float) : 0.0;
 
         return Stack(
           alignment: Alignment.bottomCenter,
@@ -316,9 +327,18 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
         ((t - a) / (b - a)).clamp(0.0, 1.0) * v;
 
     if (t < 0.70) return (0, 0);
-    if (t < 0.76) return (at(0.70, 0.76, -3), at(0.70, 0.76, -1.5 * math.pi / 180));
-    if (t < 0.82) return (-3 + at(0.76, 0.82, 3), (-1.5 + at(0.76, 0.82, 2.5)) * math.pi / 180);
-    if (t < 0.88) return (at(0.82, 0.88, -1.5), (1 - at(0.82, 0.88, 1)) * math.pi / 180);
+    if (t < 0.76) {
+      return (at(0.70, 0.76, -3), at(0.70, 0.76, -1.5 * math.pi / 180));
+    }
+    if (t < 0.82) {
+      return (
+        -3 + at(0.76, 0.82, 3),
+        (-1.5 + at(0.76, 0.82, 2.5)) * math.pi / 180
+      );
+    }
+    if (t < 0.88) {
+      return (at(0.82, 0.88, -1.5), (1 - at(0.82, 0.88, 1)) * math.pi / 180);
+    }
     return (-1.5 + at(0.88, 1.0, 1.5), 0);
   }
 }
