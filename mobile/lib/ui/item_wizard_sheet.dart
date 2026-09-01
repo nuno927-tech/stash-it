@@ -119,6 +119,26 @@ class _WizardState extends State<_Wizard> {
     super.initState();
     unawaited(_loadRooms());
 
+    /*
+      ── One policy to start with ────────────────────────────────────────────
+
+      The long form seeds this and the wizard did not, which is why the
+      coverage screen arrived empty: `CoverageList` draws the policies it is
+      given, and it was given none — so the names, the units and the lengths
+      were all there in the control and there was simply nothing for them to
+      belong to.
+
+      A policy with no length is still blank as far as `realCoverages` is
+      concerned, so seeding one does not save anything nobody asked for.
+    */
+    if (_draft.coverages.isEmpty) {
+      _draft.coverages.add(CoverageDraft(
+        label: 'Warranty',
+        unit: CoverageUnit.months,
+        amountText: defaultTermText(CoverageUnit.months),
+      ));
+    }
+
     // Two weeks by default, as on the long form: the shortest useful notice.
     _draft.leadDays = itemLeadChoices.first.days;
 
@@ -186,13 +206,40 @@ class _WizardState extends State<_Wizard> {
       Never while the keyboard is up. A keyboard means somebody is still
       typing, and it is also what stops the name field advancing mid-word.
 
+      And arriving complete is not the same as becoming complete. The coverage
+      screen opens on a seeded policy that already has a name and a length, so
+      without the check in `_arrived` it would throw you straight past the one
+      question it exists to ask.
+
     The last two screens never advance: attachments can always take one more,
     and the warning window is the end.
   */
-  void _advance(_Step from, List<Object?> answers) {
+  /*
+    What "answered" means, per screen, in one place.
+
+    Read by `_advance` from the step's own build and by `_arrived` on the way
+    in. Two copies of this would let a screen advance on a rule the arrival
+    check disagreed with, which is the sort of thing that shows up as a wizard
+    that skips a question every third time.
+  */
+  List<Object?> _answersFor(_Step step) => switch (step) {
+        _Step.what => [_name.text, _photo, _draft.priceText],
+        _Step.room => [_draft.roomId],
+        _Step.bought => [_draft.purchaseDate],
+        _Step.cover => [
+            _cover?.label,
+            // Lifetime has no length, so on that unit it is not a question.
+            if (_cover?.unit != CoverageUnit.lifetime) _cover?.amountText,
+          ],
+        // Neither of these ever advances; see the note above.
+        _Step.papers => const [null],
+        _Step.warning => const [null],
+      };
+
+  void _advance(_Step from) {
     if (from != _at || _advanced.contains(from)) return;
     if (from == _Step.papers || _last) return;
-    if (!cardFilled(answers)) return;
+    if (!cardFilled(_answersFor(from))) return;
     if (MediaQuery.of(context).viewInsets.bottom > 0) return;
 
     _advanced.add(from);
@@ -402,7 +449,7 @@ class _WizardState extends State<_Wizard> {
                       _what(c),
                       _room(),
                       _bought(c),
-                      _coverage(c),
+                      _coverage(),
                       _papers(c),
                       _warning(c),
                     ],
@@ -445,6 +492,10 @@ class _WizardState extends State<_Wizard> {
     final to = _Step.values[i];
     setState(() => _at = to);
 
+    // Arriving complete is not becoming complete — see `_advance`. The
+    // coverage screen opens on a seeded policy and would otherwise be skipped.
+    if (cardFilled(_answersFor(to))) _advanced.add(to);
+
     if (to == _Step.what) {
       _nameFocus.requestFocus();
       return;
@@ -466,7 +517,7 @@ class _WizardState extends State<_Wizard> {
   Widget _what(StashColors c) {
     // Name, photograph and price. All three, because `cardFilled` takes the
     // whole screen — see `_advance`.
-    _advance(_Step.what, [_name.text, _photo, _draft.priceText]);
+    _advance(_Step.what);
 
     return _Ask(
       question: 'What is it?',
@@ -511,7 +562,7 @@ class _WizardState extends State<_Wizard> {
   }
 
   Widget _room() {
-    _advance(_Step.room, [_draft.roomId]);
+    _advance(_Step.room);
 
     final all = _rooms;
 
@@ -541,7 +592,7 @@ class _WizardState extends State<_Wizard> {
   }
 
   Widget _bought(StashColors c) {
-    _advance(_Step.bought, [_draft.purchaseDate]);
+    _advance(_Step.bought);
 
     final chosen = parseDate(_draft.purchaseDate);
     final today = startOfDay(DateTime.now());
@@ -595,14 +646,8 @@ class _WizardState extends State<_Wizard> {
   }
 
 
-  Widget _coverage(StashColors c) {
-    final cover = _cover;
-
-    _advance(_Step.cover, [
-      cover?.label,
-      // Lifetime has no length, so on that unit the length is not a question.
-      if (cover?.unit != CoverageUnit.lifetime) cover?.amountText,
-    ]);
+  Widget _coverage() {
+    _advance(_Step.cover);
 
     return _Ask(
       question: "What's the coverage and how long?",
@@ -621,11 +666,16 @@ class _WizardState extends State<_Wizard> {
         happened to the widget palette three versions ago and took a while to
         notice.
       */
-      answer: CoverageList(
-        coverages: _draft.coverages,
-        // The wizard's own auto-advance reads this list, so it has to hear
-        // about a change made inside a control that owns its own state.
-        onChanged: () => setState(() {}),
+      answer: SheetCard(
+        title: 'Warranty information',
+        children: [
+          CoverageList(
+            coverages: _draft.coverages,
+            // The wizard's own auto-advance reads this list, so it has to hear
+            // about a change made inside a control that owns its own state.
+            onChanged: () => setState(() {}),
+          ),
+        ],
       ),
     );
   }
@@ -686,8 +736,8 @@ class _WizardState extends State<_Wizard> {
     return _Ask(
       question: 'How much warning?',
       hint: 'Before the cover runs out.',
-      answer: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      answer: SheetCard(
+        title: 'How much warning',
         children: [
           SegRow<int?>(
             value: _draft.leadDays,
@@ -697,7 +747,7 @@ class _WizardState extends State<_Wizard> {
             lines: 1,
             onPick: (v) => setState(() => _draft.leadDays = v),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             'Turns the item amber on the dashboard, and sends a notification if '
             'you have them on.',
