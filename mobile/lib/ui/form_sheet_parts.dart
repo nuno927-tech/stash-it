@@ -524,56 +524,62 @@ class SegRow<T> extends StatelessWidget {
         color: c.field,
         borderRadius: BorderRadius.circular(Radii.pill),
       ),
-      child: Row(
-        /*
-          ── The lit one fills the bar ────────────────────────────────────────
+      /*
+        ── The lit one fills the bar, and why this needs IntrinsicHeight ──────
 
-          Every segment is the same WIDTH because of `Expanded`, and used to be
-          its own HEIGHT: a container sizes to its content, so a one-line label
-          made a short pill inside a bar whose height came from a two-line one
-          somewhere else in the row. The result was a lit pill floating with a
-          gap above and below it.
+        Every segment is the same WIDTH because of `Expanded`, and used to be
+        its own HEIGHT: a container sizes to its content, so a one-line label
+        made a short pill inside a bar whose height came from a two-line one
+        elsewhere in the row. The lit pill floated with a gap above and below.
 
-          `stretch` gives every segment the row's full height, and the
-          alignment below centres the words inside it — without that they would
-          sit at the top of the segment they now fill.
-        */
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (key, label) in options)
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  feedback(Cue.tap);
-                  onPick(key);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  alignment: Alignment.center,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
-                  decoration: BoxDecoration(
-                    color: key == value ? c.slate600 : Colors.transparent,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: lines,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 12.5,
-                      fontWeight:
-                          key == value ? FontWeight.w700 : FontWeight.w500,
-                      color: key == value ? c.text : c.muted,
+        `stretch` fixes that and cannot be used alone. A Row asked to stretch
+        its children must know its own height first, and inside a scroll view —
+        which is every screen this appears on — the height it is offered is
+        INFINITE. The row takes it, and the result is not an overflow stripe
+        but a blank page. Two of these went blank before I understood that.
+
+        `IntrinsicHeight` measures the tallest child and hands the row that,
+        which is exactly the height stretch needs.
+      */
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (key, label) in options)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    feedback(Cue.tap);
+                    onPick(key);
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    alignment: Alignment.center,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: key == value ? c.slate600 : Colors.transparent,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: lines,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 12.5,
+                        fontWeight:
+                            key == value ? FontWeight.w700 : FontWeight.w500,
+                        color: key == value ? c.text : c.muted,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
