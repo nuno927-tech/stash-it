@@ -27,7 +27,7 @@ ALLOWED = {
     'FrameLayout', 'LinearLayout', 'RelativeLayout', 'GridLayout',
     'AnalogClock', 'Button', 'Chronometer', 'ImageButton', 'ImageView',
     'ProgressBar', 'TextView', 'ViewFlipper', 'ListView', 'GridView',
-    'StackView', 'AdapterViewFlipper', 'ViewStub', 'Space',
+    'StackView', 'AdapterViewFlipper', 'ViewStub',
 }
 
 LAYOUTS = pathlib.Path('android/app/src/main/res/layout')

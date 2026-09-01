@@ -6,18 +6,38 @@
     what they look like. A colour crossing the channel as a hex string would be
     a second copy of the palette, and the one nobody remembers to change.
 
-    Matched to lib/ui/theme.dart. The night variant is the app's own dark
-    surface; this file is the light one, so a widget on a light home screen is
-    legible rather than a dark rectangle sitting on somebody's wallpaper.
+    ── Copied from lib/ui/theme.dart, value for value ─────────────────────────
+
+    These were eyeballed at first and drifted: the gold here was #B07D18 where
+    the app's is #9A6B0F, and the surface was flat white where the app's cards
+    are slate800. Close enough to look right alone and wrong beside the app,
+    which is the worst of both.
+
+    So each line below is a literal from theme.dart, named for the field it
+    came from. This file is the LIGHT one — the launcher picks values-night
+    when the phone is dark — so these are the second value of each pair there.
+
+        widget_surface   slate800    a widget is a card on a wallpaper
+        widget_text      text
+        widget_muted     muted
+        widget_line      line
+        widget_gold      gold        the "it" in the wordmark
+        widget_moss      moss        tone: fine
+        widget_honey     honey       tone: soon
+        widget_ember     ember       tone: late
+
+    There is no way to make the compiler check that. What there is: one comment
+    saying where they came from, so the next person to change theme.dart knows
+    there is a second copy and where it lives.
 -->
 <resources>
     <color name="widget_surface">#FFFFFFFF</color>
-    <color name="widget_text">#FF11161C</color>
-    <color name="widget_muted">#FF6B7683</color>
-    <color name="widget_line">#FFE2E6EA</color>
+    <color name="widget_text">#FF22252A</color>
+    <color name="widget_muted">#FF6B7079</color>
+    <color name="widget_line">#FFD5D1C6</color>
 
-    <color name="widget_gold">#FFB07D18</color>
-    <color name="widget_moss">#FF3F7A48</color>
-    <color name="widget_honey">#FFB07D18</color>
-    <color name="widget_ember">#FFB4442E</color>
+    <color name="widget_gold">#FF9A6B0F</color>
+    <color name="widget_moss">#FF2F7D4F</color>
+    <color name="widget_honey">#FF8A6A08</color>
+    <color name="widget_ember">#FFB83C28</color>
 </resources>

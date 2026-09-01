@@ -39,18 +39,58 @@
     android:background="@drawable/widget_background"
     android:padding="10dp">
 
-    <TextView
-        android:id="@+id/quick_add_title"
+    <!--
+        The masthead: the wordmark, and Scout in the corner.
+
+        Two TextViews rather than one with a coloured span, because the split is
+        the whole point — "Stash" in the text colour, "it" in gold, exactly as
+        lib/ui/parts.dart draws it. A span would put the same fact in Kotlin,
+        where the app cannot see it.
+
+        The gold half carries the weight, so it eats the empty middle and pushes
+        Scout to the right edge without a spacer view. (Space is not on the
+        RemoteViews allowlist; see tool/check_widget_layouts.py.)
+    -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:paddingStart="6dp"
-        android:paddingEnd="6dp"
-        android:paddingBottom="8dp"
-        android:text="@string/widget_quick_add_title"
-        android:textColor="@color/widget_muted"
-        android:textSize="11sp"
-        android:maxLines="1"
-        android:ellipsize="end" />
+        android:paddingEnd="2dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/quick_add_stash"
+            style="@style/WidgetWordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_wordmark_stash"
+            android:textColor="@color/widget_text" />
+
+        <TextView
+            android:id="@+id/quick_add_it"
+            style="@style/WidgetWordmark"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/widget_wordmark_it"
+            android:textColor="@color/widget_gold" />
+
+        <!--
+            Scout, sized in dp from a nodpi source so he is the same size on
+            every screen. 32x34 keeps his 300x320 proportions; at this size he
+            reads as a mark rather than a picture, which is what a corner wants.
+        -->
+        <ImageView
+            android:id="@+id/quick_add_scout"
+            android:layout_width="32dp"
+            android:layout_height="34dp"
+            android:src="@drawable/widget_scout"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/widget_scout" />
+    </LinearLayout>
 
     <!--
         Weighted rather than fixed, so the same three rows fill a 4x1 and a 4x2
