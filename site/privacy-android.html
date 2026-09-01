@@ -384,6 +384,13 @@
           purchase, not us, and it is the only reason the app can reach a network at all. We
           are told whether you bought it and nothing else &mdash; no name, no card, no address.
         </li>
+        <li>
+          <strong>Home screen widgets are the exception to the encryption.</strong> A widget is
+          drawn by your launcher, not by this app, so what it shows has to be copied into
+          ordinary phone storage where the launcher can reach it &mdash; outside the encrypted
+          database, and on your home screen where anyone holding the phone can read it. That
+          is what a widget is. Only add one if you are happy with that, and remove it to stop.
+        </li>
       </ul>
 
       <h2>What is stored, and where</h2>
@@ -481,6 +488,26 @@
         reason: no part of this app opens a connection, and there is no server of ours for
         it to open one to. Tapping a link &mdash; this policy, an email to the developer
         &mdash; hands off to your browser or mail app, which is a different app reaching out.
+      </p>
+
+      <h2>Home screen widgets</h2>
+      <p>
+        Android draws widgets from your launcher's own process. It cannot open this app's
+        database and it cannot ask the phone for the key, so a widget that shows anything at
+        all needs a copy of that something kept where the launcher can read it: ordinary app
+        storage, unencrypted.
+      </p>
+      <p>
+        What gets copied is only what the widget you chose displays &mdash; the names and dates
+        on its face, and nothing else. No prices, no serial numbers, no photographs, no notes.
+        Remove the widget and the copy is removed with it.
+      </p>
+      <p>
+        There is a second thing worth saying plainly. Notifications from this app redact
+        themselves on a locked phone. <strong>A widget cannot.</strong> Android offers no
+        equivalent, so whatever it shows is simply visible, to you and to anyone who picks up
+        your phone. If you track something you would not want read over your shoulder, use
+        the widget that shows counts rather than names, or do not add one.
       </p>
 
       <h2>The biometric lock</h2>
