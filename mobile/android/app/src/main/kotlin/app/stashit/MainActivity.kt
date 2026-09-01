@@ -46,12 +46,24 @@ class MainActivity : FlutterFragmentActivity() {
     /** Set on launch or on a new intent; taken exactly once by Dart. */
     private var pending: String? = null
 
+    /*
+       ── And the same again for the Quick add widget ──────────────────────────
+
+       A widget row hands over a word — "item", "paper", "subscription" — rather
+       than a file. It rides the same channel and the same take-once rule, for
+       the same reason: Dart asks on start and on resume because it cannot know
+       which of those the tap arrived on, and a value left behind would reopen
+       the add sheet every time somebody came back to the app.
+    */
+    private var pendingAdd: String? = null
+
     private var messenger: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         pending = copyOf(intent)
+        pendingAdd = intent?.getStringExtra(QuickAddWidget.EXTRA_ADD)
 
         messenger = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channel).apply {
             setMethodCallHandler { call, result ->
@@ -70,6 +82,11 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(pending)
                         pending = null
                     }
+
+                    "takeAdd" -> {
+                        result.success(pendingAdd)
+                        pendingAdd = null
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -86,6 +103,13 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+
+        val add = intent.getStringExtra(QuickAddWidget.EXTRA_ADD)
+        if (add != null) {
+            pendingAdd = add
+            messenger?.invokeMethod("add", add)
+            return
+        }
 
         val path = copyOf(intent) ?: return
         pending = path

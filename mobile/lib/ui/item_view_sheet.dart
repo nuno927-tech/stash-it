@@ -35,6 +35,7 @@ import '../logic/card.dart';
 import '../logic/dates.dart';
 import '../logic/format.dart';
 import '../logic/manuals.dart';
+import '../logic/prefs.dart' show leadLabel;
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
@@ -267,6 +268,22 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
         ),
       if ((_item.retailer ?? '').isNotEmpty) ('From', _item.retailer!),
       if ((_item.serial ?? '').isNotEmpty) ('Serial', _item.serial!),
+
+      /*
+        ── The notice window, said out loud ─────────────────────────────────
+
+        Two items can show the same countdown and wear different colours,
+        because how much warning an item wants is the item's own choice — a
+        roof and a kettle do not deserve the same notice. That is deliberate,
+        and it was invisible: the list showed "27 days left" on both and lit
+        only one, with nothing anywhere explaining the difference.
+
+        Shown for every item rather than only the interesting ones, because a
+        cell that appears when something is unusual is a cell nobody knows to
+        look for.
+      */
+      if (coveragesOf(_item).isNotEmpty)
+        ('Warn me', leadLabel(itemLeadDays(_item))),
     ];
 
     final notes = (_item.notes ?? '').trim();

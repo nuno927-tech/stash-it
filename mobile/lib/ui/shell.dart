@@ -25,8 +25,11 @@ import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
 import 'add_button.dart';
 import 'card_arrival_screen.dart';
+import 'item_form_sheet.dart';
 import 'item_view_sheet.dart';
+import 'paper_form_sheet.dart';
 import 'paper_view_sheet.dart';
+import 'sub_form_sheet.dart';
 import 'sub_view_sheet.dart';
 import 'feedback.dart';
 import 'home_tab.dart';
@@ -201,7 +204,10 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       All three funnel into `_openCard`, which is guarded — see `_reading`.
     */
     WidgetsBinding.instance.addObserver(this);
-    onCardArrived((path) => unawaited(_openCard(path)));
+    onWidgetOrCard(
+      card: (path) => unawaited(_openCard(path)),
+      add: (what) => unawaited(_openAdd(what)),
+    );
     _tourAt =
         Timer(splashTotal + const Duration(milliseconds: 240), _maybeTour);
 
@@ -224,6 +230,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleLink();
       unawaited(_takeCard());
+      unawaited(_takeAdd());
     });
   }
 
@@ -271,6 +278,46 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     }
   }
 
+  /*
+    ── A row on the Quick add widget ─────────────────────────────────────────
+
+    Guarded like `_openCard`, and for the same reason: launch and resume can
+    both report the same tap, and two add sheets stacked on each other is a
+    thing somebody has to dismiss twice.
+
+    It moves to the matching tab before opening the sheet, so closing the form
+    leaves them where the new thing landed rather than on whatever tab was
+    open last.
+  */
+  bool _adding = false;
+
+  Future<void> _takeAdd() async {
+    final what = await takeWidgetAdd();
+    if (what == null || !mounted) return;
+    await _openAdd(what);
+  }
+
+  Future<void> _openAdd(String what) async {
+    if (_adding || !mounted) return;
+    _adding = true;
+
+    try {
+      switch (what) {
+        case 'item':
+          _goTo(Tab.items);
+          if (mounted) await showItemForm(context, repo: widget.repo);
+        case 'paper':
+          _goTo(Tab.papers);
+          if (mounted) await showPaperForm(context, repo: widget.repo);
+        case 'subscription':
+          _goTo(Tab.subs);
+          if (mounted) await showSubForm(context, repo: widget.repo);
+      }
+    } finally {
+      _adding = false;
+    }
+  }
+
   void _say(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -284,7 +331,10 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   */
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_takeCard());
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_takeCard());
+      unawaited(_takeAdd());
+    }
   }
 
   @override

@@ -65,7 +65,12 @@ const List<(String, String)> _policy = [
         'record leaves this phone unless you share it deliberately.\n\n'
         '\u2022 The one exception is buying the unlock, which Google Play '
         'handles rather than us \u2014 and it is the only reason the app can '
-        'reach the network at all.',
+        'reach the network at all.\n\n'
+        '\u2022 Home screen widgets are the one exception to \u201Cit stays in the '
+            'encrypted database\u201D. A widget is drawn by your launcher, not by '
+            'this app, so what it shows is copied into ordinary phone storage \u2014 '
+            'and it is on your home screen where anyone can read it. Only add '
+            'one if you are happy with that.',
   ),
   (
     'What is stored, and where',

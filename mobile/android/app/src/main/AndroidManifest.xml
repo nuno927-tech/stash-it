@@ -140,6 +140,29 @@
             a reboot, which is what makes RECEIVE_BOOT_COMPLETED above mean
             anything.
         -->
+        <!--
+            ── Quick add ──────────────────────────────────────────────────
+
+            Exported, because the launcher is a different app and has to be
+            able to reach it. That is what a widget provider is; there is no
+            private variety.
+
+            It carries no data of its own — every label is a fixed string, and
+            the only thing crossing the boundary is which of three add sheets
+            to open. See QuickAddWidget.kt.
+        -->
+        <receiver
+            android:name=".QuickAddWidget"
+            android:exported="true"
+            android:label="@string/widget_quick_add_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_add_info" />
+        </receiver>
+
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />

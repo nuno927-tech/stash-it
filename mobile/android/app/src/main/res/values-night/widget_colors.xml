@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's own surfaces. See values/widget_colors.xml for why these live
+     here rather than travelling with the payload. -->
+<resources>
+    <color name="widget_surface">#FF161B22</color>
+    <color name="widget_text">#FFE8EDF2</color>
+    <color name="widget_muted">#FF8B95A1</color>
+    <color name="widget_line">#FF2A3038</color>
+
+    <color name="widget_gold">#FFE8A33D</color>
+    <color name="widget_moss">#FF6FBF73</color>
+    <color name="widget_honey">#FFE8A33D</color>
+    <color name="widget_ember">#FFE2664B</color>
+</resources>

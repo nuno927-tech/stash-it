@@ -17,7 +17,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../db/repository.dart';
+import '../logic/nudges.dart' show endingSoonDays;
 import '../logic/prefs.dart';
+import '../logic/warranty.dart' show setEndingSoonDays;
 import '../models/settings.dart';
 import 'feedback.dart';
 
@@ -72,6 +74,25 @@ class PrefsController extends ChangeNotifier {
 
     configureFeedback(sounds: _sounds, haptics: _haptics);
     _applyOrientation();
+
+    /*
+      ── The fallback notice, pushed where the rest of the app reads it ───────
+
+      `warrantyState` asks `itemLeadDays`, which falls back to a library-level
+      value in warranty.dart when an item has not chosen its own. `setEndingSoonDays`
+      is what sets that value — and until now nothing in the app ever called it.
+      Only the tests did, which is why it looked wired.
+
+      The consequence was quiet rather than dramatic, because the hard-coded
+      default happens to equal the stored one. But a backup carrying a different
+      `reminderOffsetsDays` would have been read, decoded, saved and ignored.
+
+      Set here because this is where settings are already turned into global
+      state — the same three lines that configure sound and lock the
+      orientation.
+    */
+    setEndingSoonDays(endingSoonDays(settings));
+
     notifyListeners();
   }
 

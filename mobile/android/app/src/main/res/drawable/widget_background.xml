@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One rounded surface for every widget.
+
+    `?android:attr/dialogCornerRadius` on API 31+ is the launcher's own radius,
+    which is what makes a widget sit on a home screen rather than on top of one.
+    The fixed fallback below is close to the app's own Radii.lg for older
+    Androids, which have no such attribute to ask.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="18dp" />
+    <solid android:color="@color/widget_surface" />
+</shape>

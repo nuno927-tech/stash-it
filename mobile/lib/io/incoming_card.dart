@@ -43,16 +43,6 @@ Future<String?> takeIncomingCard() async {
   }
 }
 
-/// Called when a card is tapped while the app is already open.
-void onCardArrived(void Function(String path) handle) {
-  _channel.setMethodCallHandler((call) async {
-    if (call.method == 'arrived' && call.arguments is String) {
-      handle(call.arguments as String);
-    }
-    return null;
-  });
-}
-
 /// Reads a card from a path the channel gave us.
 ///
 /// Throws `BundleError` with a sentence written for a person — including the
@@ -60,4 +50,45 @@ void onCardArrived(void Function(String path) handle) {
 Future<ParsedBundle> readCardAt(String path) async {
   final bytes = await File(path).readAsBytes();
   return parseCardBytes(bytes);
+}
+
+/* ------------------------------------------------- the Quick add widget */
+
+/// Which add sheet a widget row asked for, or null. Clears it as it reads.
+///
+/// The same take-once rule as `takeIncomingCard`, and for the same reason: the
+/// shell asks on start and on resume because it cannot know which the tap
+/// arrived on, and a value left behind would reopen the sheet every time
+/// somebody came back to the app.
+Future<String?> takeWidgetAdd() async {
+  try {
+    return await _channel.invokeMethod<String>('takeAdd');
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
+}
+
+/// Called when a widget row is tapped while the app is already open.
+///
+/// Shares the channel's single handler with `onCardArrived` — a second
+/// `setMethodCallHandler` would silently replace the first, which is the sort
+/// of thing that works until the day both are wired.
+void onWidgetOrCard({
+  required void Function(String path) card,
+  required void Function(String what) add,
+}) {
+  _channel.setMethodCallHandler((call) async {
+    final argument = call.arguments;
+    if (argument is! String) return null;
+
+    switch (call.method) {
+      case 'arrived':
+        card(argument);
+      case 'add':
+        add(argument);
+    }
+    return null;
+  });
 }

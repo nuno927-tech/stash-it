@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The widget palette, kept beside the launcher rather than sent from Dart.
+
+    The payload carries tone NAMES — "fine", "soon", "late_" — and these decide
+    what they look like. A colour crossing the channel as a hex string would be
+    a second copy of the palette, and the one nobody remembers to change.
+
+    Matched to lib/ui/theme.dart. The night variant is the app's own dark
+    surface; this file is the light one, so a widget on a light home screen is
+    legible rather than a dark rectangle sitting on somebody's wallpaper.
+-->
+<resources>
+    <color name="widget_surface">#FFFFFFFF</color>
+    <color name="widget_text">#FF11161C</color>
+    <color name="widget_muted">#FF6B7683</color>
+    <color name="widget_line">#FFE2E6EA</color>
+
+    <color name="widget_gold">#FFB07D18</color>
+    <color name="widget_moss">#FF3F7A48</color>
+    <color name="widget_honey">#FFB07D18</color>
+    <color name="widget_ember">#FFB4442E</color>
+</resources>

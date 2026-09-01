@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sizes, and what the picker shows.
+
+    minWidth/minHeight are the old contract: dp, and the launcher rounds up to
+    whole cells. targetCellWidth/Height are the Android 12+ one and say the same
+    thing in the units launchers actually use — both are present because the
+    minSdk here is well below 31 and the old attributes are what those phones
+    read.
+
+    Resizable in both directions with a floor of one row: three rows in a 4x1 is
+    tight but legible, and somebody who wants it small should be allowed to make
+    it small rather than being told no by a minResizeHeight.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="320dp"
+    android:maxResizeHeight="220dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_quick_add"
+    android:previewLayout="@layout/widget_quick_add"
+    android:description="@string/widget_quick_add_description"
+    android:updatePeriodMillis="0" />

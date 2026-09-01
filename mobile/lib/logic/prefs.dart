@@ -164,3 +164,16 @@ const List<String> currencies = [
   'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', //
   'INR', 'BRL', 'MXN', 'ZAR', 'CHF', 'SEK',
 ];
+
+/// How an item's notice window reads on screen.
+///
+/// The number matters less than the phrase: "27 days left" beside "2 weeks"
+/// explains itself, where "27" beside "14" invites arithmetic. Falls back to
+/// the plain count for a value that is not one of the offered choices, which a
+/// restored backup or a future list can produce.
+String leadLabel(int days) {
+  for (final choice in itemLeadChoices) {
+    if (choice.days == days) return choice.label;
+  }
+  return '$days days';
+}

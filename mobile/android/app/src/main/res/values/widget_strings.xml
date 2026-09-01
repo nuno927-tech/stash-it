@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- What the launcher's widget picker shows. Named for what it does on the
+         home screen rather than for the app, because the picker already groups
+         by app and repeating the name wastes the only line there is. -->
+    <string name="widget_quick_add_label">Stash something</string>
+    <string name="widget_quick_add_description">Three ways in: an item, a document, a subscription.</string>
+    <string name="widget_quick_add_title">STASH IT</string>
+    <string name="widget_add_item">An item</string>
+    <string name="widget_add_paper">A document</string>
+    <string name="widget_add_sub">A subscription</string>
+
+    <string name="widget_coming_up_label">Coming up</string>
+    <string name="widget_coming_up_description">What runs out next. Resize for more rows.</string>
+
+    <string name="widget_ring_label">Your cover</string>
+    <string name="widget_ring_description">In date, needing action, lapsed.</string>
+</resources>
