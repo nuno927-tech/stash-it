@@ -29,11 +29,13 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../db/repository.dart';
 import '../logic/attachments.dart';
 import '../logic/auto_advance.dart';
 import '../logic/dates.dart';
+import '../logic/format.dart';
 import '../logic/item_form.dart';
 import '../logic/prefs.dart';
 import '../models/types.dart';
@@ -409,8 +411,21 @@ class _WizardState extends State<_Wizard> {
     final insets = MediaQuery.viewInsetsOf(context).bottom;
     final screen = MediaQuery.sizeOf(context).height;
 
+    /*
+      A little over two thirds.
+
+      Two thirds is the app's sheet and it is what every other step wants. The
+      first one asks three questions — a name, a picture and a price — and at
+      0.66 the last of them sat under the fold, so the screen that is supposed
+      to be the quickest opened asking to be scrolled.
+
+      0.78 fits all three without scrolling on a normal phone and is still
+      visibly a sheet with the list behind it. One height for every step, not a
+      height per step: a sheet that changes size as you swipe is worse than a
+      sheet that is slightly taller than it needs to be on five screens.
+    */
     return SizedBox(
-      height: screen * 0.66,
+      height: screen * 0.78,
       child: SheetEntrance(
         child: SafeArea(
           top: false,
@@ -524,49 +539,43 @@ class _WizardState extends State<_Wizard> {
       hint: 'A name is all this needs. The rest helps later.',
       footer: _Quiet(label: 'Add the long way', onTap: _theLongWay),
       /*
-        ── The picture stands beside both fields ───────────────────────────────
+        ── The picture stands beside both fields ─────────────────────────────
 
         Name on top, cost under it, and the photograph to the left of the pair
-        rather than beside one of them. A square that lines up with only the
-        cost box reads as belonging to the cost.
+        rather than beside one of them. A square lined up with only the cost box
+        reads as belonging to the cost.
 
-        `IntrinsicHeight` is what lets it match: the Row has to measure the
-        column before it can stretch the square to it. It costs an extra layout
-        pass over two children, which is nothing here and would be worth
-        watching in a list.
+        Centred against the pair rather than stretched to it: stretching made it
+        a tall rectangle, which reads as a panel. It is a picture, so it stays a
+        square.
       */
-      answer: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _PhotoSquare(photo: _photo, onTap: _pickPhoto),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _NameField(
-                    controller: _name,
-                    focus: _nameFocus,
-                    onChanged: (_) => setState(() {}),
-                    onDone: _named ? _next : null,
-                  ),
-                  const SizedBox(height: 18),
-                  const FieldLabel('What it cost'),
-                  // No WhiteField around it: `MoneyBox` draws its own, and one
-                  // inside another in the same flat colour reads as no bubble
-                  // at all — which is exactly how it looked.
-                  MoneyBox(
-                    initial: _draft.priceText,
-                    currency: _draft.currency,
-                    onChanged: (v) => setState(() => _draft.priceText = v),
-                  ),
-                ],
-              ),
+      answer: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _PhotoSquare(photo: _photo, onTap: _pickPhoto),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _NameField(
+                  controller: _name,
+                  focus: _nameFocus,
+                  onChanged: (_) => setState(() {}),
+                  onDone: _named ? _next : null,
+                ),
+                const SizedBox(height: 20),
+                const FieldLabel('What it cost'),
+                _CostField(
+                  initial: _draft.priceText,
+                  currency: _draft.currency,
+                  onChanged: (v) => setState(() => _draft.priceText = v),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -924,6 +933,93 @@ class _NameField extends StatelessWidget {
   }
 }
 
+/// What it cost, on a rule rather than in a bubble.
+///
+/// ── Why not `MoneyBox` ─────────────────────────────────────────────────────
+/// `MoneyBox` draws itself inside a `WhiteField`, which is `StashColors.field`
+/// — and in the light theme `field` is #F4F2ED, which is EXACTLY `slate900`,
+/// the sheet's own background. On the long form that is invisible by design,
+/// because every field there sits inside a card. Here there is no card, so the
+/// bubble was genuinely there and genuinely could not be seen.
+///
+/// A rule rather than a fill fixes it in both themes at once, and matches the
+/// name field directly above — which is the other reason: two boxes of
+/// different kinds, one over the other, on a screen with two questions on it.
+///
+/// The currency symbol sits inside the field as a prefix, the way `MoneyBox`
+/// puts it, and the same formatter runs as you type. Correcting a field after
+/// the fact makes people wonder whether they typed it wrong.
+class _CostField extends StatelessWidget {
+  const _CostField({
+    required this.initial,
+    required this.currency,
+    required this.onChanged,
+  });
+
+  final String initial;
+  final String currency;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    final style = TextStyle(fontFamily: fontBody, fontSize: 18, color: c.text);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10, right: 6),
+          child: Text(
+            currencySymbol(currency),
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 18,
+              color: c.muted,
+            ),
+          ),
+        ),
+        Expanded(
+          child: TextFormField(
+            initialValue: initial,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: style,
+            cursorColor: c.gold,
+            inputFormatters: [
+              TextInputFormatter.withFunction((old, now) {
+                final formatted = formatMoneyInput(now.text, currency);
+                return TextEditingValue(
+                  text: formatted,
+                  selection: TextSelection.collapsed(offset: formatted.length),
+                );
+              }),
+            ],
+            decoration: InputDecoration(
+              hintText: '0.00',
+              hintStyle: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 18,
+                color: c.slate600,
+              ),
+              isDense: true,
+              contentPadding: const EdgeInsets.only(bottom: 10),
+              border:
+                  UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
+              enabledBorder:
+                  UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: c.gold, width: 2),
+              ),
+            ),
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// The photograph, or the invitation to take one.
 class _PhotoSquare extends StatelessWidget {
   const _PhotoSquare({required this.photo, required this.onTap});
@@ -931,10 +1027,12 @@ class _PhotoSquare extends StatelessWidget {
   final Uint8List? photo;
   final VoidCallback onTap;
 
-  /// Wide enough to be a picture rather than a button, narrow enough to leave
-  /// the name the room it needs. The HEIGHT is not set here — the row stretches
-  /// it to whatever the two fields beside it come to.
-  static const double _width = 92;
+  /// Square, and it has to stay square.
+  ///
+  /// It was briefly sized by the row instead — width fixed, height stretched to
+  /// the two fields beside it — and came out a tall rectangle, which reads as a
+  /// panel rather than as a picture.
+  static const double _side = 96;
 
   @override
   Widget build(BuildContext context) {
@@ -943,7 +1041,8 @@ class _PhotoSquare extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: _width,
+        width: _side,
+        height: _side,
         decoration: BoxDecoration(
           color: c.field,
           borderRadius: BorderRadius.circular(Radii.sm),
