@@ -1,26 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Square by default, and it should stay roughly square.
+    Four cells by three, and it should keep roughly that shape.
 
-    The face is a circle. Letting it be dragged to 4x1 would show a small ring
-    marooned in a wide box — fitCenter keeps the circle round rather than
-    stretching it, so the widget degrades to "mostly empty" instead of "wrong",
-    but empty is still not worth offering. The resize floor and ceiling below
-    keep it within a cell of square in both directions.
+    The face is the dashboard's card — wordmark, dial, Scout beside it, four
+    figures underneath — and that composition does not survive being dragged
+    into a square: fitCenter keeps the picture undistorted, so a square cell
+    would show the same card with a band of nothing above and below it.
+
+    The resize range below is generous in width and tight in height, which is
+    the direction that degrades gracefully. Wider just means more margin.
 
     No previewLayout: the layout is an empty ImageView until the app has run
     once, so a live preview would show the picker a blank rounded rectangle.
     previewImage points at the app icon, which at least says whose widget it is.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
-    android:minHeight="110dp"
-    android:minResizeWidth="110dp"
-    android:minResizeHeight="110dp"
-    android:maxResizeWidth="250dp"
-    android:maxResizeHeight="250dp"
-    android:targetCellWidth="2"
-    android:targetCellHeight="2"
+    android:minWidth="250dp"
+    android:minHeight="160dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="130dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="260dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_ring"

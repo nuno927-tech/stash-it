@@ -86,7 +86,7 @@ class RingWidget : HomeWidgetProvider() {
             Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         val path = data.getString(if (night) KEY_DARK else KEY_LIGHT, null)
-        val face = path?.let { faceFor(it, sideOf(context, manager, id)) }
+        val face = path?.let { faceFor(it, widthOf(context, manager, id)) }
 
         if (face != null) {
             views.setImageViewBitmap(R.id.ring_image, face)
@@ -107,30 +107,44 @@ class RingWidget : HomeWidgetProvider() {
     }
 
     /**
-     * Decodes the rendered face and scales it to the size it will actually be
-     * shown at.
+     * Decodes the rendered face and scales it down to something safe to send.
      *
-     * Not an optimisation. `setImageViewBitmap` sends the bitmap to the
-     * launcher through Binder, and a Binder transaction is capped at about a
-     * megabyte for the whole process — a 480px square at four bytes a pixel is
-     * 920 KB of that on its own, which is close enough to the ceiling that a
-     * second widget updating at the same moment can push it over. The symptom
-     * is not an exception here; it is the launcher quietly showing nothing.
+     * ── The megabyte ───────────────────────────────────────────────────────
+     *
+     * `setImageViewBitmap` hands the bitmap to the launcher across Binder, and
+     * a Binder transaction has a budget of roughly one megabyte for the whole
+     * process. A bitmap costs four bytes a pixel with no compression at all —
+     * the PNG on disk is 60 KB and the same picture in this call is not.
+     *
+     * The face is rendered at 900x600 so it is sharp on any phone. Sent as-is
+     * that is 2.1 MB, which does not throw here: it fails inside the launcher,
+     * which draws nothing and logs a line nobody sees. So it is capped, and
+     * the cap is deliberately below the ceiling rather than at it, because two
+     * widgets updating in the same moment share the same budget.
+     *
+     * 480 across is about half the pixels a large cell can show on a dense
+     * screen. On a widget, at arm's length, that is a fair trade for a picture
+     * that reliably appears.
      */
-    private fun faceFor(path: String, side: Int): Bitmap? {
-        val file = File(path)
-        if (!file.exists()) return null
+    private fun faceFor(path: String, want: Int): Bitmap? {
+        if (!File(path).exists()) return null
 
         val full = BitmapFactory.decodeFile(path) ?: return null
-        if (side <= 0 || side >= full.width) return full
 
-        val scaled = Bitmap.createScaledBitmap(full, side, side, true)
+        val width = minOf(if (want > 0) want else MAX_WIDTH, MAX_WIDTH)
+        if (width >= full.width) return full
+
+        // Height follows width. Scaling the two independently would squash the
+        // ring into an ellipse, which is the one thing a dial must not do.
+        val height = (full.height.toLong() * width / full.width).toInt()
+
+        val scaled = Bitmap.createScaledBitmap(full, width, height, true)
         if (scaled != full) full.recycle()
         return scaled
     }
 
     /** The widget's current width in pixels, as the launcher reports it. */
-    private fun sideOf(context: Context, manager: AppWidgetManager, id: Int): Int {
+    private fun widthOf(context: Context, manager: AppWidgetManager, id: Int): Int {
         val dp = manager.getAppWidgetOptions(id)
             .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
 
@@ -165,5 +179,8 @@ class RingWidget : HomeWidgetProvider() {
 
         /** Distinct from the Quick add rows, which use their own word's hash. */
         const val REQUEST_OPEN = 1
+
+        /** The widest bitmap worth pushing through Binder. See `faceFor`. */
+        const val MAX_WIDTH = 480
     }
 }

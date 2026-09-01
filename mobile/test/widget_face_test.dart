@@ -91,10 +91,41 @@ void main() {
     });
   });
 
-  test('the face is square, because the widget cell is', () {
-    // A launcher scales the picture into whatever cell it is given, and
-    // fitCenter keeps a circle round only if the source is not already
-    // stretched.
-    expect(ringFaceSize.width, ringFaceSize.height);
+  group('the whole card is on it', () {
+    testWidgets('wordmark, dial and all four figures', (tester) async {
+      /*
+        The widget is meant to BE the dashboard's card, not a summary of it.
+        Somebody who taps it arrives at a screen that looks like what they
+        tapped, and a widget that showed three of the four counts would make
+        the fourth look like something the app had just invented.
+      */
+      await tester.pumpWidget(
+        bare(RingFace(
+          payload: payload(inDate: 8, needsAction: 2, lapsed: 1, percent: 73),
+          dark: true,
+        )),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('Stash'), findsOneWidget);
+
+      for (final label in ['in date', 'action needed', 'lapsed', 'no date']) {
+        expect(find.text(label), findsOneWidget, reason: 'missing "$label"');
+      }
+    });
+
+    testWidgets('it draws without Scout rather than failing', (tester) async {
+      // The mascot is decoded before the render and handed in. If that ever
+      // fails — a renamed asset, a decode that throws — the widget should
+      // still be a widget.
+      await tester.pumpWidget(bare(RingFace(payload: payload(), dark: true)));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  test('the face is wider than it is tall, because the card is', () {
+    // Wordmark, dial, Scout beside it and four figures underneath does not fit
+    // in a square, and the info XML claims four cells by three to match.
+    expect(ringFaceSize.width, greaterThan(ringFaceSize.height));
   });
 }

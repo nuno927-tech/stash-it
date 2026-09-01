@@ -33,6 +33,8 @@
 /// worth it for a number that is one tap from being right.
 library;
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
@@ -71,7 +73,7 @@ Future<void> mirrorWidgets(Repository repo) async {
       subscriptions: await repo.activeSubscriptions(),
     );
 
-    await _renderRing(payload);
+    await _renderRing(payload, await _scout());
 
     /*
       Said in words as well as drawn.
@@ -98,7 +100,43 @@ Future<void> mirrorWidgets(Repository repo) async {
   }
 }
 
-Future<void> _renderRing(WidgetPayload payload) async {
+/*
+   ── Scout, decoded before anybody asks for him ───────────────────────────────
+
+   `Image.asset` resolves asynchronously: it starts loading, the widget builds
+   without it, and the mascot appears a frame later. On a screen that is
+   invisible. Here it is fatal, because the render captures the FIRST frame —
+   the one with a hole where he goes — and the result is a widget that looks
+   finished and is missing its subject, with no error anywhere.
+
+   So he is decoded to a `ui.Image` first and handed to the face already drawn.
+
+   Cached for the life of the process because he never changes and decoding a
+   300px WebP on every save is work for nothing. Held as the decoded image
+   rather than the bytes: the bytes are the cheap part.
+*/
+ui.Image? _scoutImage;
+
+Future<ui.Image?> _scout() async {
+  if (_scoutImage != null) return _scoutImage;
+
+  try {
+    final data = await rootBundle.load(scoutWidgetAsset);
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      // Twice the height he is drawn at, so he is crisp at 3x without carrying
+      // a 300px original into every render.
+      targetHeight: 208,
+    );
+    final frame = await codec.getNextFrame();
+    return _scoutImage = frame.image;
+  } catch (_) {
+    // A face without a mascot is a worse widget, not a broken one.
+    return null;
+  }
+}
+
+Future<void> _renderRing(WidgetPayload payload, ui.Image? scout) async {
   for (final (key, dark) in [(ringDarkKey, true), (ringLightKey, false)]) {
     await HomeWidget.renderFlutterWidget(
       /*
@@ -117,7 +155,7 @@ Future<void> _renderRing(WidgetPayload payload) async {
         data: const MediaQueryData(textScaler: TextScaler.noScaling),
         child: Directionality(
           textDirection: TextDirection.ltr,
-          child: RingFace(payload: payload, dark: dark),
+          child: RingFace(payload: payload, dark: dark, scout: scout),
         ),
       ),
       key: key,

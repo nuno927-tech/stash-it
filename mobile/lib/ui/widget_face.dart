@@ -16,8 +16,18 @@
 /// on the same pass, dark and light, and the launcher picks. See
 /// `stashColors()` in theme.dart.
 ///
+/// ── And no Image.asset ─────────────────────────────────────────────────────
+/// Scout is a `ui.Image`, handed in already decoded, rather than an
+/// `Image.asset`. An asset resolves asynchronously: it starts loading, the
+/// widget builds without it, and a frame later it appears. That is invisible
+/// on screen and fatal here, because the render captures the FIRST frame — the
+/// one with a hole where the mascot goes. Decoding before the render is the
+/// only way to be sure he is in the picture.
+///
 /// Nothing here animates. A picture cannot.
 library;
+
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -27,21 +37,27 @@ import 'theme.dart';
 
 /// The size the ring face is rendered at, in logical pixels.
 ///
-/// Square, because the widget is square and a launcher scales the picture to
-/// whatever cell it ends up in. Rendered at 3x — see `widget_mirror.dart` — so
-/// it is still sharp when somebody stretches it.
-const Size ringFaceSize = Size(160, 160);
+/// Four cells by three: the wordmark, the dial, Scout beside it and four
+/// figures underneath is the dashboard's own card, and it does not fit in a
+/// square. Rendered at 3x — see `widget_mirror.dart` — so it survives being
+/// stretched.
+const Size ringFaceSize = Size(300, 200);
 
-/// The ring, as the home screen sees it.
+/// The mascot's asset, decoded once by the mirror and handed to every face.
+const String scoutWidgetAsset = 'assets/mascot/scout-report.webp';
+
+/// The dashboard card, as the home screen sees it.
 ///
-/// The same dial as the dashboard's, painted by the same `RingPainter`, at a
-/// size that survives being shrunk into a 2x2 cell. What it drops from the
-/// dashboard version is everything that needs a second glance: the three
-/// counts, the labels, Scout. A widget gets one look.
+/// Deliberately the same composition as the top of the Home tab: wordmark,
+/// dial, Scout, four figures. Somebody who taps this widget arrives at a screen
+/// that looks like what they just tapped, which is the whole job of a widget —
+/// anything rearranged for the smaller space would make the app feel like a
+/// different app.
 class RingFace extends StatelessWidget {
   const RingFace({
     required this.payload,
     required this.dark,
+    this.scout,
     super.key,
   });
 
@@ -50,6 +66,10 @@ class RingFace extends StatelessWidget {
   /// Which palette, decided by the caller rather than by the phone — both are
   /// drawn every time and the launcher chooses at display.
   final bool dark;
+
+  /// Already decoded. Null draws the face without him rather than failing:
+  /// a missing mascot is a worse widget, not a broken one.
+  final ui.Image? scout;
 
   @override
   Widget build(BuildContext context) {
@@ -68,73 +88,207 @@ class RingFace extends StatelessWidget {
     */
     return SizedBox.fromSize(
       size: ringFaceSize,
-      child: CustomPaint(
-        painter: RingPainter(
-          covered: payload.inDate.toDouble(),
-          soon: payload.needsAction.toDouble(),
-          lapsed: payload.lapsed.toDouble(),
-          track: c.slate600,
-          error: c.ember,
-          moss: c.moss,
-          honey: c.honey,
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              /*
-                The same proportions as the dashboard's — a big thin figure
-                with the per cent sign dropped to a third and muted — scaled
-                down for a face a fifth the size.
-
-                FittedBox for the same reason it is there: "100%" is the case
-                that overflows, and a household with everything in date is not
-                an edge case.
-              */
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      '${payload.percent}',
-                      style: TextStyle(
-                        fontFamily: fontDisplay,
-                        fontWeight: FontWeight.w200,
-                        fontSize: 60,
-                        letterSpacing: -2.7,
-                        height: 1,
-                        color: c.text,
-                      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Wordmark(c: c),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(child: Center(child: _Dial(payload: payload, c: c))),
+                  if (scout != null)
+                    /*
+                      Presenting your numbers, exactly as he does on the
+                      dashboard. He is sized by height and lets his own width
+                      follow, because a mascot squashed to fit a box is worse
+                      than no mascot.
+                    */
+                    RawImage(
+                      image: scout,
+                      height: 104,
+                      width: 104 * scout!.width / scout!.height,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
                     ),
-                    Text(
-                      '%',
-                      style: TextStyle(
-                        fontFamily: fontDisplay,
-                        fontWeight: FontWeight.w200,
-                        fontSize: 20,
-                        color: c.muted,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              const SizedBox(height: 3),
-              Text(
-                'still in date',
-                style: TextStyle(
-                  fontFamily: fontBody,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w300,
-                  color: c.muted,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            _Figures(payload: payload, c: c),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// "Stash" in the text colour, "it" in gold — the app's masthead, small.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark({required this.c});
+
+  final StashColors c;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+        TextSpan(
+          children: [
+            const TextSpan(text: 'Stash '),
+            TextSpan(text: 'it', style: TextStyle(color: c.gold)),
+          ],
+        ),
+        style: TextStyle(
+          fontFamily: fontDisplay,
+          fontWeight: FontWeight.w800,
+          fontSize: 19,
+          letterSpacing: -0.5,
+          height: 1,
+          color: c.text,
+        ),
+      );
+}
+
+/// The dial and the one number inside it.
+class _Dial extends StatelessWidget {
+  const _Dial({required this.payload, required this.c});
+
+  final WidgetPayload payload;
+  final StashColors c;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 104,
+        width: 104,
+        child: CustomPaint(
+          painter: RingPainter(
+            covered: payload.inDate.toDouble(),
+            soon: payload.needsAction.toDouble(),
+            lapsed: payload.lapsed.toDouble(),
+            track: c.slate600,
+            error: c.ember,
+            moss: c.moss,
+            honey: c.honey,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /*
+                  The same proportions as the dashboard's — a big thin figure
+                  with the per cent sign dropped to a third and muted.
+
+                  FittedBox for the reason it is there too: "100%" is the case
+                  that overflows, and a household with everything in date is
+                  not an edge case.
+                */
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        '${payload.percent}',
+                        style: TextStyle(
+                          fontFamily: fontDisplay,
+                          fontWeight: FontWeight.w200,
+                          fontSize: 44,
+                          letterSpacing: -2,
+                          height: 1,
+                          color: c.text,
+                        ),
+                      ),
+                      Text(
+                        '%',
+                        style: TextStyle(
+                          fontFamily: fontDisplay,
+                          fontWeight: FontWeight.w200,
+                          fontSize: 15,
+                          color: c.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'still in date',
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w300,
+                    color: c.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// The four counts, in the dashboard's own order and colours.
+class _Figures extends StatelessWidget {
+  const _Figures({required this.payload, required this.c});
+
+  final WidgetPayload payload;
+  final StashColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    /*
+      Four, not three, and "no date" is gold rather than a fourth traffic-light
+      colour — the same reasoning as the dashboard, written down there: it is
+      not good, not urgent, just unanswerable, and honey is already spoken for
+      one column to the left.
+    */
+    final figures = <(int, String, Color)>[
+      (payload.inDate, 'in date', c.moss),
+      (payload.needsAction, 'action needed', c.honey),
+      (payload.lapsed, 'lapsed', c.ember),
+      (payload.noDate, 'no date', c.gold),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (count, label, tone) in figures)
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w300,
+                    fontSize: 20,
+                    height: 1,
+                    // A zero is not news. Muting it stops four columns of
+                    // colour shouting at somebody whose stash is fine.
+                    color: count == 0 ? c.muted : tone,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w300,
+                    height: 1,
+                    color: c.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
