@@ -206,10 +206,15 @@ WidgetPayload buildWidgetPayload({
 /// means what goes over has to be enough for ANY of those settings — not for
 /// the one this app happens to think is current.
 ///
-/// Six of the soonest overall is not enough. A household with six warranties
-/// running out this month and a passport due in July would send six warranties;
-/// a widget set to documents only would then show nothing, on a phone with a
-/// passport expiring.
+/// Six of the soonest overall is not enough. Six warranties running out over
+/// the next fortnight and a document to renew at day twenty-five would send six
+/// warranties; a widget set to documents only would then show nothing, with a
+/// document to renew inside the month.
+///
+/// Note how narrow that window is, and that it is the only window there is:
+/// `buildTimeline` has a thirty-day horizon, so nothing further out is even a
+/// candidate. This is not "the whole collection sorted" — it is what is coming
+/// up, which is what the widget is called.
 ///
 /// So this keeps up to [perKind] of EACH kind while walking the timeline in its
 /// existing order. The result is still one correctly sorted run — filtering it

@@ -87,7 +87,15 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      expect(find.text('0'), findsOneWidget);
+
+      /*
+        Five zeroes, not one: the percentage in the middle and the four figures
+        underneath. Counting them is the point — it is the cheapest statement
+        that the empty face is still the whole card rather than a ring on its
+        own with the figures quietly dropped.
+      */
+      expect(find.text('0'), findsNWidgets(5));
+      expect(find.text('still in date'), findsOneWidget);
     });
   });
 

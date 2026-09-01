@@ -23,6 +23,19 @@ import 'package:stash_it/models/types.dart';
 /// 1 March 2026, so every date below reads as a distance from one morning.
 final today = DateTime(2026, 3, 1);
 
+/// Everything below sits inside thirty days, and that is not decoration.
+///
+/// `buildTimeline` is not "sorted by date" — it is "what is coming up", and it
+/// has a horizon: thirty days for subscriptions and documents, and for items
+/// the window `warrantyState` calls ending soon. Anything further out is not
+/// late to the list, it is absent from it.
+///
+/// Three tests here were written with dates beyond that — a warranty at forty
+/// days, a passport at two hundred — and asserted an order the function had no
+/// way to produce. They were testing a sort that does not exist rather than the
+/// selection that does.
+const int horizon = 30;
+
 String iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';
@@ -74,7 +87,7 @@ void main() {
         rather than theirs.
       */
       final payload = buildWidgetPayload(
-        items: [item('Kettle', coverEndsIn: 40)],
+        items: [item('Kettle', coverEndsIn: 25)],
         papers: [paper('Passport', expiresIn: 2)],
         subscriptions: [sub('Netflix', renewsIn: 20)],
         now: today,
@@ -244,15 +257,18 @@ void main() {
   group('what goes over when the launcher does the filtering', () {
     test('every kind gets its own quota, not just the soonest overall', () {
       /*
-        The case this exists for: a household with six warranties running out
-        this month and a passport due in July. Six of the soonest overall would
-        be six warranties, and a widget somebody set to documents only would
-        show nothing — on a phone with a passport expiring.
+        The case this exists for: ten warranties running out over the next ten
+        days, and a document due at day twenty-five. Six of the soonest overall
+        would be six warranties, and a widget somebody set to documents only
+        would show nothing — with a document to renew inside the month.
+
+        Note the numbers are all inside the horizon. That is the only region
+        where this question can even be asked; see the note on `horizon`.
       */
       final lines = widgetLinesForLauncher(
         items: [for (var i = 0; i < 10; i++) item('Thing $i', coverEndsIn: i + 1)],
-        papers: [paper('Passport', expiresIn: 200)],
-        subscriptions: [sub('Netflix', renewsIn: 300)],
+        papers: [paper('Passport', expiresIn: 25)],
+        subscriptions: [sub('Netflix', renewsIn: 28)],
         now: today,
       );
 
@@ -279,7 +295,7 @@ void main() {
       // right if the order survives filtering, which it does exactly when the
       // whole list is sorted rather than grouped by kind.
       final lines = widgetLinesForLauncher(
-        items: [item('Kettle', coverEndsIn: 40)],
+        items: [item('Kettle', coverEndsIn: 25)],
         papers: [paper('Passport', expiresIn: 2)],
         subscriptions: [sub('Netflix', renewsIn: 20)],
         now: today,
