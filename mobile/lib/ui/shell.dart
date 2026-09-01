@@ -251,11 +251,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       final card = await readCardAt(path);
       if (!mounted) return;
 
-      final added = await Navigator.of(context).push<int>(
-        MaterialPageRoute(
-          builder: (_) => CardArrivalScreen(repo: widget.repo, card: card),
-        ),
-      );
+      final added =
+          await showCardArrival(context, repo: widget.repo, card: card);
 
       if (added != null && added > 0 && mounted) {
         // Land where the things went. Arriving back on whatever tab happened

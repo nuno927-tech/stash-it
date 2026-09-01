@@ -21,8 +21,37 @@ import '../logic/card.dart';
 import '../logic/limits.dart';
 import '../models/types.dart';
 import 'feedback.dart';
+import 'form_sheet_parts.dart';
 import 'scout.dart';
 import 'theme.dart';
+
+/// Opens the arrival sheet. Returns how many were added, or null.
+///
+/// ── A sheet, at the same height as everything else ────────────────────────
+/// This was a pushed screen with an app bar, which made receiving a card the
+/// only thing in the app that took you somewhere. It is the same shape of
+/// moment as looking at an item or sending one — a thing to read, decide on,
+/// and leave — so it is the same shape of surface.
+Future<int?> showCardArrival(
+  BuildContext context, {
+  required Repository repo,
+  required ParsedBundle card,
+}) {
+  feedback(Cue.expand);
+
+  return showModalBottomSheet<int>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: StashColors.of(context).slate900,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+    ),
+    builder: (context) =>
+        SheetEntrance(child: CardArrivalScreen(repo: repo, card: card)),
+  );
+}
 
 class CardArrivalScreen extends StatefulWidget {
   const CardArrivalScreen({required this.repo, required this.card, super.key});
@@ -113,132 +142,164 @@ class _CardArrivalScreenState extends State<CardArrivalScreen> {
     */
     final over = _room != null && _keep.length > _room!;
 
-    return Scaffold(
-      backgroundColor: c.slate900,
-      appBar: AppBar(
-        backgroundColor: c.slate800,
-        title: Text(
-          'Somebody sent you ${total == 1 ? 'something' : '$total things'}',
-          style: TextStyle(
-            fontFamily: fontDisplay,
-            fontWeight: FontWeight.w700,
-            fontSize: 17,
-            color: c.text,
-          ),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 120),
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: sheetTop(context),
+      minChildSize: 0.4,
+      maxChildSize: sheetTop(context),
+      builder: (context, scroll) => Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-            child: Row(
+          Expanded(
+            child: ListView(
+              controller: scroll,
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
-                const Scout(
-                  pose: ScoutPose.folder,
-                  height: 96,
-                  motion: [ScoutMotion.breathe],
+                /*
+                  ── Scout carries the message, and it reads down ──────────
+
+                  He was a small figure beside a paragraph, which made the
+                  paragraph the subject and him a decoration. Centred and at
+                  size he is the first thing seen, the sentence underneath
+                  explains, and the list follows — one column, top to bottom,
+                  rather than a picture and some text sharing a line.
+                */
+                Center(
+                  child: Scout(
+                    pose: ScoutPose.folder,
+                    height: 168,
+                    motion: const [ScoutMotion.breathe],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  child: Text(
+                    'Somebody sent you '
+                    '${total == 1 ? 'something' : '$total things'}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 23,
+                      height: 1.15,
+                      letterSpacing: -0.5,
+                      color: c.text,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Text(
                     'Nothing is added until you say so. Untick anything you '
                     'do not want.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: fontBody,
                       fontSize: 13,
                       color: c.muted,
-                      height: 1.4,
+                      height: 1.45,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (items.isNotEmpty) ...[
-            const _Head('Items'),
-            for (final item in items)
-              _Line(
-                title: item.name,
-                detail: _itemDetail(item),
-                on: _keep.contains(item.id),
-                onTap: () => _flip(item.id),
-              ),
-          ],
-          if (papers.isNotEmpty) ...[
-            const _Head('Documents'),
-            for (final paper in papers)
-              _Line(
-                title: paper.label,
-                detail: paper.expiresOn.isEmpty
-                    ? 'No expiry recorded'
-                    : 'Expires ${paper.expiresOn}',
-                on: _keep.contains(paper.id),
-                onTap: () => _flip(paper.id),
-              ),
-          ],
-          if (subs.isNotEmpty) ...[
-            const _Head('Subscriptions'),
-            for (final sub in subs)
-              _Line(
-                title: sub.name,
-                detail: monthlyLabel(sub),
-                on: _keep.contains(sub.id),
-                onTap: () => _flip(sub.id),
-              ),
-          ],
+                const SizedBox(height: 6),
+                if (items.isNotEmpty) ...[
+                  const _Head('Items'),
+                  for (final item in items)
+                    _Line(
+                      title: item.name,
+                      detail: _itemDetail(item),
+                      on: _keep.contains(item.id),
+                      onTap: () => _flip(item.id),
+                    ),
+                ],
+                if (papers.isNotEmpty) ...[
+                  const _Head('Documents'),
+                  for (final paper in papers)
+                    _Line(
+                      title: paper.label,
+                      detail: paper.expiresOn.isEmpty
+                          ? 'No expiry recorded'
+                          : 'Expires ${paper.expiresOn}',
+                      on: _keep.contains(paper.id),
+                      onTap: () => _flip(paper.id),
+                    ),
+                ],
+                if (subs.isNotEmpty) ...[
+                  const _Head('Subscriptions'),
+                  for (final sub in subs)
+                    _Line(
+                      title: sub.name,
+                      detail: monthlyLabel(sub),
+                      on: _keep.contains(sub.id),
+                      onTap: () => _flip(sub.id),
+                    ),
+                ],
 
-          /*
+                /*
             Said plainly, with the number, rather than as a refusal at the end.
             Discovering the limit after pressing Add — having already decided
             you wanted these — is the worst moment to hear about it.
           */
-          if (over)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: Text(
-                'You have room for ${_room! < 0 ? 0 : _room!} more on the free '
-                'version, and ${_keep.length} are ticked. Untick a few, or go '
-                'Pro for unlimited.',
-                style: TextStyle(
-                  fontFamily: fontBody,
-                  fontSize: 12.5,
-                  height: 1.45,
-                  color: c.ember,
+                if (over)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                    child: Text(
+                      'You have room for ${_room! < 0 ? 0 : _room!} more on the free '
+                      'version, and ${_keep.length} are ticked. Untick a few, or go '
+                      'Pro for unlimited.',
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: c.ember,
+                      ),
+                    ),
+                  ),
+                if (_said != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                    child: Text(_said!, style: hintStyle(c)),
+                  ),
+              ],
+            ),
+          ),
+
+          // Pinned under the list, so a long card scrolls behind a button
+          // that never leaves — the footer shape the view sheets use.
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            decoration: BoxDecoration(
+              color: c.slate900,
+              border: Border(top: BorderSide(color: c.line)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: FilledButton(
+                onPressed: _busy || _keep.isEmpty || over ? null : _add,
+                style: FilledButton.styleFrom(
+                  backgroundColor: c.gold,
+                  disabledBackgroundColor: c.slate600,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                  ),
+                ),
+                child: Text(
+                  _keep.isEmpty
+                      ? 'Nothing ticked'
+                      : 'Add ${_keep.length} to my stash',
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: _busy || _keep.isEmpty || over ? c.muted : c.onGold,
+                  ),
                 ),
               ),
             ),
-          if (_said != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: Text(_said!, style: hintStyle(c)),
-            ),
+          ),
         ],
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: FilledButton(
-          onPressed: _busy || _keep.isEmpty || over ? null : _add,
-          style: FilledButton.styleFrom(
-            backgroundColor: c.gold,
-            disabledBackgroundColor: c.slate600,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.pill),
-            ),
-          ),
-          child: Text(
-            _keep.isEmpty
-                ? 'Nothing ticked'
-                : 'Add ${_keep.length} to my stash',
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              fontSize: 15.5,
-              color: _busy || _keep.isEmpty || over ? c.muted : c.onGold,
-            ),
-          ),
-        ),
       ),
     );
   }

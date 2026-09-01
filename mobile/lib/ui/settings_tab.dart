@@ -49,7 +49,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.82.1';
+const appVersion = '0.83.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -285,11 +285,8 @@ class _SettingsTabState extends State<SettingsTab> {
       final card = parseCardBytes(bytes);
 
       if (!mounted) return;
-      final added = await Navigator.of(context).push<int>(
-        MaterialPageRoute(
-          builder: (_) => CardArrivalScreen(repo: widget.repo, card: card),
-        ),
-      );
+      final added =
+          await showCardArrival(context, repo: widget.repo, card: card);
 
       if (added != null && added > 0) {
         _say('Added $added ${added == 1 ? 'thing' : 'things'} to your stash.');
