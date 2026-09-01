@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark. See values/widget_styles.xml for why this exists as its own file. -->
+<resources>
+    <style name="WidgetSettingsTheme"
+        parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+</resources>

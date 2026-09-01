@@ -66,6 +66,7 @@ class WidgetLine {
     required this.value,
     required this.unit,
     required this.tone,
+    required this.kind,
   });
 
   final String title;
@@ -80,12 +81,22 @@ class WidgetLine {
   /// Which of the four colours the native side should paint the number.
   final WidgetTone tone;
 
+  /// Which kind of thing this is, so the launcher can drop it.
+  ///
+  /// The filtering happens THERE rather than here, and that is the whole reason
+  /// this field exists. One payload is written for the whole phone, but each
+  /// widget on the home screen has its own settings — somebody can have one
+  /// showing everything and another showing only subscriptions. A payload
+  /// filtered in Dart could only serve one of them.
+  final TimelineKind kind;
+
   Map<String, Object?> toJson() => {
         'title': title,
         'detail': detail,
         'value': value,
         'unit': unit,
         'tone': tone.name,
+        'kind': kind.name,
       };
 }
 
@@ -185,6 +196,59 @@ WidgetPayload buildWidgetPayload({
     noDate: tally.noDate,
     percent: tally.percent,
   );
+}
+
+/// The lines to hand the launcher, when the launcher does the filtering.
+///
+/// ── Why this is not just `buildWidgetPayload().lines` ──────────────────────
+/// One payload is written for the whole phone, and each widget on the home
+/// screen has its own settings. So the filtering happens over there, which
+/// means what goes over has to be enough for ANY of those settings — not for
+/// the one this app happens to think is current.
+///
+/// Six of the soonest overall is not enough. A household with six warranties
+/// running out this month and a passport due in July would send six warranties;
+/// a widget set to documents only would then show nothing, on a phone with a
+/// passport expiring.
+///
+/// So this keeps up to [perKind] of EACH kind while walking the timeline in its
+/// existing order. The result is still one correctly sorted run — filtering it
+/// to any subset preserves that order and still yields up to [perKind] rows.
+///
+/// The cost is up to three times as many lines in the plaintext copy outside
+/// the encrypted database. Eighteen titles and eighteen countdowns, which is
+/// the same kind of thing already going over, not a new kind.
+List<WidgetLine> widgetLinesForLauncher({
+  required List<Item> items,
+  required List<Paper> papers,
+  required List<Subscription> subscriptions,
+  int perKind = widgetMaxLines,
+  DateTime? now,
+}) {
+  final taken = <TimelineKind, int>{};
+  final lines = <WidgetLine>[];
+
+  for (final entry in buildTimeline(
+    items,
+    subscriptions,
+    papers,
+    now ?? DateTime.now(),
+  )) {
+    final already = taken[entry.kind] ?? 0;
+    if (already >= perKind) continue;
+
+    taken[entry.kind] = already + 1;
+    lines.add(_lineOf(entry));
+
+    // Every kind is full; nothing further down the timeline can be wanted by
+    // any combination of settings.
+    if (taken.length == TimelineKind.values.length &&
+        taken.values.every((count) => count >= perKind)) {
+      break;
+    }
+  }
+
+  return lines;
 }
 
 WidgetLine _lineOf(Entry entry) {

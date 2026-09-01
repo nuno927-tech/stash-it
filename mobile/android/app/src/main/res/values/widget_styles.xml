@@ -74,4 +74,17 @@
         <item name="android:textColor">@color/widget_muted</item>
         <item name="android:maxLines">1</item>
     </style>
+
+    <!--
+        The settings screen is a dialog, not a page.
+
+        It is four checkboxes reached by dropping a widget on a home screen, and
+        a full-screen activity for that reads as leaving the launcher rather
+        than answering a question about it.
+
+        The light variant here and the dark one in values-night, because
+        DeviceDefault does not follow the phone by itself.
+    -->
+    <style name="WidgetSettingsTheme"
+        parent="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar" />
 </resources>

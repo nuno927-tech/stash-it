@@ -20,4 +20,18 @@
 
     <string name="widget_ring_label">Your cover</string>
     <string name="widget_ring_description">In date, needing action, lapsed.</string>
+
+    <!-- The settings screen, shown when a Coming up widget is placed. -->
+    <string name="widget_settings_title">Coming up</string>
+    <string name="widget_settings_blurb">What this widget keeps an eye on. Drag it taller for more rows.</string>
+    <string name="widget_settings_items">Items and their warranties</string>
+    <string name="widget_settings_papers">Documents</string>
+    <string name="widget_settings_subscriptions">Subscriptions</string>
+    <string name="widget_settings_urgent">Only what needs attention</string>
+    <string name="widget_settings_urgent_note">Hides anything with months left on it.</string>
+    <string name="widget_settings_save">Save</string>
+
+    <!-- Shown when the three boxes above are all unticked, which is a different
+         emptiness from having nothing stashed. -->
+    <string name="widget_nothing_chosen">Nothing chosen to show</string>
 </resources>

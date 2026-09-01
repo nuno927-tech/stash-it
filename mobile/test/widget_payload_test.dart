@@ -196,6 +196,11 @@ void main() {
         This is the privacy promise in test form. A widget needs a plaintext
         copy outside the encrypted database, so the payload must carry the face
         of the widget and nothing more — no price, no serial, no notes.
+
+        `kind` is the one field that is not on the face. It is there because
+        each widget filters for itself — see `widgetLinesForLauncher` — and a
+        word like "paper" says no more about a record than the row above it
+        already shows.
       */
       final json = buildWidgetPayload(
         items: [item('Kettle', coverEndsIn: 5)],
@@ -209,7 +214,7 @@ void main() {
           .expand((line) => line.keys)
           .toSet();
 
-      expect(keys, {'title', 'detail', 'value', 'unit', 'tone'});
+      expect(keys, {'title', 'detail', 'value', 'unit', 'tone', 'kind'});
     });
   });
 
@@ -233,6 +238,54 @@ void main() {
         emptyWidgetLine(anythingStashed: true, kinds: const WidgetKinds()),
         'Nothing coming up',
       );
+    });
+  });
+
+  group('what goes over when the launcher does the filtering', () {
+    test('every kind gets its own quota, not just the soonest overall', () {
+      /*
+        The case this exists for: a household with six warranties running out
+        this month and a passport due in July. Six of the soonest overall would
+        be six warranties, and a widget somebody set to documents only would
+        show nothing — on a phone with a passport expiring.
+      */
+      final lines = widgetLinesForLauncher(
+        items: [for (var i = 0; i < 10; i++) item('Thing $i', coverEndsIn: i + 1)],
+        papers: [paper('Passport', expiresIn: 200)],
+        subscriptions: [sub('Netflix', renewsIn: 300)],
+        now: today,
+      );
+
+      expect(lines.where((l) => l.kind == TimelineKind.paper), hasLength(1));
+      expect(
+        lines.where((l) => l.kind == TimelineKind.subscription),
+        hasLength(1),
+      );
+    });
+
+    test('no more than the quota of any one kind', () {
+      final lines = widgetLinesForLauncher(
+        items: [for (var i = 0; i < 30; i++) item('Thing $i', coverEndsIn: i + 1)],
+        papers: const [],
+        subscriptions: const [],
+        now: today,
+      );
+
+      expect(lines, hasLength(widgetMaxLines));
+    });
+
+    test('still one correctly sorted run', () {
+      // The launcher filters this list and shows the first few. That is only
+      // right if the order survives filtering, which it does exactly when the
+      // whole list is sorted rather than grouped by kind.
+      final lines = widgetLinesForLauncher(
+        items: [item('Kettle', coverEndsIn: 40)],
+        papers: [paper('Passport', expiresIn: 2)],
+        subscriptions: [sub('Netflix', renewsIn: 20)],
+        now: today,
+      );
+
+      expect(lines.map((l) => l.title), ['Passport', 'Netflix', 'Kettle']);
     });
   });
 

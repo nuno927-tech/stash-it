@@ -140,6 +140,27 @@
             a reboot, which is what makes RECEIVE_BOOT_COMPLETED above mean
             anything.
         -->
+<!--
+            Choosing what one Coming up widget shows.
+
+            Exported, because the LAUNCHER starts it — this is the activity
+            named by `android:configure` in widget_coming_up_info.xml, and a
+            private one could not be reached at all.
+
+            It takes no input but a widget id and writes only this app's own
+            preferences, so there is nothing here for another app to abuse.
+        -->
+        <activity
+            android:name=".WidgetSettingsActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/widget_settings_title"
+            android:theme="@style/WidgetSettingsTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!--
             ── Coming up ──────────────────────────────────────────────────
 

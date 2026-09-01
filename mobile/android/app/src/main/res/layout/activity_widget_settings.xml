@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Choosing what one Coming up widget shows.
+
+    ── Why this file is not called widget_something ───────────────────────────
+
+    Deliberately named for the activity rather than the widget, because it is
+    not a widget layout: it is inflated by THIS app, in this process, with the
+    full framework available. ScrollView, CheckBox and Button are all fine here
+    and none of them can appear in a RemoteViews layout.
+
+    tool/check_widget_layouts.py enforces that allowlist over every
+    layout/widget_*.xml, so a name outside that pattern is what keeps this file
+    from being reported forever as three violations.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_settings_title"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/widget_settings_blurb"
+            android:textSize="13sp" />
+
+        <CheckBox
+            android:id="@+id/settings_items"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/widget_settings_items" />
+
+        <CheckBox
+            android:id="@+id/settings_papers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/widget_settings_papers" />
+
+        <CheckBox
+            android:id="@+id/settings_subscriptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/widget_settings_subscriptions" />
+
+        <!--
+            A different question from the three above, so it is separated rather
+            than made a fourth tick in the same run. Those choose WHAT; this one
+            chooses HOW MUCH.
+        -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:background="?android:attr/listDivider" />
+
+        <CheckBox
+            android:id="@+id/settings_urgent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/widget_settings_urgent" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/widget_settings_urgent_note"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/settings_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:text="@string/widget_settings_save" />
+    </LinearLayout>
+</ScrollView>

@@ -11,6 +11,7 @@ import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetProvider
+import org.json.JSONArray
 import org.json.JSONObject
 
 /*
@@ -78,6 +79,19 @@ class ComingUpWidget : HomeWidgetProvider() {
         )
     }
 
+    /*
+       Removed from the home screen.
+
+       Its settings go with it. Otherwise the preferences file grows by four
+       entries every time somebody adds and removes a widget, and — worse — a
+       new widget can be handed the id of one deleted months ago, along with
+       whatever that one had been told to show.
+    */
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        WidgetSettings.forget(context, appWidgetIds)
+    }
+
     private fun build(
         context: Context,
         manager: AppWidgetManager,
@@ -93,9 +107,15 @@ class ComingUpWidget : HomeWidgetProvider() {
             runCatching { JSONObject(it) }.getOrNull()
         }
 
-        val lines = payload?.optJSONArray("lines")
+        /*
+           Filtered HERE, not in Dart, because one payload is written for the
+           whole phone and every widget on the home screen has its own
+           settings — somebody can have one showing everything and another
+           showing only subscriptions. See WidgetSettings.
+        */
+        val lines = wanted(context, id, payload?.optJSONArray("lines"))
         val room = roomFor(context, manager, id)
-        val showing = minOf(lines?.length() ?: 0, room, ROWS.size)
+        val showing = minOf(lines.size, room, ROWS.size)
 
         /*
            The empty sentence comes from Dart, because which emptiness this is
@@ -105,9 +125,23 @@ class ComingUpWidget : HomeWidgetProvider() {
         */
         if (showing == 0) {
             views.setViewVisibility(R.id.coming_up_empty, View.VISIBLE)
-            payload?.optString("empty")?.takeIf { it.isNotEmpty() }?.let {
-                views.setTextViewText(R.id.coming_up_empty, it)
-            }
+
+            val nothingChosen = !WidgetSettings.showsItems(context, id) &&
+                !WidgetSettings.showsPapers(context, id) &&
+                !WidgetSettings.showsSubscriptions(context, id)
+
+            views.setTextViewText(
+                R.id.coming_up_empty,
+                if (nothingChosen) {
+                    // Only this side knows the boxes were unticked, and it is
+                    // the one emptiness fixed by the settings screen rather
+                    // than by adding something to the app.
+                    context.getString(R.string.widget_nothing_chosen)
+                } else {
+                    payload?.optString("empty")?.takeIf { it.isNotEmpty() }
+                        ?: context.getString(R.string.widget_coming_up_label)
+                },
+            )
         } else {
             views.setViewVisibility(R.id.coming_up_empty, View.GONE)
         }
@@ -118,7 +152,7 @@ class ComingUpWidget : HomeWidgetProvider() {
                 continue
             }
 
-            val line = lines!!.getJSONObject(index)
+            val line = lines[index]
             views.setViewVisibility(row.container, View.VISIBLE)
             views.setTextViewText(row.title, line.optString("title"))
             views.setTextViewText(row.value, line.optString("value"))
@@ -131,6 +165,37 @@ class ComingUpWidget : HomeWidgetProvider() {
         }
 
         return views
+    }
+
+    /**
+     * The lines this particular widget was told to show.
+     *
+     * Two questions, in the order somebody would ask them: is this a kind I
+     * want, and — if the widget is set to only what needs attention — is it
+     * actually pressing? "fine" is the tone for something with months left.
+     */
+    private fun wanted(
+        context: Context,
+        id: Int,
+        all: JSONArray?,
+    ): List<JSONObject> {
+        if (all == null) return emptyList()
+
+        val urgentOnly = WidgetSettings.onlyUrgent(context, id)
+        val kept = mutableListOf<JSONObject>()
+
+        for (index in 0 until all.length()) {
+            val line = all.optJSONObject(index) ?: continue
+
+            if (!WidgetSettings.accepts(context, id, line.optString("kind"))) {
+                continue
+            }
+            if (urgentOnly && line.optString("tone") == "fine") continue
+
+            kept.add(line)
+        }
+
+        return kept
     }
 
     /**
@@ -183,6 +248,22 @@ class ComingUpWidget : HomeWidgetProvider() {
     )
 
     companion object {
+
+        /**
+         * Redraw specific widgets now.
+         *
+         * Used by the settings screen, which cannot wait for the provider's
+         * own update cycle: `updatePeriodMillis` is 0 and the app may not run
+         * again for hours. Somebody who has just chosen what to show should
+         * see it before the screen closes.
+         */
+        fun refresh(context: Context, ids: IntArray) {
+            val manager = AppWidgetManager.getInstance(context)
+            val provider = ComingUpWidget()
+
+            provider.onUpdate(context, manager, ids, HomeWidgetPlugin.getData(context))
+        }
+
         /** Written by lib/io/widget_mirror.dart as `comingUpKey`. */
         const val KEY = "coming_up"
 

@@ -80,10 +80,27 @@ const double _pixelRatio = 3;
 /// using, which is much worse for the same cause.
 Future<void> mirrorWidgets(Repository repo) async {
   try {
+    final items = await repo.activeItems();
+    final papers = await repo.activePapers();
+    final subscriptions = await repo.activeSubscriptions();
+
     final payload = buildWidgetPayload(
-      items: await repo.activeItems(),
-      papers: await repo.activePapers(),
-      subscriptions: await repo.activeSubscriptions(),
+      items: items,
+      papers: papers,
+      subscriptions: subscriptions,
+    );
+
+    /*
+      More lines than any one widget shows, because each widget on the home
+      screen has its own settings and the filtering happens over there. See
+      `widgetLinesForLauncher`, which explains why six of the soonest overall
+      would leave a documents-only widget blank on a phone with a passport
+      expiring.
+    */
+    final lines = widgetLinesForLauncher(
+      items: items,
+      papers: papers,
+      subscriptions: subscriptions,
     );
 
     await _renderRing(payload, await _scout());
@@ -98,7 +115,7 @@ Future<void> mirrorWidgets(Repository repo) async {
     await HomeWidget.saveWidgetData<String>(
       comingUpKey,
       jsonEncode({
-        'lines': [for (final line in payload.lines) line.toJson()],
+        'lines': [for (final line in lines) line.toJson()],
         /*
           The empty sentence is written here rather than in Kotlin, because
           which emptiness this is depends on the database — nothing stashed at

@@ -9,6 +9,21 @@
 
     Narrow is where it degrades: the row is a name and a countdown, and below
     about three cells the name is all ellipsis. minResizeWidth says so.
+
+    ── The settings screen, and the two words that make it bearable ───────────
+
+    `configuration_optional` means the widget is PLACED first, with sensible
+    defaults, and the settings screen is offered rather than imposed. Without
+    it, dropping a widget on a home screen throws up a form before anything
+    has been seen, which is the single most common reason people put a widget
+    straight back.
+
+    `reconfigurable` is what then makes the choice reachable — long-press the
+    widget and there is a settings button. One without the other would mean
+    defaults that could never be changed.
+
+    Both are Android 12 and up. Below that the screen appears on placement in
+    the old way, which is the behaviour those phones expect anyway.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
@@ -21,6 +36,8 @@
     android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:configure="app.stashit.WidgetSettingsActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:initialLayout="@layout/widget_coming_up"
     android:previewLayout="@layout/widget_coming_up"
     android:description="@string/widget_coming_up_description"
