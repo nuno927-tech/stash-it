@@ -96,6 +96,16 @@ class _WizardState extends State<_Wizard> {
   final TextEditingController _name = TextEditingController();
   final FocusNode _nameFocus = FocusNode();
 
+  /*
+    ── Enter goes to the price, not to the next screen ─────────────────────
+
+    The keyboard's action key means "I have finished this field", and the next
+    field is on the same screen. Sending it forward a page was the app deciding
+    somebody had finished the SCREEN, which is a different claim and one it had
+    no reason to make — the price is right there, unanswered.
+  */
+  final FocusNode _costFocus = FocusNode();
+
   final PageController _pages = PageController();
   _Step _at = _Step.what;
 
@@ -160,6 +170,7 @@ class _WizardState extends State<_Wizard> {
   void dispose() {
     _name.dispose();
     _nameFocus.dispose();
+    _costFocus.dispose();
     _pages.dispose();
     super.dispose();
   }
@@ -563,11 +574,13 @@ class _WizardState extends State<_Wizard> {
                   controller: _name,
                   focus: _nameFocus,
                   onChanged: (_) => setState(() {}),
-                  onDone: _named ? _next : null,
+                  // The next field, not the next screen. See `_costFocus`.
+                  onDone: () => _costFocus.requestFocus(),
                 ),
                 const SizedBox(height: 20),
                 const FieldLabel('What it cost'),
                 _CostField(
+                  focus: _costFocus,
                   initial: _draft.priceText,
                   currency: _draft.currency,
                   onChanged: (v) => setState(() => _draft.priceText = v),
@@ -889,7 +902,10 @@ class _NameField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focus;
   final ValueChanged<String> onChanged;
-  final VoidCallback? onDone;
+
+  /// What the keyboard's action key does. Always the next field on this
+  /// screen, never the next screen.
+  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -899,7 +915,7 @@ class _NameField extends StatelessWidget {
       controller: controller,
       focusNode: focus,
       onChanged: onChanged,
-      onSubmitted: (_) => onDone?.call(),
+      onSubmitted: (_) => onDone(),
       textCapitalization: TextCapitalization.sentences,
       textInputAction: TextInputAction.next,
       style: TextStyle(
@@ -951,10 +967,14 @@ class _NameField extends StatelessWidget {
 /// the fact makes people wonder whether they typed it wrong.
 class _CostField extends StatelessWidget {
   const _CostField({
+    required this.focus,
     required this.initial,
     required this.currency,
     required this.onChanged,
   });
+
+  /// Owned by the sheet, so the name field's Enter key can reach it.
+  final FocusNode focus;
 
   final String initial;
   final String currency;
@@ -982,8 +1002,19 @@ class _CostField extends StatelessWidget {
         ),
         Expanded(
           child: TextFormField(
+            focusNode: focus,
             initialValue: initial,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            /*
+              Done, not next.
+
+              This is the last field on the screen, and a keyboard offering
+              "next" on the last one suggests there is another. Pressing it puts
+              the keyboard away, which is also what lets the screen advance on
+              its own — see the keyboard guard in `_advance`.
+            */
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => focus.unfocus(),
             style: style,
             cursorColor: c.gold,
             inputFormatters: [
