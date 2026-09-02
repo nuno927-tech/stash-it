@@ -26,9 +26,12 @@
 library;
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+// `Uint8List` comes with this — services re-exports dart:typed_data — so
+// importing it again is the analyzer's `unnecessary_import`. It arrived when
+// the photograph did and stopped being needed when the price field brought
+// `TextInputFormatter` in beside it.
 import 'package:flutter/services.dart';
 
 import '../db/repository.dart';
