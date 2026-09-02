@@ -373,6 +373,13 @@ Future<({Uint8List bytes, String timings})> openFromFile(
     return (
       bytes: done.bytes,
       timings: '  cipher     ${Cryptography.instance.runtimeType}'
+          // Named, because a version 1 file is opened in one call and a
+          // version 2 file in chunks, and thirty seconds against five is
+          // entirely explained by which one arrived. A breakdown that does not
+          // say which path it timed sends somebody looking for a bug that is
+          // not there — it cost a build here.
+          '\n  format     ${header.version}'
+          '${header.isChunked ? ', in ${header.chunkBytes ~/ 1024 ~/ 1024} MB chunks' : ', one block'}'
           '\n  isolate up ${started ~/ 1000} ms'
           '\n  derive     ${(gotKey - started) ~/ 1000} ms'
           '\n  open       ${(opened - gotKey) ~/ 1000} ms'
