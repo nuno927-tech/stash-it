@@ -247,6 +247,11 @@ class _SetSheetState extends State<_SetSheet> {
                       not expect from an app: there is no reset, no email, no
                       support desk with a copy. Somebody who reads it after
                       typing has already decided.
+
+                      The consequence comes first and the instruction second.
+                      It read the other way round — write it down, then why —
+                      which puts the easiest sentence to skim at the top and
+                      the reason to obey it underneath.
                     */
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -256,10 +261,11 @@ class _SetSheetState extends State<_SetSheet> {
                         border: Border.all(color: c.washGoldLine),
                       ),
                       child: Text(
-                        'Write it down somewhere that is not this phone.\n\n'
-                        'Nobody can reset it and nobody has a copy — not us, '
-                        'not Google. A backup whose passphrase is forgotten is '
-                        'gone, and so is everything in it.',
+                        'Nobody can reset your passphrase and nobody has a '
+                        'copy. A backup whose passphrase is forgotten is gone, '
+                        'and so is everything in it.\n\n'
+                        'Write it down somewhere that is not this phone, '
+                        'preferably a trusted password manager app.',
                         style: TextStyle(
                           fontFamily: fontBody,
                           fontSize: 13,
