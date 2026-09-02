@@ -12,18 +12,23 @@ import 'package:flutter/material.dart';
 
 import 'billing/current.dart';
 import 'billing/play_billing.dart';
+import 'io/crash_log.dart';
+import 'logic/crash_log.dart';
 import 'db/open_flutter.dart';
 import 'db/repository.dart';
 import 'notify/sync.dart';
 import 'ui/feedback.dart';
 import 'ui/lock_gate.dart';
 import 'ui/prefs_scope.dart';
+import 'ui/settings_tab.dart' show appVersion;
 import 'ui/shell.dart';
 import 'ui/splash.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  _catchEverything();
 
   /*
     The database is opened before the first frame, deliberately.
@@ -94,6 +99,63 @@ Future<void> main() async {
   // Three rising notes, once. See `Cue.launch` — it is the only cue in the set
   // allowed to have a shape, because it is heard at most once per launch.
   feedback(Cue.launch);
+}
+
+/*
+  ── Writing down what nothing else would ────────────────────────────────────
+
+  Two handlers, and between them they cover what escapes: one for errors thrown
+  inside the widget machinery, one for asynchronous errors nothing awaited.
+
+  Installed first, before the database is opened — the point is to catch the
+  failure that stops the app starting, and a handler added after the thing that
+  throws is a handler that was not there.
+
+  ── `PlatformDispatcher.onError`, not `runZonedGuarded` ─────────────────────
+  The zone version is the older advice and it interacts badly with the binding:
+  `ensureInitialized` has already run in the root zone by the time a guarded
+  zone could be entered, and a binding built in one zone with its errors
+  delivered to another is a class of bug that shows up as reports arriving
+  nowhere. The dispatcher hook has no such split.
+
+  ── And neither one swallows anything ───────────────────────────────────────
+  `FlutterError.onError`'s previous handler is still called, so a debug build
+  still prints its console output and paints its red screen. This adds a
+  record; a crash handler that quietly hides errors during development is how
+  a release ships with three of them.
+*/
+void _catchEverything() {
+  final wasFlutterError = FlutterError.onError;
+
+  FlutterError.onError = (details) {
+    unawaited(recordCrash(noteFor(
+      error: details.exception,
+      stack: details.stack,
+      source: CrashSource.flutter,
+      version: appVersion,
+    )));
+
+    wasFlutterError?.call(details);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    unawaited(recordCrash(noteFor(
+      error: error,
+      stack: stack,
+      source: CrashSource.platform,
+      version: appVersion,
+    )));
+
+    /*
+      True: handled, and the app keeps running.
+
+      False hands it on to the platform, which on Android ends the process. An
+      unawaited future that failed — a plugin call, a file read — is rarely a
+      reason to close somebody's app on them, and now that it is written down
+      it is not a reason to lose it either.
+    */
+    return true;
+  };
 }
 
 /*

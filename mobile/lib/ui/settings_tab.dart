@@ -26,6 +26,8 @@ import '../logic/limits.dart';
 import '../logic/devmode.dart';
 import '../io/auto_backup_run.dart';
 import '../io/backup_folder.dart';
+import '../io/crash_log.dart';
+import '../logic/crash_log.dart';
 import '../io/sealed_backup.dart';
 import '../io/vault.dart';
 import '../logic/vault.dart';
@@ -39,6 +41,7 @@ import '../notify/sync.dart';
 import 'bin_screen.dart';
 import 'confetti.dart';
 import 'confirm_delete.dart';
+import 'crash_screen.dart';
 import 'diagnostics.dart';
 import 'folder_probe_screen.dart';
 import 'passphrase_sheet.dart';
@@ -59,7 +62,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.4.0';
+const appVersion = '1.5.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -106,6 +109,10 @@ class _SettingsTabState extends State<SettingsTab> {
     itself before the answer lands, which it does in under a frame.
   */
   late final Future<bool> _canPin = canPinWidgets();
+
+  /// Read once and re-read after the crash screen closes, which is the only
+  /// thing that changes it from in here.
+  Future<List<CrashNote>> _crashes = readCrashes();
 
   /*
     ── The status line expires ─────────────────────────────────────────────
@@ -1898,6 +1905,57 @@ class _SettingsTabState extends State<SettingsTab> {
                 label: 'Diagnostics',
                 note: 'Counts and versions, copyable. Nothing private.',
                 onTap: () => showDiagnostics(context, widget.repo),
+              ),
+              _Rule(c),
+
+              /*
+                ── The evidence that did not exist ─────────────────────────
+
+                Nothing caught a crash before this: no `FlutterError.onError`,
+                no handler on the platform dispatcher. Consistent with having
+                no server to send anything to, and it left "it crashed" as a
+                sentence with nothing attached — which during a tester period
+                is the difference between a fix and a fortnight of asking
+                what they were doing at the time.
+
+                The count is on the row because a screen you have to open to
+                discover it is empty is a screen nobody opens. Zero is the
+                answer worth seeing at a glance, and it is the usual one.
+
+                Unlike Diagnostics this one is NOT safe to paste unread — an
+                exception quotes whatever it choked on. The screen says so.
+              */
+              FutureBuilder<List<CrashNote>>(
+                future: _crashes,
+                builder: (context, snap) {
+                  final many = snap.data?.length ?? 0;
+
+                  return _LinkRow(
+                    label: 'Crashes',
+                    note: many == 0
+                        ? 'Nothing has gone wrong.'
+                        : '$many recorded. May name a record.',
+                    trailing: many == 0
+                        ? null
+                        : Text(
+                            '$many',
+                            style: TextStyle(
+                              fontFamily: fontMono,
+                              fontFeatures: tabularFigures,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: c.ember,
+                            ),
+                          ),
+                    onTap: () async {
+                      await showCrashes(context);
+                      // Re-read on the way back: the screen offers to throw
+                      // the log away, and a row still saying 3 afterwards
+                      // would look like the button did nothing.
+                      if (mounted) setState(() => _crashes = readCrashes());
+                    },
+                  );
+                },
               ),
               _Rule(c),
 
