@@ -140,12 +140,20 @@ class _SetSheetState extends State<_SetSheet> {
   */
   bool _hidden = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _firstFocus.requestFocus());
-  }
+  /*
+    ── Nothing takes focus here ────────────────────────────────────────────
+
+    It did, and it was half the bug. A keyboard on arrival covered the warning
+    this sheet exists to deliver — and the sheet was a fixed fraction of the
+    SCREEN rather than of what was left above the keyboard, so the two fields
+    were pushed off the bottom of a box that then overflowed by the difference.
+
+    Somebody saw a title, a warning and a button that said "Type something
+    first" about a field they could not see.
+
+    So: no focus until they tap. There is a paragraph and a warning to read
+    before typing, which is the whole point of this screen.
+  */
 
   @override
   void dispose() {
@@ -176,26 +184,38 @@ class _SetSheetState extends State<_SetSheet> {
     Navigator.of(context).pop(phrase);
   }
 
+  /*
+    ── As tall as it needs to be, and never taller ─────────────────────────
+
+    Not a fixed fraction of the screen. That is the app's idiom everywhere
+    else and it is wrong here: this sheet holds two paragraphs, a warning
+    panel, two fields and a footer, and 0.78 of the screen was more than the
+    sheet was allowed — so it overflowed by the difference and pushed the
+    fields out of sight.
+
+    A scroll view that sizes itself cannot overflow. The sheet takes the height
+    of its contents, up to the screen, and scrolls beyond that. The keyboard is
+    handled by the padding rather than by arithmetic on the screen height,
+    which is what got it wrong.
+  */
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
     final insets = MediaQuery.viewInsetsOf(context).bottom;
-    final screen = MediaQuery.sizeOf(context).height;
 
-    return SizedBox(
-      height: screen * 0.78,
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: insets),
       child: SafeArea(
         top: false,
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: insets),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                     Text(
                       'Lock your backups',
                       style: TextStyle(
@@ -294,15 +314,14 @@ class _SetSheetState extends State<_SetSheet> {
                         ),
                       ),
                     ),
-                  ],
+                const SizedBox(height: 8),
+                SheetFooter(
+                  label: 'Lock backups',
+                  problem: _problem,
+                  onSave: _done,
                 ),
-              ),
-              SheetFooter(
-                label: 'Lock backups',
-                problem: _problem,
-                onSave: _done,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -347,26 +366,25 @@ class _AskSheetState extends State<_AskSheet> {
     Navigator.of(context).pop(phrase);
   }
 
+  /// Sized by its contents, like the sheet above it — see the note there.
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
     final insets = MediaQuery.viewInsetsOf(context).bottom;
-    final screen = MediaQuery.sizeOf(context).height;
 
-    return SizedBox(
-      height: screen * 0.55,
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: insets),
       child: SafeArea(
         top: false,
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: insets),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                     Text(
                       'That backup is locked',
                       style: TextStyle(
@@ -400,11 +418,10 @@ class _AskSheetState extends State<_AskSheet> {
                       onSubmitted: _done,
                       onChanged: (_) {},
                     ),
-                  ],
-                ),
-              ),
-              SheetFooter(label: 'Open it', problem: null, onSave: _done),
-            ],
+                const SizedBox(height: 8),
+                SheetFooter(label: 'Open it', problem: null, onSave: _done),
+              ],
+            ),
           ),
         ),
       ),
