@@ -372,7 +372,7 @@ class _FolderProbeScreenState extends State<FolderProbeScreen> {
         spacing: 8,
         runSpacing: 8,
         children: [
-          _Try(label: 'Open the picker', onTap: _busy ? null : _tryPicker),
+          _Try(label: 'Choose a folder', onTap: _busy ? null : _tryPicker),
           _Try(label: 'Try a write', onTap: _busy ? null : _tryWrite),
           _Try(label: 'Back up now', onTap: _busy ? null : _runNow),
           _Try(label: 'Time the crypto', onTap: _busy ? null : _timeCrypto),
