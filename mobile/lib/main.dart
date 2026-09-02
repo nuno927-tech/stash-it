@@ -7,6 +7,8 @@ library;
 
 import 'dart:async';
 import 'dart:io';
+// `PlatformDispatcher` is not re-exported by material — see `_catchEverything`.
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 
