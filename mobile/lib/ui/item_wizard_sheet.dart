@@ -313,6 +313,43 @@ class _WizardState extends State<_Wizard> {
     setState(() => _photo = images.first.bytes);
   }
 
+  /// How many of the five extras have something in them.
+  int get _extras => [
+        _draft.brand,
+        _draft.model,
+        _draft.serial,
+        _draft.retailer,
+        _draft.notes,
+      ].where((v) => v.trim().isNotEmpty).length;
+
+  /// The five fields that are not questions.
+  ///
+  /// A sheet over a sheet, which the app otherwise avoids — but this is the one
+  /// case it is right for: everything in it is optional, nothing in it changes
+  /// what the screen underneath says, and closing it is the only way out
+  /// anybody needs. There is no Cancel because there is nothing to cancel: the
+  /// boxes write straight into the draft, exactly as they do on the long form.
+  Future<void> _moreDetails() async {
+    feedback(Cue.expand);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: StashColors.of(context).slate900,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+      ),
+      builder: (context) => SheetEntrance(child: _MoreSheet(draft: _draft)),
+    );
+
+    // The count on the button, and nothing else — none of these five is an
+    // answer `cardFilled` looks at, so the screen will not advance because of
+    // one.
+    if (mounted) setState(() {});
+  }
+
   Future<void> _newRoom() async {
     final name = await askText(context,
         title: 'New room', hint: 'Kitchen, garage, loft');
@@ -596,7 +633,30 @@ class _WizardState extends State<_Wizard> {
                   onDone: () => _costFocus.requestFocus(),
                 ),
                 const SizedBox(height: 20),
-                const FieldLabel('What it cost'),
+                /*
+                  ── The extras share the cost label's row ────────────────────
+
+                  Brand, model, serial, retailer and notes all belong on this
+                  screen and none of them belongs ON it: five more boxes would
+                  turn the one question people always answer into a form, which
+                  is the thing this sheet exists to avoid.
+
+                  So they live one tap away, behind a button that costs no
+                  height — it sits in the space to the right of a label that was
+                  empty anyway. The screen still fits without scrolling, which
+                  it would not if this were a row of its own.
+
+                  The count is on the button because a closed drawer with
+                  something in it must not look like a closed drawer with
+                  nothing in it.
+                */
+                Row(
+                  children: [
+                    const FieldLabel('What it cost'),
+                    const Spacer(),
+                    _MoreButton(count: _extras, onTap: _moreDetails),
+                  ],
+                ),
                 _CostField(
                   focus: _costFocus,
                   initial: _draft.priceText,
@@ -1038,6 +1098,224 @@ class _PhotoSquare extends StatelessWidget {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+/// The way into the five extras, sized to fit beside a label.
+///
+/// Not a `TextButton`: Material's minimum tap height is 48, which is more than
+/// the whole label row is, and the point of putting it here was that it costs
+/// no height. 36 with a wide enough target either side is the compromise.
+class _MoreButton extends StatelessWidget {
+  const _MoreButton({required this.count, required this.onTap});
+
+  /// How many of the five have something in them. Zero says nothing.
+  final int count;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return Padding(
+      // Matches `FieldLabel`, so the two sit on the same line.
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(Radii.pill),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.pill),
+          onTap: () {
+            feedback(Cue.tap);
+            onTap();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.tune, size: 15, color: c.gold),
+                const SizedBox(width: 6),
+                Text(
+                  count == 0 ? 'More details' : 'More details ($count)',
+                  style: TextStyle(
+                    fontFamily: fontBody,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                    color: c.gold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Brand, model, serial, retailer and notes — the long form's own five, in the
+/// same order and with the same hints.
+///
+/// Every one of them is optional and none of them is a question, which is why
+/// they are not a step: a wizard screen asks something, and "would you like to
+/// type a serial number" is not a thing anybody wants asked.
+class _MoreSheet extends StatefulWidget {
+  const _MoreSheet({required this.draft});
+
+  final ItemDraft draft;
+
+  @override
+  State<_MoreSheet> createState() => _MoreSheetState();
+}
+
+class _MoreSheetState extends State<_MoreSheet> {
+  /*
+    Five boxes, four handoffs.
+
+    The keyboard's corner key is a tick left alone, and a tick on the first of
+    five boxes means reaching past the keyboard four times. See `TextBox.action`
+    — the same chain the split fields and the document dates now use.
+  */
+  final FocusNode _brand = FocusNode();
+  final FocusNode _model = FocusNode();
+  final FocusNode _serial = FocusNode();
+  final FocusNode _retailer = FocusNode();
+  final FocusNode _notes = FocusNode();
+
+  @override
+  void dispose() {
+    _brand.dispose();
+    _model.dispose();
+    _serial.dispose();
+    _retailer.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+    final insets = MediaQuery.viewInsetsOf(context).bottom;
+    final screen = MediaQuery.sizeOf(context).height;
+
+    final draft = widget.draft;
+
+    return SizedBox(
+      height: screen * 0.72,
+      child: SafeArea(
+        top: false,
+        // The keyboard moves the contents up inside the sheet rather than
+        // lifting the sheet off the bottom of the screen — the same note as on
+        // the wizard itself.
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: insets),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                  children: [
+                    SheetCard(
+                      title: 'More details',
+                      children: [
+                        const FieldLabel('Brand'),
+                        TextBox(
+                          initial: draft.brand,
+                          focus: _brand,
+                          hint: 'Optional',
+                          action: TextInputAction.next,
+                          onSubmitted: _model.requestFocus,
+                          onChanged: (v) => draft.brand = v,
+                        ),
+                        const SizedBox(height: 12),
+                        const FieldLabel('Model'),
+                        TextBox(
+                          initial: draft.model,
+                          focus: _model,
+                          hint: 'Optional',
+                          action: TextInputAction.next,
+                          onSubmitted: _serial.requestFocus,
+                          onChanged: (v) => draft.model = v,
+                        ),
+                        const SizedBox(height: 12),
+                        /*
+                          Serial sits with the rest rather than on the wizard's
+                          face, but it is the field people come back for —
+                          somebody making a claim is reading it off a plate with
+                          a torch, and the search matches on any four characters
+                          of it. See logic/search.dart.
+                        */
+                        const FieldLabel('Serial number'),
+                        TextBox(
+                          initial: draft.serial,
+                          focus: _serial,
+                          hint: 'Optional',
+                          action: TextInputAction.next,
+                          onSubmitted: _retailer.requestFocus,
+                          onChanged: (v) => draft.serial = v,
+                        ),
+                        const SizedBox(height: 12),
+                        const FieldLabel('Retailer'),
+                        TextBox(
+                          initial: draft.retailer,
+                          focus: _retailer,
+                          hint: 'Optional',
+                          action: TextInputAction.next,
+                          onSubmitted: _notes.requestFocus,
+                          onChanged: (v) => draft.retailer = v,
+                        ),
+                        const SizedBox(height: 12),
+                        const FieldLabel('Notes'),
+                        TextBox(
+                          initial: draft.notes,
+                          focus: _notes,
+                          hint: 'Optional',
+                          lines: 4,
+                          onChanged: (v) => draft.notes = v,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.gold,
+                        foregroundColor: c.onGold,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 26, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                      ),
+                      child: Text(
+                        'Done',
+                        style: TextStyle(
+                          fontFamily: fontDisplay,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: c.onGold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

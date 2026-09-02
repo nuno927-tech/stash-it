@@ -34,7 +34,7 @@ import '../logic/limits.dart';
 import 'feedback.dart';
 import 'item_wizard_sheet.dart';
 import 'sub_wizard_sheet.dart';
-import 'paper_form_sheet.dart';
+import 'paper_wizard_sheet.dart';
 import 'theme.dart';
 import 'unlock_sheet.dart';
 
@@ -182,7 +182,7 @@ class _StashItButtonState extends State<StashItButton>
       case AddKind.subscription:
         await showSubWizard(context, repo: widget.repo);
       case AddKind.paper:
-        await showPaperForm(context, repo: widget.repo);
+        await showPaperWizard(context, repo: widget.repo);
     }
 
     widget.onDone?.call();

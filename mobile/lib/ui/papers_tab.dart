@@ -20,7 +20,7 @@ import '../models/paper.dart';
 import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
-import 'paper_form_sheet.dart';
+import 'paper_wizard_sheet.dart';
 import 'paper_view_sheet.dart';
 import 'paper_icon.dart';
 import 'status_pill.dart';
@@ -156,7 +156,7 @@ class _PapersTabState extends State<PapersTab> {
   */
   Future<void> open(Paper? paper) async {
     if (paper == null) {
-      await showPaperForm(context, repo: widget.repo);
+      await showPaperWizard(context, repo: widget.repo);
     } else {
       await showPaperView(context, repo: widget.repo, paper: paper);
     }
@@ -193,7 +193,7 @@ class _PapersTabState extends State<PapersTab> {
             // with nothing on it there is no "which kind" to ask about — the
             // answer is the tab somebody is already looking at.
             onStash: () async {
-              await showPaperForm(context, repo: widget.repo);
+              await showPaperWizard(context, repo: widget.repo);
               if (context.mounted) setState(() {});
             },
           );
