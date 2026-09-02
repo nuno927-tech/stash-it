@@ -455,6 +455,23 @@
         is your choice and happens outside Stash it. It is never received by anyone here.
       </p>
 
+      <h2>Locking a backup with a passphrase</h2>
+      <p>
+        You can set a passphrase, and from then on every backup the app writes is encrypted with it
+        &mdash; AES-256, with the key stretched from your passphrase so that guessing it is slow.
+      </p>
+      <p>
+        <strong>Nobody can reset it and nobody has a copy</strong>: not us, not Google, and not
+        anyone who finds the file. That is the point of it, and it is also the risk &mdash; a backup
+        whose passphrase is forgotten is gone, and so is everything in it. Write it down somewhere
+        that is not this phone.
+      </p>
+      <p>
+        The format is written down in the app&rsquo;s own source so that a person with the
+        passphrase can open a backup with ordinary tools and no copy of Stash it. Encryption should
+        not be the reason you cannot reach your own data.
+      </p>
+
       <h2>The folder you choose for automatic backups</h2>
       <p>
         You can pick a folder and let the app write a backup into it on the same interval it would

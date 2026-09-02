@@ -25,6 +25,8 @@ import '../logic/limits.dart';
 import '../logic/devmode.dart';
 import '../io/auto_backup_run.dart';
 import '../io/backup_folder.dart';
+import '../io/sealed_backup.dart';
+import '../io/vault.dart';
 import '../io/csv.dart';
 import '../io/pin_widget.dart';
 import '../logic/prefs.dart';
@@ -37,6 +39,7 @@ import 'confetti.dart';
 import 'confirm_delete.dart';
 import 'diagnostics.dart';
 import 'folder_probe_screen.dart';
+import 'passphrase_sheet.dart';
 import 'schedule_screen.dart';
 import 'feedback.dart';
 import 'parts.dart';
@@ -54,7 +57,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.99.0';
+const appVersion = '0.99.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -87,6 +90,10 @@ class SettingsTab extends StatefulWidget {
 class _SettingsTabState extends State<SettingsTab> {
   String? _status;
   bool _busy = false;
+
+  /// Whether a passphrase is set. Re-read after it changes, not on every
+  /// rebuild — it is a platform call into the secure store.
+  late Future<bool> _locked = backupsAreLocked();
 
   /*
     ── Asked once, not on every rebuild ────────────────────────────────────
@@ -256,7 +263,25 @@ class _SettingsTabState extends State<SettingsTab> {
       final path = files.isEmpty ? null : files.first.path;
       if (path == null) return;
 
-      final bytes = await File(path).readAsBytes();
+      final sealed = await File(path).readAsBytes();
+
+      /*
+        ── Unlocked first, if it is locked ──────────────────────────────────
+
+        `openBackupBytes` sniffs the file. A plain zip from any version this
+        app has ever had goes straight through; a sealed one is opened with the
+        passphrase held on this phone, and only if THAT fails is anybody asked
+        to type one — which is the case that matters, a backup being restored
+        onto a new phone.
+      */
+      final bytes = await openBackupBytes(
+        sealed,
+        ask: () async {
+          if (!mounted) return null;
+          return askForPassphrase(context);
+        },
+      );
+
       final bundle = parseBackupBytes(bytes);
 
       if (!mounted) return;
@@ -279,6 +304,10 @@ class _SettingsTabState extends State<SettingsTab> {
       // before reading it.
       _say('Restored ${result.items} items, ${result.papers} documents, '
           '${result.subscriptions} subscriptions and ${result.blobs} files.');
+    } on VaultProblem catch (e) {
+      // A wrong passphrase, or a file that did not survive the trip. Both
+      // arrive here already written for a person — see `unlockBackup`.
+      _say(e.message);
     } on BundleError catch (e) {
       // Every refusal already carries a sentence written for a person.
       _say(e.message);
@@ -332,6 +361,42 @@ class _SettingsTabState extends State<SettingsTab> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /* ------------------------------------------------------- the lock */
+
+  /// Sets or replaces the passphrase.
+  ///
+  /// Nothing already written is re-encrypted. Old files keep opening with the
+  /// old passphrase, and the app says so rather than quietly leaving somebody
+  /// with a folder of files they can no longer read.
+  Future<void> _setPassphrase() async {
+    final was = await backupPassphrase();
+    if (!mounted) return;
+
+    final phrase = await askForNewPassphrase(context);
+    if (phrase == null || !mounted) return;
+
+    await setBackupPassphrase(phrase);
+    if (!mounted) return;
+
+    setState(() => _locked = backupsAreLocked());
+    _say(was == null
+        ? 'Backups are locked from now on. Write the passphrase down.'
+        : 'Passphrase changed. Backups already written still open with the '
+            'old one.');
+  }
+
+  /// Turns it off.
+  Future<void> _clearPassphrase() async {
+    final sure = await confirmUnlockBackups(context);
+    if (!sure || !mounted) return;
+
+    await clearBackupPassphrase();
+    if (!mounted) return;
+
+    setState(() => _locked = backupsAreLocked());
+    _say('Backups are no longer locked. Ones already written stay locked.');
   }
 
   /* --------------------------------------------- the automatic backup */
@@ -425,7 +490,9 @@ class _SettingsTabState extends State<SettingsTab> {
       final bytes = await runWithAcorns<List<int>>(
         context,
         title: 'Gathering everything',
-        job: (onStep) => exportBackup(widget.repo.db, onStep: onStep),
+        // Sealed if a passphrase is set. The same call the automatic backup
+        // makes, so the two cannot disagree about whether a file is locked.
+        job: (onStep) => exportSealedBackup(widget.repo.db, onStep: onStep),
       );
 
       if (!mounted) return;
@@ -1400,7 +1467,25 @@ class _SettingsTabState extends State<SettingsTab> {
                   feature with a switch AND a destination has two ways to say
                   "off" and a person who cannot tell which they are in.
                 */
+                /*
+                  ── The lock, above the folder ───────────────────────────────
+
+                  Order matters here and it is not alphabetical. A backup that
+                  goes into a cloud folder should be locked, so the question
+                  "is this readable by anyone who finds it" is asked before the
+                  question "where does it go".
+                */
                 const SizedBox(height: 14),
+                _Rule(c),
+                FutureBuilder<bool>(
+                  future: _locked,
+                  builder: (context, snap) => _LockRow(
+                    locked: snap.data ?? false,
+                    busy: _busy,
+                    onSet: _setPassphrase,
+                    onClear: _clearPassphrase,
+                  ),
+                ),
                 _Rule(c),
                 _FolderRow(
                   settings: settings,
@@ -2018,6 +2103,73 @@ class _Card extends StatelessWidget {
 
 /// A hairline between rows. Not a `Divider`, which brings its own height and
 /// indent rules that fight the card's padding.
+/// Whether backup files are locked, and the way to change that.
+///
+/// ── Above the folder, deliberately ─────────────────────────────────────────
+/// "Is this readable by anyone who finds it" is a question worth answering
+/// before "where does it go", and a person setting up automatic backups into a
+/// cloud folder should meet the lock on the way past rather than after.
+class _LockRow extends StatelessWidget {
+  const _LockRow({
+    required this.locked,
+    required this.busy,
+    required this.onSet,
+    required this.onClear,
+  });
+
+  final bool locked;
+  final bool busy;
+  final VoidCallback onSet;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    if (!locked) {
+      return _LinkRow(
+        label: 'Lock backups with a passphrase',
+        note: 'Backup files become unreadable to anyone who finds them.',
+        onTap: busy ? null : onSet,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _LinkRow(
+          label: 'Backups are locked',
+          note: 'Only your passphrase opens them. Nobody can reset it.',
+          trailing: Icon(Icons.lock_outline, size: 18, color: c.moss),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              TextButton(
+                onPressed: busy ? null : cued(onSet),
+                child: Text(
+                  'Change passphrase',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.gold),
+                ),
+              ),
+              TextButton(
+                onPressed: busy ? null : cued(onClear, cue: Cue.collapse),
+                child: Text(
+                  'Stop locking',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Where automatic backups go, and whether the last one arrived.
 ///
 /// ── Four states, and the app has to be able to say which ───────────────────

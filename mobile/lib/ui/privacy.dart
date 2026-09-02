@@ -120,6 +120,21 @@ const List<(String, String)> _policy = [
         'received by anyone here.',
   ),
   (
+    'Locking a backup with a passphrase',
+    'You can set a passphrase, and from then on every backup the app writes '
+        'is encrypted with it — AES-256, with the key stretched from your '
+        'passphrase so that guessing it is slow.\n\n'
+        'Nobody can reset it and nobody has a copy: not us, not Google, and '
+        'not anyone who finds the file. That is the point of it, and it is '
+        'also the risk — a backup whose passphrase is forgotten is gone, and '
+        'so is everything in it. Write it down somewhere that is not this '
+        'phone.\n\n'
+        'The format is written down in the app\'s own source so that a person '
+        'with the passphrase can open a backup with ordinary tools and no '
+        'copy of Stash it. Encryption should not be the reason you cannot '
+        'reach your own data.',
+  ),
+  (
     'The folder you choose for automatic backups',
     'You can pick a folder and let the app write a backup into it on the same '
         'interval it would otherwise nag you on. Android asks you which '

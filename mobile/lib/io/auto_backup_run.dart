@@ -31,7 +31,7 @@ import '../db/backup.dart';
 import '../db/repository.dart';
 import '../logic/auto_backup.dart';
 import 'backup_folder.dart';
-import 'bundle_file.dart';
+import 'sealed_backup.dart';
 
 /// What happened, for the Settings line and for the developer probe.
 class AutoBackupResult {
@@ -112,7 +112,9 @@ Future<AutoBackupResult> backUpToFolder(Repository repo) async {
       );
     }
 
-    final bytes = await exportBackup(repo.db);
+    // Sealed if a passphrase is set — `exportSealedBackup` is the one place
+    // that decides, so a second route out of the app cannot forget to ask.
+    final bytes = await exportSealedBackup(repo.db);
 
     /*
       Written to the cache first, then copied across by the platform.

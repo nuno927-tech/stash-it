@@ -305,6 +305,7 @@ class TextBox extends StatelessWidget {
     this.big = false,
     this.action,
     this.onSubmitted,
+    this.obscure = false,
     super.key,
   });
 
@@ -349,6 +350,14 @@ class TextBox extends StatelessWidget {
   final TextInputAction? action;
   final VoidCallback? onSubmitted;
 
+  /// Dots instead of characters.
+  ///
+  /// One caller: the passphrase sheet, and there it defaults to OFF. Dots are
+  /// for something typed forty times a week in a coffee shop; a backup
+  /// passphrase is typed twice in a lifetime and is the one string in the app
+  /// nobody can afford to get wrong.
+  final bool obscure;
+
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
@@ -387,7 +396,10 @@ class TextBox extends StatelessWidget {
               controller: controller,
               focusNode: focus,
               autofocus: autofocus,
-              maxLines: lines,
+              obscureText: obscure,
+              // A single line, always, when the characters are hidden: Flutter
+              // asserts on an obscured field with more than one.
+              maxLines: obscure ? 1 : lines,
               keyboardType: keyboard,
               textInputAction: action,
               onSubmitted:
@@ -402,7 +414,8 @@ class TextBox extends StatelessWidget {
               initialValue: initial,
               focusNode: focus,
               autofocus: autofocus,
-              maxLines: lines,
+              obscureText: obscure,
+              maxLines: obscure ? 1 : lines,
               keyboardType: keyboard,
               textInputAction: action,
               onFieldSubmitted:
