@@ -628,8 +628,13 @@ class _WizardState extends State<_Wizard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _NameField(
+                // The shared field — see `NameField` in form_sheet_parts.dart.
+                // It was private to this file, and the subscription wizard
+                // asked the same question in a different face at a different
+                // size one swipe away.
+                NameField(
                   controller: _name,
+                  hint: 'Bosch dishwasher',
                   focus: _nameFocus,
                   onChanged: (_) => setState(() {}),
                   // The next field, not the next screen. See `_costFocus`.
@@ -892,64 +897,6 @@ class _WizardState extends State<_Wizard> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _NameField extends StatelessWidget {
-  const _NameField({
-    required this.controller,
-    required this.focus,
-    required this.onChanged,
-    required this.onDone,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focus;
-  final ValueChanged<String> onChanged;
-
-  /// What the keyboard's action key does. Always the next field on this
-  /// screen, never the next screen.
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return TextField(
-      controller: controller,
-      focusNode: focus,
-      onChanged: onChanged,
-      onSubmitted: (_) => onDone(),
-      textCapitalization: TextCapitalization.sentences,
-      textInputAction: TextInputAction.next,
-      style: TextStyle(
-        fontFamily: fontDisplay,
-        fontWeight: FontWeight.w800,
-        fontSize: 23,
-        letterSpacing: -0.5,
-        color: c.text,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Bosch dishwasher',
-        hintStyle: TextStyle(
-          fontFamily: fontDisplay,
-          fontWeight: FontWeight.w800,
-          fontSize: 23,
-          letterSpacing: -0.5,
-          color: c.slate600,
-        ),
-        isDense: true,
-        contentPadding: const EdgeInsets.only(bottom: 10),
-        // A rule, not a box. This is the only thing on the screen; a filled
-        // rectangle round it would be a border round the whole page.
-        border: UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
-        enabledBorder:
-            UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: c.gold, width: 2),
-        ),
       ),
     );
   }

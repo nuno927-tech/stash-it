@@ -159,29 +159,44 @@ class SheetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: fontDisplay,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: c.text,
+          /*
+            ── An empty title means no heading at all ────────────────────────
+
+            The long form stacks these cards, so each one needs its name to
+            say where one ends and the next begins. A wizard shows exactly one
+            card under a question that already asked what is on it — so the
+            heading was the question repeated in smaller type, one line below
+            itself.
+
+            Empty rather than nullable, because every caller passes a string
+            already and `title: ''` reads at the call site as "no heading"
+            without a second way to spell it.
+          */
+          if (title.isNotEmpty || action != null || trailing != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: fontDisplay,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: c.text,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (action != null) action!,
-              if (trailing != null) trailing!,
-            ],
-          ),
-          const SizedBox(height: 14),
+                if (action != null) action!,
+                if (trailing != null) trailing!,
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
           ...children,
         ],
       ),
@@ -711,6 +726,80 @@ class SheetFooter extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The one big line somebody types a name on.
+///
+/// ── Why this is shared rather than copied ──────────────────────────────────
+/// It began as a private widget in the item wizard: display face, 23pt, 800,
+/// on a rule rather than in a box, because on a screen holding one question a
+/// filled rectangle reads as a border round the whole page.
+///
+/// The subscription wizard asks the same question about a different noun, and
+/// had a body-face 17pt box for it — so two screens one swipe apart in the
+/// same sheet answered "what is it called" in two different typefaces at two
+/// different sizes. Copying the style across would have left two definitions
+/// of one thing, which is how they came apart in the first place.
+class NameField extends StatelessWidget {
+  const NameField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+    this.focus,
+    this.onDone,
+    super.key,
+  });
+
+  final TextEditingController controller;
+
+  /// An example, not an instruction. It is set in the same face and size as
+  /// the answer, so the field looks answered before it is.
+  final String hint;
+
+  final ValueChanged<String> onChanged;
+  final FocusNode? focus;
+
+  /// What the keyboard's action key does. Always the next field on this
+  /// screen, never the next screen — and null when there is no next field, in
+  /// which case the key closes the keyboard.
+  final VoidCallback? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    const face = TextStyle(
+      fontFamily: fontDisplay,
+      fontWeight: FontWeight.w800,
+      fontSize: 23,
+      letterSpacing: -0.5,
+    );
+
+    return TextField(
+      controller: controller,
+      focusNode: focus,
+      onChanged: onChanged,
+      onSubmitted: onDone == null ? null : (_) => onDone!(),
+      textCapitalization: TextCapitalization.sentences,
+      textInputAction:
+          onDone == null ? TextInputAction.done : TextInputAction.next,
+      style: face.copyWith(color: c.text),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: face.copyWith(color: c.slate600),
+        isDense: true,
+        contentPadding: const EdgeInsets.only(bottom: 10),
+        // A rule, not a box. This is the only thing on the screen; a filled
+        // rectangle round it would be a border round the whole page.
+        border: UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
+        enabledBorder:
+            UnderlineInputBorder(borderSide: BorderSide(color: c.line)),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: c.gold, width: 2),
+        ),
       ),
     );
   }

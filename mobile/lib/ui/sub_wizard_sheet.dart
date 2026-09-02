@@ -396,9 +396,15 @@ class _WizardState extends State<_Wizard> {
     _advance(_Step.service);
 
     return WizardAsk(
-      question: 'What are you paying for?',
+      question: 'What service are you paying for?',
       hint: 'Tap one, or type anything we do not have a logo for.',
       answer: SubServiceCard(
+        // No heading on any of the three cards here. The question above each
+        // one already says what is on it, so the heading was that question
+        // repeated in smaller type one line below itself. The long form keeps
+        // its headings — it stacks all three and needs them to tell the cards
+        // apart.
+        title: '',
         draft: _draft,
         name: _name,
         // The wizard's own auto-advance and its footer both read the name, so
@@ -415,6 +421,7 @@ class _WizardState extends State<_Wizard> {
       hint: 'The next renewal is the one date everything else is worked out '
           'from.',
       answer: SubBillingCard(
+        title: '',
         draft: _draft,
         onChanged: () => setState(() {}),
       ),
@@ -423,9 +430,10 @@ class _WizardState extends State<_Wizard> {
 
   Widget _reminder() {
     return WizardAsk(
-      question: 'Want telling before it renews?',
+      question: 'Remind me before it renews.',
       hint: 'Most do not need one — the money leaves either way.',
       answer: SubReminderCard(
+        title: '',
         draft: _draft,
         onChanged: () => setState(() {}),
       ),

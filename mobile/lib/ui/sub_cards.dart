@@ -189,33 +189,25 @@ class SubServiceCard extends StatelessWidget {
           Underneath, it reads as what it actually is: the way out for the gym,
           the window cleaner and the one service we do not have a logo for.
 
-          `bareInput` rather than a hand-written decoration, because the theme
-          sets `filled` and an `enabledBorder` and a decoration that only sets
-          `border` does not switch either off — see the note there. That is what
-          was drawing a second box inside this one.
+          The same field the item wizard uses for a product name — `NameField`,
+          which is where that style now lives. These two screens are one swipe
+          apart in the same sheet and both ask what a thing is called; this one
+          was a body-face box at 17 and that one a display-face line at 23.
         */
-        WhiteField(
-          child: TextField(
-            controller: name,
-            style: TextStyle(fontFamily: fontBody, fontSize: 17, color: c.text),
-            cursorColor: c.gold,
-            decoration: bareInput(
-              hint: 'Netflix, Spotify, the gym...',
-              hintStyle:
-                  TextStyle(fontFamily: fontBody, fontSize: 17, color: c.muted),
-            ),
-            onChanged: (v) {
-              draft.name = v;
+        NameField(
+          controller: name,
+          hint: 'Netflix, Spotify, the gym...',
+          onChanged: (v) {
+            draft.name = v;
 
-              // Typing over a chosen service unpicks it. Otherwise a
-              // subscription called "Netflix account" keeps Netflix's id, and
-              // the id is what the rest of the app trusts.
-              final picked = serviceFor(draft.serviceId);
-              if (picked != null && picked.name != v) draft.serviceId = null;
+            // Typing over a chosen service unpicks it. Otherwise a
+            // subscription called "Netflix account" keeps Netflix's id, and
+            // the id is what the rest of the app trusts.
+            final picked = serviceFor(draft.serviceId);
+            if (picked != null && picked.name != v) draft.serviceId = null;
 
-              onChanged();
-            },
-          ),
+            onChanged();
+          },
         ),
       ],
     );
@@ -426,7 +418,7 @@ class _SubBillingCardState extends State<SubBillingCard> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Records who the money goes to, not what it costs',
+                    'Records who the money goes to',
                     style: TextStyle(
                         fontFamily: fontBody, fontSize: 12.5, color: c.muted),
                   ),
