@@ -49,13 +49,21 @@ import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'item_form_sheet.dart';
 import 'pick_doc.dart';
+import 'receipt_scan_sheet.dart';
 import 'save_item.dart';
 import 'stash_the_paper.dart';
 import 'theme.dart';
 import 'wizard_parts.dart';
 
 /// Opens the step-by-step add. Resolves true when something was saved.
-Future<bool?> showItemWizard(BuildContext context, {required Repository repo}) {
+Future<bool?> showItemWizard(
+  BuildContext context, {
+  required Repository repo,
+
+  /// What a scanned receipt already answered — see `receipt_scan_sheet.dart`.
+  /// Null for the ordinary way in, which is most of them.
+  ReceiptSeed? seed,
+}) {
   feedback(Cue.expand);
 
   return showModalBottomSheet<bool>(
@@ -67,7 +75,7 @@ Future<bool?> showItemWizard(BuildContext context, {required Repository repo}) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
-    builder: (context) => _Wizard(repo: repo),
+    builder: (context) => _Wizard(repo: repo, seed: seed),
   );
 }
 
@@ -79,9 +87,12 @@ Future<bool?> showItemWizard(BuildContext context, {required Repository repo}) {
 enum _Step { what, room, bought, cover, papers, warning }
 
 class _Wizard extends StatefulWidget {
-  const _Wizard({required this.repo});
+  const _Wizard({required this.repo, this.seed});
 
   final Repository repo;
+
+  /// What a scanned receipt already answered. See `_applySeed`.
+  final ReceiptSeed? seed;
 
   @override
   State<_Wizard> createState() => _WizardState();
@@ -89,6 +100,31 @@ class _Wizard extends StatefulWidget {
 
 class _WizardState extends State<_Wizard> {
   final ItemDraft _draft = ItemDraft();
+
+  /*
+    ── What the receipt already answered ─────────────────────────────────────
+
+    Applied once, on the way in, straight into the draft — so the screens draw
+    themselves already filled and every one of them is editable exactly as if
+    it had been typed. Nothing is locked and nothing is marked as machine-read
+    once it is here: the review sheet was where that mattered, and carrying a
+    "this was scanned" flag through the form would only invite somebody to
+    treat those fields as less real than the ones they typed.
+
+    The name is never seeded. A receipt line reads `BOSCH SHXM4AY55N DISHWSHR
+    749.99`, which is not what anybody calls their dishwasher — so the one
+    question this wizard exists to ask is still asked.
+  */
+  void _applySeed() {
+    final seed = widget.seed;
+    if (seed == null) return;
+
+    _draft.purchaseDate = seed.purchaseDate ?? '';
+    _draft.priceText = seed.priceText ?? '';
+    _draft.retailer = seed.retailer ?? '';
+
+    if (seed.receipt case final receipt?) _pending.add(receipt);
+  }
 
   /*
     Owned here, not built beside the field.
@@ -134,6 +170,7 @@ class _WizardState extends State<_Wizard> {
   void initState() {
     super.initState();
     unawaited(_loadRooms());
+    _applySeed();
 
     /*
       ── One policy to start with ────────────────────────────────────────────
@@ -378,6 +415,38 @@ class _WizardState extends State<_Wizard> {
 
     // Nothing to point at yet, so they are held and written by `saveItemDraft`.
     setState(() => _pending.addAll(picked));
+
+    /*
+      ── And then offer to read it ─────────────────────────────────────────
+
+      The other way in. Somebody attaching a receipt the ordinary way is one
+      tap from the same reading the Scan a receipt row does, and asking here
+      costs nothing when they say no.
+
+      Only a receipt, and only a photograph of one: a manual has no purchase
+      date on it, and a PDF is not something the recogniser takes.
+
+      Only when those fields are still empty, too. Somebody who has already
+      typed a price and then attaches the receipt has answered the question,
+      and an app that offers to overwrite what you just typed is an app you
+      stop trusting with the rest.
+    */
+    final shot = picked.first;
+    final worthReading = kind == DocKind.receipt &&
+        (shot.mime ?? '').startsWith('image/') &&
+        _draft.purchaseDate.isEmpty &&
+        _draft.priceText.isEmpty;
+
+    if (!worthReading) return;
+
+    final seed = await readStagedReceipt(context, shot);
+    if (seed == null || !mounted) return;
+
+    setState(() {
+      _draft.purchaseDate = seed.purchaseDate ?? _draft.purchaseDate;
+      _draft.priceText = seed.priceText ?? _draft.priceText;
+      _draft.retailer = seed.retailer ?? _draft.retailer;
+    });
   }
 
   Future<void> _attachLink() async {

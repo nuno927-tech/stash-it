@@ -33,14 +33,31 @@ import '../db/repository.dart';
 import '../logic/limits.dart';
 import 'feedback.dart';
 import 'item_wizard_sheet.dart';
+import 'receipt_scan_sheet.dart';
 import 'sub_wizard_sheet.dart';
 import 'paper_wizard_sheet.dart';
 import 'theme.dart';
 import 'unlock_sheet.dart';
 
-enum AddKind { item, subscription, paper }
+enum AddKind { receipt, item, subscription, paper }
 
+/*
+  ── Scanning is first, and it is a way of adding a product ─────────────────
+
+  It lands on the same wizard the Product row opens, with three of the six
+  questions already answered. First on the list because the menu unfolds
+  upwards from the thumb, so the first entry is the nearest one — and because
+  a receipt is what somebody is holding at the moment they think to open this.
+
+  Adding it was the line in `_kinds` this file promised it would be.
+*/
 const List<(AddKind, IconData, String, String)> _kinds = [
+  (
+    AddKind.receipt,
+    Icons.document_scanner_outlined,
+    'Scan a receipt',
+    'Read the date and price off it'
+  ),
   (AddKind.item, Icons.work_outline, 'Product', 'Something you own'),
   (
     AddKind.subscription,
@@ -177,6 +194,21 @@ class _StashItButtonState extends State<StashItButton>
       been looking at.
     */
     switch (kind) {
+      /*
+        The scan and the form are one flow, not two.
+
+        A photograph that nobody turns into a record is worth nothing, so this
+        does not stop at "read it" — it goes on to the same wizard the row
+        below opens, carrying what the receipt answered. Backing out of the
+        camera or the review sheet backs out of the whole thing, which is why
+        the null check is a return rather than a fall-through into an empty
+        form somebody did not ask for.
+      */
+      case AddKind.receipt:
+        final seed = await scanReceipt(context);
+        if (seed == null || !mounted) return;
+        await showItemWizard(context, repo: widget.repo, seed: seed);
+
       case AddKind.item:
         await showItemWizard(context, repo: widget.repo);
       case AddKind.subscription:
