@@ -17,6 +17,23 @@ This is not an import resolver and must never grow into one. It carries only
 symbols whose home is unambiguous and which are not re-exported by anything
 this app imports — because a false positive here trains people to ignore the
 output, and a checker nobody reads is worse than no checker.
+
+── A second pass over this app's own names was tried, and abandoned ─────────
+It would have caught the one that prompted it: `readableSize` moved into
+logic/format.dart, and the file that prompted the move never imported it.
+
+The idea is sound on paper — Dart imports are not transitive, this app has no
+`export` directives and no part files, so a name defined in one file and used
+in another must be imported there. What defeated it is finding the
+declarations without a parser. The first attempt let its patterns span lines
+and concluded the app declares `Text`, `Row` and `final`: four hundred and
+twenty-six findings, all wrong. Tightened to single-line, column-zero matches
+it still produced a hundred and five, because short lowercase names — `pick`,
+`text`, `settings`, `ask` — are declared locally in dozens of files and the
+guard for that cannot be made reliable with regexes either.
+
+Two attempts, no clean run. Left out rather than left noisy, which is the rule
+this file states above and would have been hypocritical to break.
 """
 
 import re

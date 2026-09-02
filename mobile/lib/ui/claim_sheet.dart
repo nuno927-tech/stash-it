@@ -36,6 +36,7 @@ import 'package:share_plus/share_plus.dart';
 import '../db/repository.dart';
 import '../logic/attachments.dart';
 import '../logic/claim.dart';
+import '../logic/format.dart';
 import '../models/types.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
