@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.2.0';
+const appVersion = '1.2.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1285,83 +1285,83 @@ class _SettingsTabState extends State<SettingsTab> {
                 if (on) previewCue(Cue.delete, sounds: false, haptics: true);
               },
             ),
-          ],
-        ),
 
-        /* -------------------------------------------- home screen widgets */
+            /*
+              ── The one part of the app that lives outside it ────────────────
 
-        /*
-          ── The one part of the app that lives outside it ────────────────────
+              Nobody discovers a widget from inside an app: adding one means
+              long pressing an empty patch of home screen, finding a picker
+              every launcher draws differently, and scrolling to S. So the app
+              says the three exist, and — where the launcher allows it, which
+              is most of them since Android 8 — offers to place one rather than
+              explaining how.
 
-          Nobody discovers a widget from inside an app: adding one means long
-          pressing an empty patch of home screen, finding a picker every
-          launcher draws differently, and scrolling to S. So the app says the
-          three exist, and — where the launcher allows it, which is most of them
-          since Android 8 — offers to place one rather than explaining how.
+              A card of its own before this, with a paragraph and three rows
+              each carrying a line of description. Three names and three
+              buttons say the same thing in a fifth of the height, and the
+              names were always doing the work: "Coming up", "The ring" and
+              "Quick add" describe themselves.
 
-          Above notifications on purpose. They are the two things the app does
-          when nobody is looking at it, and they are the two people go hunting
-          for.
-        */
-        FutureBuilder<bool>(
-          future: _canPin,
-          builder: (context, probe) {
-            final canPin = probe.data ?? false;
+              Here rather than anywhere else because a widget IS appearance —
+              it is what the app looks like when nobody has opened it.
+            */
+            const SizedBox(height: 14),
+            _Rule(c),
+            const SizedBox(height: 10),
+            Text(
+              'Home screen widgets',
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: c.text,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<bool>(
+              future: _canPin,
+              builder: (context, probe) {
+                final canPin = probe.data ?? false;
 
-            Widget row(String label, String note, PinnableWidget which) =>
-                _LinkRow(
-                  label: label,
-                  note: note,
-                  onTap: canPin ? () => _pin(label, which) : null,
-                  trailing: canPin
-                      ? Text(
-                          'Add',
-                          style: TextStyle(
-                            fontFamily: fontBody,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: c.gold,
-                          ),
-                        )
-                      : null,
+                Widget chip(String label, PinnableWidget which) => Expanded(
+                      child: _ContactChip(
+                        label: label,
+                        onTap: canPin ? () => _pin(label, which) : null,
+                      ),
+                    );
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // `Expanded` so all three are the same width whatever the
+                    // words are, exactly as the contact chips below.
+                    Row(
+                      children: [
+                        chip('Coming up', PinnableWidget.comingUp),
+                        const SizedBox(width: 8),
+                        chip('The ring', PinnableWidget.ring),
+                        const SizedBox(width: 8),
+                        chip('Quick add', PinnableWidget.quickAdd),
+                      ],
+                    ),
+
+                    /*
+                      The only line under this section, and only on a launcher
+                      that will not take a widget by request. Without it the
+                      three chips are dead controls with no explanation, which
+                      is worse than a sentence.
+                    */
+                    if (!canPin)
+                      _Note(
+                        'Press and hold your home screen, choose Widgets, and '
+                        'scroll to Stash it.',
+                        c,
+                      ),
+                  ],
                 );
-
-            return _Card(
-              title: 'Home screen widgets',
-              children: [
-                /*
-                  The promise, restated where the feature is offered.
-
-                  It is in the privacy policy too, and it belongs here as well:
-                  somebody deciding whether to put this on a screen their family
-                  can see is entitled to know what will be on it before they
-                  decide, not after they go looking.
-                */
-                _Note(
-                  'Three of them, drawn from what is already here. A '
-                  'widget only ever shows a name, a date and a colour — '
-                  'never a price, a serial number or a photograph.',
-                  c,
-                ),
-                const SizedBox(height: 6),
-                _Rule(c),
-                row('Coming up', 'What needs you next, by date.',
-                    PinnableWidget.comingUp),
-                _Rule(c),
-                row('The ring', 'How much of your cover is still running.',
-                    PinnableWidget.ring),
-                _Rule(c),
-                row('Quick add', 'Straight into the add sheet, three ways.',
-                    PinnableWidget.quickAdd),
-                if (!canPin)
-                  _Note(
-                    'To add one: press and hold an empty part of your home '
-                    'screen, choose Widgets, and scroll to Stash it.',
-                    c,
-                  ),
-              ],
-            );
-          },
+              },
+            ),
+          ],
         ),
 
         /* ------------------------------- notifications, then the lock */
@@ -2225,10 +2225,25 @@ class _Card extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
+                      /*
+                        The display face, as every other heading in the app.
+
+                        These were Inter at 700, which is the same weight the
+                        rows inside them use for a label — so a card's name and
+                        the name of a switch it contains were the same object
+                        at slightly different sizes. Bricolage is what says
+                        "this is a heading" on the five page titles and the
+                        wordmark, and a settings card is the same kind of thing
+                        one level down.
+
+                        Tracking pulled in, because Bricolage at 700 sets wide
+                        and a heading this small wants to read as one shape.
+                      */
                       style: TextStyle(
-                        fontFamily: fontBody,
-                        fontSize: 14.5,
+                        fontFamily: fontDisplay,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
                         color: c.text,
                       ),
                     ),
@@ -2822,21 +2837,27 @@ class _ContactChip extends StatelessWidget {
   const _ContactChip({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+
+  /// Null when there is nothing this chip can do — a launcher too old to be
+  /// handed a widget, which is the only case so far.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
+    final off = onTap == null;
 
     return Material(
       color: c.slate600,
       borderRadius: BorderRadius.circular(Radii.pill),
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.pill),
-        onTap: () {
-          feedback(Cue.tap);
-          onTap();
-        },
+        onTap: off
+            ? null
+            : () {
+                feedback(Cue.tap);
+                onTap!();
+              },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
           child: Text(
@@ -2848,7 +2869,7 @@ class _ContactChip extends StatelessWidget {
               fontFamily: fontBody,
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: c.text,
+              color: off ? c.muted : c.text,
             ),
           ),
         ),
