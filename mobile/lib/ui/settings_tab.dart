@@ -51,7 +51,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.98.1';
+const appVersion = '0.98.2';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1283,7 +1283,11 @@ class _SettingsTabState extends State<SettingsTab> {
                     ? 'Never'
                     : settings.lastBackupAt!.toIso8601String().substring(0, 10),
                 style: TextStyle(
-                    fontFamily: fontMono, fontSize: 12, color: c.muted),
+                  fontFamily: fontMono,
+                  fontFeatures: tabularFigures,
+                  fontSize: 12,
+                  color: c.muted,
+                ),
               ),
               children: [
                 Padding(
@@ -1503,6 +1507,7 @@ class _SettingsTabState extends State<SettingsTab> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: fontMono,
+                        fontFeatures: tabularFigures,
                         fontSize: 13,
                         color: c.gold,
                       ),

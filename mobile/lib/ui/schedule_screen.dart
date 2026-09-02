@@ -208,6 +208,7 @@ class _Summary extends StatelessWidget {
                   value,
                   style: TextStyle(
                     fontFamily: fontMono,
+                    fontFeatures: tabularFigures,
                     fontSize: 13,
                     color: data.wakes.length != data.pending &&
                             label == 'The phone is holding'
@@ -255,6 +256,7 @@ class _Row extends StatelessWidget {
                   '${data.hour.toString().padLeft(2, '0')}:00',
                   style: TextStyle(
                     fontFamily: fontMono,
+                    fontFeatures: tabularFigures,
                     fontSize: 12.5,
                     color: c.text,
                   ),
@@ -309,6 +311,7 @@ class _Row extends StatelessWidget {
             'opens: ${wake.payload}',
             style: TextStyle(
               fontFamily: fontMono,
+              fontFeatures: tabularFigures,
               fontSize: 11,
               color: c.muted,
             ),

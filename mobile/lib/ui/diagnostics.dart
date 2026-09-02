@@ -296,6 +296,7 @@ class _DiagnosticsState extends State<DiagnosticsScreen> {
                                     // are read character by character.
                                     style: TextStyle(
                                       fontFamily: fontMono,
+                                      fontFeatures: tabularFigures,
                                       fontSize: 13,
                                       color: c.text,
                                     ),

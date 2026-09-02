@@ -515,7 +515,17 @@ class DateBox extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: value.isEmpty ? fontBody : fontMono,
+                  /*
+                    One family either way.
+
+                    This read `value.isEmpty ? fontBody : fontMono`, which has
+                    been a choice between two identical strings since `fontMono`
+                    became an alias for the body face — a switch that has never
+                    switched. The date is what wanted the different treatment,
+                    and it gets it from the figures rather than from the family.
+                  */
+                  fontFamily: fontMono,
+                  fontFeatures: tabularFigures,
                   fontSize: value.isEmpty ? 15 : 16,
                   color: value.isEmpty ? c.muted : c.text,
                 ),

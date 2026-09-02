@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.98.1+87
+version: 0.98.2+88
 
 environment:
   sdk: ^3.5.0
@@ -158,36 +158,52 @@ flutter:
   # at all, so they ship inside it — and a first launch that falls back to the
   # system face and then reflows is worse than a slightly larger download.
   #
-  # BOTH ARE VARIABLE FONTS, which is why one file covers every weight. Flutter
-  # reads a variable font's default instance unless told otherwise, so each
-  # weight the app actually uses is declared against the same file: 200 for the
-  # figures, 800 for the wordmark, and the rest for body text.
+  # ── Static instances, not one variable file five times ──────────────────
   #
-  # See assets/fonts/README.md for where the files come from.
+  # Upstream both are variable fonts, and this section used to name the same
+  # file once per weight — five entries, one asset — which reads like five
+  # weights and is not. The `weight:` key chooses BETWEEN assets; with one asset
+  # there is nothing to choose between, and what renders is the file's own
+  # default instance. Bricolage's default is 800, so the two places built to be
+  # thin (the ring's percentage at w200, the figures under it at w300) had no
+  # way to be thin.
+  #
+  # Cut with fontTools into one file per weight the app actually asks for, every
+  # other axis pinned to its own default so nothing but the weight changed.
+  # `fontWeight` now means what it says, here and in anything written later,
+  # without a `fontVariations` on every TextStyle in the app.
+  #
+  # It costs about 750 KB: Bricolage got smaller (four instances are less than
+  # one variable file), Inter got larger. Worth it for type that is the weight
+  # it claims to be.
+  #
+  # Only the weights in use are cut. Flutter snaps a request to the nearest
+  # declared weight, so adding a weight to the app means adding it here — and
+  # a missing one is a heavier or lighter word rather than an error.
   fonts:
+    # 200 for the ring's percentage, 300 for the figures under it, 700 for a
+    # card heading, 800 for the wordmark and every screen title.
     - family: BricolageGrotesque
       fonts:
-        - asset: assets/fonts/BricolageGrotesque.ttf
+        - asset: assets/fonts/BricolageGrotesque-200.ttf
           weight: 200
-        - asset: assets/fonts/BricolageGrotesque.ttf
-          weight: 400
-        - asset: assets/fonts/BricolageGrotesque.ttf
-          weight: 600
-        - asset: assets/fonts/BricolageGrotesque.ttf
+        - asset: assets/fonts/BricolageGrotesque-300.ttf
+          weight: 300
+        - asset: assets/fonts/BricolageGrotesque-700.ttf
           weight: 700
-        - asset: assets/fonts/BricolageGrotesque.ttf
+        - asset: assets/fonts/BricolageGrotesque-800.ttf
           weight: 800
     - family: Inter
       fonts:
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-300.ttf
           weight: 300
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-400.ttf
           weight: 400
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-500.ttf
           weight: 500
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-600.ttf
           weight: 600
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-700.ttf
           weight: 700
 
 # ── The launcher icon ────────────────────────────────────────────────────

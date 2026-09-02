@@ -306,6 +306,24 @@ const String fontBody = 'Inter';
 /// survives — see the note above.
 const String fontMono = fontBody;
 
+/// The one thing those places actually needed from a monospaced face.
+///
+/// ── Columns of figures, in a proportional font ─────────────────────────────
+/// `fontMono` says what those sites mean and then hands them Inter, whose
+/// digits are not the same width — a 1 is narrower than an 8. Five of the eight
+/// places that ask for it are reading a COLUMN: the diagnostics values, the
+/// three readouts on the scheduled-reminders screen, the version string. A
+/// column of proportional digits does not line up, and the eye reads a ragged
+/// column as a mistake before it reads it as a number.
+///
+/// Inter and Bricolage both carry `tnum`, so the fix is a font feature rather
+/// than a font. It makes every digit the width of the widest, which is the
+/// whole of what a monospaced face was wanted for here — and none of the cost.
+///
+/// Used with `fontMono`, always. If a real monospaced face is ever added, this
+/// becomes redundant rather than wrong.
+const List<FontFeature> tabularFigures = [FontFeature.tabularFigures()];
+
 /*
   ── The scale ───────────────────────────────────────────────────────────────
 
