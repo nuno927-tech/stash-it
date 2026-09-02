@@ -8,7 +8,6 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter/material.dart';
 
 import 'billing/current.dart';
@@ -25,20 +24,6 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  /*
-    ── Hand the ciphers to the platform ──────────────────────────────────────
-
-    One line, and it is the difference between a backup that encrypts in
-    seconds and one that encrypts in minutes. Without it, `cryptography` uses
-    its own Dart AES — correct, portable, and about twenty megabytes a second,
-    against javax.crypto's hundreds.
-
-    Before anything that might encrypt, which on a launch that finds a backup
-    due is quite early. Safe to call always: it falls back to the Dart
-    implementations on any platform with nothing to offer.
-  */
-  FlutterCryptography.enable();
 
   /*
     The database is opened before the first frame, deliberately.

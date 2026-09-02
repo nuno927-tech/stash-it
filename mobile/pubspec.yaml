@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 0.99.1+90
+version: 0.99.2+91
 
 environment:
   sdk: ^3.5.0
@@ -27,6 +27,10 @@ dependencies:
   # the algorithms; `cryptography_flutter` hands them to javax.crypto on
   # Android, which is the difference between a few seconds and a few minutes on
   # a backup with photographs in it.
+  #
+  # No code registers the second one. It used to need `FlutterCryptography
+  # .enable()` in main; that is deprecated now and Flutter wires the plugin up
+  # by itself, so the dependency being here IS the whole installation.
   #
   # Nothing here is used for the database — that is SQLCipher, one layer down,
   # with a key that never leaves the Keystore. These two are only ever pointed

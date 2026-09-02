@@ -3852,6 +3852,30 @@ class $SettingsTableTable extends SettingsTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(30));
+  static const VerificationMeta _backupFolderMeta =
+      const VerificationMeta('backupFolder');
+  @override
+  late final GeneratedColumn<String> backupFolder = GeneratedColumn<String>(
+      'backup_folder', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _backupFolderLabelMeta =
+      const VerificationMeta('backupFolderLabel');
+  @override
+  late final GeneratedColumn<String> backupFolderLabel =
+      GeneratedColumn<String>('backup_folder_label', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastAutoBackupAtMeta =
+      const VerificationMeta('lastAutoBackupAt');
+  @override
+  late final GeneratedColumn<DateTime> lastAutoBackupAt =
+      GeneratedColumn<DateTime>('last_auto_backup_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastAutoBackupErrorMeta =
+      const VerificationMeta('lastAutoBackupError');
+  @override
+  late final GeneratedColumn<String> lastAutoBackupError =
+      GeneratedColumn<String>('last_auto_backup_error', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _devModeEnabledMeta =
       const VerificationMeta('devModeEnabled');
   @override
@@ -3986,6 +4010,10 @@ class $SettingsTableTable extends SettingsTable
         currency,
         lastBackupAt,
         backupReminderDays,
+        backupFolder,
+        backupFolderLabel,
+        lastAutoBackupAt,
+        lastAutoBackupError,
         devModeEnabled,
         displayName,
         onboardedAt,
@@ -4039,6 +4067,30 @@ class $SettingsTableTable extends SettingsTable
           _backupReminderDaysMeta,
           backupReminderDays.isAcceptableOrUnknown(
               data['backup_reminder_days']!, _backupReminderDaysMeta));
+    }
+    if (data.containsKey('backup_folder')) {
+      context.handle(
+          _backupFolderMeta,
+          backupFolder.isAcceptableOrUnknown(
+              data['backup_folder']!, _backupFolderMeta));
+    }
+    if (data.containsKey('backup_folder_label')) {
+      context.handle(
+          _backupFolderLabelMeta,
+          backupFolderLabel.isAcceptableOrUnknown(
+              data['backup_folder_label']!, _backupFolderLabelMeta));
+    }
+    if (data.containsKey('last_auto_backup_at')) {
+      context.handle(
+          _lastAutoBackupAtMeta,
+          lastAutoBackupAt.isAcceptableOrUnknown(
+              data['last_auto_backup_at']!, _lastAutoBackupAtMeta));
+    }
+    if (data.containsKey('last_auto_backup_error')) {
+      context.handle(
+          _lastAutoBackupErrorMeta,
+          lastAutoBackupError.isAcceptableOrUnknown(
+              data['last_auto_backup_error']!, _lastAutoBackupErrorMeta));
     }
     if (data.containsKey('dev_mode_enabled')) {
       context.handle(
@@ -4152,6 +4204,15 @@ class $SettingsTableTable extends SettingsTable
           DriftSqlType.dateTime, data['${effectivePrefix}last_backup_at']),
       backupReminderDays: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}backup_reminder_days'])!,
+      backupFolder: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}backup_folder']),
+      backupFolderLabel: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}backup_folder_label']),
+      lastAutoBackupAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_auto_backup_at']),
+      lastAutoBackupError: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_auto_backup_error']),
       devModeEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}dev_mode_enabled'])!,
       displayName: attachedDatabase.typeMapping
@@ -4207,6 +4268,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final String currency;
   final DateTime? lastBackupAt;
   final int backupReminderDays;
+  final String? backupFolder;
+  final String? backupFolderLabel;
+  final DateTime? lastAutoBackupAt;
+  final String? lastAutoBackupError;
   final bool devModeEnabled;
   final String? displayName;
   final DateTime? onboardedAt;
@@ -4243,6 +4308,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       required this.currency,
       this.lastBackupAt,
       required this.backupReminderDays,
+      this.backupFolder,
+      this.backupFolderLabel,
+      this.lastAutoBackupAt,
+      this.lastAutoBackupError,
       required this.devModeEnabled,
       this.displayName,
       this.onboardedAt,
@@ -4271,6 +4340,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       map['last_backup_at'] = Variable<DateTime>(lastBackupAt);
     }
     map['backup_reminder_days'] = Variable<int>(backupReminderDays);
+    if (!nullToAbsent || backupFolder != null) {
+      map['backup_folder'] = Variable<String>(backupFolder);
+    }
+    if (!nullToAbsent || backupFolderLabel != null) {
+      map['backup_folder_label'] = Variable<String>(backupFolderLabel);
+    }
+    if (!nullToAbsent || lastAutoBackupAt != null) {
+      map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt);
+    }
+    if (!nullToAbsent || lastAutoBackupError != null) {
+      map['last_auto_backup_error'] = Variable<String>(lastAutoBackupError);
+    }
     map['dev_mode_enabled'] = Variable<bool>(devModeEnabled);
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
@@ -4329,6 +4410,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ? const Value.absent()
           : Value(lastBackupAt),
       backupReminderDays: Value(backupReminderDays),
+      backupFolder: backupFolder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backupFolder),
+      backupFolderLabel: backupFolderLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backupFolderLabel),
+      lastAutoBackupAt: lastAutoBackupAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAutoBackupAt),
+      lastAutoBackupError: lastAutoBackupError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAutoBackupError),
       devModeEnabled: Value(devModeEnabled),
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
@@ -4385,6 +4478,13 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       currency: serializer.fromJson<String>(json['currency']),
       lastBackupAt: serializer.fromJson<DateTime?>(json['lastBackupAt']),
       backupReminderDays: serializer.fromJson<int>(json['backupReminderDays']),
+      backupFolder: serializer.fromJson<String?>(json['backupFolder']),
+      backupFolderLabel:
+          serializer.fromJson<String?>(json['backupFolderLabel']),
+      lastAutoBackupAt:
+          serializer.fromJson<DateTime?>(json['lastAutoBackupAt']),
+      lastAutoBackupError:
+          serializer.fromJson<String?>(json['lastAutoBackupError']),
       devModeEnabled: serializer.fromJson<bool>(json['devModeEnabled']),
       displayName: serializer.fromJson<String?>(json['displayName']),
       onboardedAt: serializer.fromJson<DateTime?>(json['onboardedAt']),
@@ -4416,6 +4516,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'currency': serializer.toJson<String>(currency),
       'lastBackupAt': serializer.toJson<DateTime?>(lastBackupAt),
       'backupReminderDays': serializer.toJson<int>(backupReminderDays),
+      'backupFolder': serializer.toJson<String?>(backupFolder),
+      'backupFolderLabel': serializer.toJson<String?>(backupFolderLabel),
+      'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
+      'lastAutoBackupError': serializer.toJson<String?>(lastAutoBackupError),
       'devModeEnabled': serializer.toJson<bool>(devModeEnabled),
       'displayName': serializer.toJson<String?>(displayName),
       'onboardedAt': serializer.toJson<DateTime?>(onboardedAt),
@@ -4443,6 +4547,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           String? currency,
           Value<DateTime?> lastBackupAt = const Value.absent(),
           int? backupReminderDays,
+          Value<String?> backupFolder = const Value.absent(),
+          Value<String?> backupFolderLabel = const Value.absent(),
+          Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+          Value<String?> lastAutoBackupError = const Value.absent(),
           bool? devModeEnabled,
           Value<String?> displayName = const Value.absent(),
           Value<DateTime?> onboardedAt = const Value.absent(),
@@ -4468,6 +4576,17 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         lastBackupAt:
             lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
         backupReminderDays: backupReminderDays ?? this.backupReminderDays,
+        backupFolder:
+            backupFolder.present ? backupFolder.value : this.backupFolder,
+        backupFolderLabel: backupFolderLabel.present
+            ? backupFolderLabel.value
+            : this.backupFolderLabel,
+        lastAutoBackupAt: lastAutoBackupAt.present
+            ? lastAutoBackupAt.value
+            : this.lastAutoBackupAt,
+        lastAutoBackupError: lastAutoBackupError.present
+            ? lastAutoBackupError.value
+            : this.lastAutoBackupError,
         devModeEnabled: devModeEnabled ?? this.devModeEnabled,
         displayName: displayName.present ? displayName.value : this.displayName,
         onboardedAt: onboardedAt.present ? onboardedAt.value : this.onboardedAt,
@@ -4509,6 +4628,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       backupReminderDays: data.backupReminderDays.present
           ? data.backupReminderDays.value
           : this.backupReminderDays,
+      backupFolder: data.backupFolder.present
+          ? data.backupFolder.value
+          : this.backupFolder,
+      backupFolderLabel: data.backupFolderLabel.present
+          ? data.backupFolderLabel.value
+          : this.backupFolderLabel,
+      lastAutoBackupAt: data.lastAutoBackupAt.present
+          ? data.lastAutoBackupAt.value
+          : this.lastAutoBackupAt,
+      lastAutoBackupError: data.lastAutoBackupError.present
+          ? data.lastAutoBackupError.value
+          : this.lastAutoBackupError,
       devModeEnabled: data.devModeEnabled.present
           ? data.devModeEnabled.value
           : this.devModeEnabled,
@@ -4559,6 +4690,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('currency: $currency, ')
           ..write('lastBackupAt: $lastBackupAt, ')
           ..write('backupReminderDays: $backupReminderDays, ')
+          ..write('backupFolder: $backupFolder, ')
+          ..write('backupFolderLabel: $backupFolderLabel, ')
+          ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
+          ..write('lastAutoBackupError: $lastAutoBackupError, ')
           ..write('devModeEnabled: $devModeEnabled, ')
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
@@ -4587,6 +4722,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         currency,
         lastBackupAt,
         backupReminderDays,
+        backupFolder,
+        backupFolderLabel,
+        lastAutoBackupAt,
+        lastAutoBackupError,
         devModeEnabled,
         displayName,
         onboardedAt,
@@ -4614,6 +4753,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.currency == this.currency &&
           other.lastBackupAt == this.lastBackupAt &&
           other.backupReminderDays == this.backupReminderDays &&
+          other.backupFolder == this.backupFolder &&
+          other.backupFolderLabel == this.backupFolderLabel &&
+          other.lastAutoBackupAt == this.lastAutoBackupAt &&
+          other.lastAutoBackupError == this.lastAutoBackupError &&
           other.devModeEnabled == this.devModeEnabled &&
           other.displayName == this.displayName &&
           other.onboardedAt == this.onboardedAt &&
@@ -4639,6 +4782,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String> currency;
   final Value<DateTime?> lastBackupAt;
   final Value<int> backupReminderDays;
+  final Value<String?> backupFolder;
+  final Value<String?> backupFolderLabel;
+  final Value<DateTime?> lastAutoBackupAt;
+  final Value<String?> lastAutoBackupError;
   final Value<bool> devModeEnabled;
   final Value<String?> displayName;
   final Value<DateTime?> onboardedAt;
@@ -4663,6 +4810,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.currency = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.backupReminderDays = const Value.absent(),
+    this.backupFolder = const Value.absent(),
+    this.backupFolderLabel = const Value.absent(),
+    this.lastAutoBackupAt = const Value.absent(),
+    this.lastAutoBackupError = const Value.absent(),
     this.devModeEnabled = const Value.absent(),
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
@@ -4688,6 +4839,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.currency = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.backupReminderDays = const Value.absent(),
+    this.backupFolder = const Value.absent(),
+    this.backupFolderLabel = const Value.absent(),
+    this.lastAutoBackupAt = const Value.absent(),
+    this.lastAutoBackupError = const Value.absent(),
     this.devModeEnabled = const Value.absent(),
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
@@ -4713,6 +4868,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? currency,
     Expression<DateTime>? lastBackupAt,
     Expression<int>? backupReminderDays,
+    Expression<String>? backupFolder,
+    Expression<String>? backupFolderLabel,
+    Expression<DateTime>? lastAutoBackupAt,
+    Expression<String>? lastAutoBackupError,
     Expression<bool>? devModeEnabled,
     Expression<String>? displayName,
     Expression<DateTime>? onboardedAt,
@@ -4740,6 +4899,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (lastBackupAt != null) 'last_backup_at': lastBackupAt,
       if (backupReminderDays != null)
         'backup_reminder_days': backupReminderDays,
+      if (backupFolder != null) 'backup_folder': backupFolder,
+      if (backupFolderLabel != null) 'backup_folder_label': backupFolderLabel,
+      if (lastAutoBackupAt != null) 'last_auto_backup_at': lastAutoBackupAt,
+      if (lastAutoBackupError != null)
+        'last_auto_backup_error': lastAutoBackupError,
       if (devModeEnabled != null) 'dev_mode_enabled': devModeEnabled,
       if (displayName != null) 'display_name': displayName,
       if (onboardedAt != null) 'onboarded_at': onboardedAt,
@@ -4768,6 +4932,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       Value<String>? currency,
       Value<DateTime?>? lastBackupAt,
       Value<int>? backupReminderDays,
+      Value<String?>? backupFolder,
+      Value<String?>? backupFolderLabel,
+      Value<DateTime?>? lastAutoBackupAt,
+      Value<String?>? lastAutoBackupError,
       Value<bool>? devModeEnabled,
       Value<String?>? displayName,
       Value<DateTime?>? onboardedAt,
@@ -4793,6 +4961,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       currency: currency ?? this.currency,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
       backupReminderDays: backupReminderDays ?? this.backupReminderDays,
+      backupFolder: backupFolder ?? this.backupFolder,
+      backupFolderLabel: backupFolderLabel ?? this.backupFolderLabel,
+      lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
+      lastAutoBackupError: lastAutoBackupError ?? this.lastAutoBackupError,
       devModeEnabled: devModeEnabled ?? this.devModeEnabled,
       displayName: displayName ?? this.displayName,
       onboardedAt: onboardedAt ?? this.onboardedAt,
@@ -4833,6 +5005,19 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     }
     if (backupReminderDays.present) {
       map['backup_reminder_days'] = Variable<int>(backupReminderDays.value);
+    }
+    if (backupFolder.present) {
+      map['backup_folder'] = Variable<String>(backupFolder.value);
+    }
+    if (backupFolderLabel.present) {
+      map['backup_folder_label'] = Variable<String>(backupFolderLabel.value);
+    }
+    if (lastAutoBackupAt.present) {
+      map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt.value);
+    }
+    if (lastAutoBackupError.present) {
+      map['last_auto_backup_error'] =
+          Variable<String>(lastAutoBackupError.value);
     }
     if (devModeEnabled.present) {
       map['dev_mode_enabled'] = Variable<bool>(devModeEnabled.value);
@@ -4900,6 +5085,10 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('currency: $currency, ')
           ..write('lastBackupAt: $lastBackupAt, ')
           ..write('backupReminderDays: $backupReminderDays, ')
+          ..write('backupFolder: $backupFolder, ')
+          ..write('backupFolderLabel: $backupFolderLabel, ')
+          ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
+          ..write('lastAutoBackupError: $lastAutoBackupError, ')
           ..write('devModeEnabled: $devModeEnabled, ')
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
@@ -6718,6 +6907,10 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<String> currency,
   Value<DateTime?> lastBackupAt,
   Value<int> backupReminderDays,
+  Value<String?> backupFolder,
+  Value<String?> backupFolderLabel,
+  Value<DateTime?> lastAutoBackupAt,
+  Value<String?> lastAutoBackupError,
   Value<bool> devModeEnabled,
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
@@ -6744,6 +6937,10 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<String> currency,
   Value<DateTime?> lastBackupAt,
   Value<int> backupReminderDays,
+  Value<String?> backupFolder,
+  Value<String?> backupFolderLabel,
+  Value<DateTime?> lastAutoBackupAt,
+  Value<String?> lastAutoBackupError,
   Value<bool> devModeEnabled,
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
@@ -6788,6 +6985,21 @@ class $$SettingsTableTableFilterComposer
 
   ColumnFilters<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get backupFolder => $composableBuilder(
+      column: $table.backupFolder, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get backupFolderLabel => $composableBuilder(
+      column: $table.backupFolderLabel,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastAutoBackupAt => $composableBuilder(
+      column: $table.lastAutoBackupAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastAutoBackupError => $composableBuilder(
+      column: $table.lastAutoBackupError,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get devModeEnabled => $composableBuilder(
@@ -6870,6 +7082,22 @@ class $$SettingsTableTableOrderingComposer
 
   ColumnOrderings<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get backupFolder => $composableBuilder(
+      column: $table.backupFolder,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get backupFolderLabel => $composableBuilder(
+      column: $table.backupFolderLabel,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastAutoBackupAt => $composableBuilder(
+      column: $table.lastAutoBackupAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastAutoBackupError => $composableBuilder(
+      column: $table.lastAutoBackupError,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<bool> get devModeEnabled => $composableBuilder(
@@ -6958,6 +7186,18 @@ class $$SettingsTableTableAnnotationComposer
   GeneratedColumn<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays, builder: (column) => column);
 
+  GeneratedColumn<String> get backupFolder => $composableBuilder(
+      column: $table.backupFolder, builder: (column) => column);
+
+  GeneratedColumn<String> get backupFolderLabel => $composableBuilder(
+      column: $table.backupFolderLabel, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastAutoBackupAt => $composableBuilder(
+      column: $table.lastAutoBackupAt, builder: (column) => column);
+
+  GeneratedColumn<String> get lastAutoBackupError => $composableBuilder(
+      column: $table.lastAutoBackupError, builder: (column) => column);
+
   GeneratedColumn<bool> get devModeEnabled => $composableBuilder(
       column: $table.devModeEnabled, builder: (column) => column);
 
@@ -7042,6 +7282,10 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> currency = const Value.absent(),
             Value<DateTime?> lastBackupAt = const Value.absent(),
             Value<int> backupReminderDays = const Value.absent(),
+            Value<String?> backupFolder = const Value.absent(),
+            Value<String?> backupFolderLabel = const Value.absent(),
+            Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+            Value<String?> lastAutoBackupError = const Value.absent(),
             Value<bool> devModeEnabled = const Value.absent(),
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
@@ -7067,6 +7311,10 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             currency: currency,
             lastBackupAt: lastBackupAt,
             backupReminderDays: backupReminderDays,
+            backupFolder: backupFolder,
+            backupFolderLabel: backupFolderLabel,
+            lastAutoBackupAt: lastAutoBackupAt,
+            lastAutoBackupError: lastAutoBackupError,
             devModeEnabled: devModeEnabled,
             displayName: displayName,
             onboardedAt: onboardedAt,
@@ -7092,6 +7340,10 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> currency = const Value.absent(),
             Value<DateTime?> lastBackupAt = const Value.absent(),
             Value<int> backupReminderDays = const Value.absent(),
+            Value<String?> backupFolder = const Value.absent(),
+            Value<String?> backupFolderLabel = const Value.absent(),
+            Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+            Value<String?> lastAutoBackupError = const Value.absent(),
             Value<bool> devModeEnabled = const Value.absent(),
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
@@ -7117,6 +7369,10 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             currency: currency,
             lastBackupAt: lastBackupAt,
             backupReminderDays: backupReminderDays,
+            backupFolder: backupFolder,
+            backupFolderLabel: backupFolderLabel,
+            lastAutoBackupAt: lastAutoBackupAt,
+            lastAutoBackupError: lastAutoBackupError,
             devModeEnabled: devModeEnabled,
             displayName: displayName,
             onboardedAt: onboardedAt,

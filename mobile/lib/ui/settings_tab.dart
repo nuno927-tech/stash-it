@@ -27,6 +27,7 @@ import '../io/auto_backup_run.dart';
 import '../io/backup_folder.dart';
 import '../io/sealed_backup.dart';
 import '../io/vault.dart';
+import '../logic/vault.dart';
 import '../io/csv.dart';
 import '../io/pin_widget.dart';
 import '../logic/prefs.dart';
@@ -57,7 +58,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.99.1';
+const appVersion = '0.99.2';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────

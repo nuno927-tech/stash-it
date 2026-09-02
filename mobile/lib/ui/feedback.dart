@@ -336,9 +336,11 @@ Future<void> _configure() async {
   if (_configured) return;
   _configured = true;
 
+  // Not `const`: `AudioContext` has no const constructor. Built once and
+  // thrown away, which is the whole cost of the thing.
   await _player.setAudioContext(
-    const AudioContext(
-      android: AudioContextAndroid(
+    AudioContext(
+      android: const AudioContextAndroid(
         contentType: AndroidContentType.sonification,
         usageType: AndroidUsageType.assistanceSonification,
         audioFocus: AndroidAudioFocus.none,
