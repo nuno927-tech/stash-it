@@ -23,6 +23,8 @@ import '../billing/current.dart';
 import '../logic/contact.dart';
 import '../logic/limits.dart';
 import '../logic/devmode.dart';
+import '../io/auto_backup_run.dart';
+import '../io/backup_folder.dart';
 import '../io/csv.dart';
 import '../io/pin_widget.dart';
 import '../logic/prefs.dart';
@@ -34,6 +36,7 @@ import 'bin_screen.dart';
 import 'confetti.dart';
 import 'confirm_delete.dart';
 import 'diagnostics.dart';
+import 'folder_probe_screen.dart';
 import 'schedule_screen.dart';
 import 'feedback.dart';
 import 'parts.dart';
@@ -51,7 +54,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.98.2';
+const appVersion = '0.99.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -328,6 +331,77 @@ class _SettingsTabState extends State<SettingsTab> {
       _say('That did not work: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /* --------------------------------------------- the automatic backup */
+
+  /// Asks Android for a folder, and remembers whichever one comes back.
+  ///
+  /// The picker is the platform's, so what it offers is whatever that phone
+  /// has: internal storage, an SD card, and any cloud app that publishes a
+  /// document tree. The app does not know which is which and does not need to.
+  Future<void> _chooseFolder() async {
+    _say(null);
+
+    final tree = await pickBackupFolder();
+    // Cancelled. Not a failure, and saying so would be the app complaining
+    // that somebody changed their mind.
+    if (tree == null || !mounted) return;
+
+    final label = await folderLabel(tree);
+    if (!mounted) return;
+
+    await _saveSettings((s) => s.copyWith(
+          backupFolder: tree,
+          backupFolderLabel: label ?? 'the folder you chose',
+          clearAutoBackupError: true,
+        ));
+
+    /*
+      One straight away, rather than waiting for the interval.
+
+      It proves the folder works while somebody is still looking at the screen
+      they set it up on — and the alternative is telling them it is all
+      arranged and finding out a fortnight later that it was not.
+    */
+    if (!mounted) return;
+    setState(() => _busy = true);
+
+    try {
+      final done = await backUpToFolder(widget.repo);
+      if (!mounted) return;
+
+      _say(done.wrote
+          ? 'Backed up to ${label ?? 'the folder'}. '
+              'It will happen again on its own.'
+          : done.problem ?? 'That did not work.');
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+        _refresh();
+      }
+    }
+  }
+
+  /// Turns it off, and hands the permission back.
+  ///
+  /// Releasing the grant matters: an app that keeps write access to a folder it
+  /// has stopped using is an app asking to be distrusted, and the person who
+  /// switched this off is exactly the person who would mind.
+  Future<void> _stopAutoBackup() async {
+    final settings = await widget.repo.settings();
+    final tree = settings.backupFolder;
+    if (tree == null) return;
+
+    await forgetBackupFolder(tree);
+    await _saveSettings((s) => s.copyWith(
+          clearBackupFolder: true,
+          clearAutoBackupError: true,
+        ));
+
+    if (mounted) {
+      _say('Automatic backups off. Nothing already written was deleted.');
     }
   }
 
@@ -1293,7 +1367,9 @@ class _SettingsTabState extends State<SettingsTab> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    'Nothing syncs anywhere, so a backup only exists if you make one.',
+                    'Nothing syncs anywhere. A backup exists because you '
+                    'made one, or because you gave the app a folder to put '
+                    'them in.',
                     style: TextStyle(
                       fontFamily: fontBody,
                       fontSize: 12,
@@ -1311,6 +1387,29 @@ class _SettingsTabState extends State<SettingsTab> {
                   onChange: (days) => _saveSettings(
                       (s) => s.copyWith(backupReminderDays: days)),
                 ),
+
+                /*
+                  ── Automatic, into a folder the person picks ────────────────
+
+                  Under the interval, because it is the same interval: how
+                  often to be nagged is how often to write one. Two numbers
+                  that mean almost the same thing is how a settings page stops
+                  being read.
+
+                  The folder is the switch. There is no toggle beside it — a
+                  feature with a switch AND a destination has two ways to say
+                  "off" and a person who cannot tell which they are in.
+                */
+                const SizedBox(height: 14),
+                _Rule(c),
+                _FolderRow(
+                  settings: settings,
+                  busy: _busy,
+                  onChoose: _chooseFolder,
+                  onStop: _stopAutoBackup,
+                ),
+                _Rule(c),
+
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Back up now',
@@ -1586,6 +1685,26 @@ class _SettingsTabState extends State<SettingsTab> {
                 label: 'Scheduled reminders',
                 note: 'What will fire, and when.',
                 onTap: () => showSchedule(context, widget.repo),
+              ),
+              _Rule(c),
+
+              /*
+                    ── What the folder picker actually offered ──────────────────
+
+                    Automatic backups write to whatever document tree the person
+                    picked, and every part of that lives in another process: the
+                    picker is Android's, the folder belongs to a provider, and
+                    the write can fail for reasons no log in this app records.
+
+                    Which is exactly the situation "it stopped backing up" is
+                    reported from. This says what the grant is, whether Android
+                    still honours it, what is in the folder, and whether a real
+                    write lands right now.
+                  */
+              _LinkRow(
+                label: 'Backup folder',
+                note: 'The grant, the contents, and a test write.',
+                onTap: () => showFolderProbe(context, widget.repo),
               ),
               _Rule(c),
 
@@ -1899,6 +2018,105 @@ class _Card extends StatelessWidget {
 
 /// A hairline between rows. Not a `Divider`, which brings its own height and
 /// indent rules that fight the card's padding.
+/// Where automatic backups go, and whether the last one arrived.
+///
+/// ── Four states, and the app has to be able to say which ───────────────────
+/// Never set up. Set up and working. Set up and failing. Set up and the
+/// permission is gone — which is what a reinstall does, and which looks
+/// identical to "working" unless somebody says so out loud.
+///
+/// The last one is the reason this row exists at all. A backup that quietly
+/// stopped is worse than one that never started, because the app goes on
+/// looking as though it is protecting somebody.
+class _FolderRow extends StatelessWidget {
+  const _FolderRow({
+    required this.settings,
+    required this.busy,
+    required this.onChoose,
+    required this.onStop,
+  });
+
+  final Settings settings;
+  final bool busy;
+  final VoidCallback onChoose;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+    final folder = settings.backupFolder;
+
+    if (folder == null) {
+      return _LinkRow(
+        label: 'Back up automatically',
+        note: 'Choose a folder. If it is one your cloud app syncs, your '
+            'backups go with it.',
+        onTap: busy ? null : onChoose,
+      );
+    }
+
+    final trouble = settings.lastAutoBackupError;
+    final at = settings.lastAutoBackupAt;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _LinkRow(
+          label: 'Backing up to ${settings.backupFolderLabel ?? 'a folder'}',
+          note: trouble ??
+              (at == null
+                  ? 'Nothing written yet.'
+                  : 'Last one ${at.toIso8601String().substring(0, 10)}.'),
+          trailing: Icon(
+            // The one place a colour carries meaning on this page, and it is
+            // backed by the sentence underneath rather than replacing it.
+            trouble == null ? Icons.check_circle_outline : Icons.error_outline,
+            size: 18,
+            color: trouble == null ? c.moss : c.ember,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              TextButton(
+                onPressed: busy ? null : cued(onChoose),
+                child: Text(
+                  'Change folder',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.gold),
+                ),
+              ),
+              TextButton(
+                onPressed: busy ? null : cued(onStop, cue: Cue.collapse),
+                child: Text(
+                  'Stop',
+                  style: TextStyle(
+                      fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                ),
+              ),
+            ],
+          ),
+        ),
+        /*
+          Said where the folder is chosen, not only in the policy.
+
+          A `.stashit` is a plain zip — deliberately, so somebody with a broken
+          install can open it and read their own data. That is a good trade for
+          a file on your own phone and a different one for a file in a cloud
+          account, and the person deciding is entitled to know which they are
+          choosing.
+        */
+        _Note(
+          'A backup is a plain file: anyone who can open that folder can read '
+          'it. Keep it somewhere only you can reach.',
+          c,
+        ),
+      ],
+    );
+  }
+}
+
 class _Rule extends StatelessWidget {
   const _Rule(this.c);
   final StashColors c;

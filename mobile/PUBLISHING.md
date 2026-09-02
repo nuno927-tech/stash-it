@@ -272,6 +272,16 @@ the phone*.
 Be honest here. Google spot-checks this against what the app actually does, and
 a wrong answer gets the app pulled.
 
+**The automatic backup does not change any of these answers**, and it is worth
+knowing why before somebody asks. The app writes a file into a folder the user
+chose through Android's own picker. Nothing is transmitted by the app — it has
+no network permission at all — and nothing is received by anybody. If the folder
+the user picked happens to be synced by their own cloud app, that sync is that
+app's doing and that app's disclosure, not this one's.
+
+"Collected" and "shared" both mean *by you, off the device*. Writing to local
+storage at the user's direction is neither.
+
 ### 5.3 Content rating
 
 Fill in the questionnaire honestly. For an app like this — no violence, no

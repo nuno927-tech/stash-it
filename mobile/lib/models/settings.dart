@@ -56,6 +56,10 @@ class Settings {
     this.currency = 'USD',
     this.lastBackupAt,
     this.backupReminderDays = 30,
+    this.backupFolder,
+    this.backupFolderLabel,
+    this.lastAutoBackupAt,
+    this.lastAutoBackupError,
     this.entitlements = const Entitlements(),
     this.devModeEnabled = false,
     this.displayName,
@@ -129,7 +133,32 @@ class Settings {
 
   /// How often to ask for one. **Zero means never**, and must not be read as
   /// "every zero days".
+  ///
+  /// The same number decides how often the automatic backup runs. One interval,
+  /// not two: somebody who wants a copy every fortnight wants to be nagged
+  /// every fortnight if it did not happen, and two settings that mean almost
+  /// the same thing is how a settings page stops being read.
   final int backupReminderDays;
+
+  /// The folder automatic backups are written to, as a document tree URI.
+  ///
+  /// **Null is off.** See the note on the column — a separate switch would be a
+  /// second way to say the same thing and a state where the two disagree.
+  final String? backupFolder;
+
+  /// What to call that folder on screen. For the screen only.
+  final String? backupFolderLabel;
+
+  /// When the automatic backup last ran. Not `lastBackupAt`, which means the
+  /// data left the phone by any route including by hand.
+  final DateTime? lastAutoBackupAt;
+
+  /// Why the last automatic backup did not work, or null when it did.
+  ///
+  /// Kept as the sentence rather than a code. There is one place it is shown
+  /// and no logic reads it, so a code would be a translation table with one
+  /// customer.
+  final String? lastAutoBackupError;
 
   final bool devModeEnabled;
 
@@ -148,6 +177,24 @@ class Settings {
     String? currency,
     DateTime? lastBackupAt,
     int? backupReminderDays,
+    String? backupFolder,
+    String? backupFolderLabel,
+    DateTime? lastAutoBackupAt,
+    String? lastAutoBackupError,
+    /*
+      ── Four fields that have to be settable to null ────────────────────────
+
+      `copyWith` reads a null argument as "leave it alone", which is right for
+      everything else here and wrong for these: turning automatic backups off
+      means CLEARING the folder, and recording a successful run means CLEARING
+      the error. Both are impossible to say through a nullable parameter.
+
+      So each takes an explicit flag. Ugly, and the alternative is a sentinel
+      value or a wrapper type — both of which are the same ugliness spread over
+      more of the file.
+    */
+    bool clearBackupFolder = false,
+    bool clearAutoBackupError = false,
     Entitlements? entitlements,
     bool? devModeEnabled,
     String? displayName,
@@ -168,6 +215,15 @@ class Settings {
         currency: currency ?? this.currency,
         lastBackupAt: lastBackupAt ?? this.lastBackupAt,
         backupReminderDays: backupReminderDays ?? this.backupReminderDays,
+        backupFolder:
+            clearBackupFolder ? null : (backupFolder ?? this.backupFolder),
+        backupFolderLabel: clearBackupFolder
+            ? null
+            : (backupFolderLabel ?? this.backupFolderLabel),
+        lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
+        lastAutoBackupError: clearAutoBackupError
+            ? null
+            : (lastAutoBackupError ?? this.lastAutoBackupError),
         entitlements: entitlements ?? this.entitlements,
         devModeEnabled: devModeEnabled ?? this.devModeEnabled,
         displayName: displayName ?? this.displayName,

@@ -18,6 +18,7 @@ import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
 import '../io/incoming_card.dart';
+import '../io/auto_backup_run.dart';
 import '../io/widget_mirror.dart';
 import '../logic/bundle.dart';
 import '../logic/item_filter.dart';
@@ -233,6 +234,20 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       unawaited(_takeCard());
       unawaited(_takeAdd());
       unawaited(mirrorWidgets(widget.repo));
+
+      /*
+        ── The automatic backup, on the way in ─────────────────────────────
+
+        Here and on resume, and nowhere else. Not on `_changed`: that fires on
+        every save, and a backup after every save is a copy of somebody's
+        collection in their cloud forty times an evening.
+
+        Silent either way. It writes a line into Settings and says nothing on
+        screen — a person who opened the app to check a warranty did not ask
+        to be told about file management. `autoBackupIfDue` explains what the
+        app can and cannot promise here.
+      */
+      unawaited(autoBackupIfDue(widget.repo));
     });
   }
 
@@ -364,6 +379,10 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         is right.
       */
       unawaited(mirrorWidgets(widget.repo));
+
+      // And the backup, for the phone that has been left open for days. See
+      // the note where this is called on launch.
+      unawaited(autoBackupIfDue(widget.repo));
     }
   }
 

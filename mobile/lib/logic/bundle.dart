@@ -605,6 +605,19 @@ Settings? _settingsOf(Object? v) {
         ? null
         : enumOf(j['roomsView'], RoomsView.values, RoomsView.collapsed),
     biometricLock: null,
+
+    /*
+      ── The backup folder does not travel either ──────────────────────────
+
+      It is a document tree URI: a grant made by one Android install, to one
+      app install, over one folder. Restored onto a new phone it names a folder
+      this app has no permission for — and the failure would be the worst kind,
+      because the Settings card would show a folder and a cadence and the app
+      would go on looking as though somebody's data was being protected.
+
+      Left null, so a restored phone asks for a folder again. One extra tap
+      against a silent, invisible failure to back up at all.
+    */
   );
 }
 

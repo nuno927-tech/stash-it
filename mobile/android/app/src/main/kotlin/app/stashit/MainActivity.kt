@@ -61,6 +61,21 @@ class MainActivity : FlutterFragmentActivity() {
 
     private var messenger: MethodChannel? = null
 
+    /*
+       ── The folder picker is the one call that has to wait ──────────────────
+
+       Everything else on this channel answers immediately. Choosing a backup
+       folder opens Android's own picker, which is another activity, and the
+       answer arrives in `onActivityResult` some seconds later — after the
+       person has browsed, or changed their mind, or gone to make tea.
+
+       So the `Result` is parked here and completed there. One at a time: a
+       second request while a picker is open is a stale one, and answering it
+       with null is kinder than leaving Dart waiting on a future that never
+       resolves.
+    */
+    private var pendingFolder: MethodChannel.Result? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -140,10 +155,77 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
 
+                    /* ------------------------------------ the backup folder */
+
+                    "pickFolder" -> {
+                        pendingFolder?.success(null)
+                        pendingFolder = result
+                        startActivityForResult(BackupFolder.picker(), PICK_FOLDER)
+                    }
+
+                    "folderGranted" -> result.success(
+                        BackupFolder.granted(this, call.arguments as String)
+                    )
+
+                    "folderLabel" -> result.success(
+                        BackupFolder.label(this, call.arguments as String)
+                    )
+
+                    "forgetFolder" -> {
+                        BackupFolder.forget(this, call.arguments as String)
+                        result.success(true)
+                    }
+
+                    "writeToFolder" -> result.success(
+                        BackupFolder.write(
+                            this,
+                            call.argument<String>("tree")!!,
+                            call.argument<String>("name")!!,
+                            call.argument<String>("from")!!,
+                        )
+                    )
+
+                    "listFolder" -> result.success(
+                        BackupFolder.list(this, call.arguments as String)
+                    )
+
+                    "deleteInFolder" -> result.success(
+                        BackupFolder.delete(this, call.arguments as String)
+                    )
+
                     else -> result.notImplemented()
                 }
             }
         }
+    }
+
+    /*
+       Back from the folder picker.
+
+       `RESULT_OK` with a URI is the only success. Everything else — cancelled,
+       backed out of, a provider that failed to open — resolves null, and Dart
+       reads that as "nothing was chosen" rather than as a failure worth
+       reporting: somebody who changed their mind has not hit a problem.
+    */
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_FOLDER) return
+
+        val waiting = pendingFolder ?: return
+        pendingFolder = null
+
+        val tree = if (resultCode == RESULT_OK) data?.data else null
+        if (tree == null) {
+            waiting.success(null)
+            return
+        }
+
+        // Before anything else: without this the grant lasts until the process
+        // dies, and the next backup would fail with a permission the app
+        // appears to hold.
+        runCatching { BackupFolder.keep(this, tree) }
+
+        waiting.success(tree.toString())
     }
 
     /*
@@ -206,5 +288,18 @@ class MainActivity : FlutterFragmentActivity() {
             // Dart shows nothing, and Settings still has the picker.
             null
         }
+    }
+
+    companion object {
+        /*
+           The request code for the folder picker.
+
+           Deliberately far from anything the plugins use — image_picker,
+           file_picker and local_auth all run activities through this same
+           activity, and a collision would hand one of them our result or hand
+           us theirs. `onActivityResult` checks for this number and returns
+           immediately on anything else.
+        */
+        private const val PICK_FOLDER = 4201
     }
 }

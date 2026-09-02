@@ -120,6 +120,24 @@ const List<(String, String)> _policy = [
         'received by anyone here.',
   ),
   (
+    'The folder you choose for automatic backups',
+    'You can pick a folder and let the app write a backup into it on the same '
+        'interval it would otherwise nag you on. Android asks you which '
+        'folder and grants the app permission to that one only — it cannot '
+        'see anything else on your device, and you can take the permission '
+        'back in Android\'s own settings or by pressing Stop in the app.\n\n'
+        'Where that folder lives is entirely your choice. If it is one your '
+        'cloud app syncs, your backups go wherever that account is; Stash it '
+        'writes a file and knows nothing about what happens to it afterwards. '
+        'The app still has no network permission and still sends nothing '
+        'anywhere.\n\n'
+        'The file is not encrypted, for the reason below. Anyone who can open '
+        'that folder can read it, so choose one only you can reach. The app '
+        'keeps the five most recent and deletes older ones — only files it '
+        'wrote itself, matched by name; nothing else in the folder is ever '
+        'touched.',
+  ),
+  (
     'The biometric lock',
     'It guards the app, not the data. The database key is released to the app '
         'whether or not you have just used the sensor, so the lock stops '

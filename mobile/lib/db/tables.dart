@@ -263,6 +263,33 @@ class SettingsTable extends Table {
   IntColumn get backupReminderDays =>
       integer().withDefault(const Constant(30))();
 
+  /*
+    ── The folder backups are written to, and how the last attempt went ──────
+
+    `backupFolder` is a document tree URI Android handed over when somebody
+    picked a folder, and it is the on switch: null means the app is not writing
+    anything anywhere. A separate boolean would be a second way to say "off" and
+    a state where the two disagree.
+
+    `backupFolderLabel` is only for the screen. The URI is unreadable — a
+    percent-encoded provider path — and the folder's real name has to be asked
+    for across a process boundary, which is not something a settings page should
+    do on every rebuild.
+
+    `lastAutoBackupAt` is deliberately not `lastBackupAt`. That one means "the
+    data left this phone somehow", including by somebody sharing a file by hand,
+    and the dashboard's nudge reads it. This one means "the automatic one ran",
+    and only the interval reads it.
+
+    `lastAutoBackupError` is the sentence to show, or null when the last attempt
+    was fine. A backup that quietly stopped working is worse than one that never
+    started, because the app goes on looking as though it is protecting somebody.
+  */
+  TextColumn get backupFolder => text().nullable()();
+  TextColumn get backupFolderLabel => text().nullable()();
+  DateTimeColumn get lastAutoBackupAt => dateTime().nullable()();
+  TextColumn get lastAutoBackupError => text().nullable()();
+
   BoolColumn get devModeEnabled =>
       boolean().withDefault(const Constant(false))();
   TextColumn get displayName => text().nullable()();
@@ -339,7 +366,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -391,6 +418,18 @@ class StashDatabase extends _$StashDatabase {
             // no reminder is pending for them. Whether they see the tour is
             // decided by `onboardedAt`, not by this.
             await m.addColumn(settingsTable, settingsTable.tourRemindAt);
+          }
+          if (from < 7) {
+            /*
+              Automatic backups. Null on every existing install, which reads as
+              off — and off is right: this grants an app permission to write
+              into a folder on somebody's device, and that is not a thing to
+              switch on for people while they were not looking.
+            */
+            await m.addColumn(settingsTable, settingsTable.backupFolder);
+            await m.addColumn(settingsTable, settingsTable.backupFolderLabel);
+            await m.addColumn(settingsTable, settingsTable.lastAutoBackupAt);
+            await m.addColumn(settingsTable, settingsTable.lastAutoBackupError);
           }
         },
         beforeOpen: (details) async {
