@@ -62,7 +62,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.5.1';
+const appVersion = '1.6.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -113,6 +113,71 @@ class _SettingsTabState extends State<SettingsTab> {
   /// Read once and re-read after the crash screen closes, which is the only
   /// thing that changes it from in here.
   Future<List<CrashNote>> _crashes = readCrashes();
+
+  /// What the last test notification did, shown under the button that sent it.
+  /// Null until one is sent, which is when the row explains itself instead.
+  String? _testedNotification;
+
+  /*
+    ── What "something is wrong" should already know ─────────────────────────
+
+    A bug report used to arrive as a sentence and a version number, and every
+    question that followed — how many records, is the backup folder still
+    granted, did it crash, on what — cost a day each way. All of it is on the
+    phone and none of it was in the email.
+
+    So the Problem chip gathers it. Only that chip: a question and an idea are
+    not about this phone, and attaching a diagnostic block to "could it do X"
+    is noise wearing a lab coat.
+
+    It goes in the BODY, visible, under a rule that says what it is and that
+    deleting it is allowed — because the whole email is composed in their own
+    mail app and nothing is sent until they press send. That is the same rule
+    the mailto link was chosen for in the first place.
+  */
+  Future<String> _evidence() async {
+    final out = StringBuffer();
+
+    try {
+      final facts = await gather(
+        widget.repo,
+        // Not from a MediaQuery: this runs from a button handler and finishes
+        // after several awaits, by which time the context that would have
+        // supplied it is a promise nobody made. See the note in gather.
+        textScale: 1,
+      );
+      out.writeln(facts.text);
+    } catch (e) {
+      out.writeln('Diagnostics could not be read: $e');
+    }
+
+    try {
+      final crashes = await readCrashes();
+      if (crashes.isNotEmpty) {
+        out
+          ..writeln()
+          ..writeln('Problems recorded (${crashes.length}), newest first:')
+          ..writeln(crashReport(crashes));
+      }
+    } catch (e) {
+      out.writeln('The crash log could not be read: $e');
+    }
+
+    return out.toString().trimRight();
+  }
+
+  Future<void> _reportProblem() async {
+    setState(() => _busy = true);
+
+    try {
+      // Gathered before the mail app opens, not after — a compose window that
+      // fills in a second later is one somebody has already started typing in.
+      final evidence = await _evidence();
+      await _open(contactUri(ContactKind.bug, appVersion, evidence: evidence));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   /*
     ── The status line expires ─────────────────────────────────────────────
@@ -1791,7 +1856,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 Expanded(
                   child: _ContactChip(
                     label: 'Problem',
-                    onTap: () => _open(contactUri(ContactKind.bug, appVersion)),
+                    onTap: _busy ? null : _reportProblem,
                   ),
                 ),
               ],
@@ -2049,6 +2114,39 @@ class _SettingsTabState extends State<SettingsTab> {
                     );
                   },
                 ),
+              _Rule(c),
+
+              /*
+                ── An action, filed with the actions ──────────────────────────
+
+                This was on the Diagnostics screen, which is the one screen in
+                the app whose entire claim is that it does nothing: read-only,
+                nothing written, nothing sent, safe to ship outside a debug
+                build. A button that fires a notification broke that, and it
+                was only there because the notification counts are printed
+                nearby.
+
+                Under the unlock line rather than above it: everything above is
+                a place to go, and this is the one thing on the card that
+                happens where you stand.
+              */
+              _LinkRow(
+                label: 'Test notification',
+                note: _testedNotification ??
+                    'Fires one now, to see whether the phone lets it through.',
+                onTap: _busy
+                    ? null
+                    : () async {
+                        feedback(Cue.tap);
+                        final sent = await notifications.sendTest();
+                        if (!mounted) return;
+
+                        setState(() => _testedNotification = sent
+                            ? 'Sent. If nothing appeared, the phone is holding '
+                                'it — check the app in Android settings.'
+                            : 'This phone would not send one.');
+                      },
+              ),
               _Rule(c),
               _LinkRow(
                 label: 'Hide developer tools',

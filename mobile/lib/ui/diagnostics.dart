@@ -320,38 +320,22 @@ class _DiagnosticsState extends State<DiagnosticsScreen> {
                     color: c.slate900,
                     border: Border(top: BorderSide(color: c.hairline)),
                   ),
+                  /*
+                    ── One button, because this screen only reports ──────────
+
+                    "Test notification" used to sit here beside Copy, and it
+                    was the one control on a screen whose whole claim is that
+                    it does nothing: read-only, safe outside a debug build,
+                    nothing on it writes or sends. A button that fires a
+                    notification is an action, and it was filed under
+                    Diagnostics because that is where the notification counts
+                    happen to be printed.
+
+                    It lives in the Developer card now, with the other things
+                    that DO something.
+                  */
                   child: Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            final sent = await notifications.sendTest();
-                            if (!context.mounted) return;
-                            setState(() => _said = sent
-                                ? 'Sent. If nothing appeared, the phone is holding '
-                                    'it — check the app in Android settings.'
-                                : 'This phone would not send one.');
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: c.text,
-                            side: BorderSide(color: c.line),
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(Radii.md),
-                            ),
-                          ),
-                          child: Text(
-                            'Test notification',
-                            style: TextStyle(
-                              fontFamily: fontBody,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: c.text,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
                       Expanded(
                         child: FilledButton(
                           onPressed: () async {
