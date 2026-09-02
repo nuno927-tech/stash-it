@@ -113,10 +113,60 @@ class _FolderProbeScreenState extends State<FolderProbeScreen> {
   /// every set of installed cloud apps, and it cannot be looked up — only
   /// opened.
   Future<void> _tryPicker() async {
-    final tree = await pickBackupFolder();
-    _say(tree == null
-        ? 'Picker closed with nothing chosen.'
-        : 'Picker returned:\n$tree');
+    setState(() => _busy = true);
+    final report = StringBuffer();
+
+    try {
+      final tree = await pickBackupFolder();
+      report.writeln('picker returned: ${tree ?? 'nothing'}');
+
+      if (tree == null) return;
+
+      final label = await folderLabel(tree);
+      report.writeln('label:           ${label ?? 'unreadable'}');
+
+      final settings = await widget.repo.settings();
+      await widget.repo.saveSettings(settings.copyWith(
+        backupFolder: tree,
+        backupFolderLabel: label ?? 'the folder you chose',
+        clearAutoBackupError: true,
+      ));
+
+      /*
+        ── Read back, rather than assumed ────────────────────────────────────
+
+        This screen has said "no folder set" straight after somebody set one,
+        and the write was believed rather than checked. A settings write that
+        silently does nothing looks identical to a picker that returned
+        nothing, and the difference is the whole bug.
+
+        So the value is read out of the database again and printed. If the line
+        below says NULL, the write is the problem; if it says a URI and the
+        screen still shows nothing, the reading is.
+      */
+      final after = await widget.repo.settings();
+      report.writeln('stored:          ${after.backupFolder ?? 'NULL'}');
+    } catch (e, stack) {
+      /*
+        Loudly.
+
+        This was unguarded, and an exception went nowhere at all: the future is
+        not awaited by the button, so a failed write produced a screen that
+        simply did not change. Silence is the one thing a diagnostic must never
+        do.
+      */
+      report
+        ..writeln('THREW: $e')
+        ..writeln(stack.toString().split('\n').take(4).join('\n'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _data = _gather();
+        });
+        _say(report.toString().trimRight());
+      }
+    }
   }
 
   /// Writes a small file, checks it is listed, and deletes it.

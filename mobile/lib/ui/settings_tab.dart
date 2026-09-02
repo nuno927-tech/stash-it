@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.0.1';
+const appVersion = '1.0.2';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -446,11 +446,23 @@ class _SettingsTabState extends State<SettingsTab> {
     final label = await folderLabel(tree);
     if (!mounted) return;
 
-    await _saveSettings((s) => s.copyWith(
-          backupFolder: tree,
-          backupFolderLabel: label ?? 'the folder you chose',
-          clearAutoBackupError: true,
-        ));
+    /*
+      Guarded, because an unguarded failure here says nothing at all.
+
+      The future is not awaited by the row that calls it, so a settings write
+      that threw produced a screen which simply did not change — the same
+      picture as a picker somebody backed out of.
+    */
+    try {
+      await _saveSettings((s) => s.copyWith(
+            backupFolder: tree,
+            backupFolderLabel: label ?? 'the folder you chose',
+            clearAutoBackupError: true,
+          ));
+    } catch (e) {
+      if (mounted) _say('That folder could not be saved: $e');
+      return;
+    }
 
     /*
       One straight away, rather than waiting for the interval.
