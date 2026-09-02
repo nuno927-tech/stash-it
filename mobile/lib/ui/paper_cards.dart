@@ -29,7 +29,7 @@ import 'paper_icon.dart';
 import 'theme.dart';
 
 const List<(int, String)> _leadChoices = [
-  (0, 'On the day'),
+  (0, 'Day of'),
   (30, '1 mth'),
   (90, '3 mths'),
   (180, '6 mths'),
@@ -86,7 +86,17 @@ class _PaperKindCardState extends State<PaperKindCard> {
       children: [
         LayoutBuilder(
           builder: (context, box) {
-            const gap = 10.0;
+            /*
+              Closed up, because thirteen tiles are one palette and not
+              thirteen buttons.
+
+              A grid this size is read by sweeping it, and gaps wide enough to
+              separate two controls are wide enough to stop it reading as one
+              set. Eight between them and nine of padding inside still leaves
+              every tile well over the forty-eight the touch guidance asks for
+              — the mark alone is thirty-four.
+            */
+            const gap = 8.0;
             final width = (box.maxWidth - gap * 2) / 3;
 
             return Wrap(
@@ -456,8 +466,7 @@ class _KindTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.sm),
         onTap: onTap,
         child: Container(
-          padding:
-              EdgeInsets.symmetric(vertical: wide ? 12 : 12, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.sm),
             border: Border.all(
@@ -476,7 +485,7 @@ class _KindTile extends StatelessWidget {
               : Column(
                   children: [
                     PaperMark(kind, size: 34),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 5),
                     label,
                   ],
                 ),

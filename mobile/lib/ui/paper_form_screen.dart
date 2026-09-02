@@ -150,7 +150,7 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
             items: const [
               DropdownMenuItem(
                   value: null, child: Text('Default for this kind')),
-              DropdownMenuItem(value: 0, child: Text('On the day')),
+              DropdownMenuItem(value: 0, child: Text('Day of')),
               DropdownMenuItem(value: 30, child: Text('1 month before')),
               DropdownMenuItem(value: 90, child: Text('3 months before')),
               DropdownMenuItem(value: 182, child: Text('6 months before')),

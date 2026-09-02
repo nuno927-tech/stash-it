@@ -384,6 +384,12 @@ class _WizardState extends State<_Wizard> {
       question: 'What is it?',
       hint: 'Tap one. The name comes with it — you can change it later.',
       answer: PaperKindCard(
+        // No heading on any of the three cards here. The question above each
+        // one already says what is on it, so the heading was that question
+        // repeated in smaller type one line below itself. The long form keeps
+        // its headings — it stacks all three and needs them to tell the cards
+        // apart.
+        title: '',
         draft: _draft,
         label: _label,
         // The wizard's own auto-advance and its footer both read the name, so
@@ -400,6 +406,7 @@ class _WizardState extends State<_Wizard> {
       question: 'When does it expire?',
       hint: 'The printed date. Everything on this tab is worked out from it.',
       answer: PaperDatesCard(
+        title: '',
         draft: _draft,
         onChanged: () => setState(() {}),
       ),
@@ -411,6 +418,7 @@ class _WizardState extends State<_Wizard> {
       question: 'How much warning?',
       hint: 'Before it runs out.',
       answer: PaperWarningCard(
+        title: '',
         draft: _draft,
         onChanged: () => setState(() {}),
       ),
