@@ -498,27 +498,57 @@ Future<String> _time(RootIsolateToken? token) async {
   out.writeln('Derive:   ${watch.elapsedMilliseconds} ms '
       '($vaultIterations rounds)');
 
-  // Two sizes, so the answer says whether the cost is per-call or per-byte —
-  // which is the difference between a slow cipher and a slow channel.
-  for (final mb in [1, 8]) {
-    final block = Uint8List(mb * 1024 * 1024);
+  /*
+    ── Both directions, and with and without the extra data ──────────────────
+
+    Sealing a 185 MB backup runs at about 80 MB/s and opening the same file
+    runs at 7.8. Same phone, same isolate, same `FlutterCryptography` — so the
+    asymmetry is in the library rather than in this app, and the question is
+    which call falls back to the Dart implementation.
+
+    The suspect is the authenticated data each chunk carries: a plugin that
+    implements it natively on the way out and not on the way back would look
+    exactly like this. Four numbers settle it, and four numbers is cheaper than
+    another guess.
+  */
+  final gcm = AesGcm.with256bits();
+  final block = Uint8List(8 * 1024 * 1024);
+  final nonce = Uint8List(12);
+
+  for (final extra in [Uint8List(0), chunkAad(1, last: false)]) {
+    final label = extra.isEmpty ? 'plain     ' : 'with extra';
+
     watch
       ..reset()
       ..start();
-
-    await AesGcm.with256bits().encrypt(
+    final box = await gcm.encrypt(
       block,
       secretKey: key,
-      nonce: Uint8List(12),
+      nonce: nonce,
+      aad: extra,
     );
+    final sealed = watch.elapsedMilliseconds;
 
-    final ms = watch.elapsedMilliseconds;
-    final rate = ms == 0 ? '—' : '${(mb * 1000 / ms).toStringAsFixed(1)} MB/s';
-    out.writeln('Encrypt:  $mb MB in $ms ms  ($rate)');
+    watch
+      ..reset()
+      ..start();
+    await gcm.decrypt(
+      SecretBox(box.cipherText, nonce: nonce, mac: box.mac),
+      secretKey: key,
+      aad: extra,
+    );
+    final opened = watch.elapsedMilliseconds;
+
+    out.writeln('8 MB $label  encrypt ${_rate(sealed)}'
+        '   decrypt ${_rate(opened)}');
   }
 
   return out.toString().trimRight();
 }
+
+/// Eight megabytes in this many milliseconds, said both ways.
+String _rate(int ms) =>
+    ms == 0 ? '0 ms (—)' : '$ms ms (${(8000 / ms).toStringAsFixed(1)} MB/s)';
 
 /* ----------------------------------------------------------------- plumbing */
 
