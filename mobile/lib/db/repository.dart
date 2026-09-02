@@ -694,9 +694,24 @@ class Repository {
   /// SQLCipher's per-page overhead, and neither is a thing anybody can act on —
   /// what somebody wants to know before pressing "Back up now" is roughly how
   /// big the file will be, and that is the blobs plus a few kilobytes of JSON.
+  /// ── Summed in SQL, and the reason is not tidiness ────────────────────────
+  ///
+  /// This read every row and added up a column, which means it pulled every
+  /// photograph in the collection out of the database — decrypting each one —
+  /// to arrive at a number printed under a button.
+  ///
+  /// Settings calls it on every build. On a collection with a hundred files in
+  /// it that is a hundred and eighty megabytes of SQLCipher work between
+  /// tapping the tab and seeing it, which is exactly what it felt like.
+  ///
+  /// `byteLength` is a column. SQLite can add up a column without handing any
+  /// of the rows to Dart, and `blobSizes` below was already doing the same
+  /// thing for the same reason — this one was simply never looked at.
   Future<int> storageBytes() async {
-    final rows = await db.select(db.blobs).get();
-    return rows.fold<int>(0, (n, b) => n + b.byteLength);
+    final total = db.blobs.byteLength.sum();
+    final query = db.selectOnly(db.blobs)..addColumns([total]);
+
+    return (await query.getSingle()).read(total) ?? 0;
   }
 
   Future<BlobRow?> blob(String id) =>
