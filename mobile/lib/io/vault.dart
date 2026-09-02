@@ -34,6 +34,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../logic/vault.dart';
@@ -46,9 +47,27 @@ const FlutterSecureStorage _store = FlutterSecureStorage(
 
 const String _passphraseName = 'stash_it_backup_passphrase';
 
-/// AES-256-GCM. `cryptography_flutter` hands this to javax.crypto on Android,
-/// which is the difference between a few seconds and a few minutes on a backup
-/// with photographs in it.
+/*
+  ── All of this happens on another isolate ──────────────────────────────────
+
+  It did not, and the app froze. Stretching a passphrase is 210,000 rounds of
+  HMAC-SHA256 by design — the whole point is that it is slow — and encrypting a
+  backup with photographs in it is megabytes of AES on top. On the UI isolate
+  that is seconds of a phone that does not scroll, does not change tab and does
+  not answer, which Android reports as an app that has stopped.
+
+  Worse, it ran on every launch and every resume while a backup was due, so it
+  was not one bad moment; it was every moment.
+
+  `exportBackup` had already learnt this and moved its zipping to `compute`.
+  This is the same lesson arriving twice, and the note is here so it does not
+  arrive a third time: **anything in this file is heavy by construction.**
+
+  The cost of the isolate is that `cryptography_flutter`'s native delegate is
+  not there — platform channels do not exist on a spawned isolate — so this
+  runs the package's pure Dart AES rather than javax.crypto. Slower, and it no
+  longer matters: nobody is waiting on a frame for it.
+*/
 final Cipher _cipher = AesGcm.with256bits();
 
 /* --------------------------------------------------------- the passphrase */
@@ -84,20 +103,40 @@ Future<void> clearBackupPassphrase() => _store.delete(key: _passphraseName);
 /* ------------------------------------------------------------ the locking */
 
 /// Wraps the bytes of a backup so only the passphrase opens them.
-Future<Uint8List> lockBackup(List<int> plain, String passphrase) async {
-  final salt = _randomBytes(16);
-  final nonce = _randomBytes(12);
+///
+/// The salt and the nonce are drawn HERE, on the main isolate, because
+/// `Random.secure()` is the platform's own source and the one thing in this
+/// file that should not be delegated. Everything expensive happens elsewhere.
+Future<Uint8List> lockBackup(List<int> plain, String passphrase) => compute(
+      _lock,
+      (
+        plain: plain,
+        passphrase: passphrase,
+        salt: _randomBytes(16),
+        nonce: _randomBytes(12),
+      ),
+    );
 
-  final key = await _keyFrom(passphrase, salt, vaultIterations);
+/// The isolate's half of [lockBackup]. Top-level, because `compute` cannot send
+/// a closure.
+Future<Uint8List> _lock(
+  ({
+    List<int> plain,
+    String passphrase,
+    Uint8List salt,
+    Uint8List nonce,
+  }) work,
+) async {
+  final key = await _keyFrom(work.passphrase, work.salt, vaultIterations);
 
   final box = await _cipher.encrypt(
-    plain,
+    work.plain,
     secretKey: key,
-    nonce: nonce,
+    nonce: work.nonce,
   );
 
   final out = BytesBuilder();
-  out.add(vaultHeader(salt: salt, nonce: nonce));
+  out.add(vaultHeader(salt: work.salt, nonce: work.nonce));
   out.add(box.cipherText);
   // GCM's tag, on the end where every other implementation expects it.
   out.add(box.mac.bytes);
@@ -111,13 +150,24 @@ Future<Uint8List> lockBackup(List<int> plain, String passphrase) async {
 /// damaged file land in the same place, because GCM cannot tell them apart —
 /// and being told "wrong passphrase" about a truncated download would send
 /// somebody looking in the wrong place for an hour.
-Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) async {
-  final header = readVaultHeader(sealed);
+Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) {
+  // Read here so a malformed file is refused with a sentence before an isolate
+  // is spawned for it — see `readVaultHeader`, which throws for a person.
+  readVaultHeader(sealed);
 
-  final body = sealed.sublist(vaultHeaderBytes);
+  return compute(_unlock, (sealed: sealed, passphrase: passphrase));
+}
+
+/// The isolate's half of [unlockBackup].
+Future<Uint8List> _unlock(
+  ({List<int> sealed, String passphrase}) work,
+) async {
+  final header = readVaultHeader(work.sealed);
+
+  final body = work.sealed.sublist(vaultHeaderBytes);
   final split = body.length - 16;
 
-  final key = await _keyFrom(passphrase, header.salt, header.iterations);
+  final key = await _keyFrom(work.passphrase, header.salt, header.iterations);
 
   try {
     final plain = await _cipher.decrypt(

@@ -50,8 +50,27 @@ class AutoBackupResult {
   final String? problem;
 }
 
+/*
+  ── Once per launch, whatever happens ───────────────────────────────────────
+
+  This is called on launch and on every resume. Without a guard, an attempt
+  that fails — or one killed halfway by the system — leaves the backup still
+  due, so the next resume tries again, and the next, and the app spends its
+  life doing the most expensive thing it knows how to do.
+
+  That is not hypothetical. It is what a passphrase plus a slow seal produced:
+  every return to the app started another one.
+
+  A flag rather than a stored timestamp: "stop hammering this" is a fact about
+  this run of the app, and writing it down would mean a phone that failed once
+  waiting a fortnight to try again.
+*/
+bool _triedThisLaunch = false;
+
 /// Runs one if the interval has passed. Cheap and silent when it has not.
 Future<AutoBackupResult> autoBackupIfDue(Repository repo) async {
+  if (_triedThisLaunch) return const AutoBackupResult(wrote: false);
+
   try {
     final settings = await repo.settings();
     final items = await repo.activeItems();
@@ -64,6 +83,10 @@ Future<AutoBackupResult> autoBackupIfDue(Repository repo) async {
     )) {
       return const AutoBackupResult(wrote: false);
     }
+
+    // Set before the work, not after. The point is that a failure does not
+    // come round again in thirty seconds.
+    _triedThisLaunch = true;
 
     return backUpToFolder(repo);
   } catch (e) {
