@@ -93,7 +93,7 @@ class RingFace extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Wordmark(c: c),
+            WidgetWordmark(c: c),
             Expanded(
               child: Row(
                 children: [
@@ -124,29 +124,75 @@ class RingFace extends StatelessWidget {
   }
 }
 
+/// The size the wordmark is drawn at on every widget.
+///
+/// One number, because all three now show the same picture — see
+/// `WidgetWordmark`.
+const double wordmarkFontSize = 19;
+
 /// "Stash" in the text colour, "it" in gold — the app's masthead, small.
-class _Wordmark extends StatelessWidget {
-  const _Wordmark({required this.c});
+///
+/// ── Why every widget draws this rather than typing it ──────────────────────
+/// Quick add and Coming up used to set the two words as TextViews with the
+/// app's font attached by a style. That is three things kept in step by hand —
+/// the typeface, the weight and the two colours — against a fourth copy drawn
+/// here in Flutter for the ring, and they did not stay in step: the ring's
+/// masthead was right and the other two were not.
+///
+/// There is no way to make a TextView and a Flutter Text agree by inspection,
+/// so they no longer have to. This is rendered to a PNG by `widget_mirror.dart`
+/// and all three widgets show the same picture.
+class WidgetWordmark extends StatelessWidget {
+  const WidgetWordmark({required this.c, super.key});
 
   final StashColors c;
 
   @override
   Widget build(BuildContext context) => Text.rich(
-        TextSpan(
-          children: [
-            const TextSpan(text: 'Stash '),
-            TextSpan(text: 'it', style: TextStyle(color: c.gold)),
-          ],
-        ),
-        style: TextStyle(
-          fontFamily: fontDisplay,
-          fontWeight: FontWeight.w800,
-          fontSize: 19,
-          letterSpacing: -0.5,
-          height: 1,
-          color: c.text,
-        ),
+        wordmarkSpan(c),
+        style: wordmarkStyle(c),
       );
+}
+
+/// The two halves, as one span. Shared with the measurement below so the
+/// picture is exactly as wide as the words in it.
+TextSpan wordmarkSpan(StashColors c) => TextSpan(
+      children: [
+        const TextSpan(text: 'Stash '),
+        TextSpan(text: 'it', style: TextStyle(color: c.gold)),
+      ],
+    );
+
+TextStyle wordmarkStyle(StashColors c) => TextStyle(
+      fontFamily: fontDisplay,
+      fontWeight: FontWeight.w800,
+      fontSize: wordmarkFontSize,
+      letterSpacing: -0.5,
+      height: 1,
+      color: c.text,
+    );
+
+/// How big the picture has to be.
+///
+/// `renderFlutterWidget` needs a size up front, and a guess is two failures:
+/// too small clips the "it", too large leaves transparent space that pushes
+/// Scout off the edge of the widget. `TextPainter` answers exactly, needs no
+/// BuildContext, and is cheap enough to run on every mirror pass.
+///
+/// Rounded up, then a pixel each way — a fractional width truncated by the
+/// render is a clipped stem on the last letter, which is the kind of thing that
+/// looks like a font problem.
+Size measureWordmark(StashColors c) {
+  final painter = TextPainter(
+    text: TextSpan(children: [wordmarkSpan(c)], style: wordmarkStyle(c)),
+    textDirection: TextDirection.ltr,
+    textScaler: TextScaler.noScaling,
+  )..layout();
+
+  return Size(
+    painter.width.ceilToDouble() + 2,
+    painter.height.ceilToDouble() + 2,
+  );
 }
 
 /// The dial and the one number inside it.

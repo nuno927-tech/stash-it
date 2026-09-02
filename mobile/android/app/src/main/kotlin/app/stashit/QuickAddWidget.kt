@@ -2,10 +2,11 @@ package app.stashit
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetProvider
 
 /*
    ── Three ways into the app, and no data at all ─────────────────────────────
@@ -19,21 +20,33 @@ import android.widget.RemoteViews
    without any of the privacy weight the other two carry. If this works on a
    phone, the two that show real records are a data problem rather than an
    Android one.
+
+   ── It reads one thing now, and it is a picture of two words ────────────────
+
+   `HomeWidgetProvider` rather than `AppWidgetProvider`, purely to be handed the
+   preferences the app writes. Nothing about a record travels here: the only key
+   it reads is the rendered masthead, which is the same picture the other two
+   show. See `Wordmark`.
 */
-class QuickAddWidget : AppWidgetProvider() {
+class QuickAddWidget : HomeWidgetProvider() {
 
     override fun onUpdate(
         context: Context,
-        manager: AppWidgetManager,
-        ids: IntArray,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+        widgetData: SharedPreferences,
     ) {
-        for (id in ids) {
-            manager.updateAppWidget(id, build(context))
+        for (id in appWidgetIds) {
+            appWidgetManager.updateAppWidget(id, build(context, widgetData))
         }
     }
 
-    private fun build(context: Context): RemoteViews {
+    private fun build(context: Context, data: SharedPreferences): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_quick_add)
+
+        Wordmark.of(context, data)?.let {
+            views.setImageViewBitmap(R.id.quick_add_wordmark, it)
+        }
 
         views.setOnClickPendingIntent(R.id.quick_add_item, open(context, ADD_ITEM))
         views.setOnClickPendingIntent(R.id.quick_add_paper, open(context, ADD_PAPER))

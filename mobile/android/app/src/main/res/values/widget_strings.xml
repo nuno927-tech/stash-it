@@ -5,11 +5,16 @@
          by app and repeating the name wastes the only line there is. -->
     <string name="widget_quick_add_label">Stash something</string>
     <string name="widget_quick_add_description">Three ways in: an item, a document, a subscription.</string>
-    <!-- Two halves, because the second one is gold. Same split as the
-         Wordmark widget in lib/ui/parts.dart. The trailing space belongs to
-         the first half; it is a word gap, not padding. -->
-    <string name="widget_wordmark_stash">"Stash "</string>
-    <string name="widget_wordmark_it">it</string>
+    <!--
+        The masthead is a picture now — rendered by the app so all three widgets
+        show the identical thing — so this is what a screen reader is given in
+        its place. Without it the widget announces itself as "image".
+
+        The two halves that used to be set as text are gone. They were the
+        drift: two TextViews in the app's font against the same words drawn in
+        Flutter for the ring, kept in step by hand and not staying in step.
+    -->
+    <string name="widget_wordmark">Stash it</string>
     <string name="widget_scout">Scout</string>
     <string name="widget_add_item">An item</string>
     <string name="widget_add_paper">A document</string>

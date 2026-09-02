@@ -42,6 +42,7 @@ import 'package:home_widget/home_widget.dart';
 
 import '../db/repository.dart';
 import '../logic/widget_payload.dart';
+import '../ui/theme.dart';
 import '../ui/widget_face.dart';
 
 /// The provider classes Android should be told to redraw.
@@ -51,6 +52,14 @@ import '../ui/widget_face.dart';
 const List<String> _providers = [
   'app.stashit.RingWidget',
   'app.stashit.ComingUpWidget',
+  /*
+    Quick add is on this list now, and it was not before.
+
+    It shows no records at all — three fixed labels and three taps — so there
+    was nothing to redraw it for. Its masthead is a picture now, like the other
+    two, and a picture has to arrive before it can be shown.
+  */
+  'app.stashit.QuickAddWidget',
 ];
 
 /// Keys the Kotlin side reads. Changing one here changes nothing there, which
@@ -59,6 +68,14 @@ const List<String> _providers = [
 const String ringDarkKey = 'ring_dark';
 const String ringLightKey = 'ring_light';
 const String ringWordsKey = 'ring_words';
+
+/// The masthead, drawn once and shown by all three.
+///
+/// Two of them, dark and light, for the same reason the ring has two: a
+/// picture's ink is fixed when it is drawn, and the phone can be switched to
+/// dark mode while the app is not running to notice.
+const String wordmarkDarkKey = 'words_dark';
+const String wordmarkLightKey = 'words_light';
 
 /// Coming up travels as data rather than as a picture.
 ///
@@ -104,6 +121,7 @@ Future<void> mirrorWidgets(Repository repo) async {
     );
 
     await _renderRing(payload, await _scout());
+    await _renderWordmark();
 
     /*
       Said in words as well as drawn.
@@ -184,6 +202,44 @@ Future<ui.Image?> _scout() async {
   } catch (_) {
     // A face without a mascot is a worse widget, not a broken one.
     return null;
+  }
+}
+
+/*
+   ── The masthead, as a picture ──────────────────────────────────────────────
+
+   Quick add and Coming up used to set "Stash" and "it" as two TextViews with
+   the app's font attached by a style, which is the typeface, the weight, the
+   letter spacing and two colours all kept in step by hand against the copy the
+   ring draws in Flutter. They drifted, and the only way to tell was to look at
+   three widgets side by side on a home screen.
+
+   One picture, three widgets. It is a few hundred bytes and it removes the
+   whole class of problem.
+*/
+Future<void> _renderWordmark() async {
+  const faces = [(wordmarkDarkKey, true), (wordmarkLightKey, false)];
+
+  for (final (key, dark) in faces) {
+    final c = stashColors(dark: dark);
+
+    await HomeWidget.renderFlutterWidget(
+      MediaQuery(
+        // The same override, for the same reason as the ring: a widget cannot
+        // reflow, so a large font setting would push the words off the picture
+        // rather than make them easier to read.
+        data: const MediaQueryData(textScaler: TextScaler.noScaling),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: WidgetWordmark(c: c),
+        ),
+      ),
+      key: key,
+      // Measured rather than guessed — see `measureWordmark`. Both palettes
+      // measure the same, because only the colours differ.
+      logicalSize: measureWordmark(c),
+      pixelRatio: _pixelRatio,
+    );
   }
 }
 

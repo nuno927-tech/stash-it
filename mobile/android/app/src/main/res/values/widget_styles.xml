@@ -1,37 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The wordmark's type, and why it is a style rather than three attributes.
+    Styles the widget layouts share.
 
-    The app draws "Stash it" in Bricolage Grotesque. Android can load a font
-    from res/font/ — but only from API 26. Below that, `@font/` is not a thing
-    the framework knows, and an unresolvable reference inside a widget layout
-    does not fall back to a default: it throws while the LAUNCHER is inflating,
-    which reaches the home screen as "An error occurred when loading widget".
+    ── The wordmark is not here any more ──────────────────────────────────────
 
-    A style is the one place that can differ by API level without the layout
-    knowing. This file is the floor — size, spacing and weight, in the system
-    font — and values-v26 adds the typeface on the phones that have one.
+    It used to be: a style with the app's typeface, split across values/ and
+    values-v26/ because `@font/` only exists from API 26 and an unresolvable
+    font reference does not fall back — it throws while the LAUNCHER is
+    inflating, which reaches the home screen as "An error occurred when loading
+    widget".
 
-    So on Android 8 and up the widget matches the app. Below that it is the
-    same wordmark in the system font, which is a smaller thing to lose than
-    the whole widget.
+    All of that is gone, because the words are a picture now. The app renders
+    the masthead once in its own font and all three widgets show it, which is
+    the only way a TextView and a Flutter Text can be made to agree: by there
+    not being a TextView. See `WidgetWordmark` in lib/ui/widget_face.dart.
 
-    ── On the weight ──────────────────────────────────────────────────────────
-
-    The app asks for w800, and Bricolage's default variable instance IS w800 —
-    so values-v26 needs no help. This fallback is the system font, which starts
-    at regular, so it asks for bold here and values-v26 deliberately does not.
+    That took the res/font/ file and the whole values-v26 split with it.
 -->
 <resources>
-    <style name="WidgetWordmark">
-        <item name="android:textSize">20sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:letterSpacing">-0.025</item>
-        <item name="android:maxLines">1</item>
-        <item name="android:ellipsize">end</item>
-        <item name="android:includeFontPadding">false</item>
-    </style>
-
     <!--
         One row of the Coming up list: a name on the left, a countdown on the
         right. The whole row is one tap target, so the padding is generous

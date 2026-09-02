@@ -60,22 +60,38 @@
         android:paddingEnd="2dp"
         android:paddingBottom="6dp">
 
-        <TextView
-            android:id="@+id/quick_add_stash"
-            style="@style/WidgetWordmark"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_wordmark_stash"
-            android:textColor="@color/widget_text" />
+        <!--
+            One picture, not two TextViews.
 
+            It was "Stash" in the text colour and "it" in gold, set in the app's
+            font by @style/WidgetWordmark. That is four things — typeface,
+            weight, spacing, two colours — kept in step by hand against the copy
+            the ring draws in Flutter, and they drifted. The masthead is now
+            rendered once by the app and shown by all three widgets, so there is
+            nothing left to keep in step.
+
+            Height fixed and width wrapping, with adjustViewBounds, so the
+            picture keeps its own proportions instead of being stretched to a
+            box. The weight moved to the spacer below it, which is what pushes
+            Scout to the right edge.
+        -->
+        <ImageView
+            android:id="@+id/quick_add_wordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitStart"
+            android:contentDescription="@string/widget_wordmark" />
+
+        <!--
+            Eats the empty middle. Space is not on the RemoteViews allowlist
+            (see tool/check_widget_layouts.py), so it is a zero-width TextView
+            carrying the weight the gold half used to.
+        -->
         <TextView
-            android:id="@+id/quick_add_it"
-            style="@style/WidgetWordmark"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/widget_wordmark_it"
-            android:textColor="@color/widget_gold" />
+            android:layout_weight="1" />
 
         <!--
             Scout, sized in dp from a nodpi source so he is the same size on

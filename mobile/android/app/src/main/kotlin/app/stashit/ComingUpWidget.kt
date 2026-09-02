@@ -104,6 +104,12 @@ class ComingUpWidget : HomeWidgetProvider() {
         views.setOnClickPendingIntent(R.id.coming_up_root, open(context))
         views.setOnClickPendingIntent(R.id.coming_up_settings, settings(context, id))
 
+        // The masthead, drawn by the app so all three widgets show the same
+        // one. Null before the app has ever run — see `Wordmark.of`.
+        Wordmark.of(context, data)?.let {
+            views.setImageViewBitmap(R.id.coming_up_wordmark, it)
+        }
+
         val payload = data.getString(KEY, null)?.let {
             runCatching { JSONObject(it) }.getOrNull()
         }

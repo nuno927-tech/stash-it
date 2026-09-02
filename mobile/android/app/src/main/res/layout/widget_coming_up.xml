@@ -40,19 +40,15 @@
         android:paddingEnd="2dp"
         android:paddingBottom="6dp">
 
-        <TextView
-            style="@style/WidgetWordmark"
+        <!-- The same rendered masthead as the ring and Quick add. See the
+             longer note in widget_quick_add.xml. -->
+        <ImageView
+            android:id="@+id/coming_up_wordmark"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_wordmark_stash"
-            android:textColor="@color/widget_text" />
-
-        <TextView
-            style="@style/WidgetWordmark"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_wordmark_it"
-            android:textColor="@color/widget_gold" />
+            android:layout_height="20dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitStart"
+            android:contentDescription="@string/widget_wordmark" />
 
         <TextView
             android:id="@+id/coming_up_caption"
