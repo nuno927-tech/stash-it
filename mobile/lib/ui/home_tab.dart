@@ -20,6 +20,7 @@ import '../logic/dashboard.dart';
 import '../logic/greeting.dart';
 import '../logic/item_filter.dart';
 import '../logic/nudges.dart';
+import '../logic/ring_hit.dart';
 import '../logic/subscriptions.dart';
 import '../logic/swipe.dart';
 import '../logic/timeline.dart';
@@ -589,6 +590,25 @@ class _CoverCard extends StatelessWidget {
                         needsStarting: tally.needsStarting,
                         lapsed: tally.lapsed,
                         percent: tally.percent,
+                        /*
+                          Each arc opens the list its own count is made of —
+                          the same three destinations as the figures below, so
+                          the picture and the numbers cannot send you to
+                          different places.
+
+                          `tap` returns null for a count of zero, and a wedge
+                          of zero cannot be hit anyway. Belt and braces, and
+                          the belt is the one with the test.
+                        */
+                        onWedge: (wedge) => (switch (wedge) {
+                          RingWedge.covered =>
+                            tap(tally.inDateBy, filter: ItemFilter.inDate),
+                          RingWedge.soon => tap(tally.needsStartingBy,
+                              filter: ItemFilter.endingSoon),
+                          RingWedge.lapsed =>
+                            tap(tally.lapsedBy, filter: ItemFilter.lapsed),
+                        })
+                            ?.call(),
                       ),
                     ),
                   ),
@@ -624,6 +644,20 @@ class _CoverCard extends StatelessWidget {
                     count: tally.inDate,
                     label: 'in date',
                     tone: c.moss,
+                    /*
+                      Tappable now, and it was deliberately not.
+
+                      The rule was that there is nothing to DO about something
+                      that is fine. True of an action list and not of this: the
+                      green arc beside it opens what it counts, and a number
+                      that ignores the tap its own arc answers is the two
+                      halves of one control disagreeing.
+
+                      "Show me everything still covered" is also a real
+                      question — it is the one asked before buying a
+                      replacement.
+                    */
+                    onTap: tap(tally.inDateBy, filter: ItemFilter.inDate),
                   ),
                 ),
                 Expanded(

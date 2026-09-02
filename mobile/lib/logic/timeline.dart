@@ -353,7 +353,7 @@ class KindSplit {
 
 class DatedTally {
   const DatedTally({
-    required this.inDate,
+    required this.inDateBy,
     required this.noDate,
     required this.percent,
     required this.items,
@@ -363,7 +363,14 @@ class DatedTally {
     required this.noDateBy,
   });
 
-  final int inDate;
+  /// Records with cover still running.
+  ///
+  /// Split by kind like the other two, and for the same reason: the ring's
+  /// green arc is now tappable, and a total cannot answer "where do these
+  /// live". A household whose in-date records are all passports would land on
+  /// an empty items list otherwise — the bug this split was invented to fix,
+  /// arriving a third time.
+  final KindSplit inDateBy;
 
   /// Records with nothing to count from. Not drawn, and not in the divisor.
   final int noDate;
@@ -391,6 +398,7 @@ class DatedTally {
   final KindSplit lapsedBy;
   final KindSplit noDateBy;
 
+  int get inDate => inDateBy.total;
   int get needsStarting => needsStartingBy.total;
   int get lapsed => lapsedBy.total;
 }
@@ -416,7 +424,7 @@ class DatedTally {
 DatedTally datedTally(List<Item> items, List<Paper> papers, [DateTime? now]) {
   final at = now ?? DateTime.now();
 
-  var inDate = 0;
+  var inDateItems = 0, inDatePapers = 0;
   var needStartItems = 0, needStartPapers = 0;
   var lapsedItems = 0, lapsedPapers = 0;
   var noDateItems = 0, noDatePapers = 0;
@@ -424,7 +432,7 @@ DatedTally datedTally(List<Item> items, List<Paper> papers, [DateTime? now]) {
   for (final item in items) {
     switch (warrantyState(item, at)) {
       case WarrantyState.covered:
-        inDate++;
+        inDateItems++;
         break;
       case WarrantyState.endingSoon:
         needStartItems++;
@@ -445,7 +453,7 @@ DatedTally datedTally(List<Item> items, List<Paper> papers, [DateTime? now]) {
     }
     switch (paperState(paper, at)) {
       case PaperState.valid:
-        inDate++;
+        inDatePapers++;
         break;
       case PaperState.renew:
         needStartPapers++;
@@ -456,11 +464,12 @@ DatedTally datedTally(List<Item> items, List<Paper> papers, [DateTime? now]) {
     }
   }
 
+  final inDate = inDateItems + inDatePapers;
   final tracked =
       inDate + needStartItems + needStartPapers + lapsedItems + lapsedPapers;
 
   return DatedTally(
-    inDate: inDate,
+    inDateBy: KindSplit(inDateItems, inDatePapers),
     noDate: noDateItems + noDatePapers,
     percent: tracked == 0 ? 0 : (inDate / tracked * 100).round(),
     items: items.length,

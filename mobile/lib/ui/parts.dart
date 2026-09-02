@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../logic/ring_hit.dart';
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import 'feedback.dart';
@@ -709,6 +710,7 @@ class Ring extends StatefulWidget {
     required this.needsStarting,
     required this.lapsed,
     required this.percent,
+    this.onWedge,
     super.key,
   });
 
@@ -716,6 +718,18 @@ class Ring extends StatefulWidget {
   final int needsStarting;
   final int lapsed;
   final int percent;
+
+  /*
+    ── The ring answers, and it did not ──────────────────────────────────────
+
+    It is the signature image of the app and it was inert: the largest thing on
+    the first screen, showing one number, doing nothing. The four figures under
+    it already went somewhere; the picture of those same four figures did not.
+
+    Null leaves it inert, which is what the home screen widget's copy of this
+    face wants — there is nothing to navigate to from a launcher.
+  */
+  final void Function(RingWedge)? onWedge;
 
   @override
   State<Ring> createState() => _RingState();
@@ -820,54 +834,122 @@ class _RingState extends State<Ring> with SingleTickerProviderStateMixin {
       moment the setting changes, without needing the screen reopened.
     */
     if (MediaQuery.of(context).disableAnimations) {
-      return _RingFace(
-        inDate: widget.inDate.toDouble(),
-        needsStarting: widget.needsStarting.toDouble(),
-        lapsed: widget.lapsed.toDouble(),
-        percent: widget.percent,
+      return _say(
+        _RingFace(
+          inDate: widget.inDate.toDouble(),
+          needsStarting: widget.needsStarting.toDouble(),
+          lapsed: widget.lapsed.toDouble(),
+          percent: widget.percent,
+          onWedge: widget.onWedge,
+        ),
       );
     }
 
-    return AnimatedBuilder(
-      animation: _curve,
-      builder: (context, _) => _RingFace(
-        inDate: _at(_fromIn, widget.inDate, _curve.value),
-        needsStarting: _at(_fromSoon, widget.needsStarting, _curve.value),
-        lapsed: _at(_fromLapsed, widget.lapsed, _curve.value),
-        percent: _at(_fromPercent, widget.percent, _curve.value).round(),
+    return _say(
+      AnimatedBuilder(
+        animation: _curve,
+        builder: (context, _) => _RingFace(
+          inDate: _at(_fromIn, widget.inDate, _curve.value),
+          needsStarting: _at(_fromSoon, widget.needsStarting, _curve.value),
+          lapsed: _at(_fromLapsed, widget.lapsed, _curve.value),
+          percent: _at(_fromPercent, widget.percent, _curve.value).round(),
+          onWedge: widget.onWedge,
+        ),
       ),
+    );
+  }
+
+  /*
+    ── Out loud, because a painted ring says nothing ─────────────────────────
+
+    Everything here is drawn on a canvas, so a screen reader met the biggest
+    element on the first screen and had nothing whatever to announce. The
+    counts are read from the widget rather than from the animation, so what is
+    spoken is the answer and not a frame part-way to it.
+
+    The four figures below carry their own labels and are the way to act on any
+    of this, so the ring is a summary rather than a set of buttons — one label,
+    not four targets competing with the ones underneath.
+  */
+  Widget _say(Widget face) {
+    return Semantics(
+      container: true,
+      label: '${widget.percent} per cent still in date. '
+          '${widget.inDate} in date, '
+          '${widget.needsStarting} need action, '
+          '${widget.lapsed} lapsed.',
+      child: face,
     );
   }
 }
 
-class _RingFace extends StatelessWidget {
+class _RingFace extends StatefulWidget {
   const _RingFace({
     required this.inDate,
     required this.needsStarting,
     required this.lapsed,
     required this.percent,
+    this.onWedge,
   });
 
   final double inDate;
   final double needsStarting;
   final double lapsed;
   final int percent;
+  final void Function(RingWedge)? onWedge;
+
+  @override
+  State<_RingFace> createState() => _RingFaceState();
+}
+
+class _RingFaceState extends State<_RingFace> {
+  /// The wedge under the finger right now, drawn heavier so the tap is
+  /// acknowledged before the screen changes.
+  RingWedge? _pressed;
+
+  /// Where the ring's line runs, in the coordinates of this box.
+  ///
+  /// The same two numbers `RingPainter` computes, and they have to stay the
+  /// same two — a hit test against a radius the painter does not draw at is a
+  /// ring whose arcs and whose targets are in different places.
+  ({Offset centre, double radius}) _geometry(Size size) {
+    const stroke = 6.0;
+    return (
+      centre: Offset(size.width / 2, size.height / 2),
+      radius: (math.min(size.width, size.height) - stroke) / 2,
+    );
+  }
+
+  RingWedge? _under(Offset local, Size size) {
+    final ring = _geometry(size);
+
+    return wedgeAt(
+      dx: local.dx - ring.centre.dx,
+      dy: local.dy - ring.centre.dy,
+      radius: ring.radius,
+      covered: widget.inDate,
+      soon: widget.needsStarting,
+      lapsed: widget.lapsed,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
+    const side = 176.0;
 
-    return SizedBox(
+    final face = SizedBox(
       // 176, the PWA's number. Smaller than the 208 it was drawn at when it
       // stood alone — a big ring and a mascot worth looking at do not both fit
       // across a phone, and a mascot too small to read is just clutter.
-      height: 176,
-      width: 176,
+      height: side,
+      width: side,
       child: CustomPaint(
         painter: RingPainter(
-          covered: inDate,
-          soon: needsStarting,
-          lapsed: lapsed,
+          covered: widget.inDate,
+          soon: widget.needsStarting,
+          lapsed: widget.lapsed,
+          pressed: _pressed,
           track: c.slate600,
           error: c.ember,
           moss: c.moss,
@@ -908,7 +990,7 @@ class _RingFace extends StatelessWidget {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      '$percent',
+                      '${widget.percent}',
                       style: TextStyle(
                         fontFamily: fontDisplay,
                         fontWeight: FontWeight.w200,
@@ -951,6 +1033,35 @@ class _RingFace extends StatelessWidget {
         ),
       ),
     );
+
+    if (widget.onWedge == null) return face;
+
+    /*
+      ── Opaque, and only the ring inside it ───────────────────────────────
+
+      The detector covers the whole 176 square because a gesture cannot be
+      shaped like an annulus — so `wedgeAt` does the shaping, and a tap on the
+      number in the middle finds no wedge and is dropped. That is deliberate:
+      the biggest thing on the dashboard should not be a button nobody meant
+      to press.
+    */
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (d) {
+        final wedge = _under(d.localPosition, const Size(side, side));
+        if (wedge != null) setState(() => _pressed = wedge);
+      },
+      onTapCancel: () => setState(() => _pressed = null),
+      onTapUp: (d) {
+        final wedge = _under(d.localPosition, const Size(side, side));
+        setState(() => _pressed = null);
+        if (wedge == null) return;
+
+        feedback(Cue.tap);
+        widget.onWedge!(wedge);
+      },
+      child: face,
+    );
   }
 }
 
@@ -969,6 +1080,7 @@ class RingPainter extends CustomPainter {
     required this.error,
     required this.moss,
     required this.honey,
+    this.pressed,
   });
 
   final double covered;
@@ -982,6 +1094,18 @@ class RingPainter extends CustomPainter {
   /// dark theme's moss would be a bright green line on a pale card.
   final Color moss;
   final Color honey;
+
+  /// The wedge under a finger, drawn heavier.
+  ///
+  /// ── An arc has no pressed state of its own ────────────────────────────────
+  /// A button dims, a row washes, and a line painted on a canvas does neither
+  /// — so a tap on the ring would change the screen with nothing in between,
+  /// which reads as the app deciding rather than as you choosing. Four extra
+  /// pixels of stroke under the finger is the whole acknowledgement, and it
+  /// costs the arc no space because the ring is drawn on its centre line.
+  ///
+  /// Null on the home screen widget, which nobody can press.
+  final RingWedge? pressed;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1032,9 +1156,13 @@ class RingPainter extends CustomPainter {
     // Green, then amber, then red — worst last, so the eye lands on it as the
     // arc closes rather than meeting it first.
     var start = -math.pi / 2;
-    for (final wedge in [(covered, moss), (soon, honey), (lapsed, error)]) {
-      final sweep = (wedge.$1 / total) * math.pi * 2;
-      if (wedge.$1 == 0) {
+    for (final wedge in [
+      (RingWedge.covered, covered, moss),
+      (RingWedge.soon, soon, honey),
+      (RingWedge.lapsed, lapsed, error),
+    ]) {
+      final sweep = (wedge.$2 / total) * math.pi * 2;
+      if (wedge.$2 == 0) {
         start += sweep;
         continue;
       }
@@ -1049,9 +1177,9 @@ class RingPainter extends CustomPainter {
         false,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = stroke
+          ..strokeWidth = wedge.$1 == pressed ? stroke + 4 : stroke
           ..strokeCap = StrokeCap.round
-          ..color = wedge.$2,
+          ..color = wedge.$3,
       );
       start += sweep;
     }
@@ -1059,7 +1187,10 @@ class RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(RingPainter old) =>
-      old.covered != covered || old.soon != soon || old.lapsed != lapsed;
+      old.covered != covered ||
+      old.soon != soon ||
+      old.lapsed != lapsed ||
+      old.pressed != pressed;
 }
 
 /// The header a list wears while rows are being chosen to send.

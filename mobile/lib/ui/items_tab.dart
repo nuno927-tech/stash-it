@@ -690,6 +690,8 @@ class _ItemsTabState extends State<ItemsTab> {
                     label: '${filterLabel[f]} ${countOf(f)}',
                     on: _filter == f,
                     tone: switch (f) {
+                      // The chip wears the colour of the arc that opened it.
+                      ItemFilter.inDate => c.moss,
                       ItemFilter.endingSoon => c.honey,
                       ItemFilter.lapsed => c.ember,
                       _ => c.line,

@@ -24,6 +24,23 @@ import 'warranty.dart';
   wrong than reaching for a repository from inside a predicate.
 */
 enum ItemFilter {
+  /*
+    ── Cover still running, which used to be the one nobody could open ───────
+
+    The dashboard's biggest number, and for most households the biggest arc on
+    the ring. It had no filter because of a reasonable-sounding rule — there is
+    nothing to DO about something that is fine, so nothing to tap.
+
+    That holds for a figure and not for the ring. Green is usually most of the
+    circle, so a ring that answers only its amber and red slivers ignores the
+    majority of taps it will ever get, and a control that does nothing four
+    times out of five is read as broken rather than as principled.
+
+    And "show me everything still covered" is a real question. It is the one
+    somebody asks before they buy a replacement.
+  */
+  inDate,
+
   /// Cover has not run out yet but is inside its notice window. The ring's
   /// honey figure.
   endingSoon,
@@ -57,6 +74,7 @@ enum ItemFilter {
 
 /// The chip label, which is also what the list says it is showing.
 const Map<ItemFilter, String> filterLabel = {
+  ItemFilter.inDate: 'In date',
   ItemFilter.endingSoon: 'Action needed',
   ItemFilter.lapsed: 'Lapsed',
   ItemFilter.noTerm: 'No term',
@@ -83,6 +101,7 @@ bool matchesFilter(
   required Set<String> withReceipt,
 }) =>
     switch (filter) {
+      ItemFilter.inDate => warrantyState(item) == WarrantyState.covered,
       ItemFilter.endingSoon => warrantyState(item) == WarrantyState.endingSoon,
       ItemFilter.lapsed => warrantyState(item) == WarrantyState.expired,
       ItemFilter.noTerm => warrantyState(item) == WarrantyState.unknown,
@@ -118,12 +137,17 @@ const Map<GapKind, ItemFilter> gapFilter = {
 ///
 /// "No photograph" and "no receipt" are not questions you can ask a passport.
 const Set<ItemFilter> filtersSpanningPapers = {
+  // A document in date is in date, exactly as an item is — the ring counts
+  // both into one green arc, so the list the arc opens has to carry both.
+  ItemFilter.inDate,
   ItemFilter.endingSoon,
   ItemFilter.lapsed,
   ItemFilter.noTerm,
 };
 
 bool matchesPaperFilter(ItemFilter filter, Paper paper) => switch (filter) {
+      ItemFilter.inDate =>
+        expiryOf(paper) != null && paperState(paper) == PaperState.valid,
       ItemFilter.endingSoon =>
         expiryOf(paper) != null && paperState(paper) == PaperState.renew,
       ItemFilter.lapsed =>
