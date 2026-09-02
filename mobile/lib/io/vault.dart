@@ -30,6 +30,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -234,7 +235,14 @@ Uint8List flatBytes(List<int> bytes) =>
 
 /* ------------------------------------------------------------ the locking */
 
-/// Seals bytes, on the isolate that is already running.
+/// Seals bytes into a file, a chunk at a time, on the isolate already running.
+///
+/// ── One chunk in memory, not the whole backup ──────────────────────────────
+/// The version that encrypted in a single call held the plaintext, the
+/// ciphertext and the assembled output at once. On a 185 MB backup that is
+/// most of a phone's heap, and it ran at 4 MB/s on a phone whose cipher
+/// measures 90 — the cipher was never the slow part; carrying the file around
+/// was. Each chunk here is encrypted and written before the next is touched.
 ///
 /// ── No `compute` in here ───────────────────────────────────────────────────
 /// There used to be a wrapper that spawned an isolate for this alone, and it
@@ -242,66 +250,92 @@ Uint8List flatBytes(List<int> bytes) =>
 /// file copied back, on top of the copies the zipping already cost. The export
 /// runs in ONE isolate now and calls this inside it — see
 /// `exportSealedBackupToFile`, which explains what those copies were costing.
-Future<({Uint8List bytes, String timings})> sealInIsolate(
+Future<({int bytes, String timings})> sealToFile(
   ({
     Uint8List plain,
     Uint8List salt,
     Uint8List key,
     Uint8List nonce,
+    String path,
     RootIsolateToken? token,
   }) work,
 ) async {
   final watch = Stopwatch()..start();
 
   nativeIfPossible(work.token);
-  final started = watch.elapsedMilliseconds;
+  final started = watch.elapsedMicroseconds;
 
-  final box = await AesGcm.with256bits().encrypt(
-    work.plain,
-    secretKey: SecretKey(work.key),
-    nonce: work.nonce,
-  );
-  final encrypted = watch.elapsedMilliseconds;
+  final gcm = AesGcm.with256bits();
+  final secret = SecretKey(work.key);
+  final total = chunkCount(work.plain.length, vaultChunkBytes);
 
-  /*
-    Assembled by hand rather than with a `BytesBuilder`.
+  final file = await File(work.path).open(mode: FileMode.write);
+  var wrote = 0;
+  var enciphering = 0;
+  var writing = 0;
 
-    The cipher hands back a `List<int>` which may or may not be boxed, and
-    `BytesBuilder.add` on a boxed list of a hundred million integers is a
-    hundred million reads. One allocation and two `setRange`s instead — and
-    `_flat` makes sure the source is a typed list before either.
-  */
-  final header = vaultHeader(salt: work.salt, nonce: work.nonce);
-  final cipher = flatBytes(box.cipherText);
-  final tag = flatBytes(box.mac.bytes);
+  try {
+    final header = vaultHeader(salt: work.salt, nonce: work.nonce);
+    await file.writeFrom(header);
+    wrote += header.length;
 
-  final body = header.length + cipher.length;
-  final out = Uint8List(body + tag.length)
-    ..setRange(0, header.length, header)
-    ..setRange(header.length, body, cipher)
-    // GCM's tag, on the end where every other implementation expects it.
-    ..setRange(body, body + tag.length, tag);
+    for (var i = 0; i < total; i++) {
+      final from = i * vaultChunkBytes;
+      final to = min(from + vaultChunkBytes, work.plain.length);
+
+      /*
+        A view, not a copy. `sublist` would allocate another four megabytes on
+        every pass and hand the collector 46 of them to clean up on a backup
+        this size.
+      */
+      final slice = Uint8List.sublistView(work.plain, from, to);
+
+      final at = watch.elapsedMicroseconds;
+      final box = await gcm.encrypt(
+        slice,
+        secretKey: secret,
+        nonce: chunkNonce(work.nonce, i),
+        aad: chunkAad(i, last: i == total - 1),
+      );
+      final sealed = watch.elapsedMicroseconds;
+      enciphering += sealed - at;
+
+      await file.writeFrom(flatBytes(box.cipherText));
+      await file.writeFrom(flatBytes(box.mac.bytes));
+      writing += watch.elapsedMicroseconds - sealed;
+
+      wrote += box.cipherText.length + box.mac.bytes.length;
+    }
+
+    await file.flush();
+  } finally {
+    await file.close();
+  }
+
+  final mb = work.plain.length / 1024 / 1024;
+  final seconds = enciphering / 1000000;
 
   return (
-    bytes: out,
-    timings: '  isolate up $started ms'
-        '\n  encrypt    ${encrypted - started} ms'
-        '\n  assemble   ${watch.elapsedMilliseconds - encrypted} ms',
+    bytes: wrote,
+    timings: '  cipher     ${Cryptography.instance.runtimeType}'
+        '\n  isolate up ${started ~/ 1000} ms'
+        '\n  encrypt    ${enciphering ~/ 1000} ms in $total chunks'
+        ' (${seconds == 0 ? '—' : '${(mb / seconds).toStringAsFixed(1)} MB/s'})'
+        '\n  write      ${writing ~/ 1000} ms',
   );
 }
 
-
-/// Opens sealed bytes, on the isolate that is already running.
+/// Opens a sealed file, a chunk at a time, on the isolate already running.
 ///
 /// Throws [VaultProblem] with a sentence for a person. A wrong passphrase and a
 /// damaged file land in the same place, because GCM cannot tell them apart —
 /// and being told "wrong passphrase" about a truncated download would send
 /// somebody looking in the wrong place for an hour.
 ///
-/// No `compute` in here, for the same reason as [sealInIsolate].
-Future<({Uint8List bytes, String timings})> openInIsolate(
+/// No `compute` in here, for the same reason as [sealToFile].
+Future<({Uint8List bytes, String timings})> openFromFile(
   ({
-    Uint8List sealed,
+    String path,
     String passphrase,
     Uint8List? key,
     RootIsolateToken? token,
@@ -310,52 +344,116 @@ Future<({Uint8List bytes, String timings})> openInIsolate(
   final watch = Stopwatch()..start();
 
   nativeIfPossible(work.token);
-  final started = watch.elapsedMilliseconds;
+  final started = watch.elapsedMicroseconds;
 
-  final header = readVaultHeader(work.sealed);
-
-  /*
-    Views, not copies.
-
-    `sublist` allocates and copies; on a file of this size that is two more
-    copies of everything for no reason. `Uint8List.sublistView` hands back a
-    window onto the same bytes.
-  */
-  final split = work.sealed.length - 16;
-  final cipher = Uint8List.sublistView(work.sealed, vaultHeaderBytes, split);
-  final tag = Uint8List.sublistView(work.sealed, split);
-  final sliced = watch.elapsedMilliseconds;
-
-  // Already derived on this phone, or derived here the slow way for a file
-  // that came from somewhere else.
-  final key = work.key != null
-      ? SecretKey(work.key!)
-      : await _keyFrom(work.passphrase, header.salt, header.iterations);
-  final gotKey = watch.elapsedMilliseconds;
+  final file = await File(work.path).open();
 
   try {
-    final plain = await AesGcm.with256bits().decrypt(
-      SecretBox(cipher, nonce: header.nonce, mac: Mac(tag)),
-      secretKey: key,
-    );
-    final decrypted = watch.elapsedMilliseconds;
+    final length = await file.length();
+    final header = readVaultHeader(await file.read(vaultPeekBytes));
+    checkVaultLength(length, header);
+
+    // Already derived on this phone, or derived here the slow way for a file
+    // that came from somewhere else.
+    final key = work.key != null
+        ? SecretKey(work.key!)
+        : await _keyFrom(work.passphrase, header.salt, header.iterations);
+    final gotKey = watch.elapsedMicroseconds;
+
+    await file.setPosition(header.headerLength);
+
+    final plain = header.isChunked
+        ? await _openChunks(file, header, key, length)
+        : await _openOneBlock(file, header, key, length);
+    final opened = watch.elapsedMicroseconds;
+
+    final mb = plain.length / 1024 / 1024;
+    final seconds = (opened - gotKey) / 1000000;
 
     return (
-      bytes: flatBytes(plain),
-      timings: '  isolate up $started ms'
-          '\n  slice      ${sliced - started} ms'
-          '\n  derive     ${gotKey - sliced} ms'
-          '\n  decrypt    ${decrypted - gotKey} ms'
-          '\n  flatten    ${watch.elapsedMilliseconds - decrypted} ms',
+      bytes: plain,
+      timings: '  cipher     ${Cryptography.instance.runtimeType}'
+          '\n  isolate up ${started ~/ 1000} ms'
+          '\n  derive     ${(gotKey - started) ~/ 1000} ms'
+          '\n  decrypt    ${(opened - gotKey) ~/ 1000} ms'
+          ' (${seconds == 0 ? '—' : '${(mb / seconds).toStringAsFixed(1)} MB/s'})',
     );
   } on SecretBoxAuthenticationError {
     throw const VaultProblem(
       'That did not open. Either the passphrase is wrong, or the file was '
       'damaged on its way here.',
     );
+  } on VaultProblem {
+    rethrow;
   } catch (e) {
     throw VaultProblem('That backup could not be opened: $e');
+  } finally {
+    await file.close();
   }
+}
+
+/// Version 2: read, decrypt and append one chunk at a time.
+Future<Uint8List> _openChunks(
+  RandomAccessFile file,
+  VaultHeader header,
+  SecretKey key,
+  int length,
+) async {
+  final gcm = AesGcm.with256bits();
+  final shape = chunksInFile(length, header);
+  final out = BytesBuilder(copy: false);
+
+  for (var i = 0; i < shape.count; i++) {
+    final last = i == shape.count - 1;
+    final plainLength = last ? shape.lastPlain : header.chunkBytes;
+
+    final record = await file.read(plainLength + vaultTagBytes);
+    if (record.length != plainLength + vaultTagBytes) {
+      throw const VaultProblem(
+        'That backup is damaged: it ends in the middle of a chunk.',
+      );
+    }
+
+    final piece = await gcm.decrypt(
+      SecretBox(
+        Uint8List.sublistView(record, 0, plainLength),
+        nonce: chunkNonce(header.nonce, i),
+        mac: Mac(Uint8List.sublistView(record, plainLength)),
+      ),
+      secretKey: key,
+      aad: chunkAad(i, last: last),
+    );
+
+    out.add(flatBytes(piece));
+  }
+
+  return out.toBytes();
+}
+
+/// Version 1: one block, the way it was written before chunking.
+///
+/// Kept because these files exist on people's phones and in their cloud
+/// folders, and a backup that stops opening is the only failure this whole
+/// feature cannot come back from.
+Future<Uint8List> _openOneBlock(
+  RandomAccessFile file,
+  VaultHeader header,
+  SecretKey key,
+  int length,
+) async {
+  final body = await file.read(length - header.headerLength);
+  final split = body.length - vaultTagBytes;
+
+  final plain = await AesGcm.with256bits().decrypt(
+    SecretBox(
+      Uint8List.sublistView(body, 0, split),
+      nonce: header.nonce,
+      mac: Mac(Uint8List.sublistView(body, split)),
+    ),
+    secretKey: key,
+  );
+
+  return flatBytes(plain);
 }
 
 /* ------------------------------------------------------------- the timings */

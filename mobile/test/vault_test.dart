@@ -78,7 +78,34 @@ void main() {
 
     test('the header is exactly as long as it says it is', () {
       expect(vaultHeader(salt: sixteen(0), nonce: twelve(0)),
+          hasLength(vaultHeaderBytesChunked));
+      expect(vaultHeader(salt: sixteen(0), nonce: twelve(0), chunkBytes: null),
           hasLength(vaultHeaderBytes));
+    });
+
+    test('the chunk size survives, for the same reason the count does', () {
+      final read = readVaultHeader(
+        vaultHeader(salt: sixteen(0), nonce: twelve(0), chunkBytes: 1 << 20),
+      );
+
+      expect(read.chunkBytes, 1 << 20);
+      expect(read.isChunked, isTrue);
+      expect(read.headerLength, vaultHeaderBytesChunked);
+    });
+
+    test('a version 1 header still reads, because those files exist', () {
+      // The one thing this feature cannot survive is a backup that stops
+      // opening. Every format after the first has to keep reading the first.
+      final read = readVaultHeader(
+        vaultHeader(salt: sixteen(3), nonce: twelve(4), chunkBytes: null),
+      );
+
+      expect(read.version, vaultVersionOneBlock);
+      expect(read.chunkBytes, 0);
+      expect(read.isChunked, isFalse);
+      expect(read.headerLength, vaultHeaderBytes);
+      expect(read.salt, sixteen(3));
+      expect(read.nonce, twelve(4));
     });
   });
 
@@ -96,11 +123,48 @@ void main() {
         syncs half of it, a copy is interrupted — and the front of the file is
         perfectly well-formed, which is what makes this worth a check rather
         than a crash three steps later.
+
+        Checked against the LENGTH, not against how many bytes the reader
+        happened to be given. `readVaultHeader` used to refuse anything shorter
+        than a header plus a tag, which sounds like the same rule and is not:
+        the caller hands it the front of the file and nothing else, so the rule
+        fired on every well-formed backup and no locked file could be restored.
       */
+      final header = readVaultHeader(
+        vaultHeader(salt: sixteen(0), nonce: twelve(0)),
+      );
+
       expect(
-        () => readVaultHeader(vaultHeader(salt: sixteen(0), nonce: twelve(0))),
+        () => checkVaultLength(header.headerLength + 4, header),
         throwsA(isA<VaultProblem>()),
       );
+    });
+
+    test('a header on its own is a header, not a short file', () {
+      // The bug above, pinned: this is exactly what `openBackupFile` passes.
+      expect(
+        () => readVaultHeader(vaultHeader(salt: sixteen(0), nonce: twelve(0))),
+        returnsNormally,
+      );
+    });
+
+    test('a chunk size that could not be right', () {
+      final bytes = [...vaultHeader(salt: sixteen(0), nonce: twelve(0))];
+      bytes[vaultHeaderBytes] = 0xff; // four gigabytes a chunk
+
+      expect(() => readVaultHeader(bytes), throwsA(isA<VaultProblem>()));
+    });
+
+    test('a file that ends in the middle of a chunk', () {
+      final header = readVaultHeader(
+        vaultHeader(salt: sixteen(0), nonce: twelve(0)),
+      );
+
+      // A whole chunk, then eight bytes of a tag that needs sixteen.
+      final length =
+          header.headerLength + (header.chunkBytes + vaultTagBytes) + 8;
+
+      expect(() => chunksInFile(length, header), throwsA(isA<VaultProblem>()));
     });
 
     test('a format from the future, by name', () {
@@ -184,6 +248,84 @@ void main() {
 
     test('the spaces around it do not count', () {
       expect(whyNotAPassphrase('  ${'a' * 11}  '), isNotNull);
+    });
+  });
+
+  group('the chunks', () {
+    final header = readVaultHeader(
+      vaultHeader(salt: sixteen(0), nonce: twelve(9)),
+    );
+
+    test('every chunk gets a different nonce', () {
+      final seen = <String>{};
+
+      for (var i = 0; i < 2000; i++) {
+        expect(seen.add(chunkNonce(header.nonce, i).join(',')), isTrue,
+            reason: 'chunk \$i reused a nonce');
+      }
+    });
+
+    test('the nonce is still twelve bytes, and still the same base', () {
+      final one = chunkNonce(header.nonce, 1);
+
+      expect(one, hasLength(12));
+      // Only the last four bytes move.
+      expect(one.sublist(0, 8), header.nonce.sublist(0, 8));
+    });
+
+    test('chunk zero is the base nonce untouched', () {
+      expect(chunkNonce(header.nonce, 0), header.nonce);
+    });
+
+    test('the authenticated data names the position and the end', () {
+      expect(chunkAad(0, last: false), chunkAad(0, last: false));
+      expect(chunkAad(1, last: false), isNot(chunkAad(2, last: false)));
+
+      // The one that stops a backup being lopped off at a chunk boundary:
+      // the same chunk means something different when it is the last.
+      expect(chunkAad(4, last: true), isNot(chunkAad(4, last: false)));
+    });
+
+    test('an empty plaintext is still one chunk', () {
+      // So that there is always a final chunk carrying the flag that says so.
+      expect(chunkCount(0, vaultChunkBytes), 1);
+    });
+
+    test('the count is what you would count', () {
+      expect(chunkCount(1, 100), 1);
+      expect(chunkCount(100, 100), 1);
+      expect(chunkCount(101, 100), 2);
+      expect(chunkCount(200, 100), 2);
+      expect(chunkCount(201, 100), 3);
+    });
+
+    test('what was written is what is read back', () {
+      /*
+        The arithmetic that finds the chunk boundaries is not stored in the
+        file — it is implied by the length, which means an off-by-one here is a
+        backup that will not open. So it is checked against the writer's own
+        count at every awkward size.
+      */
+      for (final plain in [
+        0,
+        1,
+        header.chunkBytes - 1,
+        header.chunkBytes,
+        header.chunkBytes + 1,
+        header.chunkBytes * 3,
+        header.chunkBytes * 3 + 77,
+      ]) {
+        final count = chunkCount(plain, header.chunkBytes);
+        final onDisk = header.headerLength + plain + count * vaultTagBytes;
+        final shape = chunksInFile(onDisk, header);
+
+        expect(shape.count, count, reason: '\$plain bytes');
+        expect(
+          (shape.count - 1) * header.chunkBytes + shape.lastPlain,
+          plain == 0 ? 0 : plain,
+          reason: '\$plain bytes came back a different length',
+        );
+      }
     });
   });
 }

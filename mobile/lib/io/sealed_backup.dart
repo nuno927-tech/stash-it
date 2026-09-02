@@ -20,10 +20,17 @@
 ///
 /// Every one of those is the whole backup. So the zip, the encryption and the
 /// write now happen in ONE isolate that is handed the records and given a path,
-/// and nothing comes back at all. Reading does the same in reverse: the isolate
-/// is handed a path and returns the parsed bundle, once.
+/// and only a line of timings comes back. Reading does the same in reverse: the
+/// isolate is handed a path and returns the parsed bundle, once.
 ///
 /// That is the whole reason this file's functions take paths rather than bytes.
+///
+/// ── And in chunks, because the file is larger still ────────────────────────
+/// Removing those copies took eighty seconds to forty-six. The rest of it was
+/// one `encrypt` call on 185 MB: 4 MB/s on a phone whose cipher measures 90,
+/// with the plaintext, the ciphertext and the assembled output all live at
+/// once. The file is now sealed four megabytes at a time, straight to disk —
+/// see `sealToFile` and the format note in `logic/vault.dart`.
 library;
 
 import 'dart:io';
@@ -112,26 +119,33 @@ Future<String> _writeOut(
   );
   final zippedAt = watch.elapsedMilliseconds;
 
+  final flat = flatBytes(zipped);
+
   // Unlocked backups skip all of this and are written as they always were.
-  final bytes = work.key == null
-      ? flatBytes(zipped)
-      : (await sealInIsolate((
-          plain: flatBytes(zipped),
-          salt: work.salt!,
-          key: work.key!,
-          nonce: work.nonce!,
-          token: work.token,
-        )))
-          .bytes;
-  final sealedAt = watch.elapsedMilliseconds;
+  if (work.key == null) {
+    await File(work.path).writeAsBytes(flat, flush: true);
 
-  await File(work.path).writeAsBytes(bytes, flush: true);
+    return 'wrote ${(flat.length / 1024 / 1024).toStringAsFixed(1)} MB, unlocked'
+        '\n  zip     $zippedAt ms'
+        '\n  to disk ${watch.elapsedMilliseconds - zippedAt} ms'
+        '\n  total   ${watch.elapsedMilliseconds} ms in one isolate';
+  }
 
-  return 'wrote ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}'
-      ' MB\n  zip     $zippedAt ms'
-      '\n  seal    ${sealedAt - zippedAt} ms'
-      '\n  to disk ${watch.elapsedMilliseconds - sealedAt} ms'
-      '\n  total   ${watch.elapsedMilliseconds} ms in one isolate';
+  // Sealed straight into the file, a chunk at a time. Nothing here holds the
+  // finished backup — see `sealToFile`.
+  final done = await sealToFile((
+    plain: flat,
+    salt: work.salt!,
+    key: work.key!,
+    nonce: work.nonce!,
+    path: work.path,
+    token: work.token,
+  ));
+
+  return 'wrote ${(done.bytes / 1024 / 1024).toStringAsFixed(1)} MB'
+      '\n  zip        $zippedAt ms'
+      '\n${done.timings}'
+      '\n  total      ${watch.elapsedMilliseconds} ms in one isolate';
 }
 
 /* ------------------------------------------------------------------- in */
@@ -174,7 +188,7 @@ Future<OpenedBackup> openBackupFile(
     then handing it to an isolate that reads it again — is what the old shape
     did, and the file is the expensive thing in this feature.
   */
-  final head = await _firstBytes(path, vaultHeaderBytes);
+  final head = await _firstBytes(path, vaultPeekBytes);
   final locked = looksEncrypted(head);
 
   Uint8List? key;
@@ -261,29 +275,42 @@ Future<({ParsedBundle bundle, String timings})> _readIn(
 ) async {
   final watch = Stopwatch()..start();
 
-  final raw = await File(work.path).readAsBytes();
-  final readAt = watch.elapsedMilliseconds;
+  /*
+    The front of the file decides, and only the front is read.
 
-  final plain = looksEncrypted(raw)
-      ? (await openInIsolate((
-          sealed: raw,
-          passphrase: work.passphrase,
-          key: work.key,
-          token: work.token,
-        )))
-          .bytes
-      : raw;
+    A locked backup is opened chunk by chunk by `openFromFile`, which never
+    holds the sealed bytes and the plaintext at the same time. An unlocked one
+    is the plain zip it always was.
+  */
+  final head = await _firstBytes(work.path, vaultPeekBytes);
+  final locked = looksEncrypted(head);
+
+  String opening = '';
+  final Uint8List plain;
+
+  if (locked) {
+    final done = await openFromFile((
+      path: work.path,
+      passphrase: work.passphrase,
+      key: work.key,
+      token: work.token,
+    ));
+    plain = done.bytes;
+    opening = '${done.timings}\n';
+  } else {
+    plain = await File(work.path).readAsBytes();
+  }
+
   final openedAt = watch.elapsedMilliseconds;
-
   final bundle = parseBackupBytes(plain);
 
   return (
     bundle: bundle,
-    timings: 'read ${(raw.length / 1024 / 1024).toStringAsFixed(1)}'
-        ' MB\n  from disk $readAt ms'
-        '\n  unlock    ${openedAt - readAt} ms'
-        '\n  parse     ${watch.elapsedMilliseconds - openedAt} ms'
-        '\n  total     ${watch.elapsedMilliseconds} ms in one isolate',
+    timings: 'read ${(plain.length / 1024 / 1024).toStringAsFixed(1)} MB'
+        '${locked ? '' : ', unlocked'}'
+        '\n$opening'
+        '  parse      ${watch.elapsedMilliseconds - openedAt} ms'
+        '\n  total      ${watch.elapsedMilliseconds} ms in one isolate',
   );
 }
 
