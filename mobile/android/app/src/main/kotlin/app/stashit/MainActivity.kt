@@ -1,5 +1,7 @@
 package app.stashit
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -87,6 +89,57 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(pendingAdd)
                         pendingAdd = null
                     }
+
+                    /*
+                       ── Asking the launcher to place a widget ─────────────────
+
+                       Widgets are the one part of this app that lives somewhere
+                       the app cannot reach: adding one means long-pressing the
+                       home screen, finding a picker, scrolling to S. Settings
+                       could only ever have described that.
+
+                       Android 8.0 added `requestPinAppWidget`, which asks the
+                       launcher to do it — the launcher shows its own confirm
+                       dialog, so this is a request and not a grab. minSdk is 26,
+                       so there is no version to guard against; what there IS to
+                       guard against is a launcher that does not implement it,
+                       which is what `isRequestPinAppWidgetSupported` answers.
+                       Settings asks that first and falls back to the sentence.
+                    */
+                    "canPin" -> result.success(
+                        AppWidgetManager.getInstance(this).isRequestPinAppWidgetSupported
+                    )
+
+                    "pin" -> {
+                        val which = call.arguments as? String
+                        val provider = when (which) {
+                            "ring" -> RingWidget::class.java
+                            "comingUp" -> ComingUpWidget::class.java
+                            "quickAdd" -> QuickAddWidget::class.java
+                            else -> null
+                        }
+
+                        if (provider == null) {
+                            result.success(false)
+                        } else {
+                            val manager = AppWidgetManager.getInstance(this)
+                            /*
+                               No callback intent.
+
+                               The third argument is a PendingIntent fired once
+                               the widget is placed, and there is nothing this
+                               app wants to do at that moment: the widget draws
+                               itself from the mirror that is already written.
+                               An unused callback is a broadcast receiver to keep
+                               alive for no reason.
+                            */
+                            val target = ComponentName(this, provider)
+                            result.success(
+                                manager.requestPinAppWidget(target, null, null)
+                            )
+                        }
+                    }
+
                     else -> result.notImplemented()
                 }
             }

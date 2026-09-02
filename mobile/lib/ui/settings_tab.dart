@@ -24,6 +24,7 @@ import '../logic/contact.dart';
 import '../logic/limits.dart';
 import '../logic/devmode.dart';
 import '../io/csv.dart';
+import '../io/pin_widget.dart';
 import '../logic/prefs.dart';
 import '../logic/reminders.dart';
 import '../models/settings.dart';
@@ -50,7 +51,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.96.0';
+const appVersion = '0.97.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -85,6 +86,16 @@ class _SettingsTabState extends State<SettingsTab> {
   bool _busy = false;
 
   /*
+    ── Asked once, not on every rebuild ────────────────────────────────────
+
+    Whether the launcher will take a pin request cannot change while the app is
+    open — it is a property of the launcher, and swapping launchers restarts
+    this process. Held as a future rather than a bool so the card can draw
+    itself before the answer lands, which it does in under a frame.
+  */
+  late final Future<bool> _canPin = canPinWidgets();
+
+  /*
     ── The status line expires ─────────────────────────────────────────────
 
     It used to sit there until something else replaced it, which meant a
@@ -109,6 +120,24 @@ class _SettingsTabState extends State<SettingsTab> {
     _expiry = Timer(const Duration(seconds: 9), () {
       if (mounted) setState(() => _status = null);
     });
+  }
+
+  /*
+    Asks the launcher, and says what happened.
+
+    There is no way to learn whether somebody accepted the launcher's own
+    confirmation — see `pinWidget` — so the line says what was asked rather than
+    claiming a widget now exists. A confirmation that might be wrong is worse
+    than no confirmation.
+  */
+  Future<void> _pin(String label, PinnableWidget which) async {
+    final asked = await pinWidget(which);
+    if (!mounted) return;
+
+    _say(asked
+        ? '$label sent to your home screen — confirm it there.'
+        : 'Your launcher would not take it. Press and hold the home screen '
+            'instead, then choose Widgets.');
   }
 
   @override
@@ -1014,6 +1043,82 @@ class _SettingsTabState extends State<SettingsTab> {
               onChanged: (on) => prefs.set(lockPortrait: on),
             ),
           ],
+        ),
+
+        /* -------------------------------------------- home screen widgets */
+
+        /*
+          ── The one part of the app that lives outside it ────────────────────
+
+          Nobody discovers a widget from inside an app: adding one means long
+          pressing an empty patch of home screen, finding a picker every
+          launcher draws differently, and scrolling to S. So the app says the
+          three exist, and — where the launcher allows it, which is most of them
+          since Android 8 — offers to place one rather than explaining how.
+
+          Above notifications on purpose. They are the two things the app does
+          when nobody is looking at it, and they are the two people go hunting
+          for.
+        */
+        FutureBuilder<bool>(
+          future: _canPin,
+          builder: (context, probe) {
+            final canPin = probe.data ?? false;
+
+            Widget row(String label, String note, PinnableWidget which) =>
+                _LinkRow(
+                  label: label,
+                  note: note,
+                  onTap: canPin ? () => _pin(label, which) : null,
+                  trailing: canPin
+                      ? Text(
+                          'Add',
+                          style: TextStyle(
+                            fontFamily: fontBody,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: c.gold,
+                          ),
+                        )
+                      : null,
+                );
+
+            return _Card(
+              title: 'Home screen widgets',
+              children: [
+                /*
+                  The promise, restated where the feature is offered.
+
+                  It is in the privacy policy too, and it belongs here as well:
+                  somebody deciding whether to put this on a screen their family
+                  can see is entitled to know what will be on it before they
+                  decide, not after they go looking.
+                */
+                _Note(
+                  'Three of them, drawn from what is already here. A '
+                  'widget only ever shows a name, a date and a colour — '
+                  'never a price, a serial number or a photograph.',
+                  c,
+                ),
+                const SizedBox(height: 6),
+                _Rule(c),
+                row('Coming up', 'What needs you next, by date.',
+                    PinnableWidget.comingUp),
+                _Rule(c),
+                row('The ring', 'How much of your cover is still running.',
+                    PinnableWidget.ring),
+                _Rule(c),
+                row('Quick add', 'Straight into the add sheet, three ways.',
+                    PinnableWidget.quickAdd),
+                if (!canPin)
+                  _Note(
+                    'To add one: press and hold an empty part of your home '
+                    'screen, choose Widgets, and scroll to Stash it.',
+                    c,
+                  ),
+              ],
+            );
+          },
         ),
 
         /* ------------------------------- notifications, then the lock */
