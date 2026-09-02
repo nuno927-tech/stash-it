@@ -28,6 +28,7 @@ import 'package:flutter/services.dart';
 import '../billing/billing.dart';
 import '../billing/current.dart';
 import '../db/repository.dart';
+import '../logic/format.dart';
 import '../logic/limits.dart';
 import '../logic/reminders.dart' show defaultSendHour;
 import '../models/types.dart';
@@ -90,12 +91,6 @@ Future<Diagnostics> gather(Repository repo, {required double textScale}) async {
 
   final counted = items + papers + subs;
 
-  String size(int b) {
-    if (b < 1024) return '$b B';
-    if (b < 1024 * 1024) return '${(b / 1024).round()} KB';
-    return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
   final sections = <(String, List<(String, String)>)>[
     (
       'Build',
@@ -125,7 +120,7 @@ Future<Diagnostics> gather(Repository repo, {required double textScale}) async {
     (
       'Storage',
       [
-        ('Files held', size(bytes)),
+        ('Files held', readableSize(bytes)),
         // Not zero means something is holding bytes nothing points at. It is
         // never fatal and it is exactly the kind of slow leak that only shows
         // up in a number like this one.

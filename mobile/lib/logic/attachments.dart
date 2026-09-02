@@ -90,6 +90,38 @@ class PendingDoc {
 /// collapses the runs. `IMG_20240817_101233.jpg` stays as it is rather than
 /// being decoded into a date — a camera filename is meaningless either way,
 /// and a wrong date is worse than an ugly one.
+/// The word for a kind of attachment, when nobody gave it a title.
+String docWord(DocKind kind) => switch (kind) {
+      DocKind.receipt => 'Receipt',
+      DocKind.manual => 'Manual',
+      DocKind.warranty => 'Warranty',
+      DocKind.photo => 'Photo',
+      DocKind.other => 'File',
+    };
+
+/// A filename somebody would recognise in their downloads, with a real
+/// extension so the receiving app knows what it is holding.
+///
+/// Shared, because two screens hand these files out now: the chip on the item
+/// view and the claim sheet. A claim whose receipt arrives called `blob.bin`
+/// is a claim the desk cannot open.
+String attachmentFileName(Doc doc, String mime) {
+  final base = (doc.title?.trim().isNotEmpty ?? false)
+      ? doc.title!.trim()
+      : docWord(doc.kind);
+
+  final safe = base.replaceAll(RegExp(r'[^A-Za-z0-9 _.-]'), '').trim();
+  final ext = switch (mime) {
+    'application/pdf' => 'pdf',
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    _ => 'bin',
+  };
+
+  return safe.toLowerCase().endsWith('.$ext') ? safe : '$safe.$ext';
+}
+
 String titleFromFilename(String path) {
   final name = path.split(RegExp(r'[/\\]')).last;
 

@@ -702,6 +702,29 @@ class Repository {
   Future<BlobRow?> blob(String id) =>
       (db.select(db.blobs)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// How big each of these is, without reading any of them.
+  ///
+  /// ── The whole point is not calling `blob` ─────────────────────────────────
+  /// A claim sheet lists what is about to be attached with a size beside each
+  /// one, and the obvious way to get a size is to fetch the row and measure
+  /// it — which decrypts a twelve megabyte manual to print "12 MB" next to a
+  /// checkbox somebody may well untick.
+  ///
+  /// `byteLength` is a column. Reading it is a column read.
+  Future<Map<String, int>> blobSizes(Iterable<String> ids) async {
+    final wanted = ids.toSet();
+    if (wanted.isEmpty) return const {};
+
+    final query = db.selectOnly(db.blobs)
+      ..addColumns([db.blobs.id, db.blobs.byteLength])
+      ..where(db.blobs.id.isIn(wanted));
+
+    return {
+      for (final row in await query.get())
+        row.read(db.blobs.id)!: row.read(db.blobs.byteLength) ?? 0,
+    };
+  }
+
   /// Every blob nothing points at any more.
   ///
   /// Should always be empty — `_erase` is the only path that removes something

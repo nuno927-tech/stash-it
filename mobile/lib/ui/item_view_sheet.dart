@@ -31,6 +31,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../db/repository.dart';
+import '../logic/attachments.dart';
 import '../logic/card.dart';
 import '../logic/dates.dart';
 import '../logic/format.dart';
@@ -39,6 +40,7 @@ import '../logic/prefs.dart' show leadLabel;
 import '../logic/timeline.dart';
 import '../logic/warranty.dart';
 import '../models/types.dart';
+import 'claim_sheet.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
@@ -199,6 +201,7 @@ class _ItemViewState extends State<ItemView> {
                   if (schedule.isNotEmpty) _cover(c, schedule),
                   _facts(c),
                   _files(c),
+                  _claim(c),
                   _manual(c),
                 ],
               ),
@@ -400,6 +403,68 @@ class _ItemViewState extends State<ItemView> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /* ---------------------------------------------------------------- claim */
+
+  /*
+    ── The button the amber row was always pointing at ───────────────────────
+
+    Above the manual, because a broken appliance is a more urgent question than
+    a missing instruction booklet, and because this is the one action on the
+    screen that uses everything on it at once.
+
+    Offered whatever the state of the cover. An expired warranty is still worth
+    a letter — plenty of manufacturers repair out of warranty for a fee, and
+    some do it for nothing when the fault is theirs — so the opening line
+    changes rather than the button disappearing. See `logic/claim.dart`.
+  */
+  Widget _claim(StashColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const ViewLabel('If it breaks'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => showClaimSheet(
+              context,
+              repo: widget.repo,
+              item: _item,
+            ),
+            icon: Icon(Icons.assignment_outlined, size: 17, color: c.gold),
+            label: Text(
+              'Make a claim',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: c.text,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: c.line),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.md),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Builds the message, with the receipt. You choose who it goes to.',
+            style: TextStyle(
+              fontFamily: fontBody,
+              fontSize: 11.5,
+              color: c.muted,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -613,7 +678,7 @@ class _FileChipState extends State<_FileChip> {
       }
 
       final dir = await getTemporaryDirectory();
-      final name = _fileName(widget.doc, blob.mime);
+      final name = attachmentFileName(widget.doc, blob.mime);
       final file = File('${dir.path}/$name');
       await file.writeAsBytes(blob.bytes);
 
@@ -670,7 +735,7 @@ class _FileChipState extends State<_FileChip> {
               child: Text(
                 doc.title?.trim().isNotEmpty == true
                     ? doc.title!.trim()
-                    : _docWord(doc.kind),
+                    : docWord(doc.kind),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -706,29 +771,3 @@ IconData _docIcon(DocKind kind) => switch (kind) {
       DocKind.other => Icons.description_outlined,
     };
 
-String _docWord(DocKind kind) => switch (kind) {
-      DocKind.receipt => 'Receipt',
-      DocKind.manual => 'Manual',
-      DocKind.warranty => 'Warranty',
-      DocKind.photo => 'Photo',
-      DocKind.other => 'File',
-    };
-
-/// A filename somebody would recognise in their downloads, with a real
-/// extension so the receiving app knows what it is holding.
-String _fileName(Doc doc, String mime) {
-  final base = (doc.title?.trim().isNotEmpty ?? false)
-      ? doc.title!.trim()
-      : _docWord(doc.kind);
-
-  final safe = base.replaceAll(RegExp(r'[^A-Za-z0-9 _.-]'), '').trim();
-  final ext = switch (mime) {
-    'application/pdf' => 'pdf',
-    'image/jpeg' => 'jpg',
-    'image/png' => 'png',
-    'image/webp' => 'webp',
-    _ => 'bin',
-  };
-
-  return safe.toLowerCase().endsWith('.$ext') ? safe : '$safe.$ext';
-}

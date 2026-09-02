@@ -33,6 +33,20 @@ const Map<String, String> _symbols = {
 
 String currencySymbol(String currency) => _symbols[currency] ?? currency;
 
+/// Bytes, for somebody deciding whether to attach something.
+///
+/// ── Three digits at most, and never a decimal below a megabyte ────────────
+/// "1,048,576 bytes" is a number nobody converts in their head. The unit
+/// changes instead, and the precision drops with it: kilobytes are whole
+/// because nobody cares about half of one, and megabytes keep a decimal
+/// because 1.2 and 1.9 are a real difference when a mail server refuses at 25.
+String readableSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} KB';
+
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
+
 /// Currencies with no minor unit — a yen is a whole yen.
 const Set<String> _zeroDecimal = {'JPY', 'KRW', 'VND', 'CLP', 'ISK'};
 

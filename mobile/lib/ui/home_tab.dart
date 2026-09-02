@@ -28,6 +28,7 @@ import '../logic/warranty.dart';
 import '../models/settings.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
+import 'claim_sheet.dart';
 import 'feedback.dart';
 import 'item_wizard_sheet.dart';
 import 'item_view_sheet.dart';
@@ -172,6 +173,21 @@ class _HomeBodyState extends State<_HomeBody> {
     which costs one query at the moment somebody has already decided to wait
     for a screen.
   */
+  /// Straight to the claim sheet, without the detail screen in between.
+  ///
+  /// The record is fetched here for the same reason `_openEntry` fetches it:
+  /// the timeline holds an id and a kind rather than the row, because it is
+  /// built from three tables and carrying all three would mean this screen
+  /// kept a second copy of the collection.
+  Future<void> _claim(Entry entry) async {
+    feedback(Cue.tap);
+
+    final item = await widget.repo.item(entry.id);
+    if (item == null || !mounted) return;
+
+    await showClaimSheet(context, repo: widget.repo, item: item);
+  }
+
   Future<void> _openEntry(Entry entry) async {
     feedback(Cue.tap);
     final repo = widget.repo;
@@ -376,7 +392,18 @@ class _HomeBodyState extends State<_HomeBody> {
               ),
             ),
           for (final entry in line)
-            _TimelineRow(entry: entry, onTap: () => _openEntry(entry)),
+            _TimelineRow(
+              entry: entry,
+              onTap: () => _openEntry(entry),
+              // Only an item, and only one whose cover is actually running
+              // out. See the note on `onClaim`.
+              onClaim: entry.kind == TimelineKind.item &&
+                      (entry.urgency == Urgency.now ||
+                          entry.urgency == Urgency.overdue ||
+                          entry.urgency == Urgency.soon)
+                  ? () => _claim(entry)
+                  : null,
+            ),
           if (more > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -951,10 +978,23 @@ class _Chip extends StatelessWidget {
 /// — the border is what stops somebody scrolling past them on the way to
 /// reading the whole list.
 class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({required this.entry, this.onTap});
+  const _TimelineRow({required this.entry, this.onTap, this.onClaim});
 
   final Entry entry;
   final VoidCallback? onTap;
+
+  /*
+    ── The offer that belongs on an amber row ────────────────────────────────
+
+    This list is where the app notices that cover is running out, and until now
+    noticing was all it did — the row turned amber and the person was left to
+    work out what to do about it on their own.
+
+    Null on everything else, and that is most rows: a passport does not have a
+    warranty claim and neither does a subscription, and a row still eleven
+    months out does not want a call to action on it.
+  */
+  final VoidCallback? onClaim;
 
   @override
   Widget build(BuildContext context) {
@@ -1066,7 +1106,45 @@ class _TimelineRow extends StatelessWidget {
           gradient: statusWash(c, _statusOf(entry.urgency)),
           border: Border(bottom: BorderSide(color: c.slate700)),
         ),
-        child: body,
+        child: onClaim == null
+            ? body
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  body,
+
+                  /*
+                    Under the row rather than inside it.
+
+                    The row is already a name, a sentence and a number in three
+                    columns; a fourth would squeeze the name, which is what the
+                    row is scanned by. A line of its own costs eighteen pixels
+                    on the handful of rows that have it and crowds nothing.
+                  */
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: onClaim,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.assignment_outlined,
+                            size: 14, color: c.gold),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Make a claim',
+                          style: TextStyle(
+                            fontFamily: fontBody,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: c.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
