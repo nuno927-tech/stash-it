@@ -58,7 +58,17 @@ Future<void> exportSealedBackupToFile(
     material == null ? BackupStage.sealing : BackupStage.locking,
   ));
 
-  await compute(_writeOut, (
+  /*
+    The timings come BACK, rather than being left in a global.
+
+    `lastVaultTimings` is a top-level variable, and a spawned isolate gets its
+    own copy of those — so the isolate was faithfully recording every phase
+    into a field that the main isolate could never read, and the probe printed
+    nothing. The note in vault.dart said so and I relied on it anyway.
+
+    A returned string cannot be got wrong that way.
+  */
+  lastVaultTimings = await compute(_writeOut, (
     tables: contents.tables,
     blobs: contents.blobs,
     counts: contents.counts,
@@ -73,8 +83,9 @@ Future<void> exportSealedBackupToFile(
   onStep?.call(const BackupProgress(BackupStage.done));
 }
 
-/// Zip, encrypt, write. All of it here, on one isolate, with nothing returned.
-Future<void> _writeOut(
+/// Zip, encrypt, write. All of it here, on one isolate; only the timings come
+/// back, and they are a few dozen bytes.
+Future<String> _writeOut(
   ({
     Map<String, Object?> tables,
     Map<String, List<int>> blobs,
@@ -116,7 +127,7 @@ Future<void> _writeOut(
 
   await File(work.path).writeAsBytes(bytes, flush: true);
 
-  lastVaultTimings = 'wrote ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}'
+  return 'wrote ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}'
       ' MB\n  zip     $zippedAt ms'
       '\n  seal    ${sealedAt - zippedAt} ms'
       '\n  to disk ${watch.elapsedMilliseconds - sealedAt} ms'
@@ -201,12 +212,7 @@ Future<OpenedBackup> openBackupFile(
 
   try {
     return OpenedBackup(
-      bundle: await compute(_readIn, (
-        path: path,
-        key: key,
-        passphrase: passphrase,
-        token: RootIsolateToken.instance,
-      )),
+      bundle: await _read(path, key, passphrase),
       wasLocked: locked,
     );
   } on VaultProblem {
@@ -220,19 +226,32 @@ Future<OpenedBackup> openBackupFile(
     }
 
     return OpenedBackup(
-      bundle: await compute(_readIn, (
-        path: path,
-        key: null,
-        passphrase: typed,
-        token: RootIsolateToken.instance,
-      )),
+      bundle: await _read(path, null, typed),
       wasLocked: true,
     );
   }
 }
 
-/// Read, decrypt, unzip, hash, parse. All of it here, on one isolate.
-Future<ParsedBundle> _readIn(
+/// Runs the read isolate and keeps the timings where the probe can read them.
+Future<ParsedBundle> _read(
+  String path,
+  Uint8List? key,
+  String passphrase,
+) async {
+  final done = await compute(_readIn, (
+    path: path,
+    key: key,
+    passphrase: passphrase,
+    token: RootIsolateToken.instance,
+  ));
+
+  lastVaultTimings = done.timings;
+  return done.bundle;
+}
+
+/// Read, decrypt, unzip, hash, parse. All of it here, on one isolate. Only the
+/// bundle and the timings come back.
+Future<({ParsedBundle bundle, String timings})> _readIn(
   ({
     String path,
     Uint8List? key,
@@ -258,13 +277,14 @@ Future<ParsedBundle> _readIn(
 
   final bundle = parseBackupBytes(plain);
 
-  lastVaultTimings = 'read ${(raw.length / 1024 / 1024).toStringAsFixed(1)}'
-      ' MB\n  from disk $readAt ms'
-      '\n  unlock    ${openedAt - readAt} ms'
-      '\n  parse     ${watch.elapsedMilliseconds - openedAt} ms'
-      '\n  total     ${watch.elapsedMilliseconds} ms in one isolate';
-
-  return bundle;
+  return (
+    bundle: bundle,
+    timings: 'read ${(raw.length / 1024 / 1024).toStringAsFixed(1)}'
+        ' MB\n  from disk $readAt ms'
+        '\n  unlock    ${openedAt - readAt} ms'
+        '\n  parse     ${watch.elapsedMilliseconds - openedAt} ms'
+        '\n  total     ${watch.elapsedMilliseconds} ms in one isolate',
+  );
 }
 
 /* -------------------------------------------------------------- plumbing */

@@ -210,9 +210,13 @@ Future<Uint8List> _derive(
   string rather than numbers because its only consumer is a person reading a
   screen.
 
-  Written from a background isolate, which means the main isolate reads its own
-  copy and sees nothing. That is a known limitation and not worth a port: the
-  probe runs the work itself, so it is the isolate that wrote it.
+  It is set on the MAIN isolate, from a string the worker RETURNS. That is not
+  a detail. A top-level variable is per-isolate, so the first shape of this had
+  the worker dutifully recording every phase into a copy of the variable that
+  nothing could ever read, and the probe printed a total with no breakdown —
+  three releases of guessing at a number that was being measured all along.
+
+  So nothing writes this from inside an isolate. Ever.
 */
 String? lastVaultTimings;
 
