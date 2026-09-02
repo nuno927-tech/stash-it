@@ -362,21 +362,22 @@ Future<({Uint8List bytes, String timings})> openFromFile(
 
     await file.setPosition(header.headerLength);
 
-    final plain = header.isChunked
+    final done = header.isChunked
         ? await _openChunks(file, header, key, length)
         : await _openOneBlock(file, header, key, length);
     final opened = watch.elapsedMicroseconds;
 
-    final mb = plain.length / 1024 / 1024;
+    final mb = done.bytes.length / 1024 / 1024;
     final seconds = (opened - gotKey) / 1000000;
 
     return (
-      bytes: plain,
+      bytes: done.bytes,
       timings: '  cipher     ${Cryptography.instance.runtimeType}'
           '\n  isolate up ${started ~/ 1000} ms'
           '\n  derive     ${(gotKey - started) ~/ 1000} ms'
-          '\n  decrypt    ${(opened - gotKey) ~/ 1000} ms'
-          ' (${seconds == 0 ? '—' : '${(mb / seconds).toStringAsFixed(1)} MB/s'})',
+          '\n  open       ${(opened - gotKey) ~/ 1000} ms'
+          ' (${seconds == 0 ? '—' : '${(mb / seconds).toStringAsFixed(1)} MB/s'})'
+          '\n${done.note}',
     );
   } on SecretBoxAuthenticationError {
     throw const VaultProblem(
@@ -393,7 +394,15 @@ Future<({Uint8List bytes, String timings})> openFromFile(
 }
 
 /// Version 2: read, decrypt and append one chunk at a time.
-Future<Uint8List> _openChunks(
+///
+/// ── Split three ways, because the total was blaming the wrong thing ────────
+/// Opening a 185 MB backup ran at 7.8 MB/s while the same phone, the same
+/// isolate and the same library decrypted a test block at 190. The difference
+/// between the two: the test throws the plaintext away and this has to keep
+/// it. So the reading, the deciphering and the copying are timed apart, and
+/// what the cipher hands back is named — a `List<int>` of boxed integers costs
+/// an object per byte to copy, and it looks identical in the source.
+Future<({Uint8List bytes, String note})> _openChunks(
   RandomAccessFile file,
   VaultHeader header,
   SecretKey key,
@@ -413,17 +422,27 @@ Future<Uint8List> _openChunks(
   final out = Uint8List((shape.count - 1) * header.chunkBytes + shape.lastPlain);
   var at = 0;
 
+  final watch = Stopwatch()..start();
+  var reading = 0;
+  var deciphering = 0;
+  var copying = 0;
+  var handedBack = '';
+
   for (var i = 0; i < shape.count; i++) {
     final last = i == shape.count - 1;
     final plainLength = last ? shape.lastPlain : header.chunkBytes;
 
+    final was = watch.elapsedMicroseconds;
     final record = await file.read(plainLength + vaultTagBytes);
+    reading += watch.elapsedMicroseconds - was;
+
     if (record.length != plainLength + vaultTagBytes) {
       throw const VaultProblem(
         'That backup is damaged: it ends in the middle of a chunk.',
       );
     }
 
+    final read = watch.elapsedMicroseconds;
     final piece = await gcm.decrypt(
       SecretBox(
         Uint8List.sublistView(record, 0, plainLength),
@@ -433,12 +452,23 @@ Future<Uint8List> _openChunks(
       secretKey: key,
       aad: chunkAad(i, last: last),
     );
+    final open = watch.elapsedMicroseconds;
+    deciphering += open - read;
+
+    if (i == 0) handedBack = piece.runtimeType.toString();
 
     out.setRange(at, at + piece.length, piece);
     at += piece.length;
+    copying += watch.elapsedMicroseconds - open;
   }
 
-  return out;
+  return (
+    bytes: out,
+    note: '  read       ${reading ~/ 1000} ms'
+        '\n  decipher   ${deciphering ~/ 1000} ms'
+        '\n  copy out   ${copying ~/ 1000} ms'
+        '\n  hands back $handedBack',
+  );
 }
 
 /// Version 1: one block, the way it was written before chunking.
@@ -446,7 +476,7 @@ Future<Uint8List> _openChunks(
 /// Kept because these files exist on people's phones and in their cloud
 /// folders, and a backup that stops opening is the only failure this whole
 /// feature cannot come back from.
-Future<Uint8List> _openOneBlock(
+Future<({Uint8List bytes, String note})> _openOneBlock(
   RandomAccessFile file,
   VaultHeader header,
   SecretKey key,
@@ -464,7 +494,10 @@ Future<Uint8List> _openOneBlock(
     secretKey: key,
   );
 
-  return flatBytes(plain);
+  return (
+    bytes: flatBytes(plain),
+    note: '  hands back ${plain.runtimeType}',
+  );
 }
 
 /* ------------------------------------------------------------- the timings */
@@ -532,15 +565,32 @@ Future<String> _time(RootIsolateToken? token) async {
     watch
       ..reset()
       ..start();
-    await gcm.decrypt(
+    final back = await gcm.decrypt(
       SecretBox(box.cipherText, nonce: nonce, mac: box.mac),
       secretKey: key,
       aad: extra,
     );
     final opened = watch.elapsedMilliseconds;
 
+    /*
+      ── The plaintext is USED, and that is the point ──────────────────────────
+
+      This measurement said 190 MB/s while a real restore ran at 7.8, and the
+      difference was that this threw the result away. A cipher that hands back
+      a list of boxed integers is instant to call and ruinous to read, and a
+      benchmark that never reads it reports the first half only.
+
+      So the plaintext is copied into a buffer here exactly as the restore
+      copies it into the backup it is rebuilding.
+    */
+    final into = Uint8List(back.length);
+    into.setRange(0, back.length, back);
+    final used = watch.elapsedMilliseconds;
+
     out.writeln('8 MB $label  encrypt ${_rate(sealed)}'
-        '   decrypt ${_rate(opened)}');
+        '   decrypt ${_rate(opened)}'
+        '   copy out ${_rate(used - opened)}'
+        '   as ${back.runtimeType}');
   }
 
   return out.toString().trimRight();
