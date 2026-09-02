@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.1.5';
+const appVersion = '1.2.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1559,21 +1559,50 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
               ),
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    'Nothing syncs anywhere. A backup exists because you '
-                    'made one, or because you gave the app a folder to put '
-                    'them in.',
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 12,
-                      height: 1.45,
-                      color: c.muted,
-                    ),
+                /*
+                  ── Automatic backups first, and almost nothing said ─────────
+
+                  This card had an opening paragraph, a segmented row, two
+                  status rows and five buttons, six of which carried two or
+                  three lines of explanation. Every sentence was true and the
+                  card was unreadable: the one feature that protects somebody
+                  without their doing anything sat fourth, below an interval
+                  and a passphrase, in the same weight as exporting a
+                  spreadsheet.
+
+                  So the folder comes first and everything else is ordered
+                  behind it, and a note now has to earn its place. The test
+                  applied to each one: does this change what somebody DOES? If
+                  it only describes what they can already see, it is gone.
+
+                  Three survived. "Replaces what is on the phone" prevents an
+                  import somebody cannot undo. "Adds to what you have" is the
+                  same sentence for the opposite case, and the two are one row
+                  apart. And the warning that an unlocked backup is readable is
+                  shown only while backups ARE unlocked, which is the only time
+                  it is news.
+                */
+                FutureBuilder<bool>(
+                  future: _locked,
+                  // Locked until told otherwise. The alternative default puts
+                  // "anyone who opens that folder can read this" on screen for
+                  // one frame on every build, to people who locked theirs
+                  // months ago.
+                  builder: (context, snap) => _FolderRow(
+                    settings: settings,
+                    locked: snap.data ?? true,
+                    busy: _busy,
+                    onChoose: _chooseFolder,
+                    onStop: _stopAutoBackup,
                   ),
                 ),
+                const SizedBox(height: 4),
                 _SegRow<int>(
+                  // Labelled now that the paragraph above it is gone. Weekly,
+                  // Monthly, Quarterly, Never means nothing on its own, and it
+                  // sets two things at once — how often one is written and how
+                  // often somebody is nudged when none has been.
+                  label: 'How often',
                   value: settings.backupReminderDays,
                   options: [
                     for (final choice in backupReminderChoices)
@@ -1584,24 +1613,14 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
 
                 /*
-                  ── Automatic, into a folder the person picks ────────────────
+                  The lock, under the destination rather than over it.
 
-                  Under the interval, because it is the same interval: how
-                  often to be nagged is how often to write one. Two numbers
-                  that mean almost the same thing is how a settings page stops
-                  being read.
-
-                  The folder is the switch. There is no toggle beside it — a
-                  feature with a switch AND a destination has two ways to say
-                  "off" and a person who cannot tell which they are in.
-                */
-                /*
-                  ── The lock, above the folder ───────────────────────────────
-
-                  Order matters here and it is not alphabetical. A backup that
-                  goes into a cloud folder should be locked, so the question
-                  "is this readable by anyone who finds it" is asked before the
-                  question "where does it go".
+                  It used to sit above, so that "is this readable by anyone who
+                  finds it" was asked before "where does it go". That was the
+                  right question in the wrong place: nobody sets a passphrase
+                  on a feature they have not turned on yet. The warning that
+                  carries the point moved into the folder row instead, where it
+                  appears only while the backups really are unlocked.
                 */
                 const SizedBox(height: 14),
                 _Rule(c),
@@ -1615,13 +1634,6 @@ class _SettingsTabState extends State<SettingsTab> {
                   ),
                 ),
                 _Rule(c),
-                _FolderRow(
-                  settings: settings,
-                  busy: _busy,
-                  onChoose: _chooseFolder,
-                  onStop: _stopAutoBackup,
-                ),
-                _Rule(c),
 
                 const SizedBox(height: 12),
                 _BigButton(
@@ -1631,44 +1643,52 @@ class _SettingsTabState extends State<SettingsTab> {
                   note: _size,
                   onTap: _busy ? null : _backUp,
                 ),
-                _Note(
-                  'One file holding every item, document and photo. You choose '
-                  'where it goes — a cloud drive, or your own email. Pick '
-                  'somewhere you will still have if the phone goes.',
-                  c,
-                ),
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Import from a backup',
                   onTap: _busy ? null : _restore,
                 ),
-                _Note('This replaces what is on the phone.', c),
+                _Note('Replaces what is on the phone.', c),
                 const SizedBox(height: 12),
                 _BigButton(
                   label: 'Add a card someone sent',
                   onTap: _busy ? null : _addCard,
                 ),
-                _Note(
-                  'A .stashcard file from another Stash it user. You see what '
-                  'is in it first, and it adds to what you have rather than '
-                  'replacing it.',
-                  c,
-                ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Export as a spreadsheet',
-                  note: 'Three CSV files. Opens anywhere; not a backup.',
-                  onTap: _busy ? null : _exportCsv,
-                ),
-                _Rule(c),
-                _LinkRow(
-                  label: 'Erase everything',
-                  note: 'Every item, document, subscription and photo.',
-                  onTap: _busy ? null : _erase,
-                ),
+                _Note('Adds to what you have.', c),
               ],
             ),
           ),
+        ),
+
+        /*
+          ── Not backups, and no longer filing as though they were ────────────
+
+          Exporting a spreadsheet produces something deliberately NOT a backup,
+          and erasing everything is the opposite of one. Both sat at the bottom
+          of the Backup card because they act on the same data, which is a
+          reason to put things near each other and not a reason to call them
+          the same thing — and between them they added two more rows and two
+          more notes to the longest card on the page.
+        */
+        _Card(
+          title: 'All your data',
+          children: [
+            _LinkRow(
+              label: 'Export as a spreadsheet',
+              note: 'Three CSV files. Not a backup.',
+              onTap: _busy ? null : _exportCsv,
+            ),
+            _Rule(c),
+            _LinkRow(
+              label: 'Erase everything',
+              // The one note here that changes what somebody does. What is
+              // about to go is listed in the confirmation, which is where a
+              // destructive action belongs — this is the warning that gets
+              // them to read it.
+              note: 'Nothing comes back.',
+              onTap: _busy ? null : _erase,
+            ),
+          ],
         ),
 
         /* --------------------------------------------------- notices */
@@ -2257,7 +2277,6 @@ class _LockRow extends StatelessWidget {
     if (!locked) {
       return _LinkRow(
         label: 'Lock backups with a passphrase',
-        note: 'Backup files become unreadable to anyone who finds them.',
         onTap: busy ? null : onSet,
       );
     }
@@ -2266,8 +2285,10 @@ class _LockRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _LinkRow(
+          // The warning that used to sit here — nobody can reset it — is said
+          // where it can still be acted on: in the sheet that sets the
+          // passphrase, before there is one to forget.
           label: 'Backups are locked',
-          note: 'Only your passphrase opens them. Nobody can reset it.',
           trailing: Icon(Icons.lock_outline, size: 18, color: c.moss),
         ),
         Padding(
@@ -2311,12 +2332,18 @@ class _LockRow extends StatelessWidget {
 class _FolderRow extends StatelessWidget {
   const _FolderRow({
     required this.settings,
+    required this.locked,
     required this.busy,
     required this.onChoose,
     required this.onStop,
   });
 
   final Settings settings;
+
+  /// Whether backups carry a passphrase, which decides whether the warning
+  /// under the folder is news or noise.
+  final bool locked;
+
   final bool busy;
   final VoidCallback onChoose;
   final VoidCallback onStop;
@@ -2326,11 +2353,19 @@ class _FolderRow extends StatelessWidget {
     final c = StashColors.of(context);
     final folder = settings.backupFolder;
 
+    /*
+      Nothing set up yet, so this is the one thing on the card worth pressing —
+      and it gets the only button that looks like it.
+
+      A row with a chevron reads as a setting to adjust later. This is the
+      feature the card exists for, and on a phone that has never backed up it
+      is the difference between a collection that survives losing the phone and
+      one that does not.
+    */
     if (folder == null) {
-      return _LinkRow(
+      return _BigButton(
         label: 'Back up automatically',
-        note: 'Choose a folder. If it is one your cloud app syncs, your '
-            'backups go with it.',
+        icon: Icons.cloud_upload_outlined,
         onTap: busy ? null : onChoose,
       );
     }
@@ -2379,19 +2414,23 @@ class _FolderRow extends StatelessWidget {
           ),
         ),
         /*
-          Said where the folder is chosen, not only in the policy.
+          Only while it is true.
 
-          A `.stashit` is a plain zip — deliberately, so somebody with a broken
-          install can open it and read their own data. That is a good trade for
-          a file on your own phone and a different one for a file in a cloud
-          account, and the person deciding is entitled to know which they are
-          choosing.
+          An unlocked `.stashit` is a plain zip — deliberately, so somebody
+          with a broken install can open it and read their own data. That is a
+          good trade for a file on your own phone and a different one for a
+          file sitting in a cloud account, and somebody whose backups go to a
+          synced folder is entitled to know which of the two they have.
+
+          It used to be printed under the folder either way, including to
+          people who had already locked theirs, where it was not a warning but
+          a paragraph. Shown now only when there is something to warn about.
         */
-        _Note(
-          'A backup is a plain file: anyone who can open that folder can read '
-          'it. Keep it somewhere only you can reach.',
-          c,
-        ),
+        if (!locked)
+          _Note(
+            'Anyone who opens that folder can read this. Lock it below.',
+            c,
+          ),
       ],
     );
   }
