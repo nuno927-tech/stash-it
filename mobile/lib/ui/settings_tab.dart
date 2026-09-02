@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.1.1';
+const appVersion = '1.1.2';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -253,6 +253,11 @@ class _SettingsTabState extends State<SettingsTab> {
     _say(null);
     setState(() => _busy = true);
 
+    // Declared out here rather than beside the code that fills it, because the
+    // `finally` that deletes it is out here too — and it is the size of the
+    // whole backup, so leaving one behind is not a small mistake.
+    File? scratch;
+
     try {
       /*
         ── Neither the bytes nor the copy ────────────────────────────────────
@@ -279,7 +284,6 @@ class _SettingsTabState extends State<SettingsTab> {
       if (stream == null) return;
 
       var wasLocked = false;
-      File? scratch;
 
       /*
         ── All three steps inside the one sheet ──────────────────────────────
