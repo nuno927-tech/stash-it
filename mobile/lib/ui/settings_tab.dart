@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.1.0';
+const appVersion = '1.1.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -255,17 +255,31 @@ class _SettingsTabState extends State<SettingsTab> {
 
     try {
       /*
+        ── Neither the bytes nor the copy ────────────────────────────────────
+
         `withData` is off deliberately. With it on, the picker reads the whole
         file on the Java side and hands the bytes across the platform channel —
         and a backup with seventy-six photographs in it killed the process
         outright, natively, with nothing Dart could catch.
+
+        `withReadStream` is on for a related reason. Without it the picker
+        still copies the whole file into this app's cache before returning a
+        path, and for a backup chosen from Google Drive that copy is a
+        download: on a 185 MB backup, a silent minute with the button greyed
+        out and the settings page showing, before any progress sheet existed.
+
+        A stream instead, copied below where the bytes can be counted.
       */
-      final picked = await FilePicker.platform.pickFiles();
+      final picked = await FilePicker.platform.pickFiles(withReadStream: true);
       final files = picked?.files ?? const <PlatformFile>[];
-      final path = files.isEmpty ? null : files.first.path;
-      if (path == null) return;
+      if (files.isEmpty) return;
+
+      final chosen = files.first;
+      final stream = chosen.readStream;
+      if (stream == null) return;
 
       var wasLocked = false;
+      File? scratch;
 
       /*
         ── All three steps inside the one sheet ──────────────────────────────
@@ -285,6 +299,55 @@ class _SettingsTabState extends State<SettingsTab> {
         context,
         title: 'Putting everything back',
         job: (onStep) async {
+          /*
+            The download, counted.
+
+            This is the one part of a restore that can report honestly — a
+            known number of bytes arriving one buffer at a time — and it is
+            also the longest part when the backup lives in the cloud.
+          */
+          onStep(BackupProgress(
+            BackupStage.fetching,
+            total: chosen.size,
+          ));
+
+          final dir = await getTemporaryDirectory();
+          scratch = File(p.join(dir.path, 'restoring.stashit'));
+
+          final sink = scratch!.openWrite();
+          var got = 0;
+          var said = 0;
+
+          try {
+            /*
+              `addStream` rather than a loop of `add`, so the sink can push
+              back. Adding without awaiting lets a fast download outrun the
+              disk and buffer the difference, which on a backup this size is
+              the whole file in memory — the thing the streaming was for.
+
+              And a report every two megabytes rather than every buffer: the
+              buffers are 64 KB, so the loop would otherwise rebuild the sheet
+              three thousand times to move a bar the width of a hair.
+            */
+            await sink.addStream(stream.map((buffer) {
+              got += buffer.length;
+
+              if (got - said >= 2 * 1024 * 1024 || got == chosen.size) {
+                said = got;
+                onStep(BackupProgress(
+                  BackupStage.fetching,
+                  done: got,
+                  total: chosen.size,
+                ));
+              }
+
+              return buffer;
+            }));
+            await sink.flush();
+          } finally {
+            await sink.close();
+          }
+
           onStep(const BackupProgress(BackupStage.unlocking));
 
           /*
@@ -296,7 +359,7 @@ class _SettingsTabState extends State<SettingsTab> {
             that was the wait rather than the work.
           */
           final opened = await openBackupFile(
-            path,
+            scratch!.path,
             ask: () async {
               if (!mounted) return null;
               return askForPassphrase(context);
@@ -332,7 +395,11 @@ class _SettingsTabState extends State<SettingsTab> {
       */
       _say('Restored ${result.items} items, ${result.papers} documents, '
           '${result.subscriptions} subscriptions and ${result.blobs} files'
-          '${wasLocked ? ', from a locked backup.' : '.'}');
+          '${wasLocked ? ', from a locked backup.' : '.'}'
+          // The other direction has had a breakdown behind the developer panel
+          // for three releases, and it is how eighty seconds was found. This
+          // one had none, and cost twenty that nobody could account for.
+          '${unlocked(_taps) && lastVaultTimings != null ? '\n\n$lastVaultTimings' : ''}');
     } on VaultProblem catch (e) {
       // A wrong passphrase, or a file that did not survive the trip. Both
       // arrive here already written for a person — see `unlockBackup`.
@@ -343,6 +410,12 @@ class _SettingsTabState extends State<SettingsTab> {
     } catch (e) {
       _say('That did not work: $e');
     } finally {
+      // This app's own copy of the backup, the size of the whole thing. It
+      // goes whatever happened.
+      if (scratch != null) {
+        await scratch!.delete().catchError((_) => scratch!);
+      }
+
       if (mounted) setState(() => _busy = false);
     }
   }

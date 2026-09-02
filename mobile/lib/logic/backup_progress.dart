@@ -46,7 +46,7 @@ enum BackupStage {
     ── And the three the other direction uses ─────────────────────────────────
 
     One enum, two journeys. A backup goes reading → packing → sealing →
-    locking; a restore goes unlocking → restoring. Neither ever
+    locking; a restore goes fetching → unlocking → restoring. Neither ever
     emits the other's stages, and each subset climbs in order, which is all the
     weights below need to be true.
 
@@ -54,6 +54,23 @@ enum BackupStage {
     decrypting, inflating, hashing and writing, behind a bar that never moved
     because nothing on that path ever reported anything.
   */
+  /*
+    ── Getting the file off the phone's own cloud ─────────────────────────────
+
+    A backup chosen from Google Drive is not on the phone. Something has to
+    download it, and for a large one that is the single longest part of a
+    restore — a minute, on the collection that prompted this.
+
+    It used to happen inside the file picker, before this app had any say: the
+    button greyed out, the settings page came back, and a minute later a
+    progress sheet appeared as if the work were only starting. So the app does
+    the copying itself now and counts the bytes, which is the one part of a
+    restore that CAN be counted.
+
+    Instant for a file already on the phone, which is most of them.
+  */
+  fetching,
+
   /*
     Reading the file, decrypting it, inflating it and hashing it — all one
     stage, because it is all one isolate. It was three, and splitting it meant
@@ -108,8 +125,9 @@ class BackupProgress {
     BackupStage.packing: 0.04,
     BackupStage.sealing: 0.80,
     BackupStage.locking: 0.92,
-    BackupStage.unlocking: 0,
-    BackupStage.restoring: 0.80,
+    BackupStage.fetching: 0,
+    BackupStage.unlocking: 0.55,
+    BackupStage.restoring: 0.85,
     BackupStage.done: 1,
   };
 
@@ -118,7 +136,8 @@ class BackupProgress {
     BackupStage.packing: 0.80,
     BackupStage.sealing: 0.92,
     BackupStage.locking: 1,
-    BackupStage.unlocking: 0.80,
+    BackupStage.fetching: 0.55,
+    BackupStage.unlocking: 0.85,
     BackupStage.restoring: 1,
     BackupStage.done: 1,
   };
@@ -128,9 +147,14 @@ class BackupProgress {
     final from = _startsAt[stage]!;
     final to = _endsAt[stage]!;
 
-    // Only packing knows how far through itself it is. The other two report
-    // their start, and the bar eases across the gap on its own.
-    if (stage != BackupStage.packing || total == 0) return from;
+    /*
+      Two stages know how far through themselves they are: packing counts
+      files, and fetching counts bytes. The rest report their start and the bar
+      eases across the gap on its own.
+    */
+    const counted = {BackupStage.packing, BackupStage.fetching};
+    if (!counted.contains(stage) || total == 0) return from;
+
     return from + (to - from) * (done / total).clamp(0, 1);
   }
 
@@ -143,11 +167,17 @@ class BackupProgress {
             : 'Packing $done of $total file${total == 1 ? '' : 's'}',
         BackupStage.sealing => 'Sealing it up',
         BackupStage.locking => 'Locking it with your passphrase',
+        BackupStage.fetching => total == 0
+            ? 'Fetching the file'
+            : 'Fetching the file — ${_mb(done)} of ${_mb(total)}',
         BackupStage.unlocking => 'Opening the file',
         BackupStage.restoring => 'Putting it back',
         BackupStage.done => 'Done',
       };
 }
+
+/// Megabytes, for a person watching a download rather than reading a log.
+String _mb(int bytes) => '${(bytes / 1024 / 1024).toStringAsFixed(0)} MB';
 
 /// Called as the work moves along. Null when nobody is watching.
 typedef BackupWatcher = void Function(BackupProgress step);

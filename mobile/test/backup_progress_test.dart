@@ -96,6 +96,10 @@ void main() {
 
     test('a restore climbs in order too', () {
       final walk = <double>[
+        const BackupProgress(BackupStage.fetching, done: 0, total: 10).fraction,
+        const BackupProgress(BackupStage.fetching, done: 5, total: 10).fraction,
+        const BackupProgress(BackupStage.fetching, done: 10, total: 10)
+            .fraction,
         const BackupProgress(BackupStage.unlocking).fraction,
         const BackupProgress(BackupStage.restoring).fraction,
         const BackupProgress(BackupStage.done).fraction,
@@ -107,14 +111,65 @@ void main() {
     });
 
     test('a restore starts at nothing, like everything else', () {
-      // The first thing it does is decrypt, which on a big backup is not
-      // quick — and a bar that begins a third of the way along says the work
-      // started before somebody pressed the button.
-      expect(const BackupProgress(BackupStage.unlocking).fraction, 0);
+      // The first thing it does is fetch the file, which on a backup kept in
+      // the cloud is the longest part of the whole restore — and a bar that
+      // begins a third of the way along says the work started before somebody
+      // pressed the button.
+      expect(const BackupProgress(BackupStage.fetching).fraction, 0);
+    });
+
+    test('fetching never reaches the end of its own share', () {
+      // Decrypting and writing still have to happen. This is the same rule as
+      // packing: a counted stage may not fill the bar.
+      final full =
+          const BackupProgress(BackupStage.fetching, done: 10, total: 10)
+              .fraction;
+
+      expect(full, lessThan(1));
+      expect(full, const BackupProgress(BackupStage.unlocking).fraction);
+    });
+
+    test('the counted stage owns the largest share of a restore too', () {
+      /*
+        Same reasoning as the backup: the part that can be MEASURED has to be
+        the part that moves. On the collection that prompted this, fetching the
+        file from Drive was a minute of the ninety seconds a restore took, and
+        all of it happened before the sheet even opened.
+      */
+      final spans = {
+        'fetching': const BackupProgress(BackupStage.unlocking).fraction -
+            const BackupProgress(BackupStage.fetching).fraction,
+        'unlocking': const BackupProgress(BackupStage.restoring).fraction -
+            const BackupProgress(BackupStage.unlocking).fraction,
+        'restoring': 1 - const BackupProgress(BackupStage.restoring).fraction,
+      };
+
+      for (final other in ['unlocking', 'restoring']) {
+        expect(spans['fetching'], greaterThan(spans[other]!),
+            reason: '\$other owns more of the bar than the counted stage');
+      }
     });
   });
 
   group('nothing to count', () {
+    test('a download of nothing does not divide by zero', () {
+      final p = const BackupProgress(BackupStage.fetching, done: 0, total: 0);
+
+      expect(p.fraction, isNotNaN);
+      expect(p.label, 'Fetching the file');
+    });
+
+    test('the megabytes are in the words, not just the bar', () {
+      expect(
+        const BackupProgress(
+          BackupStage.fetching,
+          done: 4 * 1024 * 1024,
+          total: 185 * 1024 * 1024,
+        ).label,
+        'Fetching the file — 4 MB of 185 MB',
+      );
+    });
+
     test('a collection with no files does not divide by zero', () {
       final p = const BackupProgress(BackupStage.packing, done: 0, total: 0);
       expect(p.fraction, isNotNaN);

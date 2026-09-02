@@ -401,7 +401,17 @@ Future<Uint8List> _openChunks(
 ) async {
   final gcm = AesGcm.with256bits();
   final shape = chunksInFile(length, header);
-  final out = BytesBuilder(copy: false);
+
+  /*
+    One allocation, filled in place.
+
+    The length of the plaintext is known before a byte is decrypted — that is
+    what the chunk arithmetic gives us — so there is no reason to collect the
+    pieces and then concatenate them, which on a 185 MB backup is another
+    185 MB allocated and copied for nothing.
+  */
+  final out = Uint8List((shape.count - 1) * header.chunkBytes + shape.lastPlain);
+  var at = 0;
 
   for (var i = 0; i < shape.count; i++) {
     final last = i == shape.count - 1;
@@ -424,10 +434,11 @@ Future<Uint8List> _openChunks(
       aad: chunkAad(i, last: last),
     );
 
-    out.add(flatBytes(piece));
+    out.setRange(at, at + piece.length, piece);
+    at += piece.length;
   }
 
-  return out.toBytes();
+  return out;
 }
 
 /// Version 1: one block, the way it was written before chunking.
