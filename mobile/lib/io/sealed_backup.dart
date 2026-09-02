@@ -62,7 +62,7 @@ Future<List<int>> exportSealedBackup(
   );
 
   onStep?.call(const BackupProgress(BackupStage.locking));
-  final sealed = await lockBackup(plain, passphrase);
+  final sealed = await lockBackup(plain);
 
   onStep?.call(const BackupProgress(BackupStage.done));
   return sealed;

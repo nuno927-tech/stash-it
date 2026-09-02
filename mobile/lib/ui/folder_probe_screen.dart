@@ -29,6 +29,7 @@ import 'package:path_provider/path_provider.dart';
 import '../db/repository.dart';
 import '../io/auto_backup_run.dart';
 import '../io/backup_folder.dart';
+import '../io/vault.dart';
 import '../logic/auto_backup.dart';
 import 'feedback.dart';
 import 'theme.dart';
@@ -173,6 +174,24 @@ class _FolderProbeScreenState extends State<FolderProbeScreen> {
           _data = _gather();
         });
       }
+    }
+  }
+
+  /// Times the crypto, rather than guessing where the seconds went.
+  ///
+  /// Encrypting a backup was slow through three releases and each fix was a
+  /// theory. This measures: which implementation is running, how long the
+  /// derivation takes, and how many megabytes a second the cipher manages.
+  Future<void> _timeCrypto() async {
+    setState(() => _busy = true);
+    _say('Timing…');
+
+    try {
+      _say(await cryptoTimings());
+    } catch (e) {
+      _say('Threw: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -348,6 +367,7 @@ class _FolderProbeScreenState extends State<FolderProbeScreen> {
           _Try(label: 'Open the picker', onTap: _busy ? null : _tryPicker),
           _Try(label: 'Try a write', onTap: _busy ? null : _tryWrite),
           _Try(label: 'Back up now', onTap: _busy ? null : _runNow),
+          _Try(label: 'Time the crypto', onTap: _busy ? null : _timeCrypto),
         ],
       );
 

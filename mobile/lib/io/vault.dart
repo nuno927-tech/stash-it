@@ -50,6 +50,33 @@ const FlutterSecureStorage _store = FlutterSecureStorage(
 const String _passphraseName = 'stash_it_backup_passphrase';
 
 /*
+  ── The key is derived once, not once per backup ────────────────────────────
+
+  Stretching a passphrase is 210,000 rounds of HMAC-SHA256 and it is meant to
+  be slow — that is the entire defence against somebody guessing. What it is
+  NOT meant to be is repeated: the cost buys nothing the second time, and it was
+  being paid on every single backup.
+
+  It does not depend on the file, either. The same passphrase and the same salt
+  make the same key whatever is being encrypted, so this phone derives it the
+  first time it locks anything and keeps it.
+
+  ── And this gives nothing away ─────────────────────────────────────────────
+
+  The derived key sits in the same hardware-backed store as the passphrase it
+  came from — which is strictly less secret than the passphrase itself, because
+  the passphrase opens every backup ever made with it and the key opens only
+  the ones made with this salt. Nothing is weakened by keeping it; something is
+  weakened by keeping the passphrase, and that was already the price of an
+  automatic backup that does not stop to ask.
+
+  A file from ANOTHER phone carries its own salt in its header and is derived
+  the slow way, once, which is correct and rare.
+*/
+const String _saltName = 'stash_it_backup_salt';
+const String _keyName = 'stash_it_backup_key';
+
+/*
   ── All of this happens on another isolate ──────────────────────────────────
 
   It did not, and the app froze. Stretching a passphrase is 210,000 rounds of
@@ -101,49 +128,111 @@ Future<bool> backupsAreLocked() async => (await backupPassphrase()) != null;
 /// Old backups already written stay readable with the OLD passphrase — nothing
 /// goes back and re-encrypts them, and the app says so. Anything else would
 /// mean rewriting every file in somebody's cloud folder on a whim.
-Future<void> setBackupPassphrase(String passphrase) =>
-    _store.write(key: _passphraseName, value: passphrase.trim());
+///
+/// The cached key goes with the old passphrase. A new one gets a new salt and
+/// a new key, derived on the next backup rather than here — nobody should wait
+/// on a progress-less sheet for something they can pay for later.
+Future<void> setBackupPassphrase(String passphrase) async {
+  await _store.write(key: _passphraseName, value: passphrase.trim());
+  await _forgetDerived();
+}
 
 /// Turns encryption off.
 ///
 /// Refused elsewhere while a document scan exists — see `whyKeepTheLock`. This
 /// function does as it is told; the judgement is the caller's.
-Future<void> clearBackupPassphrase() => _store.delete(key: _passphraseName);
+Future<void> clearBackupPassphrase() async {
+  await _store.delete(key: _passphraseName);
+  await _forgetDerived();
+}
+
+Future<void> _forgetDerived() async {
+  await _store.delete(key: _saltName);
+  await _store.delete(key: _keyName);
+}
+
+/// The salt and key this phone locks with, deriving them the first time.
+///
+/// Null when there is no passphrase, which is the caller's signal that backups
+/// are not locked at all.
+Future<({Uint8List salt, Uint8List key})?> _lockingKey() async {
+  final passphrase = await backupPassphrase();
+  if (passphrase == null) return null;
+
+  final storedSalt = await _store.read(key: _saltName);
+  final storedKey = await _store.read(key: _keyName);
+
+  if (storedSalt != null && storedKey != null) {
+    return (
+      salt: base64Decode(storedSalt),
+      key: base64Decode(storedKey),
+    );
+  }
+
+  // First time on this phone, or the first since the passphrase changed. The
+  // one slow derivation, and it happens on an isolate like everything else.
+  final salt = _randomBytes(16);
+  final key = await compute(_derive, (
+    passphrase: passphrase,
+    salt: salt,
+    token: RootIsolateToken.instance,
+  ));
+
+  await _store.write(key: _saltName, value: base64Encode(salt));
+  await _store.write(key: _keyName, value: base64Encode(key));
+
+  return (salt: salt, key: key);
+}
+
+/// The isolate's half of the derivation. Also used by the developer timings.
+Future<Uint8List> _derive(
+  ({String passphrase, Uint8List salt, RootIsolateToken? token}) work,
+) async {
+  _nativeIfPossible(work.token);
+
+  final key = await _keyFrom(work.passphrase, work.salt, vaultIterations);
+  return Uint8List.fromList(await key.extractBytes());
+}
 
 /* ------------------------------------------------------------ the locking */
 
 /// Wraps the bytes of a backup so only the passphrase opens them.
 ///
-/// The salt and the nonce are drawn HERE, on the main isolate, because
-/// `Random.secure()` is the platform's own source and the one thing in this
-/// file that should not be delegated. Everything expensive happens elsewhere.
-Future<Uint8List> lockBackup(List<int> plain, String passphrase) => compute(
-      _lock,
-      (
-        plain: plain,
-        passphrase: passphrase,
-        salt: _randomBytes(16),
-        nonce: _randomBytes(12),
-        // Taken here. The isolate cannot ask for its own — the token only
-        // exists on the isolate that has the engine.
-        token: RootIsolateToken.instance,
-      ),
-    );
+/// Takes no passphrase: it uses the key this phone already derived — see
+/// `_lockingKey`. The nonce is drawn here, on the main isolate, because
+/// `Random.secure()` is the platform's own source and a nonce reused across two
+/// files under one key is the one mistake GCM does not forgive.
+Future<Uint8List> lockBackup(List<int> plain) async {
+  final material = await _lockingKey();
+  if (material == null) {
+    throw const VaultProblem('No passphrase is set.');
+  }
+
+  return compute(_lock, (
+    plain: plain,
+    salt: material.salt,
+    key: material.key,
+    nonce: _randomBytes(12),
+    // Taken here. The isolate cannot ask for its own — the token only exists
+    // on the isolate that has the engine.
+    token: RootIsolateToken.instance,
+  ));
+}
 
 /// The isolate's half of [lockBackup]. Top-level, because `compute` cannot send
 /// a closure.
 Future<Uint8List> _lock(
   ({
     List<int> plain,
-    String passphrase,
     Uint8List salt,
+    Uint8List key,
     Uint8List nonce,
     RootIsolateToken? token,
   }) work,
 ) async {
   _nativeIfPossible(work.token);
 
-  final key = await _keyFrom(work.passphrase, work.salt, vaultIterations);
+  final key = SecretKey(work.key);
 
   final box = await AesGcm.with256bits().encrypt(
     work.plain,
@@ -166,16 +255,42 @@ Future<Uint8List> _lock(
 /// damaged file land in the same place, because GCM cannot tell them apart —
 /// and being told "wrong passphrase" about a truncated download would send
 /// somebody looking in the wrong place for an hour.
-Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) {
+Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) async {
   // Read here so a malformed file is refused with a sentence before an isolate
   // is spawned for it — see `readVaultHeader`, which throws for a person.
-  readVaultHeader(sealed);
+  final header = readVaultHeader(sealed);
+
+  /*
+    ── A file this phone made opens without the slow part ────────────────────
+
+    The commonest restore by a distance is somebody's own backup on their own
+    phone, and the key for that is already derived and kept — see
+    `_lockingKey`. The salt in the header is what says so: same salt, same
+    passphrase, same key.
+
+    Anything else — another phone, an older passphrase — falls through to the
+    210,000 rounds, which is correct and happens once.
+  */
+  final mine = await _lockingKey();
 
   return compute(_unlock, (
     sealed: sealed,
     passphrase: passphrase,
+    key: mine != null && _sameBytes(mine.salt, header.salt) ? mine.key : null,
     token: RootIsolateToken.instance,
   ));
+}
+
+/// Whether two byte strings are the same. Only ever used on salts, which are
+/// not secret — a constant-time compare would be theatre here.
+bool _sameBytes(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+
+  return true;
 }
 
 /// The isolate's half of [unlockBackup].
@@ -183,6 +298,7 @@ Future<Uint8List> _unlock(
   ({
     List<int> sealed,
     String passphrase,
+    Uint8List? key,
     RootIsolateToken? token,
   }) work,
 ) async {
@@ -193,7 +309,11 @@ Future<Uint8List> _unlock(
   final body = work.sealed.sublist(vaultHeaderBytes);
   final split = body.length - 16;
 
-  final key = await _keyFrom(work.passphrase, header.salt, header.iterations);
+  // Already derived on this phone, or derived here the slow way for a file
+  // that came from somewhere else.
+  final key = work.key != null
+      ? SecretKey(work.key!)
+      : await _keyFrom(work.passphrase, header.salt, header.iterations);
 
   try {
     final plain = await AesGcm.with256bits().decrypt(
@@ -214,6 +334,59 @@ Future<Uint8List> _unlock(
   } catch (e) {
     throw VaultProblem('That backup could not be opened: $e');
   }
+}
+
+/* ------------------------------------------------------------- the timings */
+
+/// What the crypto actually costs on THIS phone.
+///
+/// ── Why the app can measure itself ─────────────────────────────────────────
+/// Three releases were spent guessing where fifteen seconds went — the UI
+/// isolate, then the missing native cipher, then the derivation — and each
+/// guess cost a build, a test and a round trip. None of them were measurements.
+///
+/// This is the measurement. It reports which implementation is in use and how
+/// long each half takes, so the next decision is made from numbers.
+///
+/// Behind the developer tools, and it encrypts a block of zeroes rather than
+/// anybody's data.
+Future<String> cryptoTimings() => compute(_time, RootIsolateToken.instance);
+
+Future<String> _time(RootIsolateToken? token) async {
+  final out = StringBuffer();
+
+  _nativeIfPossible(token);
+  out.writeln('Cipher:   ${Cryptography.instance.runtimeType}');
+  out.writeln('Channels: ${token == null ? 'no token' : 'asked for'}');
+
+  final salt = Uint8List(16);
+  final watch = Stopwatch()..start();
+
+  final key = await _keyFrom('a passphrase to measure', salt, vaultIterations);
+  await key.extractBytes();
+  out.writeln('Derive:   ${watch.elapsedMilliseconds} ms '
+      '($vaultIterations rounds)');
+
+  // Two sizes, so the answer says whether the cost is per-call or per-byte —
+  // which is the difference between a slow cipher and a slow channel.
+  for (final mb in [1, 8]) {
+    final block = Uint8List(mb * 1024 * 1024);
+    watch
+      ..reset()
+      ..start();
+
+    await AesGcm.with256bits().encrypt(
+      block,
+      secretKey: key,
+      nonce: Uint8List(12),
+    );
+
+    final ms = watch.elapsedMilliseconds;
+    final rate = ms == 0 ? '—' : '${(mb * 1000 / ms).toStringAsFixed(1)} MB/s';
+    out.writeln('Encrypt:  $mb MB in $ms ms  ($rate)');
+  }
+
+  return out.toString().trimRight();
 }
 
 /* ----------------------------------------------------------------- plumbing */
