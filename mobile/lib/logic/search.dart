@@ -460,6 +460,52 @@ List<SearchHit> searchAll(String query, SearchInput input) {
   return hits;
 }
 
+/// How many of each kind a search turned up.
+///
+/// ── Said out loud, because the list no longer says it ──────────────────────
+/// The results are ranked together rather than grouped, which is right — see
+/// the note on `SearchHit` — and it has one cost: a list that opens with four
+/// items looks like a search that found four things, and the passport ranked
+/// fifth is below the fold.
+///
+/// So the count goes above the list. It is the only place the app admits the
+/// results are of three kinds, and it exists so that nobody concludes their
+/// document is missing from a screen that is in fact showing it.
+({int items, int papers, int subs}) countByKind(List<SearchHit> hits) {
+  var items = 0, papers = 0, subs = 0;
+
+  for (final hit in hits) {
+    switch (hit) {
+      case ItemHit():
+        items++;
+      case PaperHit():
+        papers++;
+      case SubscriptionHit():
+        subs++;
+    }
+  }
+
+  return (items: items, papers: papers, subs: subs);
+}
+
+/// "4 items · 1 document", leaving out whatever was not found.
+///
+/// Nothing reads "0 subscriptions". A zero is not a result and printing it
+/// three times is how a summary line becomes furniture.
+String foundLine(List<SearchHit> hits) {
+  final many = countByKind(hits);
+
+  final parts = [
+    if (many.items > 0) '${many.items} item${many.items == 1 ? '' : 's'}',
+    if (many.papers > 0)
+      '${many.papers} document${many.papers == 1 ? '' : 's'}',
+    if (many.subs > 0)
+      '${many.subs} subscription${many.subs == 1 ? '' : 's'}',
+  ];
+
+  return parts.isEmpty ? 'Nothing matches that' : parts.join(' · ');
+}
+
 /// "Matched on serial number and notes" — omitted entirely when the only match
 /// was the name, since that is self-evident from the row itself.
 String? matchSummary(SearchHit hit) {

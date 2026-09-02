@@ -280,7 +280,7 @@ class _PapersTabState extends State<PapersTab> {
               ),
             const SectionTitle('Expiring'),
             for (final paper in sorted)
-              _PaperTile(
+              PaperTile(
                 key: _keys[paper.id],
                 paper: paper,
                 lit: _lit == paper.id,
@@ -459,8 +459,13 @@ class _Tile extends StatelessWidget {
   }
 }
 
-class _PaperTile extends StatelessWidget {
-  const _PaperTile({
+/// One document, drawn the same way wherever it appears.
+///
+/// Public because the Items tab's search draws it too — a query now answers
+/// across all three kinds, and a second row widget for a document would be one
+/// that starts identical to this and drifts the first time either is touched.
+class PaperTile extends StatelessWidget {
+  const PaperTile({
     required this.paper,
     this.lit = false,
     this.onTap,

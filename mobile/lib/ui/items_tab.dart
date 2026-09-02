@@ -16,6 +16,7 @@ import '../logic/bin.dart';
 import '../logic/dashboard.dart';
 import '../logic/prefs.dart';
 import '../models/paper.dart';
+import '../models/subscription.dart';
 import '../models/settings.dart';
 import '../logic/card.dart';
 import '../logic/item_filter.dart';
@@ -29,6 +30,10 @@ import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'item_view_sheet.dart';
 import 'layout.dart';
+import 'paper_view_sheet.dart';
+import 'papers_tab.dart' show PaperTile;
+import 'sub_view_sheet.dart';
+import 'subs_tab.dart' show SubTile;
 import 'item_wizard_sheet.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
@@ -227,18 +232,39 @@ class _ItemsTabState extends State<ItemsTab> {
   */
   Set<String> _withReceipt = const {};
 
-  /// Held only to count, never to draw — see `_alsoDocuments`.
+  /// Counted by `_alsoDocuments`, and searched.
   List<Paper> _papers = const [];
+
+  /*
+    ── Everything the one search box has to be able to find ──────────────────
+
+    The box used to look at items only, which was right when items were all
+    there was. Typing "passport" into it returned nothing, and nothing does not
+    read as "wrong tab" — it reads as the app having lost your passport.
+
+    So the tab holds all three kinds. They are only read when somebody types:
+    `searchAll` is pure and cheap, but three more queries on every open is a
+    cost paid by everybody to serve the times anybody searches, so they are
+    loaded once alongside the rooms and the receipts that were already here.
+
+    The documents list is the whole list now rather than a set of item ids —
+    a document's title is searchable, and `_withReceipt` threw the titles away.
+  */
+  List<Doc> _docs = const [];
+  List<Subscription> _subs = const [];
 
   Future<void> _readContext() async {
     final rooms = await widget.repo.rooms();
     final settings = await widget.repo.settings();
     final docs = await widget.repo.activeDocs();
     final papers = await widget.repo.activePapers();
+    final subs = await widget.repo.activeSubscriptions();
     if (!mounted) return;
 
     setState(() {
       _papers = papers;
+      _docs = docs;
+      _subs = subs;
       _withReceipt = {
         for (final d in docs)
           if (d.kind == DocKind.receipt) d.itemId,
@@ -291,13 +317,41 @@ class _ItemsTabState extends State<ItemsTab> {
                 .toList();
 
         /*
-          Search runs over the whole collection, not the filtered view, and it
-          is the one place the app looks at everything at once — see
-          logic/search.dart. Here it is items only; the merged search across
-          documents and subscriptions belongs on a screen of its own.
+          ── One box, all three kinds ────────────────────────────────────────
+
+          Search runs over the whole collection rather than the filtered view,
+          and it is the one place the app looks at everything at once — see
+          logic/search.dart, which has ranked items, documents and
+          subscriptions together since it was written. Only this screen had
+          been passing it a third of its input.
+
+          Ranked together rather than grouped, deliberately: somebody typing
+          "golf" wants the closest match to the word and does not know or care
+          which table it came from. What is grouped is the COUNT above the
+          list, which is there so that four items at the top cannot be mistaken
+          for the whole answer.
+
+          Not while picking. Choosing rows to send is an items-only gesture and
+          a list that changes kind underneath a set of ticks is a list somebody
+          loses their selection in.
         */
-        if (_query.trim().isNotEmpty) {
-          final hits = searchAll(_query, SearchInput(items: all));
+        final searching = _query.trim().isNotEmpty;
+        final everywhere = searching && _picked == null;
+
+        final hits = searching
+            ? searchAll(
+                _query,
+                SearchInput(
+                  items: all,
+                  docs: _docs,
+                  rooms: _rooms,
+                  papers: everywhere ? _papers : const [],
+                  subs: everywhere ? _subs : const [],
+                ),
+              )
+            : const <SearchHit>[];
+
+        if (searching && !everywhere) {
           final ids = {
             for (final h in hits)
               if (h is ItemHit) h.item.id,
@@ -370,9 +424,26 @@ class _ItemsTabState extends State<ItemsTab> {
                           children: [
                             _worth(all, c),
                             _search(c),
-                            const SizedBox(height: 10),
-                            _chips(all, c),
-                            _alsoDocuments(c),
+
+                            /*
+                              ── The chips stand down while searching ────────
+
+                              Sort and filter both answer "which of my items am
+                              I looking at", and a query has already answered
+                              it — with a better answer, since the results are
+                              ordered by how well they match.
+
+                              They also cannot be honest here: a list holding
+                              documents and subscriptions cannot be sorted by
+                              room or filtered to lapsed warranties, and chips
+                              that silently apply to a third of what is on
+                              screen are worse than no chips.
+                            */
+                            if (!everywhere) ...[
+                              const SizedBox(height: 10),
+                              _chips(all, c),
+                              _alsoDocuments(c),
+                            ],
                           ],
                         ),
                       ),
@@ -389,7 +460,15 @@ class _ItemsTabState extends State<ItemsTab> {
                 ),
               const SizedBox(height: 10),
               Expanded(
-                child: shown.isEmpty
+                child: everywhere
+                    ? (hits.isEmpty
+                        ? Blank(
+                            'Nothing here matches that.',
+                            pose: ScoutPose.alert,
+                            poseHeight: 120,
+                          )
+                        : _results(hits, c))
+                    : shown.isEmpty
                     ? Blank(
                         all.isEmpty ? firstThing : 'Nothing here matches that.',
                         // Only when the app is empty. "Nothing here matches
@@ -552,7 +631,9 @@ class _ItemsTabState extends State<ItemsTab> {
                   focusedBorder: InputBorder.none,
                   filled: false,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  hintText: 'Search name, brand, serial…',
+                  // It searches all three kinds now, and a hint that lists
+                  // item fields is a hint that says it does not.
+                  hintText: 'Search everything…',
                   hintStyle: TextStyle(
                       fontFamily: fontBody, fontSize: 13.5, color: c.muted),
                 ),
@@ -595,6 +676,68 @@ class _ItemsTabState extends State<ItemsTab> {
     they contribute none: a line reading "and 0 documents" is noise on every
     screen it appears on.
   */
+  /*
+    ── One list, three kinds, in the order they matched ──────────────────────
+
+    Every row is the row its own tab draws — `_ItemTile`, `PaperTile`,
+    `SubTile` — rather than a search-flavoured copy of each. Three copies is
+    how the same document ends up reading two different ways on two screens,
+    which is the argument `TimeLeft` and `PickingBar` were extracted on.
+
+    No swipe-to-delete on any of them. Deleting from a search result is a
+    gesture aimed at a row somebody found by typing, on a list that will
+    reorder as they keep typing, and the undo lives on a tab they are not
+    looking at.
+  */
+  Widget _results(List<SearchHit> hits, StashColors c) {
+    return ListView.builder(
+      // Room for the add button to sit over without covering the last row.
+      padding: const EdgeInsets.only(bottom: 96),
+      itemCount: hits.length + 1,
+      itemBuilder: (context, i) {
+        if (i == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              foundLine(hits),
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+                color: c.muted,
+              ),
+            ),
+          );
+        }
+
+        // A sealed class, so adding a fourth kind of record makes this fail to
+        // compile rather than silently drop it out of every search.
+        return switch (hits[i - 1]) {
+          ItemHit(:final item) => _ItemTile(
+              repo: widget.repo,
+              item: item,
+              onTap: () => _open(item),
+            ),
+          PaperHit(:final paper) => PaperTile(
+              paper: paper,
+              onTap: () async {
+                await showPaperView(context, repo: widget.repo, paper: paper);
+                if (mounted) setState(() {});
+              },
+            ),
+          SubscriptionHit(:final sub) => SubTile(
+              sub: sub,
+              onTap: () async {
+                await showSubView(context, repo: widget.repo, sub: sub);
+                if (mounted) setState(() {});
+              },
+            ),
+        };
+      },
+    );
+  }
+
   Widget _alsoDocuments(StashColors c) {
     final filter = _filter;
     if (filter == null) return const SizedBox.shrink();

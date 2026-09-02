@@ -258,7 +258,7 @@ class _SubsTabState extends State<SubsTab> {
               ),
             const SectionTitle('Everything you pay for'),
             for (final sub in sorted)
-              _SubTile(
+              SubTile(
                 sub: sub,
                 lit: charged(sub),
                 picking: _picked != null,
@@ -441,8 +441,11 @@ class _Tile extends StatelessWidget {
   }
 }
 
-class _SubTile extends StatelessWidget {
-  const _SubTile({
+/// One subscription, drawn the same way wherever it appears.
+///
+/// Public for the same reason as `PaperTile` — see the note there.
+class SubTile extends StatelessWidget {
+  const SubTile({
     required this.sub,
     this.lit = false,
     this.onTap,
