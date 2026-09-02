@@ -200,10 +200,18 @@ class _FolderProbeScreenState extends State<FolderProbeScreen> {
     setState(() => _busy = true);
 
     try {
+      final watch = Stopwatch()..start();
       final done = await backUpToFolder(widget.repo);
-      _say(done.wrote
-          ? 'Wrote ${done.name}.'
-          : (done.problem ?? 'Nothing written, and no reason given.'));
+      final took = watch.elapsedMilliseconds;
+
+      // The phase timings the lock left behind — see `lastVaultTimings`. This
+      // is the whole reason the button is here rather than in Settings.
+      _say([
+        done.wrote
+            ? 'Wrote ${done.name} in $took ms.'
+            : (done.problem ?? 'Nothing written, and no reason given.'),
+        if (lastVaultTimings != null) '\n$lastVaultTimings',
+      ].join());
     } finally {
       if (mounted) {
         setState(() {

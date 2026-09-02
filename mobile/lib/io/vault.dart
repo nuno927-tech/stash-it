@@ -194,6 +194,36 @@ Future<Uint8List> _derive(
   return Uint8List.fromList(await key.extractBytes());
 }
 
+/*
+  ── Where the seconds actually went, per phase ──────────────────────────────
+
+  The measured cipher is 90 MB/s and the derivation is 1.6 seconds, which adds
+  up to about three seconds for any backup this app can produce. Locking one
+  took eighty.
+
+  So the cost is not the cryptography; it is what surrounds it — the copy into
+  the isolate, the copy back, and the assembling of the result. That is exactly
+  the part nobody times, because it does not look like work.
+
+  So it is timed. `lockBackup` and `unlockBackup` leave their phase timings
+  here and the developer probe prints them. Nothing else reads it, and it is a
+  string rather than numbers because its only consumer is a person reading a
+  screen.
+*/
+String? lastVaultTimings;
+
+/// Bytes as a `Uint8List`, copying only when they are not already one.
+///
+/// ── The difference this makes is not small ─────────────────────────────────
+/// A `List<int>` can be a list of BOXED integers — an object per byte. Handing
+/// one of those to an isolate, or adding it to a `BytesBuilder`, is a hundred
+/// million allocations rather than a memcpy, and it is invisible: the types
+/// are identical, the code reads the same, and one of them takes a minute.
+///
+/// Everything crossing an isolate boundary in this file goes through here.
+Uint8List _flat(List<int> bytes) =>
+    bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+
 /* ------------------------------------------------------------ the locking */
 
 /// Wraps the bytes of a backup so only the passphrase opens them.
@@ -208,8 +238,12 @@ Future<Uint8List> lockBackup(List<int> plain) async {
     throw const VaultProblem('No passphrase is set.');
   }
 
-  return compute(_lock, (
-    plain: plain,
+  final watch = Stopwatch()..start();
+  final flat = _flat(plain);
+  final flattened = watch.elapsedMilliseconds;
+
+  final done = await compute(_lock, (
+    plain: flat,
     salt: material.salt,
     key: material.key,
     nonce: _randomBytes(12),
@@ -217,37 +251,65 @@ Future<Uint8List> lockBackup(List<int> plain) async {
     // on the isolate that has the engine.
     token: RootIsolateToken.instance,
   ));
+
+  lastVaultTimings = 'lock ${(flat.length / 1024 / 1024).toStringAsFixed(1)} MB'
+      '\n  flatten   $flattened ms'
+      '\n${done.timings}'
+      '\n  round trip ${watch.elapsedMilliseconds} ms total';
+
+  return done.bytes;
 }
 
 /// The isolate's half of [lockBackup]. Top-level, because `compute` cannot send
 /// a closure.
-Future<Uint8List> _lock(
+Future<({Uint8List bytes, String timings})> _lock(
   ({
-    List<int> plain,
+    Uint8List plain,
     Uint8List salt,
     Uint8List key,
     Uint8List nonce,
     RootIsolateToken? token,
   }) work,
 ) async {
-  _nativeIfPossible(work.token);
+  final watch = Stopwatch()..start();
 
-  final key = SecretKey(work.key);
+  _nativeIfPossible(work.token);
+  final started = watch.elapsedMilliseconds;
 
   final box = await AesGcm.with256bits().encrypt(
     work.plain,
-    secretKey: key,
+    secretKey: SecretKey(work.key),
     nonce: work.nonce,
   );
+  final encrypted = watch.elapsedMilliseconds;
 
-  final out = BytesBuilder();
-  out.add(vaultHeader(salt: work.salt, nonce: work.nonce));
-  out.add(box.cipherText);
-  // GCM's tag, on the end where every other implementation expects it.
-  out.add(box.mac.bytes);
+  /*
+    Assembled by hand rather than with a `BytesBuilder`.
 
-  return out.toBytes();
+    The cipher hands back a `List<int>` which may or may not be boxed, and
+    `BytesBuilder.add` on a boxed list of a hundred million integers is a
+    hundred million reads. One allocation and two `setRange`s instead — and
+    `_flat` makes sure the source is a typed list before either.
+  */
+  final header = vaultHeader(salt: work.salt, nonce: work.nonce);
+  final cipher = _flat(box.cipherText);
+  final tag = _flat(box.mac.bytes);
+
+  final body = header.length + cipher.length;
+  final out = Uint8List(body + tag.length)
+    ..setRange(0, header.length, header)
+    ..setRange(header.length, body, cipher)
+    // GCM's tag, on the end where every other implementation expects it.
+    ..setRange(body, body + tag.length, tag);
+
+  return (
+    bytes: out,
+    timings: '  isolate up $started ms'
+        '\n  encrypt    ${encrypted - started} ms'
+        '\n  assemble   ${watch.elapsedMilliseconds - encrypted} ms',
+  );
 }
+
 
 /// Opens one, or says why it did not.
 ///
@@ -271,14 +333,28 @@ Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) async {
     Anything else — another phone, an older passphrase — falls through to the
     210,000 rounds, which is correct and happens once.
   */
+  final watch = Stopwatch()..start();
   final mine = await _lockingKey();
+  final gotKey = watch.elapsedMilliseconds;
 
-  return compute(_unlock, (
-    sealed: sealed,
+  final flat = _flat(sealed);
+  final flattened = watch.elapsedMilliseconds;
+
+  final done = await compute(_unlock, (
+    sealed: flat,
     passphrase: passphrase,
     key: mine != null && _sameBytes(mine.salt, header.salt) ? mine.key : null,
     token: RootIsolateToken.instance,
   ));
+
+  lastVaultTimings =
+      'unlock ${(flat.length / 1024 / 1024).toStringAsFixed(1)} MB'
+      '\n  find key   $gotKey ms'
+      '\n  flatten    ${flattened - gotKey} ms'
+      '\n${done.timings}'
+      '\n  round trip ${watch.elapsedMilliseconds} ms total';
+
+  return done.bytes;
 }
 
 /// Whether two byte strings are the same. Only ever used on salts, which are
@@ -294,38 +370,55 @@ bool _sameBytes(List<int> a, List<int> b) {
 }
 
 /// The isolate's half of [unlockBackup].
-Future<Uint8List> _unlock(
+Future<({Uint8List bytes, String timings})> _unlock(
   ({
-    List<int> sealed,
+    Uint8List sealed,
     String passphrase,
     Uint8List? key,
     RootIsolateToken? token,
   }) work,
 ) async {
+  final watch = Stopwatch()..start();
+
   _nativeIfPossible(work.token);
+  final started = watch.elapsedMilliseconds;
 
   final header = readVaultHeader(work.sealed);
 
-  final body = work.sealed.sublist(vaultHeaderBytes);
-  final split = body.length - 16;
+  /*
+    Views, not copies.
+
+    `sublist` allocates and copies; on a file of this size that is two more
+    copies of everything for no reason. `Uint8List.sublistView` hands back a
+    window onto the same bytes.
+  */
+  final split = work.sealed.length - 16;
+  final cipher = Uint8List.sublistView(work.sealed, vaultHeaderBytes, split);
+  final tag = Uint8List.sublistView(work.sealed, split);
+  final sliced = watch.elapsedMilliseconds;
 
   // Already derived on this phone, or derived here the slow way for a file
   // that came from somewhere else.
   final key = work.key != null
       ? SecretKey(work.key!)
       : await _keyFrom(work.passphrase, header.salt, header.iterations);
+  final gotKey = watch.elapsedMilliseconds;
 
   try {
     final plain = await AesGcm.with256bits().decrypt(
-      SecretBox(
-        body.sublist(0, split),
-        nonce: header.nonce,
-        mac: Mac(body.sublist(split)),
-      ),
+      SecretBox(cipher, nonce: header.nonce, mac: Mac(tag)),
       secretKey: key,
     );
+    final decrypted = watch.elapsedMilliseconds;
 
-    return Uint8List.fromList(plain);
+    return (
+      bytes: _flat(plain),
+      timings: '  isolate up $started ms'
+          '\n  slice      ${sliced - started} ms'
+          '\n  derive     ${gotKey - sliced} ms'
+          '\n  decrypt    ${decrypted - gotKey} ms'
+          '\n  flatten    ${watch.elapsedMilliseconds - decrypted} ms',
+    );
   } on SecretBoxAuthenticationError {
     throw const VaultProblem(
       'That did not open. Either the passphrase is wrong, or the file was '
