@@ -76,6 +76,19 @@ class MainActivity : FlutterFragmentActivity() {
     */
     private var pendingFolder: MethodChannel.Result? = null
 
+    /*
+       ── `this` inside the handler is not the activity ────────────────────────
+
+       The channel is built with `.apply { setMethodCallHandler { ... } }`, and
+       inside an `apply` the receiver is the MethodChannel. So a bare `this`
+       passed to anything wanting a Context compiles to a type error — and
+       nothing catches it until an Android build, because the Dart analyzer
+       never reads Kotlin.
+
+       Every call in the handler that needs a Context says `this@MainActivity`
+       out loud for that reason.
+    */
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -122,7 +135,8 @@ class MainActivity : FlutterFragmentActivity() {
                        Settings asks that first and falls back to the sentence.
                     */
                     "canPin" -> result.success(
-                        AppWidgetManager.getInstance(this).isRequestPinAppWidgetSupported
+                        AppWidgetManager.getInstance(this@MainActivity)
+                            .isRequestPinAppWidgetSupported
                     )
 
                     "pin" -> {
@@ -137,7 +151,7 @@ class MainActivity : FlutterFragmentActivity() {
                         if (provider == null) {
                             result.success(false)
                         } else {
-                            val manager = AppWidgetManager.getInstance(this)
+                            val manager = AppWidgetManager.getInstance(this@MainActivity)
                             /*
                                No callback intent.
 
@@ -148,7 +162,7 @@ class MainActivity : FlutterFragmentActivity() {
                                An unused callback is a broadcast receiver to keep
                                alive for no reason.
                             */
-                            val target = ComponentName(this, provider)
+                            val target = ComponentName(this@MainActivity, provider)
                             result.success(
                                 manager.requestPinAppWidget(target, null, null)
                             )
@@ -164,21 +178,21 @@ class MainActivity : FlutterFragmentActivity() {
                     }
 
                     "folderGranted" -> result.success(
-                        BackupFolder.granted(this, call.arguments as String)
+                        BackupFolder.granted(this@MainActivity, call.arguments as String)
                     )
 
                     "folderLabel" -> result.success(
-                        BackupFolder.label(this, call.arguments as String)
+                        BackupFolder.label(this@MainActivity, call.arguments as String)
                     )
 
                     "forgetFolder" -> {
-                        BackupFolder.forget(this, call.arguments as String)
+                        BackupFolder.forget(this@MainActivity, call.arguments as String)
                         result.success(true)
                     }
 
                     "writeToFolder" -> result.success(
                         BackupFolder.write(
-                            this,
+                            this@MainActivity,
                             call.argument<String>("tree")!!,
                             call.argument<String>("name")!!,
                             call.argument<String>("from")!!,
@@ -186,11 +200,11 @@ class MainActivity : FlutterFragmentActivity() {
                     )
 
                     "listFolder" -> result.success(
-                        BackupFolder.list(this, call.arguments as String)
+                        BackupFolder.list(this@MainActivity, call.arguments as String)
                     )
 
                     "deleteInFolder" -> result.success(
-                        BackupFolder.delete(this, call.arguments as String)
+                        BackupFolder.delete(this@MainActivity, call.arguments as String)
                     )
 
                     else -> result.notImplemented()
