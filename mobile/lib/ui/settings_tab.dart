@@ -59,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.99.9';
+const appVersion = '1.0.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -265,7 +265,6 @@ class _SettingsTabState extends State<SettingsTab> {
       final path = files.isEmpty ? null : files.first.path;
       if (path == null) return;
 
-      final sealed = await File(path).readAsBytes();
       var wasLocked = false;
 
       /*
@@ -277,7 +276,7 @@ class _SettingsTabState extends State<SettingsTab> {
         isolate that draws the screen. Thirty seconds of a phone that looked
         broken.
 
-        `openBackupBytes` sniffs the file. A plain zip from any version this app
+        `openBackupFile` sniffs the file. A plain zip from any version this app
         has ever had goes straight through; a sealed one is opened with the
         passphrase held on this phone, and only if THAT fails is anybody asked
         to type one — the case that matters, a backup restored onto a new phone.
@@ -288,8 +287,16 @@ class _SettingsTabState extends State<SettingsTab> {
         job: (onStep) async {
           onStep(const BackupProgress(BackupStage.unlocking));
 
-          final opened = await openBackupBytes(
-            sealed,
+          /*
+            Reading, decrypting, unzipping and hashing, all in one isolate.
+
+            It used to be three: the file was read here, decrypted in an
+            isolate, copied back, then copied into another isolate to be
+            parsed. Every one of those is the whole backup, and on a large one
+            that was the wait rather than the work.
+          */
+          final opened = await openBackupFile(
+            path,
             ask: () async {
               if (!mounted) return null;
               return askForPassphrase(context);
@@ -297,11 +304,8 @@ class _SettingsTabState extends State<SettingsTab> {
           );
           wasLocked = opened.wasLocked;
 
-          onStep(const BackupProgress(BackupStage.unpacking));
-          final bundle = await parseBackupBytesAsync(opened.bytes);
-
           onStep(const BackupProgress(BackupStage.restoring));
-          final done = await restoreInto(widget.repo.db, bundle);
+          final done = await restoreInto(widget.repo.db, opened.bundle);
 
           onStep(const BackupProgress(BackupStage.done));
           return done;
@@ -510,20 +514,30 @@ class _SettingsTabState extends State<SettingsTab> {
     setState(() => _busy = true);
 
     try {
-      // Behind a sheet with a moving bar — the sealing step alone can hold the
-      // phone for seconds, and it used to do that with nothing on screen.
-      final bytes = await runWithAcorns<List<int>>(
+      final dir = await getTemporaryDirectory();
+      final file = File(p.join(dir.path, backupFileName()));
+
+      /*
+        Behind a sheet with a moving bar, and written straight to the file.
+
+        The bytes used to come back here so that this could write them out —
+        which meant the whole backup crossed an isolate boundary twice more
+        than it had to, and on a large collection that was most of the wait.
+        `exportSealedBackupToFile` zips, seals and writes in one isolate.
+      */
+      await runWithAcorns<void>(
         context,
         title: 'Gathering everything',
         // Sealed if a passphrase is set. The same call the automatic backup
         // makes, so the two cannot disagree about whether a file is locked.
-        job: (onStep) => exportSealedBackup(widget.repo.db, onStep: onStep),
+        job: (onStep) => exportSealedBackupToFile(
+          widget.repo.db,
+          path: file.path,
+          onStep: onStep,
+        ),
       );
 
       if (!mounted) return;
-      final dir = await getTemporaryDirectory();
-      final file = File(p.join(dir.path, backupFileName()));
-      await file.writeAsBytes(bytes);
 
       // share_plus 10's API. Version 11 replaced this with
       // `SharePlus.instance.share(ShareParams(...))`; when the dependency
@@ -533,7 +547,7 @@ class _SettingsTabState extends State<SettingsTab> {
         subject: 'Stash it backup',
       );
 
-      final kb = (bytes.length / 1024).round();
+      final kb = (await file.length() / 1024).round();
       _say('Made ${backupFileName()} — $kb KB. '
           'Keep it somewhere that is not this phone.');
     } catch (e) {

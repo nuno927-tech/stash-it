@@ -135,22 +135,21 @@ Future<AutoBackupResult> backUpToFolder(Repository repo) async {
       );
     }
 
-    // Sealed if a passphrase is set — `exportSealedBackup` is the one place
-    // that decides, so a second route out of the app cannot forget to ask.
-    final bytes = await exportSealedBackup(repo.db);
-
     /*
-      Written to the cache first, then copied across by the platform.
+      Straight to the scratch file, sealed on the way.
 
-      The alternative is pushing the bytes through the method channel, and a
-      backup with photographs in it is megabytes — the wrong pipe for that when
-      both sides can see the same disk. The scratch file is deleted in the
-      `finally`, whatever happens.
+      `exportSealedBackupToFile` zips, encrypts and writes inside one isolate —
+      nothing comes back here, which on a large backup is the difference
+      between seconds and half a minute. See the note in that file.
+
+      The scratch file is what the platform copies into the chosen folder, and
+      it is deleted in the `finally` whatever happens.
     */
     final name = backupFileName();
     final dir = await getTemporaryDirectory();
     scratch = File(p.join(dir.path, name));
-    await scratch.writeAsBytes(bytes);
+
+    await exportSealedBackupToFile(repo.db, path: scratch.path);
 
     final landed = await writeToBackupFolder(
       tree: tree,

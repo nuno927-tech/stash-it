@@ -68,24 +68,6 @@ ParsedBundle parseBackupFile(String path) =>
 ParsedBundle parseBackupBytes(List<int> bytes) =>
     parseBundle(unzipBundle(bytes), sha256Hex: sha256Hex);
 
-/// The same thing, on another isolate.
-///
-/// ── Why the reading half needed this too ──────────────────────────────────
-/// Writing a backup has run on an isolate since the day it made the app look
-/// like it had crashed. Reading one never did, and it is the same work in the
-/// same quantity: inflating a hundred and sixty megabytes and hashing every
-/// byte of it, synchronously, on the isolate that draws the screen.
-///
-/// It went unnoticed because a restore is rare and because the file picker
-/// leaves the screen looking busy anyway. It is still a minute of a phone that
-/// does not respond, and the app now has a progress sheet that would sit
-/// frozen through it.
-Future<ParsedBundle> parseBackupBytesAsync(List<int> bytes) =>
-    compute(_read, bytes);
-
-/// The isolate's half. Top-level, because `compute` cannot send a closure.
-ParsedBundle _read(List<int> bytes) => parseBackupBytes(bytes);
-
 /* ---------------------------------------------------------------- writing */
 
 /// Builds a `.stashit` in memory.

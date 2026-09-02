@@ -1,4 +1,4 @@
-/// The backup, with the lock on it if there is one.
+/// The backup, with the lock on it if there is one, in one pass.
 ///
 /// ── One place that decides, so nothing can forget ──────────────────────────
 /// There are two ways a backup leaves this app — the share sheet and the
@@ -8,71 +8,128 @@
 ///
 /// So neither of them asks. They call this, and this decides.
 ///
-/// ── And one that opens, whatever it is handed ──────────────────────────────
-/// The same on the way back in. A restore is handed bytes from a file picker
-/// and has no idea what they are: a plain zip from any version this app has
-/// ever had, or a sealed file from this one. `openBackupBytes` sniffs the magic
-/// and does the right thing, which is what keeps every backup ever made
-/// openable by every version after it.
+/// ── And one isolate, because the file is large ─────────────────────────────
+/// Locking a backup took eighty seconds, then twenty, on a phone whose cipher
+/// was measured at 90 MB/s and whose key derivation costs 1.6 seconds once.
+/// The work was never the problem. The problem was that the finished file
+/// crossed a boundary six times on its way out:
+///
+///     zipped in an isolate, copied back to the main isolate, copied into a
+///     second isolate to be encrypted, copied through a method channel to
+///     javax.crypto, copied back, copied out, and only then written to disk.
+///
+/// Every one of those is the whole backup. So the zip, the encryption and the
+/// write now happen in ONE isolate that is handed the records and given a path,
+/// and nothing comes back at all. Reading does the same in reverse: the isolate
+/// is handed a path and returns the parsed bundle, once.
+///
+/// That is the whole reason this file's functions take paths rather than bytes.
 library;
 
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+import '../db/backup.dart';
 import '../db/tables.dart';
 import '../logic/backup_progress.dart';
+import '../logic/bundle.dart';
 import '../logic/vault.dart';
 import 'bundle_file.dart';
 import 'vault.dart';
 
-/// Everything, sealed if a passphrase is set.
-///
-/// The progress callback belongs to the gathering, which is the slow part on a
-/// collection with photographs in it. Encrypting a sealed backup adds a second
-/// or two on top and gets no bar of its own — a bar that fills and then sits at
-/// the end for a beat reads as a hang, and one that goes back to the beginning
-/// reads as a fault.
-Future<List<int>> exportSealedBackup(
+/* ------------------------------------------------------------------ out */
+
+/// Gathers everything, seals it if there is a passphrase, and writes it to
+/// [path]. Nothing is returned, because nothing needs to come back.
+Future<void> exportSealedBackupToFile(
   StashDatabase db, {
+  required String path,
   BackupWatcher? onStep,
 }) async {
-  /*
-    ── The bar must not finish before the work does ───────────────────────────
+  // The one part that must be on the main isolate: it reads the database.
+  final contents = await gatherBackup(db, onStep: onStep);
 
-    `exportBackup` announces `done` when the zip is written, which was true
-    before there was anything after it. With a passphrase set there is: the
-    progress sheet closed on that announcement and the phone then spent fifteen
-    seconds encrypting, with nothing on screen, before the share sheet arrived.
+  final material = await lockingMaterial();
 
-    So the announcement is caught and held. Everything up to `sealing` passes
-    through untouched; `done` is swallowed, `locking` is said instead, and
-    `done` is said again for real once the file is sealed.
-  */
-  final passphrase = await backupPassphrase();
+  onStep?.call(BackupProgress(
+    material == null ? BackupStage.sealing : BackupStage.locking,
+  ));
 
-  if (passphrase == null) {
-    // Nothing to add, so nothing to intercept.
-    return exportBackup(db, onStep: onStep);
-  }
+  await compute(_writeOut, (
+    tables: contents.tables,
+    blobs: contents.blobs,
+    counts: contents.counts,
+    path: path,
+    salt: material?.salt,
+    key: material?.key,
+    nonce: material == null ? null : freshNonce(),
+    token: RootIsolateToken.instance,
+  ));
 
-  final plain = await exportBackup(
-    db,
-    onStep: onStep == null
-        ? null
-        : (step) {
-            if (step.stage != BackupStage.done) onStep(step);
-          },
-  );
-
-  onStep?.call(const BackupProgress(BackupStage.locking));
-  final sealed = await lockBackup(plain);
-
+  await markBackedUp(db);
   onStep?.call(const BackupProgress(BackupStage.done));
-  return sealed;
 }
+
+/// Zip, encrypt, write. All of it here, on one isolate, with nothing returned.
+Future<void> _writeOut(
+  ({
+    Map<String, Object?> tables,
+    Map<String, List<int>> blobs,
+    (int, int, int) counts,
+    String path,
+    Uint8List? salt,
+    Uint8List? key,
+    Uint8List? nonce,
+    RootIsolateToken? token,
+  }) work,
+) async {
+  final watch = Stopwatch()..start();
+
+  final zipped = writeBundle(
+    tables: work.tables,
+    blobs: work.blobs,
+    manifestOverrides: {
+      'counts': {
+        'items': work.counts.$1,
+        'docs': work.counts.$2,
+        'blobs': work.counts.$3,
+      },
+    },
+  );
+  final zippedAt = watch.elapsedMilliseconds;
+
+  // Unlocked backups skip all of this and are written as they always were.
+  final bytes = work.key == null
+      ? flatBytes(zipped)
+      : (await sealInIsolate((
+          plain: flatBytes(zipped),
+          salt: work.salt!,
+          key: work.key!,
+          nonce: work.nonce!,
+          token: work.token,
+        )))
+          .bytes;
+  final sealedAt = watch.elapsedMilliseconds;
+
+  await File(work.path).writeAsBytes(bytes, flush: true);
+
+  lastVaultTimings = 'wrote ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}'
+      ' MB\n  zip     $zippedAt ms'
+      '\n  seal    ${sealedAt - zippedAt} ms'
+      '\n  to disk ${watch.elapsedMilliseconds - sealedAt} ms'
+      '\n  total   ${watch.elapsedMilliseconds} ms in one isolate';
+}
+
+/* ------------------------------------------------------------------- in */
 
 /// A backup that has been opened, and whether it had to be.
 class OpenedBackup {
-  const OpenedBackup({required this.bytes, required this.wasLocked});
+  const OpenedBackup({required this.bundle, required this.wasLocked});
 
-  final List<int> bytes;
+  final ParsedBundle bundle;
 
   /// True when the file was encrypted — whether or not anybody was asked for
   /// the passphrase.
@@ -86,53 +143,151 @@ class OpenedBackup {
   final bool wasLocked;
 }
 
-/// The bytes of a backup, whatever kind it is, ready for `parseBackupBytes`.
+/// Reads a `.stashit` from [path], opening it if it is locked, and parses it.
 ///
 /// [ask] is called only when the file is sealed AND the passphrase on this
 /// phone does not open it — which is the case that matters: a backup restored
-/// onto a NEW phone, where nothing is stored yet and the person has to have
-/// written it down. Returning null from [ask] means they gave up, and that
+/// onto a NEW phone. Returning null from [ask] means they gave up, and that
 /// comes back as a [VaultProblem] rather than as a half-restore.
 ///
-/// Throws [VaultProblem] with a sentence for a person.
-Future<OpenedBackup> openBackupBytes(
-  List<int> bytes, {
+/// Throws [VaultProblem] or [BundleError], both with a sentence for a person.
+Future<OpenedBackup> openBackupFile(
+  String path, {
   required Future<String?> Function() ask,
 }) async {
-  // Every backup this app made before today, and every one made with the lock
-  // off. Untouched, straight through.
-  if (!looksEncrypted(bytes)) {
-    return OpenedBackup(bytes: bytes, wasLocked: false);
-  }
-
   /*
-    The passphrase on this phone, tried first and silently.
+    ── The first forty-two bytes decide everything ────────────────────────────
 
-    Restoring onto the same phone is the common case — somebody undoing a bad
-    import, or moving back after a mistake — and asking them to type a
-    passphrase the app is already holding would be theatre.
+    Whether the file is locked, and whether this phone's own key opens it, are
+    both answered by the header. Reading the whole file to find that out — and
+    then handing it to an isolate that reads it again — is what the old shape
+    did, and the file is the expensive thing in this feature.
   */
-  final mine = await backupPassphrase();
-  if (mine != null) {
-    try {
-      return OpenedBackup(
-        bytes: await unlockBackup(bytes, mine),
-        wasLocked: true,
-      );
-    } on VaultProblem {
-      // Wrong one. Which is not an error yet: a backup from an older
-      // passphrase, or from another phone, is a thing somebody may well be
-      // restoring on purpose.
+  final head = await _firstBytes(path, vaultHeaderBytes);
+  final locked = looksEncrypted(head);
+
+  Uint8List? key;
+  String passphrase = '';
+
+  if (locked) {
+    final header = readVaultHeader(head);
+    final mine = await lockingMaterial();
+
+    if (mine != null && _sameBytes(mine.salt, header.salt)) {
+      // This phone made it. No derivation, no question.
+      key = mine.key;
+    } else {
+      /*
+        Either it came from another phone, or the passphrase has changed since.
+        Ask, and derive inside the isolate from the salt in the file.
+
+        `backupPassphrase` is tried first even though the salt did not match:
+        somebody may have set the same passphrase again after a reinstall, in
+        which case a fresh salt means a different key but the same words.
+      */
+      passphrase = await backupPassphrase() ?? '';
+
+      if (passphrase.isEmpty) {
+        final typed = await ask();
+        if (typed == null || typed.trim().isEmpty) {
+          throw const VaultProblem(
+            'That backup is locked and was not opened.',
+          );
+        }
+        passphrase = typed;
+      }
     }
   }
 
-  final typed = await ask();
-  if (typed == null || typed.trim().isEmpty) {
-    throw const VaultProblem('That backup is locked and was not opened.');
+  try {
+    return OpenedBackup(
+      bundle: await compute(_readIn, (
+        path: path,
+        key: key,
+        passphrase: passphrase,
+        token: RootIsolateToken.instance,
+      )),
+      wasLocked: locked,
+    );
+  } on VaultProblem {
+    // The stored passphrase was the wrong one after all. One more chance, with
+    // the words rather than the key.
+    if (!locked) rethrow;
+
+    final typed = await ask();
+    if (typed == null || typed.trim().isEmpty) {
+      throw const VaultProblem('That backup is locked and was not opened.');
+    }
+
+    return OpenedBackup(
+      bundle: await compute(_readIn, (
+        path: path,
+        key: null,
+        passphrase: typed,
+        token: RootIsolateToken.instance,
+      )),
+      wasLocked: true,
+    );
+  }
+}
+
+/// Read, decrypt, unzip, hash, parse. All of it here, on one isolate.
+Future<ParsedBundle> _readIn(
+  ({
+    String path,
+    Uint8List? key,
+    String passphrase,
+    RootIsolateToken? token,
+  }) work,
+) async {
+  final watch = Stopwatch()..start();
+
+  final raw = await File(work.path).readAsBytes();
+  final readAt = watch.elapsedMilliseconds;
+
+  final plain = looksEncrypted(raw)
+      ? (await openInIsolate((
+          sealed: raw,
+          passphrase: work.passphrase,
+          key: work.key,
+          token: work.token,
+        )))
+          .bytes
+      : raw;
+  final openedAt = watch.elapsedMilliseconds;
+
+  final bundle = parseBackupBytes(plain);
+
+  lastVaultTimings = 'read ${(raw.length / 1024 / 1024).toStringAsFixed(1)}'
+      ' MB\n  from disk $readAt ms'
+      '\n  unlock    ${openedAt - readAt} ms'
+      '\n  parse     ${watch.elapsedMilliseconds - openedAt} ms'
+      '\n  total     ${watch.elapsedMilliseconds} ms in one isolate';
+
+  return bundle;
+}
+
+/* -------------------------------------------------------------- plumbing */
+
+/// The first [count] bytes of a file, without reading the rest of it.
+Future<Uint8List> _firstBytes(String path, int count) async {
+  final handle = await File(path).open();
+
+  try {
+    return await handle.read(count);
+  } finally {
+    await handle.close();
+  }
+}
+
+/// Whether two byte strings are the same. Only ever used on salts, which are
+/// not secret — a constant-time compare would be theatre here.
+bool _sameBytes(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
   }
 
-  return OpenedBackup(
-    bytes: await unlockBackup(bytes, typed),
-    wasLocked: true,
-  );
+  return true;
 }

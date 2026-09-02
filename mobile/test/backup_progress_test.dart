@@ -76,9 +76,9 @@ void main() {
       ── One enum, two journeys ────────────────────────────────────────────────
 
       A backup climbs reading → packing → sealing → locking. A restore climbs
-      unlocking → unpacking → restoring. They share a table of weights, so the
-      thing that can go wrong is a stage added for one journey landing in the
-      middle of the other — a bar that jumps backwards halfway through.
+      unlocking → restoring. They share a table of weights, so the thing that
+      can go wrong is a stage added for one journey landing in the middle of
+      the other — a bar that jumps backwards halfway through.
     */
     test('a locked backup climbs in order', () {
       final walk = <double>[
@@ -97,7 +97,6 @@ void main() {
     test('a restore climbs in order too', () {
       final walk = <double>[
         const BackupProgress(BackupStage.unlocking).fraction,
-        const BackupProgress(BackupStage.unpacking).fraction,
         const BackupProgress(BackupStage.restoring).fraction,
         const BackupProgress(BackupStage.done).fraction,
       ];

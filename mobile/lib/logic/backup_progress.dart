@@ -46,7 +46,7 @@ enum BackupStage {
     ── And the three the other direction uses ─────────────────────────────────
 
     One enum, two journeys. A backup goes reading → packing → sealing →
-    locking; a restore goes unlocking → unpacking → restoring. Neither ever
+    locking; a restore goes unlocking → restoring. Neither ever
     emits the other's stages, and each subset climbs in order, which is all the
     weights below need to be true.
 
@@ -54,8 +54,12 @@ enum BackupStage {
     decrypting, inflating, hashing and writing, behind a bar that never moved
     because nothing on that path ever reported anything.
   */
+  /*
+    Reading the file, decrypting it, inflating it and hashing it — all one
+    stage, because it is all one isolate. It was three, and splitting it meant
+    copying the whole backup between them, which cost more than the work.
+  */
   unlocking,
-  unpacking,
   restoring,
 
   done,
@@ -105,7 +109,6 @@ class BackupProgress {
     BackupStage.sealing: 0.80,
     BackupStage.locking: 0.92,
     BackupStage.unlocking: 0,
-    BackupStage.unpacking: 0.45,
     BackupStage.restoring: 0.80,
     BackupStage.done: 1,
   };
@@ -115,8 +118,7 @@ class BackupProgress {
     BackupStage.packing: 0.80,
     BackupStage.sealing: 0.92,
     BackupStage.locking: 1,
-    BackupStage.unlocking: 0.45,
-    BackupStage.unpacking: 0.80,
+    BackupStage.unlocking: 0.80,
     BackupStage.restoring: 1,
     BackupStage.done: 1,
   };
@@ -141,8 +143,7 @@ class BackupProgress {
             : 'Packing $done of $total file${total == 1 ? '' : 's'}',
         BackupStage.sealing => 'Sealing it up',
         BackupStage.locking => 'Locking it with your passphrase',
-        BackupStage.unlocking => 'Unlocking it with your passphrase',
-        BackupStage.unpacking => 'Reading the file',
+        BackupStage.unlocking => 'Opening the file',
         BackupStage.restoring => 'Putting it back',
         BackupStage.done => 'Done',
       };

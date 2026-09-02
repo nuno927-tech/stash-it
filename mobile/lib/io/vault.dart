@@ -103,7 +103,7 @@ const String _keyName = 'stash_it_backup_key';
   `FlutterCryptography` overrides `aesGcm` AND `pbkdf2`, which are the two
   things this file does.
 
-  See `_nativeIfPossible`. It is wrapped in a `try` because a background
+  See `nativeIfPossible`. It is wrapped in a `try` because a background
   isolate that cannot reach the platform is a slow backup, not a failed one.
 */
 
@@ -155,7 +155,7 @@ Future<void> _forgetDerived() async {
 ///
 /// Null when there is no passphrase, which is the caller's signal that backups
 /// are not locked at all.
-Future<({Uint8List salt, Uint8List key})?> _lockingKey() async {
+Future<({Uint8List salt, Uint8List key})?> lockingMaterial() async {
   final passphrase = await backupPassphrase();
   if (passphrase == null) return null;
 
@@ -188,7 +188,7 @@ Future<({Uint8List salt, Uint8List key})?> _lockingKey() async {
 Future<Uint8List> _derive(
   ({String passphrase, Uint8List salt, RootIsolateToken? token}) work,
 ) async {
-  _nativeIfPossible(work.token);
+  nativeIfPossible(work.token);
 
   final key = await _keyFrom(work.passphrase, work.salt, vaultIterations);
   return Uint8List.fromList(await key.extractBytes());
@@ -205,10 +205,14 @@ Future<Uint8List> _derive(
   the isolate, the copy back, and the assembling of the result. That is exactly
   the part nobody times, because it does not look like work.
 
-  So it is timed. `lockBackup` and `unlockBackup` leave their phase timings
+  So it is timed. The export and the import isolates leave their phase timings
   here and the developer probe prints them. Nothing else reads it, and it is a
   string rather than numbers because its only consumer is a person reading a
   screen.
+
+  Written from a background isolate, which means the main isolate reads its own
+  copy and sees nothing. That is a known limitation and not worth a port: the
+  probe runs the work itself, so it is the isolate that wrote it.
 */
 String? lastVaultTimings;
 
@@ -221,48 +225,20 @@ String? lastVaultTimings;
 /// are identical, the code reads the same, and one of them takes a minute.
 ///
 /// Everything crossing an isolate boundary in this file goes through here.
-Uint8List _flat(List<int> bytes) =>
+Uint8List flatBytes(List<int> bytes) =>
     bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
 
 /* ------------------------------------------------------------ the locking */
 
-/// Wraps the bytes of a backup so only the passphrase opens them.
+/// Seals bytes, on the isolate that is already running.
 ///
-/// Takes no passphrase: it uses the key this phone already derived — see
-/// `_lockingKey`. The nonce is drawn here, on the main isolate, because
-/// `Random.secure()` is the platform's own source and a nonce reused across two
-/// files under one key is the one mistake GCM does not forgive.
-Future<Uint8List> lockBackup(List<int> plain) async {
-  final material = await _lockingKey();
-  if (material == null) {
-    throw const VaultProblem('No passphrase is set.');
-  }
-
-  final watch = Stopwatch()..start();
-  final flat = _flat(plain);
-  final flattened = watch.elapsedMilliseconds;
-
-  final done = await compute(_lock, (
-    plain: flat,
-    salt: material.salt,
-    key: material.key,
-    nonce: _randomBytes(12),
-    // Taken here. The isolate cannot ask for its own — the token only exists
-    // on the isolate that has the engine.
-    token: RootIsolateToken.instance,
-  ));
-
-  lastVaultTimings = 'lock ${(flat.length / 1024 / 1024).toStringAsFixed(1)} MB'
-      '\n  flatten   $flattened ms'
-      '\n${done.timings}'
-      '\n  round trip ${watch.elapsedMilliseconds} ms total';
-
-  return done.bytes;
-}
-
-/// The isolate's half of [lockBackup]. Top-level, because `compute` cannot send
-/// a closure.
-Future<({Uint8List bytes, String timings})> _lock(
+/// ── No `compute` in here ───────────────────────────────────────────────────
+/// There used to be a wrapper that spawned an isolate for this alone, and it
+/// was the wrong shape: the whole backup was copied in and the whole sealed
+/// file copied back, on top of the copies the zipping already cost. The export
+/// runs in ONE isolate now and calls this inside it — see
+/// `exportSealedBackupToFile`, which explains what those copies were costing.
+Future<({Uint8List bytes, String timings})> sealInIsolate(
   ({
     Uint8List plain,
     Uint8List salt,
@@ -273,7 +249,7 @@ Future<({Uint8List bytes, String timings})> _lock(
 ) async {
   final watch = Stopwatch()..start();
 
-  _nativeIfPossible(work.token);
+  nativeIfPossible(work.token);
   final started = watch.elapsedMilliseconds;
 
   final box = await AesGcm.with256bits().encrypt(
@@ -292,8 +268,8 @@ Future<({Uint8List bytes, String timings})> _lock(
     `_flat` makes sure the source is a typed list before either.
   */
   final header = vaultHeader(salt: work.salt, nonce: work.nonce);
-  final cipher = _flat(box.cipherText);
-  final tag = _flat(box.mac.bytes);
+  final cipher = flatBytes(box.cipherText);
+  final tag = flatBytes(box.mac.bytes);
 
   final body = header.length + cipher.length;
   final out = Uint8List(body + tag.length)
@@ -311,66 +287,15 @@ Future<({Uint8List bytes, String timings})> _lock(
 }
 
 
-/// Opens one, or says why it did not.
+/// Opens sealed bytes, on the isolate that is already running.
 ///
 /// Throws [VaultProblem] with a sentence for a person. A wrong passphrase and a
 /// damaged file land in the same place, because GCM cannot tell them apart —
 /// and being told "wrong passphrase" about a truncated download would send
 /// somebody looking in the wrong place for an hour.
-Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) async {
-  // Read here so a malformed file is refused with a sentence before an isolate
-  // is spawned for it — see `readVaultHeader`, which throws for a person.
-  final header = readVaultHeader(sealed);
-
-  /*
-    ── A file this phone made opens without the slow part ────────────────────
-
-    The commonest restore by a distance is somebody's own backup on their own
-    phone, and the key for that is already derived and kept — see
-    `_lockingKey`. The salt in the header is what says so: same salt, same
-    passphrase, same key.
-
-    Anything else — another phone, an older passphrase — falls through to the
-    210,000 rounds, which is correct and happens once.
-  */
-  final watch = Stopwatch()..start();
-  final mine = await _lockingKey();
-  final gotKey = watch.elapsedMilliseconds;
-
-  final flat = _flat(sealed);
-  final flattened = watch.elapsedMilliseconds;
-
-  final done = await compute(_unlock, (
-    sealed: flat,
-    passphrase: passphrase,
-    key: mine != null && _sameBytes(mine.salt, header.salt) ? mine.key : null,
-    token: RootIsolateToken.instance,
-  ));
-
-  lastVaultTimings =
-      'unlock ${(flat.length / 1024 / 1024).toStringAsFixed(1)} MB'
-      '\n  find key   $gotKey ms'
-      '\n  flatten    ${flattened - gotKey} ms'
-      '\n${done.timings}'
-      '\n  round trip ${watch.elapsedMilliseconds} ms total';
-
-  return done.bytes;
-}
-
-/// Whether two byte strings are the same. Only ever used on salts, which are
-/// not secret — a constant-time compare would be theatre here.
-bool _sameBytes(List<int> a, List<int> b) {
-  if (a.length != b.length) return false;
-
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-
-  return true;
-}
-
-/// The isolate's half of [unlockBackup].
-Future<({Uint8List bytes, String timings})> _unlock(
+///
+/// No `compute` in here, for the same reason as [sealInIsolate].
+Future<({Uint8List bytes, String timings})> openInIsolate(
   ({
     Uint8List sealed,
     String passphrase,
@@ -380,7 +305,7 @@ Future<({Uint8List bytes, String timings})> _unlock(
 ) async {
   final watch = Stopwatch()..start();
 
-  _nativeIfPossible(work.token);
+  nativeIfPossible(work.token);
   final started = watch.elapsedMilliseconds;
 
   final header = readVaultHeader(work.sealed);
@@ -412,7 +337,7 @@ Future<({Uint8List bytes, String timings})> _unlock(
     final decrypted = watch.elapsedMilliseconds;
 
     return (
-      bytes: _flat(plain),
+      bytes: flatBytes(plain),
       timings: '  isolate up $started ms'
           '\n  slice      ${sliced - started} ms'
           '\n  derive     ${gotKey - sliced} ms'
@@ -448,7 +373,7 @@ Future<String> cryptoTimings() => compute(_time, RootIsolateToken.instance);
 Future<String> _time(RootIsolateToken? token) async {
   final out = StringBuffer();
 
-  _nativeIfPossible(token);
+  nativeIfPossible(token);
   out.writeln('Cipher:   ${Cryptography.instance.runtimeType}');
   out.writeln('Channels: ${token == null ? 'no token' : 'asked for'}');
 
@@ -486,6 +411,9 @@ Future<String> _time(RootIsolateToken? token) async {
 
 /// Turns on the platform's own ciphers inside a background isolate.
 ///
+/// Public, because the one isolate that does the whole export has to call it
+/// before anything else.
+///
 /// ── Two steps, and the first is the one people forget ──────────────────────
 /// A spawned isolate has no binary messenger, so every plugin in it is dead
 /// until `BackgroundIsolateBinaryMessenger.ensureInitialized` is handed a token
@@ -498,7 +426,7 @@ Future<String> _time(RootIsolateToken? token) async {
 /// to Dart implementations that are correct and slower, which is a slow backup
 /// rather than a failed one — and worth having on any device where this does
 /// not work for a reason nobody predicted.
-void _nativeIfPossible(RootIsolateToken? token) {
+void nativeIfPossible(RootIsolateToken? token) {
   if (token == null) return;
 
   try {
@@ -527,6 +455,9 @@ Future<SecretKey> _keyFrom(String passphrase, List<int> salt, int rounds) {
     nonce: salt,
   );
 }
+
+/// A nonce for one file. Public because the one export isolate draws its own.
+Uint8List freshNonce() => _randomBytes(12);
 
 /// From the platform's cryptographic source.
 ///
