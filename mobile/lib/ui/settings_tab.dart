@@ -58,7 +58,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.99.5';
+const appVersion = '0.99.6';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -275,7 +275,7 @@ class _SettingsTabState extends State<SettingsTab> {
         to type one — which is the case that matters, a backup being restored
         onto a new phone.
       */
-      final bytes = await openBackupBytes(
+      final opened = await openBackupBytes(
         sealed,
         ask: () async {
           if (!mounted) return null;
@@ -283,13 +283,24 @@ class _SettingsTabState extends State<SettingsTab> {
         },
       );
 
-      final bundle = parseBackupBytes(bytes);
-
       if (!mounted) return;
+
+      /*
+        Unzipping, hashing and writing, all inside the one progress sheet.
+
+        `parseBackupBytes` used to run out here, on the isolate that draws the
+        screen, before the sheet was even shown — inflating and hashing every
+        byte of a backup with a phone that did not respond and nothing on
+        screen to say why. It is `parseBackupBytesAsync` now, and it happens
+        where somebody can see that something is happening.
+      */
       final result = await runWithAcorns<RestoreResult>(
         context,
         title: 'Putting everything back',
-        job: (_) => restoreInto(widget.repo.db, bundle),
+        job: (_) async => restoreInto(
+          widget.repo.db,
+          await parseBackupBytesAsync(opened.bytes),
+        ),
       );
 
       if (!mounted) return;
@@ -301,10 +312,18 @@ class _SettingsTabState extends State<SettingsTab> {
         files: result.blobs,
       );
 
-      // Still said in the card as well, for somebody who dismissed the sheet
-      // before reading it.
+      /*
+        Still said in the card as well, for somebody who dismissed the sheet
+        before reading it — and it names the lock.
+
+        Restoring on the phone that holds the passphrase opens a locked backup
+        without asking, which looks exactly like restoring one that was never
+        locked. Saying which it was is the only way somebody can tell the lock
+        is working.
+      */
       _say('Restored ${result.items} items, ${result.papers} documents, '
-          '${result.subscriptions} subscriptions and ${result.blobs} files.');
+          '${result.subscriptions} subscriptions and ${result.blobs} files'
+          '${opened.wasLocked ? ', from a locked backup.' : '.'}');
     } on VaultProblem catch (e) {
       // A wrong passphrase, or a file that did not survive the trip. Both
       // arrive here already written for a person — see `unlockBackup`.

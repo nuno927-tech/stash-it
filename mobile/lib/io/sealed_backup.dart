@@ -41,6 +41,24 @@ Future<List<int>> exportSealedBackup(
   return lockBackup(plain, passphrase);
 }
 
+/// A backup that has been opened, and whether it had to be.
+class OpenedBackup {
+  const OpenedBackup({required this.bytes, required this.wasLocked});
+
+  final List<int> bytes;
+
+  /// True when the file was encrypted — whether or not anybody was asked for
+  /// the passphrase.
+  ///
+  /// ── Silence is not an answer ─────────────────────────────────────────────
+  /// Restoring on the same phone opens a locked backup without asking, because
+  /// the passphrase is already held. That is the right behaviour and it looks
+  /// exactly like restoring a file that was never locked — so the app says
+  /// which it was afterwards, rather than leaving somebody to wonder whether
+  /// the lock is working at all.
+  final bool wasLocked;
+}
+
 /// The bytes of a backup, whatever kind it is, ready for `parseBackupBytes`.
 ///
 /// [ask] is called only when the file is sealed AND the passphrase on this
@@ -50,13 +68,15 @@ Future<List<int>> exportSealedBackup(
 /// comes back as a [VaultProblem] rather than as a half-restore.
 ///
 /// Throws [VaultProblem] with a sentence for a person.
-Future<List<int>> openBackupBytes(
+Future<OpenedBackup> openBackupBytes(
   List<int> bytes, {
   required Future<String?> Function() ask,
 }) async {
   // Every backup this app made before today, and every one made with the lock
   // off. Untouched, straight through.
-  if (!looksEncrypted(bytes)) return bytes;
+  if (!looksEncrypted(bytes)) {
+    return OpenedBackup(bytes: bytes, wasLocked: false);
+  }
 
   /*
     The passphrase on this phone, tried first and silently.
@@ -68,7 +88,10 @@ Future<List<int>> openBackupBytes(
   final mine = await backupPassphrase();
   if (mine != null) {
     try {
-      return await unlockBackup(bytes, mine);
+      return OpenedBackup(
+        bytes: await unlockBackup(bytes, mine),
+        wasLocked: true,
+      );
     } on VaultProblem {
       // Wrong one. Which is not an error yet: a backup from an older
       // passphrase, or from another phone, is a thing somebody may well be
@@ -81,5 +104,8 @@ Future<List<int>> openBackupBytes(
     throw const VaultProblem('That backup is locked and was not opened.');
   }
 
-  return unlockBackup(bytes, typed);
+  return OpenedBackup(
+    bytes: await unlockBackup(bytes, typed),
+    wasLocked: true,
+  );
 }

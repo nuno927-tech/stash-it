@@ -34,7 +34,9 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../logic/vault.dart';
@@ -63,12 +65,20 @@ const String _passphraseName = 'stash_it_backup_passphrase';
   This is the same lesson arriving twice, and the note is here so it does not
   arrive a third time: **anything in this file is heavy by construction.**
 
-  The cost of the isolate is that `cryptography_flutter`'s native delegate is
-  not there — platform channels do not exist on a spawned isolate — so this
-  runs the package's pure Dart AES rather than javax.crypto. Slower, and it no
-  longer matters: nobody is waiting on a frame for it.
+  Moving it there cost the native cipher, which turned a frozen app into a
+  responsive app that took half a minute — better, and not good. A spawned
+  isolate has no platform channels, so `cryptography_flutter` was not there and
+  everything fell back to the package's Dart AES and Dart PBKDF2.
+
+  So the isolate takes a `RootIsolateToken` and turns the channels on for
+  itself — the mechanism Flutter added for exactly this — and then asks for the
+  native implementations by name. Both halves of the work are accelerated:
+  `FlutterCryptography` overrides `aesGcm` AND `pbkdf2`, which are the two
+  things this file does.
+
+  See `_nativeIfPossible`. It is wrapped in a `try` because a background
+  isolate that cannot reach the platform is a slow backup, not a failed one.
 */
-final Cipher _cipher = AesGcm.with256bits();
 
 /* --------------------------------------------------------- the passphrase */
 
@@ -114,6 +124,9 @@ Future<Uint8List> lockBackup(List<int> plain, String passphrase) => compute(
         passphrase: passphrase,
         salt: _randomBytes(16),
         nonce: _randomBytes(12),
+        // Taken here. The isolate cannot ask for its own — the token only
+        // exists on the isolate that has the engine.
+        token: RootIsolateToken.instance,
       ),
     );
 
@@ -125,11 +138,14 @@ Future<Uint8List> _lock(
     String passphrase,
     Uint8List salt,
     Uint8List nonce,
+    RootIsolateToken? token,
   }) work,
 ) async {
+  _nativeIfPossible(work.token);
+
   final key = await _keyFrom(work.passphrase, work.salt, vaultIterations);
 
-  final box = await _cipher.encrypt(
+  final box = await AesGcm.with256bits().encrypt(
     work.plain,
     secretKey: key,
     nonce: work.nonce,
@@ -155,13 +171,23 @@ Future<Uint8List> unlockBackup(List<int> sealed, String passphrase) {
   // is spawned for it — see `readVaultHeader`, which throws for a person.
   readVaultHeader(sealed);
 
-  return compute(_unlock, (sealed: sealed, passphrase: passphrase));
+  return compute(_unlock, (
+    sealed: sealed,
+    passphrase: passphrase,
+    token: RootIsolateToken.instance,
+  ));
 }
 
 /// The isolate's half of [unlockBackup].
 Future<Uint8List> _unlock(
-  ({List<int> sealed, String passphrase}) work,
+  ({
+    List<int> sealed,
+    String passphrase,
+    RootIsolateToken? token,
+  }) work,
 ) async {
+  _nativeIfPossible(work.token);
+
   final header = readVaultHeader(work.sealed);
 
   final body = work.sealed.sublist(vaultHeaderBytes);
@@ -170,7 +196,7 @@ Future<Uint8List> _unlock(
   final key = await _keyFrom(work.passphrase, header.salt, header.iterations);
 
   try {
-    final plain = await _cipher.decrypt(
+    final plain = await AesGcm.with256bits().decrypt(
       SecretBox(
         body.sublist(0, split),
         nonce: header.nonce,
@@ -191,6 +217,31 @@ Future<Uint8List> _unlock(
 }
 
 /* ----------------------------------------------------------------- plumbing */
+
+/// Turns on the platform's own ciphers inside a background isolate.
+///
+/// ── Two steps, and the first is the one people forget ──────────────────────
+/// A spawned isolate has no binary messenger, so every plugin in it is dead
+/// until `BackgroundIsolateBinaryMessenger.ensureInitialized` is handed a token
+/// from the isolate that does have one. Only then is there a channel for
+/// `cryptography_flutter` to talk over — and even then the package's own
+/// registration ran on the root isolate, so `Cryptography.instance` here is
+/// still the pure Dart one until it is set.
+///
+/// Never throws. A background isolate that cannot reach the platform falls back
+/// to Dart implementations that are correct and slower, which is a slow backup
+/// rather than a failed one — and worth having on any device where this does
+/// not work for a reason nobody predicted.
+void _nativeIfPossible(RootIsolateToken? token) {
+  if (token == null) return;
+
+  try {
+    BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+    Cryptography.instance = FlutterCryptography.defaultInstance;
+  } catch (_) {
+    // Dart it is.
+  }
+}
 
 /// The passphrase, stretched into a 256-bit key.
 ///
