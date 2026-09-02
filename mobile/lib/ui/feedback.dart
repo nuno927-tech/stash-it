@@ -34,6 +34,20 @@ enum Cue {
   nav,
   expand,
   collapse,
+
+  /*
+    ── A list becoming a set of choices ──────────────────────────────────────
+
+    Long-pressing a row turns the whole screen into something else: rows stop
+    opening and start ticking, and a bar appears where the search box was. That
+    is a mode change, and it was answered with `tap` — the same reply an
+    ordinary press gets, for the one gesture whose entire point is that
+    something different happened.
+
+    Fired when selection STARTS, not on every tick. The ticks are ordinary taps
+    and should sound like it; arriving somewhere new is the thing worth saying.
+  */
+  pick,
   save,
   stashed,
   delete,
@@ -72,21 +86,38 @@ class _Voice {
 enum _Wave { sine, triangle, square }
 
 /// The same table as `VOICES` in feedback.ts, note for note.
-const Map<Cue, _Voice> _voices = {
+///
+/// ── A switch, not a map ────────────────────────────────────────────────────
+/// It was a `const Map<Cue, _Voice>` read with `_voices[cue]!`, which meant a
+/// cue added to the enum and forgotten here was a null-check crash at the exact
+/// moment somebody pressed the thing — the worst place to find out and the last
+/// place anybody would look. A test walked `Cue.values` to catch it, which is a
+/// weaker guarantee than the compiler for the same money.
+///
+/// The buzz table next door has always been a switch and has always been
+/// exhaustive. This is the same table it was, with colons for arrows.
+_Voice _voiceFor(Cue cue) => switch (cue) {
   // Ordinary buttons: one short, quiet blip. This fires on nearly every tap,
   // so it has to be the least interesting sound in the set — anything with
   // character becomes irritating by the twentieth press.
-  Cue.tap: _Voice([880], 0.032, _Wave.sine, 0.035),
+  Cue.tap => const _Voice([880], 0.032, _Wave.sine, 0.035),
 
   // Moving between tabs is a bigger gesture, so it gets a lower, rounder note.
   // Pitch carries the distinction better than volume does.
-  Cue.nav: _Voice([392], 0.055, _Wave.sine, 0.05),
+  Cue.nav => const _Voice([392], 0.055, _Wave.sine, 0.05),
 
   // Rising to open, falling to close: the direction is the whole message.
-  Cue.expand: _Voice([523.25, 698.46], 0.045, _Wave.sine, 0.04),
-  Cue.collapse: _Voice([698.46, 523.25], 0.045, _Wave.sine, 0.04),
+  Cue.expand => const _Voice([523.25, 698.46], 0.045, _Wave.sine, 0.04),
+  Cue.collapse => const _Voice([698.46, 523.25], 0.045, _Wave.sine, 0.04),
 
-  Cue.save: _Voice([587.33, 880], 0.075, _Wave.sine, 0.07),
+  /*
+    Two quick ticks, up. Short enough to be a click rather than a phrase — this
+    marks a mode change, and a mode change that announces itself with a tune is
+    a mode change people stop entering.
+  */
+  Cue.pick => const _Voice([784, 1046.5], 0.03, _Wave.sine, 0.045),
+
+  Cue.save => const _Voice([587.33, 880], 0.075, _Wave.sine, 0.07),
 
   /*
     ── Something went into the stash ──────────────────────────────────────────
@@ -109,22 +140,22 @@ const Map<Cue, _Voice> _voices = {
     hear it forty times in an evening, and anything with more character than
     this becomes something to turn off.
   */
-  Cue.stashed: _Voice(
-    [659.25, 987.77, 1318.51],
-    0.05,
-    _Wave.triangle,
-    0.06,
-    holdLast: 3,
-  ),
-  Cue.attach: _Voice([523.25, 784], 0.06, _Wave.triangle, 0.06),
-  Cue.delete: _Voice([392, 261.63], 0.075, _Wave.sine, 0.06),
-  Cue.error: _Voice([233.08, 233.08], 0.11, _Wave.square, 0.04),
+  Cue.stashed => const _Voice(
+      [659.25, 987.77, 1318.51],
+      0.05,
+      _Wave.triangle,
+      0.06,
+      holdLast: 3,
+    ),
+  Cue.attach => const _Voice([523.25, 784], 0.06, _Wave.triangle, 0.06),
+  Cue.delete => const _Voice([392, 261.63], 0.075, _Wave.sine, 0.06),
+  Cue.error => const _Voice([233.08, 233.08], 0.11, _Wave.square, 0.04),
 
   // The app opening. Three rising notes, under a fifth of a second — long
   // enough to be a phrase rather than a beep, short enough that it is finished
   // before the dashboard has settled. Heard at most once per launch, which is
   // the only reason it is allowed to have a shape at all.
-  Cue.launch: _Voice([523.25, 659.25, 880], 0.062, _Wave.sine, 0.05),
+  Cue.launch => const _Voice([523.25, 659.25, 880], 0.062, _Wave.sine, 0.05),
 
   /*
     ── Finding Scout's album ────────────────────────────────────────────────
@@ -141,13 +172,13 @@ const Map<Cue, _Voice> _voices = {
     brass instead of a test tone, and at a third of a second of ring the
     difference is the entire effect.
   */
-  Cue.unlock: _Voice(
-    [392, 523.25, 659.25, 784, 1046.5],
-    0.058,
-    _Wave.triangle,
-    0.075,
-    holdLast: 6,
-  ),
+  Cue.unlock => const _Voice(
+      [392, 523.25, 659.25, 784, 1046.5],
+      0.058,
+      _Wave.triangle,
+      0.075,
+      holdLast: 6,
+    ),
 };
 
 /*
@@ -164,18 +195,57 @@ const Map<Cue, _Voice> _voices = {
   platform offers. So the millisecond table becomes a mapping onto the nearest
   named effect, which loses the exact durations and keeps the thing that
   mattered — that these are ordered, and that a tap is the smallest.
+
+  ── It has to agree with the tones ──────────────────────────────────────────
+
+  It did not. `nav` has a lower, rounder note than `tap` on the argument that
+  moving between tabs is a bigger gesture — and then asked for
+  `selectionClick`, which on Android is CLOCK_TICK and is FAINTER than the
+  `lightImpact` an ordinary tap gets. The sound said "bigger" and the phone
+  said "smaller", on the same press. `attach` had it the same way round.
+
+  So the two scales are written against each other now, lightest first:
+
+      tap, pick, expand, collapse   light
+      nav, attach, save             medium
+      delete, error                 heavy
+
+  with `stashed` and `unlock` spending more than one pulse because they are the
+  two moments worth more than one.
 */
 Future<void> _buzz(Cue cue) async {
   switch (cue) {
-    // 6–9ms in the web table. The lightest thing Android will do.
+    /*
+      The floor.
+
+      `lightImpact` rather than `selectionClick`, even though the latter is
+      lighter: CLOCK_TICK is the effect OEMs most often leave unimplemented,
+      and the app's commonest haptic is the worst one to have silently missing
+      on somebody's phone.
+    */
     case Cue.tap:
+    case Cue.pick:
     case Cue.expand:
     case Cue.collapse:
-    case Cue.launch:
       await HapticFeedback.lightImpact();
+
+    /*
+      ── The launch cue does not buzz ─────────────────────────────────────
+
+      A tone on opening is a greeting; a vibration on opening is the phone
+      reporting for duty. It also cannot be turned off on its own — haptics
+      are one switch — so somebody who wants the app to stop buzzing at them
+      when they unlock their phone has to give up every other tick as well.
+
+      The three rising notes stay. Those are off by default.
+    */
+    case Cue.launch:
+      break;
+
+    // Above an ordinary tap, because the tones are: a tab change and an
+    // attachment are both arrivals somewhere rather than presses.
     case Cue.nav:
     case Cue.attach:
-      await HapticFeedback.selectionClick();
     case Cue.save:
       await HapticFeedback.mediumImpact();
 
@@ -210,13 +280,16 @@ Future<void> _buzz(Cue cue) async {
   }
 }
 
-/// Whether this cue has a tone at all.
+/// How many notes a cue's tone has, for the test that walks `Cue.values`.
 ///
-/// Public only so a test can walk `Cue.values` — `_play` reaches into the map
-/// with a `!`, so a member added to the enum and not to the table is a crash
-/// at the moment somebody presses the thing, which is the worst possible time
-/// to find out and the least likely place to look.
-bool hasVoice(Cue cue) => _voices.containsKey(cue);
+/// The crash this used to guard against cannot happen any more — `_voiceFor`
+/// is an exhaustive switch, so a cue with no tone does not compile. The test
+/// stays because it also asserts the cues are not accidental copies of each
+/// other, which no compiler will notice.
+int noteCount(Cue cue) => _voiceFor(cue).notes.length;
+
+/// The notes of a cue, in hertz. Read by the test, and by nothing else.
+List<double> notesOf(Cue cue) => _voiceFor(cue).notes;
 
 bool _sounds = false;
 bool _haptics = true;
@@ -230,6 +303,50 @@ void configureFeedback({required bool sounds, required bool haptics}) {
 final AudioPlayer _player = AudioPlayer(playerId: 'stash-it-cues');
 final Map<Cue, Uint8List> _rendered = {};
 
+/*
+  ── These are interface sounds, and Android has a word for that ──────────────
+
+  Nothing configured the player, so every blip went out with audioplayers' own
+  defaults: usage `media`, content type `music`, and an audio focus request of
+  `gain` — which is the description of a music app announcing that it is now
+  the only thing the user is listening to.
+
+  Two consequences, both of them things somebody would notice and neither of
+  them anything to do with this app's design:
+
+    A 32-millisecond tick asked for audio focus, so tapping around could duck
+    or stop whatever was playing in the background. Podcast, radio, anything.
+
+    Media-stream audio ignores the ringer, so the cues would play at full
+    volume on a phone set to silent. A UI tick that survives silent mode is the
+    kind of thing that gets an app deleted in a meeting.
+
+  `assistanceSonification` is the platform's own name for exactly this — see
+  AudioAttributes.USAGE_ASSISTANCE_SONIFICATION — and it routes to the system
+  stream, which the ringer governs. `AndroidAudioFocus.none` says out loud what
+  a blip should never have had to say: this does not interrupt anybody.
+
+  Set once, lazily, on the first cue that actually plays. Doing it at startup
+  would run a platform call on every launch for a preference that is off by
+  default.
+*/
+bool _configured = false;
+
+Future<void> _configure() async {
+  if (_configured) return;
+  _configured = true;
+
+  await _player.setAudioContext(
+    const AudioContext(
+      android: AudioContextAndroid(
+        contentType: AndroidContentType.sonification,
+        usageType: AndroidUsageType.assistanceSonification,
+        audioFocus: AndroidAudioFocus.none,
+      ),
+    ),
+  );
+}
+
 /// Fire a cue. Safe to call from anywhere; does nothing when the relevant
 /// preference is off, and never throws.
 void feedback(Cue cue) {
@@ -242,9 +359,48 @@ void feedback(Cue cue) {
 }
 
 Future<void> _play(Cue cue) async {
-  final bytes = _rendered[cue] ??= _wav(_voices[cue]!);
+  await _configure();
+
+  // Rendered once per cue and kept. The arithmetic is cheap but it is not free,
+  // and `tap` is asked for sixty times an evening.
+  final bytes = _rendered[cue] ??= _wav(_voiceFor(cue));
+
+  // Stopped first, so a fast run of taps is a run of ticks rather than a pile.
   await _player.stop();
   await _player.play(BytesSource(bytes), volume: 1);
+}
+
+/// Wraps a callback so that pressing the thing ticks.
+///
+/// ── Why this exists ────────────────────────────────────────────────────────
+/// `feedback(Cue.tap)` was written out by hand at sixty-one call sites. The
+/// controls the app builds itself — the pills, the chips, the segmented rows,
+/// the service tiles — all remembered, because each was written once and by
+/// somebody thinking about it. Everything assembled from a plain `FilledButton`
+/// or `IconButton` did not: the Edit button on every record page, both buttons
+/// on the selection bar, the Undo in the snackbar, every date box.
+///
+/// The pattern that produced that is "silence is the default and noise is the
+/// thing you remember to add". This inverts it at the only place a control can
+/// be described in one word: its callback.
+///
+///     onPressed: cued(onEdit),
+///     onTap: cued(onTap, cue: Cue.expand),
+///
+/// A callback rather than a widget, deliberately. A `Tappable` wrapper would
+/// mean restructuring every call site's tree, and a wrapper that is easy to
+/// forget is the problem again with more indentation.
+///
+/// Null in, null out — so a disabled button stays disabled rather than becoming
+/// an enabled button that does nothing, which is the bug this shape makes
+/// impossible.
+VoidCallback? cued(VoidCallback? onTap, {Cue cue = Cue.tap}) {
+  if (onTap == null) return null;
+
+  return () {
+    feedback(cue);
+    onTap();
+  };
 }
 
 /// Play a cue regardless of the current preference, so Settings can demonstrate

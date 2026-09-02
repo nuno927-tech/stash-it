@@ -755,8 +755,12 @@ class _WizardState extends State<_Wizard> {
                 firstDate: DateTime(1970),
                 // A year ahead, for something ordered and not yet arrived.
                 lastDate: addDays(today, 366),
-                onDateChanged: (picked) =>
-                    setState(() => _draft.purchaseDate = toIsoDate(picked)),
+                onDateChanged: (picked) {
+                  // The sheet pickers tick when a date comes back; this one is
+                  // the same answer to the same question and was silent.
+                  feedback(Cue.tap);
+                  setState(() => _draft.purchaseDate = toIsoDate(picked));
+                },
               ),
             ),
           ),

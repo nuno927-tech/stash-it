@@ -168,7 +168,10 @@ class _ItemsTabState extends State<ItemsTab> {
   Set<String>? _picked;
 
   void _startPicking(String id) {
-    feedback(Cue.tap);
+    // Not `tap`. A long press that turns the whole list into a set of
+    // checkboxes is a mode change, and it was answering with the same tick an
+    // ordinary press gets — see `Cue.pick`.
+    feedback(Cue.pick);
     setState(() => _picked = {id});
   }
 

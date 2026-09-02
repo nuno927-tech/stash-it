@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'status_pill.dart';
+import 'feedback.dart';
 import 'theme.dart';
 
 /// The face at the top: a photograph, a glyph, a logo.
@@ -386,7 +387,11 @@ class ViewFooter extends StatelessWidget {
               children: [
                 Expanded(
                   child: FilledButton(
-                    onPressed: onEdit,
+                    // Ticks, like every other control the app draws. This one
+                    // was silent — the primary action on three screens — for
+                    // the reason `cued` exists: it is a stock button rather
+                    // than one of ours.
+                    onPressed: cued(onEdit),
                     style: FilledButton.styleFrom(
                       backgroundColor: c.gold,
                       foregroundColor: c.onGold,
@@ -417,14 +422,17 @@ class ViewFooter extends StatelessWidget {
                     child: IconButton(
                       tooltip: 'Send to someone',
                       icon: Icon(Icons.ios_share, size: 19, color: c.text),
-                      onPressed: onSend,
+                      onPressed: cued(onSend, cue: Cue.expand),
                     ),
                   ),
                 ],
               ],
             ),
             TextButton(
-              onPressed: onDelete,
+              // Not `Cue.delete` — this opens the "are you sure", and nothing
+              // has been deleted yet. `confirmDelete` sounds that when it is
+              // actually gone.
+              onPressed: cued(onDelete),
               child: Text(
                 deleteLabel,
                 style: TextStyle(

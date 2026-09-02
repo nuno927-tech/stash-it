@@ -1098,7 +1098,9 @@ class PickingBar extends StatelessWidget {
           IconButton(
             tooltip: 'Stop choosing',
             icon: Icon(Icons.close, size: 20, color: c.muted),
-            onPressed: onCancel,
+            // Leaving selection is the other half of entering it, and entering
+            // it is `Cue.pick`. Falling, because this is the way back.
+            onPressed: cued(onCancel, cue: Cue.collapse),
           ),
           Expanded(
             child: Text(
@@ -1114,7 +1116,7 @@ class PickingBar extends StatelessWidget {
             ),
           ),
           FilledButton.icon(
-            onPressed: onSend,
+            onPressed: cued(onSend, cue: Cue.expand),
             icon: const Icon(Icons.ios_share, size: 17),
             label: const Text('Send'),
             style: FilledButton.styleFrom(

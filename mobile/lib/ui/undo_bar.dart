@@ -24,6 +24,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'feedback.dart';
 import 'theme.dart';
 
 /// Shows the bar, replacing any already on screen.
@@ -151,7 +152,10 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
                 ),
                 const SizedBox(width: 4),
                 TextButton(
-                  onPressed: widget.onUndo,
+                  // Putting something back is the app agreeing with you,
+                  // which is what `save` is for. It was silent, on the one
+                  // control in the app that is only ever pressed in a hurry.
+                  onPressed: cued(widget.onUndo, cue: Cue.save),
                   style: TextButton.styleFrom(
                     minimumSize: const Size(0, 36),
                     padding: const EdgeInsets.symmetric(horizontal: 12),

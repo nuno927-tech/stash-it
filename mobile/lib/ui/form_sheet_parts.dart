@@ -500,7 +500,10 @@ class DateBox extends StatelessWidget {
     final c = StashColors.of(context);
 
     return GestureDetector(
-      onTap: onTap,
+      // Rising, because this opens a picker over the form. It was silent, and
+      // the date arriving afterwards ticked — so the question made no sound
+      // and the answer did.
+      onTap: cued(onTap, cue: Cue.expand),
       behavior: HitTestBehavior.opaque,
       child: WhiteField(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
