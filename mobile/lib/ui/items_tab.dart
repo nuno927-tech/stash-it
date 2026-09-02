@@ -28,6 +28,7 @@ import 'bin_screen.dart';
 import 'confirm_delete.dart';
 import 'feedback.dart';
 import 'item_view_sheet.dart';
+import 'layout.dart';
 import 'item_wizard_sheet.dart';
 import 'notify_offer_dialog.dart';
 import 'parts.dart';
@@ -36,6 +37,7 @@ import 'scout.dart';
 import 'share_card_sheet.dart';
 import 'status_pill.dart';
 import 'swipe_to_delete.dart';
+import 'two_pane.dart';
 import 'theme.dart';
 import 'undo_bar.dart';
 import 'thumb.dart';
@@ -130,6 +132,23 @@ class _ItemsTabState extends State<ItemsTab> {
   */
   final Set<String> _shut = {};
   bool _grouped = false;
+
+  /*
+    ── What the right-hand pane is showing ─────────────────────────────────
+
+    Only ever set on a wide screen — see `splitView`. On a phone, tapping a row
+    opens a sheet and this stays null, because there is nowhere to put a second
+    thing and pretending otherwise would be a screen with a selection nobody
+    can see.
+
+    The id rather than the `Item`, deliberately. An `Item` held here is a copy
+    that was true when it was tapped: edit it, and the pane would keep showing
+    the old name until something happened to rebuild it. The id is looked up in
+    the list the stream just delivered, so the pane is as fresh as the row
+    beside it — and a record deleted anywhere simply stops being found, which
+    empties the pane without a single line of bookkeeping.
+  */
+  String? _openId;
 
   /*
     ── Choosing several to send ──────────────────────────────────────────────
@@ -286,7 +305,7 @@ class _ItemsTabState extends State<ItemsTab> {
         shown = _sorted(shown);
 
         // See the note in papers_tab.dart — the shell owns the add button.
-        return SizedBox.expand(
+        final list = SizedBox.expand(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -415,6 +434,39 @@ class _ItemsTabState extends State<ItemsTab> {
               ),
             ],
           ),
+        );
+
+        if (!splitView(context)) return list;
+
+        /*
+          ── The pane, looked up rather than remembered ────────────────────
+
+          `_openId` is an id and this is where it becomes a record — out of the
+          list the stream has just delivered, which means the pane cannot
+          disagree with the row beside it and cannot outlive it either.
+
+          Keyed by id so that choosing a different row builds a new `ItemView`
+          rather than handing the old one a new argument. Its `_item` is a
+          `late` field seeded once; without the key, tapping a second row would
+          leave the first one on screen.
+        */
+        final open = _openId == null
+            ? null
+            : all.where((i) => i.id == _openId).firstOrNull;
+
+        return TwoPane(
+          list: list,
+          detail: open == null
+              ? null
+              : ItemView(
+                  key: ValueKey(open.id),
+                  repo: widget.repo,
+                  item: open,
+                  pane: true,
+                  onGone: () => setState(() => _openId = null),
+                ),
+          emptyLine: 'Pick something on the left to see its cover, its '
+              'receipts and everything else you kept with it.',
         );
       },
     );
@@ -783,6 +835,10 @@ class _ItemsTabState extends State<ItemsTab> {
   Future<void> _open(Item? item) async {
     if (item == null) {
       await showItemWizard(context, repo: widget.repo);
+    } else if (splitView(context)) {
+      // Wide enough to show it beside the list. No sheet, nothing covered.
+      setState(() => _openId = item.id);
+      return;
     } else {
       await showItemView(context, repo: widget.repo, item: item);
     }

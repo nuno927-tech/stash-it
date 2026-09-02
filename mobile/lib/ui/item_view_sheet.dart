@@ -67,24 +67,64 @@ Future<void> showItemView(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
     builder: (context) =>
-        SheetEntrance(child: _ItemViewSheet(repo: repo, item: item)),
+        SheetEntrance(child: ItemView(repo: repo, item: item)),
   );
 }
 
-class _ItemViewSheet extends StatefulWidget {
-  const _ItemViewSheet({required this.repo, required this.item});
+/// One item, as a sheet on a phone and as the right-hand pane on a tablet.
+///
+/// ── Public, and the same widget either way ─────────────────────────────────
+/// It was private, because a sheet is opened by its own `show` function and
+/// nothing else needs to name it. A wide screen needs to name it: the pane
+/// holds this directly rather than opening a sheet over the list.
+///
+/// One widget, two frames. A second version of this screen written for tablets
+/// would be a hundred lines to keep in step, and the tablet's would be the copy
+/// nobody noticed had drifted.
+class ItemView extends StatefulWidget {
+  const ItemView({
+    required this.repo,
+    required this.item,
+    this.pane = false,
+    this.onGone,
+    super.key,
+  });
 
   final Repository repo;
   final Item item;
 
+  /// True when this is the right-hand pane rather than a sheet.
+  ///
+  /// The difference is the frame and nothing else: a sheet is a
+  /// `DraggableScrollableSheet` that can be flung away, and a pane is simply a
+  /// column filling the space it was given.
+  final bool pane;
+
+  /// What to do when the record stops existing — deleted, or edited into
+  /// nothing.
+  ///
+  /// A sheet pops itself. A pane cannot: popping from inside a pane would take
+  /// the whole tab off the navigator, list and all. So the owner is told and
+  /// clears its selection.
+  final VoidCallback? onGone;
+
   @override
-  State<_ItemViewSheet> createState() => _ItemViewSheetState();
+  State<ItemView> createState() => _ItemViewState();
 }
 
-class _ItemViewSheetState extends State<_ItemViewSheet> {
+class _ItemViewState extends State<ItemView> {
   late Item _item = widget.item;
   late Future<List<Doc>> _docs = widget.repo.docsForItem(_item.id);
   Room? _room;
+
+  /// Gone. See `ItemView.onGone` for why a pane cannot just pop.
+  void _close() {
+    if (widget.onGone != null) {
+      widget.onGone!();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
 
   @override
   void initState() {
@@ -109,7 +149,7 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
     final fresh = await widget.repo.item(_item.id);
     if (!mounted) return;
     if (fresh == null) {
-      Navigator.of(context).pop();
+      _close();
       return;
     }
     setState(() {
@@ -124,7 +164,7 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
     final sure = await confirmDelete(context, name: _item.name);
     if (!sure || !mounted) return;
     await widget.repo.softDeleteItem(_item.id);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) _close();
   }
 
   @override
@@ -141,30 +181,40 @@ class _ItemViewSheetState extends State<_ItemViewSheet> {
       _ => StashStatus.settled,
     };
 
+    /*
+      The same contents in both frames.
+
+      A pane gets no `ScrollController` because it is not being dragged by one
+      — the list simply scrolls itself inside the space the pane was given.
+    */
+    Widget contents(ScrollController? scroll) => Column(
+          children: [
+            Expanded(
+              child: ListView(
+                controller: scroll,
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                children: [
+                  _Hero(repo: widget.repo, item: _item, status: status),
+                  _headline(c, status),
+                  if (schedule.isNotEmpty) _cover(c, schedule),
+                  _facts(c),
+                  _files(c),
+                  _manual(c),
+                ],
+              ),
+            ),
+            _footer(),
+          ],
+        );
+
+    if (widget.pane) return contents(null);
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: top,
       minChildSize: 0.4,
       maxChildSize: top,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
-              children: [
-                _Hero(repo: widget.repo, item: _item, status: status),
-                _headline(c, status),
-                if (schedule.isNotEmpty) _cover(c, schedule),
-                _facts(c),
-                _files(c),
-                _manual(c),
-              ],
-            ),
-          ),
-          _footer(),
-        ],
-      ),
+      builder: (context, scroll) => contents(scroll),
     );
   }
 

@@ -19,6 +19,8 @@ import '../logic/subscriptions.dart';
 import '../models/subscription.dart';
 import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
+import 'layout.dart';
+import 'two_pane.dart';
 import '../logic/card.dart';
 import 'feedback.dart';
 import 'parts.dart';
@@ -82,7 +84,23 @@ class _SubsTabState extends State<SubsTab> {
   /// The day picked on the calendar, or null.
   DateTime? _day;
 
+  /*
+    ── What the right-hand pane is showing ─────────────────────────────────
+
+    Only ever set on a wide screen — see `splitView`. On a phone, tapping a row
+    opens a sheet and this stays null, because there is nowhere to put a second
+    thing.
+
+    The record rather than its id, unlike the items tab: that one watches a
+    stream and can look the id up in what just arrived, and this one reads a
+    future. `SubView` keeps its own copy fresh across an edit, and a delete
+    from either side clears this.
+  */
+  Subscription? _open;
+
   Future<void> _delete(Subscription sub) async {
+    // The pane cannot outlive the record it is about.
+    if (_open?.id == sub.id) _open = null;
     await widget.repo.softDeleteSubscription(sub.id);
     unawaited(syncReminders(widget.repo));
 
@@ -106,6 +124,10 @@ class _SubsTabState extends State<SubsTab> {
   Future<void> open(Subscription? sub) async {
     if (sub == null) {
       await showSubWizard(context, repo: widget.repo);
+    } else if (splitView(context)) {
+      // Wide enough to show it beside the list. No sheet, nothing covered.
+      setState(() => _open = sub);
+      return;
     } else {
       await showSubView(context, repo: widget.repo, sub: sub);
     }
@@ -117,7 +139,26 @@ class _SubsTabState extends State<SubsTab> {
   @override
   Widget build(BuildContext context) {
     // See the note in papers_tab.dart — the shell owns the add button now.
-    return _body(context);
+    final list = _body(context);
+    if (!splitView(context)) return list;
+
+    return TwoPane(
+      list: list,
+      detail: _open == null
+          ? null
+          // Keyed by id so choosing a different row builds a new view rather
+          // than handing the old one a new argument — its record is a `late`
+          // field seeded once.
+          : SubView(
+              key: ValueKey(_open!.id),
+              repo: widget.repo,
+              sub: _open!,
+              pane: true,
+              onGone: () => setState(() => _open = null),
+            ),
+      emptyLine: 'Pick something on the left to see what it costs a month, '
+          'a year, and when it next renews.',
+    );
   }
 
   Widget _body(BuildContext context) {

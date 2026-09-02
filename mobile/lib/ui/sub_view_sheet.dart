@@ -41,22 +41,50 @@ Future<void> showSubView(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
     builder: (context) =>
-        SheetEntrance(child: _SubViewSheet(repo: repo, sub: sub)),
+        SheetEntrance(child: SubView(repo: repo, sub: sub)),
   );
 }
 
-class _SubViewSheet extends StatefulWidget {
-  const _SubViewSheet({required this.repo, required this.sub});
+/// One sub, as a sheet on a phone and as the right-hand pane on a
+/// tablet.
+///
+/// Public and frame-agnostic for the same reason as `ItemView` — the longer
+/// note is there. One widget, two frames; a tablet-only copy of a record screen
+/// is a copy that drifts.
+class SubView extends StatefulWidget {
+  const SubView({
+    required this.repo,
+    required this.sub,
+    this.pane = false,
+    this.onGone,
+    super.key,
+  });
 
   final Repository repo;
   final Subscription sub;
 
+  /// True when this is the right-hand pane rather than a sheet.
+  final bool pane;
+
+  /// Told when the record stops existing. A pane cannot pop itself — that
+  /// would take the whole tab off the navigator, list and all.
+  final VoidCallback? onGone;
+
   @override
-  State<_SubViewSheet> createState() => _SubViewSheetState();
+  State<SubView> createState() => _SubViewState();
 }
 
-class _SubViewSheetState extends State<_SubViewSheet> {
+class _SubViewState extends State<SubView> {
   late Subscription _sub = widget.sub;
+
+  /// Gone. See `onGone`.
+  void _close() {
+    if (widget.onGone != null) {
+      widget.onGone!();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
 
   Future<void> _edit() async {
     await showSubForm(context, repo: widget.repo, existing: _sub);
@@ -65,7 +93,7 @@ class _SubViewSheetState extends State<_SubViewSheet> {
     final fresh = await widget.repo.subscription(_sub.id);
     if (!mounted) return;
     if (fresh == null) {
-      Navigator.of(context).pop();
+      _close();
       return;
     }
     setState(() => _sub = fresh);
@@ -75,7 +103,7 @@ class _SubViewSheetState extends State<_SubViewSheet> {
     final sure = await confirmDelete(context, name: _sub.name);
     if (!sure || !mounted) return;
     await widget.repo.softDeleteSubscription(_sub.id);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) _close();
   }
 
   @override
@@ -104,58 +132,67 @@ class _SubViewSheetState extends State<_SubViewSheet> {
       if (_sub.shared == true) ('Shared', 'Yes'),
     ];
 
+    /*
+      The same contents in both frames — a sheet you can fling away, or a pane
+      filling the space it was given. See `ItemView` for the longer note.
+    */
+    Widget contents(ScrollController? scroll) => Column(
+          children: [
+            Expanded(
+              child: ListView(
+                controller: scroll,
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                children: [
+                  // The service's own mark, at size — the fastest way to know
+                  // which of nine similarly-priced things this is.
+                  // Unframed: a logo already sits on a surface without help.
+                  ViewFace.bare(
+                    child: ServiceMark(
+                      serviceId: _sub.serviceId,
+                      name: _sub.name,
+                      size: 72,
+                    ),
+                  ),
+
+                  /*
+                    ── The headline number is money, not days ──────────────────
+
+                    The other two sheets count down to something running out.
+                    This one does not run out — it renews — so a countdown would
+                    be answering a question nobody asked. What somebody opens a
+                    subscription to find is what it costs, so that is the
+                    number, and the next charge date sits in the details with
+                    the rest.
+                  */
+                  _price(c, status),
+
+                  ViewCells(label: 'Details', cells: cells),
+                  if ((_sub.notes ?? '').trim().isNotEmpty)
+                    ViewNote(text: _sub.notes!.trim()),
+                ],
+              ),
+            ),
+            ViewFooter(
+              onEdit: _edit,
+              onDelete: _delete,
+              deleteLabel: 'Delete this subscription',
+              onSend: () => shareCardSheet(
+                context,
+                repo: widget.repo,
+                pick: CardPick(subscriptions: {_sub.id}),
+              ),
+            ),
+          ],
+        );
+
+    if (widget.pane) return contents(null);
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: top,
       minChildSize: 0.4,
       maxChildSize: top,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
-              children: [
-                // The service's own mark, at size — the fastest way to know
-                // which of nine similarly-priced things this is.
-                // Unframed: a logo already sits on a surface without help.
-                ViewFace.bare(
-                  child: ServiceMark(
-                    serviceId: _sub.serviceId,
-                    name: _sub.name,
-                    size: 72,
-                  ),
-                ),
-
-                /*
-                  ── The headline number is money, not days ──────────────────
-
-                  The other two sheets count down to something running out.
-                  This one does not run out — it renews — so a countdown would
-                  be answering a question nobody asked. What somebody opens a
-                  subscription to find is what it costs, so that is the number,
-                  and the next charge date sits in the details with the rest.
-                */
-                _price(c, status),
-
-                ViewCells(label: 'Details', cells: cells),
-                if ((_sub.notes ?? '').trim().isNotEmpty)
-                  ViewNote(text: _sub.notes!.trim()),
-              ],
-            ),
-          ),
-          ViewFooter(
-            onEdit: _edit,
-            onDelete: _delete,
-            deleteLabel: 'Delete this subscription',
-            onSend: () => shareCardSheet(
-              context,
-              repo: widget.repo,
-              pick: CardPick(subscriptions: {_sub.id}),
-            ),
-          ),
-        ],
-      ),
+      builder: (context, scroll) => contents(scroll),
     );
   }
 

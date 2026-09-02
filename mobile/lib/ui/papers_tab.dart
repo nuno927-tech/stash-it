@@ -19,6 +19,8 @@ import '../logic/timeline.dart';
 import '../models/paper.dart';
 import 'notify_offer_dialog.dart';
 import 'confirm_delete.dart';
+import 'layout.dart';
+import 'two_pane.dart';
 import 'feedback.dart';
 import 'paper_wizard_sheet.dart';
 import 'paper_view_sheet.dart';
@@ -127,6 +129,8 @@ class _PapersTabState extends State<PapersTab> {
   }
 
   Future<void> _delete(Paper paper) async {
+    // The pane cannot outlive the record it is about.
+    if (_open?.id == paper.id) _open = null;
     await widget.repo.softDeletePaper(paper.id);
     unawaited(syncReminders(widget.repo));
 
@@ -148,15 +152,33 @@ class _PapersTabState extends State<PapersTab> {
   /// Unlike Items, this tab reads a future rather than a stream — so a save
   /// has to be told about. Worth knowing the difference is deliberate: the
   /// items list is watched because it is the one people leave open.
+  /*
+    ── What the right-hand pane is showing ─────────────────────────────────
+
+    Only ever set on a wide screen — see `splitView`. On a phone, tapping a row
+    opens a sheet and this stays null, because there is nowhere to put a second
+    thing.
+
+    The record rather than its id, unlike the items tab: that one watches a
+    stream and can look the id up in what just arrived, and this one reads a
+    future. `PaperView` keeps its own copy fresh across an edit, and a delete
+    from either side clears this.
+  */
+  Paper? _open;
+
   /// No `BuildContext` parameter: `mounted` describes this State, and a
   /// context handed in from elsewhere is not tied to it. The analyzer says so.
-  /*
-    An existing document opens its product page; there being none is the only
-    case that goes straight to a form, because there is nothing to look at yet.
-  */
+  ///
+  /// An existing document opens its product page; there being none is the only
+  /// case that goes straight to a form, because there is nothing to look at
+  /// yet.
   Future<void> open(Paper? paper) async {
     if (paper == null) {
       await showPaperWizard(context, repo: widget.repo);
+    } else if (splitView(context)) {
+      // Wide enough to show it beside the list. No sheet, nothing covered.
+      setState(() => _open = paper);
+      return;
     } else {
       await showPaperView(context, repo: widget.repo, paper: paper);
     }
@@ -170,7 +192,26 @@ class _PapersTabState extends State<PapersTab> {
     // No button of its own: the shell's "Stash it" pill adds all three kinds,
     // and a per-tab `+` alongside it would be two ways to do one thing that
     // disagree about what "add" means on this screen.
-    return _body(context);
+    final list = _body(context);
+    if (!splitView(context)) return list;
+
+    return TwoPane(
+      list: list,
+      detail: _open == null
+          ? null
+          // Keyed by id so choosing a different row builds a new view rather
+          // than handing the old one a new argument — its record is a `late`
+          // field seeded once.
+          : PaperView(
+              key: ValueKey(_open!.id),
+              repo: widget.repo,
+              paper: _open!,
+              pane: true,
+              onGone: () => setState(() => _open = null),
+            ),
+      emptyLine: 'Pick something on the left to see when it expires and '
+          'when to start renewing it.',
+    );
   }
 
   Widget _body(BuildContext context) {

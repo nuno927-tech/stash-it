@@ -59,22 +59,50 @@ Future<void> showPaperView(
       borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
     ),
     builder: (context) =>
-        SheetEntrance(child: _PaperViewSheet(repo: repo, paper: paper)),
+        SheetEntrance(child: PaperView(repo: repo, paper: paper)),
   );
 }
 
-class _PaperViewSheet extends StatefulWidget {
-  const _PaperViewSheet({required this.repo, required this.paper});
+/// One paper, as a sheet on a phone and as the right-hand pane on a
+/// tablet.
+///
+/// Public and frame-agnostic for the same reason as `ItemView` — the longer
+/// note is there. One widget, two frames; a tablet-only copy of a record screen
+/// is a copy that drifts.
+class PaperView extends StatefulWidget {
+  const PaperView({
+    required this.repo,
+    required this.paper,
+    this.pane = false,
+    this.onGone,
+    super.key,
+  });
 
   final Repository repo;
   final Paper paper;
 
+  /// True when this is the right-hand pane rather than a sheet.
+  final bool pane;
+
+  /// Told when the record stops existing. A pane cannot pop itself — that
+  /// would take the whole tab off the navigator, list and all.
+  final VoidCallback? onGone;
+
   @override
-  State<_PaperViewSheet> createState() => _PaperViewSheetState();
+  State<PaperView> createState() => _PaperViewState();
 }
 
-class _PaperViewSheetState extends State<_PaperViewSheet> {
+class _PaperViewState extends State<PaperView> {
   late Paper _paper = widget.paper;
+
+  /// Gone. See `onGone`.
+  void _close() {
+    if (widget.onGone != null) {
+      widget.onGone!();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
 
   Future<void> _edit() async {
     await showPaperForm(context, repo: widget.repo, existing: _paper);
@@ -85,7 +113,7 @@ class _PaperViewSheetState extends State<_PaperViewSheet> {
     // Deleted from inside the form rather than edited, so there is nothing
     // left for this sheet to be about.
     if (fresh == null) {
-      Navigator.of(context).pop();
+      _close();
       return;
     }
     setState(() => _paper = fresh);
@@ -95,7 +123,7 @@ class _PaperViewSheetState extends State<_PaperViewSheet> {
     final sure = await confirmDelete(context, name: _paper.label);
     if (!sure || !mounted) return;
     await widget.repo.softDeletePaper(_paper.id);
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) _close();
   }
 
   @override
@@ -124,79 +152,88 @@ class _PaperViewSheetState extends State<_PaperViewSheet> {
       if ((_paper.storedAt ?? '').isNotEmpty) ('Kept', _paper.storedAt!),
     ];
 
+    /*
+      The same contents in both frames — a sheet you can fling away, or a pane
+      filling the space it was given. See `ItemView` for the longer note.
+    */
+    Widget contents(ScrollController? scroll) => Column(
+          children: [
+            Expanded(
+              child: ListView(
+                controller: scroll,
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                children: [
+                  /*
+                    The glyph on a tinted panel, where the item sheet puts a
+                    photograph. Documents have no picture and are never going to
+                    — so this is the face, at size, rather than a gap where a
+                    photograph would have been.
+                  */
+                  ViewFace.bare(
+                    child: PaperGlyph(_paper.kind,
+                        color: _tone(c, status), size: 64),
+                  ),
+                  ViewHeadline(
+                    title: _paper.label,
+                    subtitle: kindLabel[_paper.kind],
+                    status: status,
+                    statusWord: _word(state),
+                    // Counted and coloured exactly as the list row was:
+                    // both ask `actionDateOf`, so the figure cannot change
+                    // meaning between the row and the page it opens.
+                    count: action == null ? null : daysUntil(action),
+                    countColour: _tone(c, status),
+                    tight: true,
+                  ),
+                  if (cells.isNotEmpty)
+                    ViewCells(label: 'Details', cells: cells),
+                  if ((_paper.notes ?? '').trim().isNotEmpty)
+                    ViewNote(text: _paper.notes!.trim()),
+
+                  /*
+                    Said on the screen where somebody might expect to attach
+                    one, rather than only in a policy nobody opens. It is a
+                    promise the app keeps by having no field, and the reason is
+                    worth the two lines.
+                  */
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
+                    child: Text(
+                      'No scan is kept. A backup is a plain file the moment '
+                      'you share it, and a scan next to a name travels '
+                      'further than you meant it to.',
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 11.5,
+                        height: 1.5,
+                        color: c.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ViewFooter(
+              onEdit: _edit,
+              onDelete: _delete,
+              deleteLabel: 'Delete this document',
+              onSend: () => shareCardSheet(
+                context,
+                repo: widget.repo,
+                pick: CardPick(papers: {_paper.id}),
+              ),
+            ),
+          ],
+        );
+
+    if (widget.pane) return contents(null);
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: top,
       minChildSize: 0.4,
       maxChildSize: top,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
-              children: [
-                /*
-                  The glyph on a tinted panel, where the item sheet puts a
-                  photograph. Documents have no picture and are never going to
-                  — so this is the face, at size, rather than a gap where a
-                  photograph would have been.
-                */
-                ViewFace.bare(
-                  child: PaperGlyph(_paper.kind,
-                      color: _tone(c, status), size: 64),
-                ),
-                ViewHeadline(
-                  title: _paper.label,
-                  subtitle: kindLabel[_paper.kind],
-                  status: status,
-                  statusWord: _word(state),
-                  // Counted and coloured exactly as the list row was: both ask
-                  // `actionDateOf`, so the figure cannot change meaning between
-                  // the row and the page it opens.
-                  count: action == null ? null : daysUntil(action),
-                  countColour: _tone(c, status),
-                  tight: true,
-                ),
-                if (cells.isNotEmpty) ViewCells(label: 'Details', cells: cells),
-                if ((_paper.notes ?? '').trim().isNotEmpty)
-                  ViewNote(text: _paper.notes!.trim()),
-
-                /*
-                  Said on the screen where somebody might expect to attach one,
-                  rather than only in a policy nobody opens. It is a promise the
-                  app keeps by having no field, and the reason is worth the two
-                  lines.
-                */
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
-                  child: Text(
-                    'No scan is kept. A backup is a plain file the moment you '
-                    'share it, and a scan next to a name travels further than '
-                    'you meant it to.',
-                    style: TextStyle(
-                      fontFamily: fontBody,
-                      fontSize: 11.5,
-                      height: 1.5,
-                      color: c.muted,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ViewFooter(
-            onEdit: _edit,
-            onDelete: _delete,
-            deleteLabel: 'Delete this document',
-            onSend: () => shareCardSheet(
-              context,
-              repo: widget.repo,
-              pick: CardPick(papers: {_paper.id}),
-            ),
-          ),
-        ],
-      ),
+      builder: (context, scroll) => contents(scroll),
     );
   }
 

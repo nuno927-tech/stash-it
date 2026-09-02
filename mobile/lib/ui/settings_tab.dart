@@ -51,7 +51,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.97.2';
+const appVersion = '0.98.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1015,32 +1015,6 @@ class _SettingsTabState extends State<SettingsTab> {
                 prefs.set(haptics: on);
                 if (on) previewCue(Cue.delete, sounds: false, haptics: true);
               },
-            ),
-            _Rule(c),
-
-            /*
-                  ── On by default, and offered anyway ────────────────────
-
-                  Every screen in this app is a column — a list of items, a
-                  form, a settings page. Turned sideways they get shorter and
-                  no wider in any way that helps, and the add sheets, which
-                  open to just under the tab heading, become a keyboard with
-                  two fields above it.
-
-                  So portrait is the right default. It is a switch rather
-                  than a decision baked into the build because a phone in a
-                  car mount or a keyboard case is landscape whether the app
-                  likes it or not, and an app that refuses to turn on a
-                  device that is already sideways is an app somebody cannot
-                  use at all.
-                */
-            _SwitchRow(
-              // No note. "Lock to portrait" is the whole explanation, and a
-              // line under it restating the label in longer words is the
-              // kind of help that makes a settings page feel like a manual.
-              label: 'Lock to portrait',
-              value: prefs.lockPortrait,
-              onChanged: (on) => prefs.set(lockPortrait: on),
             ),
           ],
         ),
@@ -2042,8 +2016,9 @@ class _SegRow<T> extends StatelessWidget {
   ── One line, and no room for a second ──────────────────────────────────────
 
   This briefly took an optional `note` for a subtitle under the label. It was
-  added for one switch — Lock to portrait — and removed again the moment that
-  subtitle turned out to be restating its own label in longer words.
+  added for one switch — a portrait lock, since removed entirely — and taken
+  away again the moment that subtitle turned out to be restating its own label
+  in longer words.
 
   Not kept "in case something needs it later". An unused optional parameter is
   an invitation: the next switch with a slightly weak label gets a sentence
