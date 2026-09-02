@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 1.8.1+120
+version: 1.9.0+121
 
 environment:
   sdk: ^3.5.0
@@ -76,6 +76,22 @@ dependencies:
   # camera corner that only sometimes opens a camera is worse than not
   # offering one.
   image_picker: ^1.1.2
+
+  # ── reading a receipt, on the device ───────────────────────────────────
+  #
+  # The Latin model ships INSIDE the apk, which is about four megabytes of
+  # download and the reason the privacy policy needs no new sentence: the
+  # photograph never leaves the phone and neither does the text read off it.
+  # The alternative fetches the model from Play Services on first use.
+  #
+  # Pinned exactly rather than with a caret, and the reason is the sdk floor:
+  # 0.15.1 needs Dart 3.8 and 0.17.x needs 3.12, while this app is on 3.5.
+  # A caret would resolve to 0.15.0 anyway today and would silently stop the
+  # day somebody raises the sdk — better that the pin is the thing that gets
+  # read, next to the reason.
+  #
+  # Only `io/text_recognition.dart` imports it. See the note there.
+  google_mlkit_text_recognition: 0.15.0
 
   # And handing one back out. The backup goes to the share sheet rather than to
   # Downloads, because the point is that it ends up somewhere that is **not
