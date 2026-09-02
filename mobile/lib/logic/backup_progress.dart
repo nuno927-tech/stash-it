@@ -29,6 +29,35 @@ enum BackupStage {
   /// so it is a stage with a name rather than a number.
   sealing,
 
+  /*
+    ── Encrypting, when there is a passphrase ─────────────────────────────────
+
+    A stage of its own because it is the longest silent stretch in the app and
+    it had no name: the bar reached the end, the sheet closed, and then the
+    phone spent fifteen seconds doing the thing nobody had been told about
+    before the share sheet appeared.
+
+    Skipped entirely when backups are not locked, which is why it sits between
+    sealing and done rather than replacing either.
+  */
+  locking,
+
+  /*
+    ── And the three the other direction uses ─────────────────────────────────
+
+    One enum, two journeys. A backup goes reading → packing → sealing →
+    locking; a restore goes unlocking → unpacking → restoring. Neither ever
+    emits the other's stages, and each subset climbs in order, which is all the
+    weights below need to be true.
+
+    A restore is where this mattered most and had least: thirty seconds of
+    decrypting, inflating, hashing and writing, behind a bar that never moved
+    because nothing on that path ever reported anything.
+  */
+  unlocking,
+  unpacking,
+  restoring,
+
   done,
 }
 
@@ -57,17 +86,38 @@ class BackupProgress {
     reflected here: packing runs 0.04 to 0.94, which is the part that can
     count, so the acorns fill through the work rather than around it.
   */
+  /*
+    ── Room left at the end for the lock ──────────────────────────────────────
+
+    Packing used to run to 0.94 and sealing owned the rest. With a passphrase
+    set that was wrong twice over: the bar filled while the longest part had not
+    started, and a collection with few photographs jumped to seven and a half
+    acorns of eight within a second and then sat there.
+
+    So packing ends at 0.80 and the two stages that cannot count from inside
+    share what is left. On an unlocked backup `locking` never arrives and the
+    bar eases from 0.92 to full, which is a shorter last step rather than a
+    stuck one.
+  */
   static const Map<BackupStage, double> _startsAt = {
     BackupStage.reading: 0,
     BackupStage.packing: 0.04,
-    BackupStage.sealing: 0.94,
+    BackupStage.sealing: 0.80,
+    BackupStage.locking: 0.92,
+    BackupStage.unlocking: 0,
+    BackupStage.unpacking: 0.45,
+    BackupStage.restoring: 0.80,
     BackupStage.done: 1,
   };
 
   static const Map<BackupStage, double> _endsAt = {
     BackupStage.reading: 0.04,
-    BackupStage.packing: 0.94,
-    BackupStage.sealing: 1,
+    BackupStage.packing: 0.80,
+    BackupStage.sealing: 0.92,
+    BackupStage.locking: 1,
+    BackupStage.unlocking: 0.45,
+    BackupStage.unpacking: 0.80,
+    BackupStage.restoring: 1,
     BackupStage.done: 1,
   };
 
@@ -90,6 +140,10 @@ class BackupProgress {
             ? 'Packing'
             : 'Packing $done of $total file${total == 1 ? '' : 's'}',
         BackupStage.sealing => 'Sealing it up',
+        BackupStage.locking => 'Locking it with your passphrase',
+        BackupStage.unlocking => 'Unlocking it with your passphrase',
+        BackupStage.unpacking => 'Reading the file',
+        BackupStage.restoring => 'Putting it back',
         BackupStage.done => 'Done',
       };
 }

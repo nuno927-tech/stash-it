@@ -17,6 +17,7 @@ import '../db/backup.dart';
 import '../db/repository.dart';
 import '../db/restore.dart';
 import '../io/bundle_file.dart';
+import '../logic/backup_progress.dart';
 import '../logic/bin.dart';
 import '../logic/bundle.dart';
 import '../billing/current.dart';
@@ -58,7 +59,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '0.99.6';
+const appVersion = '0.99.7';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -265,42 +266,46 @@ class _SettingsTabState extends State<SettingsTab> {
       if (path == null) return;
 
       final sealed = await File(path).readAsBytes();
+      var wasLocked = false;
 
       /*
-        ── Unlocked first, if it is locked ──────────────────────────────────
+        ── All three steps inside the one sheet ──────────────────────────────
 
-        `openBackupBytes` sniffs the file. A plain zip from any version this
-        app has ever had goes straight through; a sealed one is opened with the
+        Unlocking, then inflating and hashing, then writing. Every one of them
+        used to happen with nothing on screen or behind a bar that never moved:
+        the decryption ran before the sheet opened, and the parse ran on the
+        isolate that draws the screen. Thirty seconds of a phone that looked
+        broken.
+
+        `openBackupBytes` sniffs the file. A plain zip from any version this app
+        has ever had goes straight through; a sealed one is opened with the
         passphrase held on this phone, and only if THAT fails is anybody asked
-        to type one — which is the case that matters, a backup being restored
-        onto a new phone.
-      */
-      final opened = await openBackupBytes(
-        sealed,
-        ask: () async {
-          if (!mounted) return null;
-          return askForPassphrase(context);
-        },
-      );
-
-      if (!mounted) return;
-
-      /*
-        Unzipping, hashing and writing, all inside the one progress sheet.
-
-        `parseBackupBytes` used to run out here, on the isolate that draws the
-        screen, before the sheet was even shown — inflating and hashing every
-        byte of a backup with a phone that did not respond and nothing on
-        screen to say why. It is `parseBackupBytesAsync` now, and it happens
-        where somebody can see that something is happening.
+        to type one — the case that matters, a backup restored onto a new phone.
       */
       final result = await runWithAcorns<RestoreResult>(
         context,
         title: 'Putting everything back',
-        job: (_) async => restoreInto(
-          widget.repo.db,
-          await parseBackupBytesAsync(opened.bytes),
-        ),
+        job: (onStep) async {
+          onStep(const BackupProgress(BackupStage.unlocking));
+
+          final opened = await openBackupBytes(
+            sealed,
+            ask: () async {
+              if (!mounted) return null;
+              return askForPassphrase(context);
+            },
+          );
+          wasLocked = opened.wasLocked;
+
+          onStep(const BackupProgress(BackupStage.unpacking));
+          final bundle = await parseBackupBytesAsync(opened.bytes);
+
+          onStep(const BackupProgress(BackupStage.restoring));
+          final done = await restoreInto(widget.repo.db, bundle);
+
+          onStep(const BackupProgress(BackupStage.done));
+          return done;
+        },
       );
 
       if (!mounted) return;
@@ -323,7 +328,7 @@ class _SettingsTabState extends State<SettingsTab> {
       */
       _say('Restored ${result.items} items, ${result.papers} documents, '
           '${result.subscriptions} subscriptions and ${result.blobs} files'
-          '${opened.wasLocked ? ', from a locked backup.' : '.'}');
+          '${wasLocked ? ', from a locked backup.' : '.'}');
     } on VaultProblem catch (e) {
       // A wrong passphrase, or a file that did not survive the trip. Both
       // arrive here already written for a person — see `unlockBackup`.

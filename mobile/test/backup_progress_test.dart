@@ -43,17 +43,75 @@ void main() {
       expect(full, const BackupProgress(BackupStage.sealing).fraction);
     });
 
-    test('the counted stage owns most of the bar', () {
+    test('the counted stage still owns the largest share', () {
       /*
         The reason this is pinned: packing used to end at 0.82, which left two
         of eight acorns to a stage that cannot report and so never filled them.
-        Whatever the weights become, the part that can be measured has to be
+        Whatever the weights become, the part that can be MEASURED has to be
         the part that moves.
+
+        It owns less than it did, and deliberately. Locking a backup is the
+        longest silent stretch in the app, and the bar reaching the end before
+        it started is the same lie in a different place — so the last fifth is
+        shared between the two stages that cannot count from inside.
       */
-      final packing = const BackupProgress(BackupStage.sealing).fraction -
-          const BackupProgress(BackupStage.packing).fraction;
-      expect(packing, greaterThan(0.8),
-          reason: 'packing spans $packing of the bar');
+      final spans = {
+        'packing': const BackupProgress(BackupStage.sealing).fraction -
+            const BackupProgress(BackupStage.packing).fraction,
+        'sealing': const BackupProgress(BackupStage.locking).fraction -
+            const BackupProgress(BackupStage.sealing).fraction,
+        'locking': 1 - const BackupProgress(BackupStage.locking).fraction,
+      };
+
+      expect(spans['packing'], greaterThan(0.5),
+          reason: 'packing spans ${spans['packing']} of the bar');
+
+      for (final other in ['sealing', 'locking']) {
+        expect(spans['packing'], greaterThan(spans[other]!),
+            reason: '$other owns more of the bar than the counted stage');
+      }
+    });
+
+    /*
+      ── One enum, two journeys ────────────────────────────────────────────────
+
+      A backup climbs reading → packing → sealing → locking. A restore climbs
+      unlocking → unpacking → restoring. They share a table of weights, so the
+      thing that can go wrong is a stage added for one journey landing in the
+      middle of the other — a bar that jumps backwards halfway through.
+    */
+    test('a locked backup climbs in order', () {
+      final walk = <double>[
+        const BackupProgress(BackupStage.reading).fraction,
+        const BackupProgress(BackupStage.packing, done: 5, total: 10).fraction,
+        const BackupProgress(BackupStage.sealing).fraction,
+        const BackupProgress(BackupStage.locking).fraction,
+        const BackupProgress(BackupStage.done).fraction,
+      ];
+
+      for (var i = 1; i < walk.length; i++) {
+        expect(walk[i], greaterThanOrEqualTo(walk[i - 1]), reason: '$walk');
+      }
+    });
+
+    test('a restore climbs in order too', () {
+      final walk = <double>[
+        const BackupProgress(BackupStage.unlocking).fraction,
+        const BackupProgress(BackupStage.unpacking).fraction,
+        const BackupProgress(BackupStage.restoring).fraction,
+        const BackupProgress(BackupStage.done).fraction,
+      ];
+
+      for (var i = 1; i < walk.length; i++) {
+        expect(walk[i], greaterThanOrEqualTo(walk[i - 1]), reason: '$walk');
+      }
+    });
+
+    test('a restore starts at nothing, like everything else', () {
+      // The first thing it does is decrypt, which on a big backup is not
+      // quick — and a bar that begins a third of the way along says the work
+      // started before somebody pressed the button.
+      expect(const BackupProgress(BackupStage.unlocking).fraction, 0);
     });
   });
 

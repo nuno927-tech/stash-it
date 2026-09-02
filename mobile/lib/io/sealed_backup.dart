@@ -33,12 +33,39 @@ Future<List<int>> exportSealedBackup(
   StashDatabase db, {
   BackupWatcher? onStep,
 }) async {
-  final plain = await exportBackup(db, onStep: onStep);
+  /*
+    ── The bar must not finish before the work does ───────────────────────────
 
+    `exportBackup` announces `done` when the zip is written, which was true
+    before there was anything after it. With a passphrase set there is: the
+    progress sheet closed on that announcement and the phone then spent fifteen
+    seconds encrypting, with nothing on screen, before the share sheet arrived.
+
+    So the announcement is caught and held. Everything up to `sealing` passes
+    through untouched; `done` is swallowed, `locking` is said instead, and
+    `done` is said again for real once the file is sealed.
+  */
   final passphrase = await backupPassphrase();
-  if (passphrase == null) return plain;
 
-  return lockBackup(plain, passphrase);
+  if (passphrase == null) {
+    // Nothing to add, so nothing to intercept.
+    return exportBackup(db, onStep: onStep);
+  }
+
+  final plain = await exportBackup(
+    db,
+    onStep: onStep == null
+        ? null
+        : (step) {
+            if (step.stage != BackupStage.done) onStep(step);
+          },
+  );
+
+  onStep?.call(const BackupProgress(BackupStage.locking));
+  final sealed = await lockBackup(plain, passphrase);
+
+  onStep?.call(const BackupProgress(BackupStage.done));
+  return sealed;
 }
 
 /// A backup that has been opened, and whether it had to be.
