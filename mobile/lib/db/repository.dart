@@ -194,8 +194,11 @@ class Repository {
     var count = 0;
     DateTime? oldest;
 
-    void note(int n, DateTime? at) {
-      count += n;
+    // `num?`, for the same reason `cappedCount` names its types: a count read
+    // off a query is nullable and widens to `num` the moment it is used in
+    // arithmetic.
+    void note(num? n, DateTime? at) {
+      count += (n ?? 0).toInt();
       if (at != null && (oldest == null || at.isBefore(oldest!))) oldest = at;
     }
 
@@ -205,7 +208,7 @@ class Repository {
       ..addColumns([itemRows, itemOldest])
       ..where(db.items.deletedAt.isNotNull());
     final gotItems = await items.getSingle();
-    note(gotItems.read(itemRows) ?? 0, gotItems.read(itemOldest));
+    note(gotItems.read(itemRows), gotItems.read(itemOldest));
 
     final paperRows = countAll();
     final paperOldest = db.papers.deletedAt.min();
@@ -213,7 +216,7 @@ class Repository {
       ..addColumns([paperRows, paperOldest])
       ..where(db.papers.deletedAt.isNotNull());
     final gotPapers = await papers.getSingle();
-    note(gotPapers.read(paperRows) ?? 0, gotPapers.read(paperOldest));
+    note(gotPapers.read(paperRows), gotPapers.read(paperOldest));
 
     final subRows = countAll();
     final subOldest = db.subscriptions.deletedAt.min();
@@ -221,7 +224,7 @@ class Repository {
       ..addColumns([subRows, subOldest])
       ..where(db.subscriptions.deletedAt.isNotNull());
     final gotSubs = await subs.getSingle();
-    note(gotSubs.read(subRows) ?? 0, gotSubs.read(subOldest));
+    note(gotSubs.read(subRows), gotSubs.read(subOldest));
 
     return (count, oldest);
   }
@@ -483,9 +486,19 @@ class Repository {
       ..addColumns([papers])
       ..where(db.papers.deletedAt.isNull());
 
-    return ((await a.getSingle()).read(items) ?? 0) +
-        ((await b.getSingle()).read(subs) ?? 0) +
-        ((await c.getSingle()).read(papers) ?? 0);
+    /*
+      Typed on the way out, not added up inline.
+
+      `read` hands back a nullable, and three of those added together resolve
+      as `num` before the null-checks are applied — which does not fit an
+      `int` return and is one of the few places Dart's inference is worth
+      naming rather than working around.
+    */
+    final int itemCount = (await a.getSingle()).read(items) ?? 0;
+    final int subCount = (await b.getSingle()).read(subs) ?? 0;
+    final int paperCount = (await c.getSingle()).read(papers) ?? 0;
+
+    return itemCount + subCount + paperCount;
   }
 
   Future<bool> canSave() async {
