@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.16.0';
+const appVersion = '1.16.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -758,6 +758,11 @@ class _SettingsTabState extends State<SettingsTab> {
   /// How many things are saved, for the free-tier row.
   late Future<int> _count = widget.repo.cappedCount();
 
+  /// The number beside "Rooms". Held, not asked for inside `build` — a future
+  /// created there is a new query every time anything on this page is tapped,
+  /// which is the habit the note above is about.
+  late Future<List<Room>> _rooms = widget.repo.rooms();
+
   /// Where "Back up" from the dashboard lands.
   final GlobalKey _backupKey = GlobalKey();
 
@@ -775,6 +780,7 @@ class _SettingsTabState extends State<SettingsTab> {
       _bin = _readBinLine();
       _size = _readSize();
       _count = widget.repo.cappedCount();
+      _rooms = widget.repo.rooms();
     });
 
     /*
@@ -790,29 +796,13 @@ class _SettingsTabState extends State<SettingsTab> {
 
   /// "3 things · last day", or "Nothing here".
   ///
-  /// Built here rather than in `binSummary` because the three queries are the
-  /// repository's business and the sentence is the logic's — the same split as
-  /// everywhere else, and the reason `binSummary` takes `BinEntry` rather than
-  /// three lists.
+  /// It used to build that sentence by loading every deleted item, document
+  /// and subscription as objects — three full reads out of an encrypted
+  /// database, on the tab everybody notices being slow, to print a number and
+  /// a countdown. `binGlance` asks SQLite for exactly those two facts.
   Future<String> _readBinLine() async {
-    final entries = [
-      for (final i in await widget.repo.deletedItems())
-        BinEntry(
-            id: i.id, kind: BinKind.item, name: i.name, deletedAt: i.deletedAt),
-      for (final p in await widget.repo.deletedPapers())
-        BinEntry(
-            id: p.id,
-            kind: BinKind.paper,
-            name: p.label,
-            deletedAt: p.deletedAt),
-      for (final s in await widget.repo.deletedSubscriptions())
-        BinEntry(
-            id: s.id,
-            kind: BinKind.subscription,
-            name: s.name,
-            deletedAt: s.deletedAt),
-    ];
-    return binSummary(entries);
+    final (count, oldest) = await widget.repo.binGlance();
+    return binLine(count: count, oldest: oldest);
   }
 
   /// The switch, and the OS prompt behind it.
@@ -1556,7 +1546,7 @@ class _SettingsTabState extends State<SettingsTab> {
               label: 'Rooms',
               note: 'Where things live, in your own order.',
               trailing: FutureBuilder<List<Room>>(
-                future: widget.repo.rooms(),
+                future: _rooms,
                 builder: (context, snap) => Text(
                   snap.data == null ? '' : '${snap.data!.length}',
                   style: TextStyle(

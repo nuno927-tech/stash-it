@@ -99,6 +99,41 @@ void main() {
     test('and reads singular for one', () {
       expect(binSummary([binned('Only', 0)], now), '1 thing · 30 days left');
     });
+
+    /*
+      ── The Settings tab's version, from two numbers ────────────────────────
+
+      That page had been loading every deleted record as an object to print
+      this line. It now asks the database for a count and the oldest date, so
+      the same sentence has to come out of the same rules — a second wording
+      of "3 things · last day" would drift the moment either was edited.
+    */
+    test('the short version agrees with the long one', () {
+      final rows = [
+        binned('Newest', 0),
+        binned('Oldest', purgeAfterDays - 1),
+        binned('Middle', 10),
+      ];
+
+      expect(
+        binLine(
+          count: rows.length,
+          oldest: daysAgo(purgeAfterDays - 1),
+          now: now,
+        ),
+        binSummary(rows, now),
+      );
+    });
+
+    test('and says the same thing about an empty bin', () {
+      expect(binLine(count: 0, now: now), 'Nothing here');
+    });
+
+    test('a record with no date gets the full window, not a countdown', () {
+      // A live row in the bin is a caller's bug. It must not read as
+      // something about to be deleted.
+      expect(binLine(count: 1, now: now), '1 thing · 30 days left');
+    });
   });
 
   /*

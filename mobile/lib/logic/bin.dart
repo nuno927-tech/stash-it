@@ -135,17 +135,30 @@ List<BinEntry> sortBin(List<BinEntry> entries) {
 /// Stating the soonest rather than an average — the only deadline that matters
 /// is the next one.
 String binSummary(List<BinEntry> entries, [DateTime? now]) {
-  if (entries.isEmpty) return 'Nothing here';
-
-  final at = now ?? DateTime.now();
-  var soonest = purgeAfterDays;
+  var oldest = entries.isEmpty ? null : entries.first.deletedAt;
   for (final e in entries) {
     final gone = e.deletedAt;
-    // A live record in the bin list is a caller's bug, not a countdown. It gets
-    // the full window rather than being hurried towards deletion.
-    final left = gone == null ? purgeAfterDays : daysLeft(gone, at);
-    if (left < soonest) soonest = left;
+    if (gone != null && (oldest == null || gone.isBefore(oldest))) oldest = gone;
   }
 
-  return '${binCount(entries.length)} · ${daysLeftLabel(soonest).toLowerCase()}';
+  return binLine(count: entries.length, oldest: oldest, now: now);
+}
+
+/// The same sentence from a count and one date.
+///
+/// The Settings tab has only those two — it asks the database for them rather
+/// than loading every deleted record to measure a list. Split out rather than
+/// duplicated so the two callers cannot word it differently.
+String binLine({required int count, DateTime? oldest, DateTime? now}) {
+  if (count == 0) return 'Nothing here';
+
+  // A record in the bin with no deletion date is a caller's bug, not a
+  // countdown. It gets the full window rather than being hurried towards
+  // deletion.
+  final left = oldest == null
+      ? purgeAfterDays
+      : daysLeft(oldest, now ?? DateTime.now());
+
+  return '${binCount(count)} · '
+      '${daysLeftLabel(left < purgeAfterDays ? left : purgeAfterDays).toLowerCase()}';
 }

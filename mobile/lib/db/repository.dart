@@ -181,6 +181,51 @@ class Repository {
     return (await query.getSingle()).read(rows) ?? 0;
   }
 
+  /// What the bin's one line needs, and nothing else.
+  ///
+  /// How many are in there, and when the oldest went — which is the one whose
+  /// thirty days run out first. The Settings tab used to build this by
+  /// loading every deleted item, document and subscription as objects to
+  /// measure a list and take a minimum off it.
+  ///
+  /// The bin SCREEN still loads them, because it lists them. A line that says
+  /// "3 things" does not need to know their names.
+  Future<(int, DateTime?)> binGlance() async {
+    var count = 0;
+    DateTime? oldest;
+
+    void note(int n, DateTime? at) {
+      count += n;
+      if (at != null && (oldest == null || at.isBefore(oldest!))) oldest = at;
+    }
+
+    final itemRows = countAll();
+    final itemOldest = db.items.deletedAt.min();
+    final items = db.selectOnly(db.items)
+      ..addColumns([itemRows, itemOldest])
+      ..where(db.items.deletedAt.isNotNull());
+    final gotItems = await items.getSingle();
+    note(gotItems.read(itemRows) ?? 0, gotItems.read(itemOldest));
+
+    final paperRows = countAll();
+    final paperOldest = db.papers.deletedAt.min();
+    final papers = db.selectOnly(db.papers)
+      ..addColumns([paperRows, paperOldest])
+      ..where(db.papers.deletedAt.isNotNull());
+    final gotPapers = await papers.getSingle();
+    note(gotPapers.read(paperRows) ?? 0, gotPapers.read(paperOldest));
+
+    final subRows = countAll();
+    final subOldest = db.subscriptions.deletedAt.min();
+    final subs = db.selectOnly(db.subscriptions)
+      ..addColumns([subRows, subOldest])
+      ..where(db.subscriptions.deletedAt.isNotNull());
+    final gotSubs = await subs.getSingle();
+    note(gotSubs.read(subRows) ?? 0, gotSubs.read(subOldest));
+
+    return (count, oldest);
+  }
+
   /// The picture to put on each document's row, by document id.
   ///
   /// ── One query for a list, not one per row ─────────────────────────────
@@ -407,10 +452,41 @@ class Repository {
   /// and three tiny selects that obviously do what they say beat one clever
   /// aggregate on a path where being wrong means either refusing a save
   /// somebody paid for, or giving away the tier.
-  Future<int> cappedCount() async =>
-      (await activeItems()).length +
-      (await activeSubscriptions()).length +
-      (await activePapers()).length;
+  /*
+    ── Counted in SQLite, not in Dart ────────────────────────────────────────
+
+    This used to be `(await activeItems()).length` three times over: every
+    item, every subscription and every document read out of an encrypted
+    database and turned into objects, so that three lists could be measured
+    and thrown away.
+
+    It is on the Settings tab, which made the tab slow to open, and it is also
+    the gate every save goes through — so the cost was paid again on the way
+    in. A count is the one thing a database will always do faster than the
+    code asking it.
+  */
+  Future<int> cappedCount() async {
+    final items = countAll();
+    final subs = countAll();
+    final papers = countAll();
+
+    // Three queries, written out rather than folded into a helper: Drift's
+    // table types do not survive being passed around as one, and three plain
+    // reads are easier to check than the generics that would be needed.
+    final a = db.selectOnly(db.items)
+      ..addColumns([items])
+      ..where(db.items.deletedAt.isNull());
+    final b = db.selectOnly(db.subscriptions)
+      ..addColumns([subs])
+      ..where(db.subscriptions.deletedAt.isNull());
+    final c = db.selectOnly(db.papers)
+      ..addColumns([papers])
+      ..where(db.papers.deletedAt.isNull());
+
+    return ((await a.getSingle()).read(items) ?? 0) +
+        ((await b.getSingle()).read(subs) ?? 0) +
+        ((await c.getSingle()).read(papers) ?? 0);
+  }
 
   Future<bool> canSave() async {
     final e = (await settings()).entitlements;

@@ -41,6 +41,61 @@ void main() {
     }
   }
 
+  group('counted rather than loaded', () {
+    /*
+      ── Why these have tests at all ─────────────────────────────────────────
+
+      Both used to be written in Dart: load every row as an object, then take
+      a length or a minimum. They are SQL now, which is why the Settings tab
+      opens, and a count that quietly stops matching the list it counts is the
+      kind of bug nobody notices until somebody is told they are at their
+      limit when they are not.
+    */
+    test('the cap counts all three kinds, and skips the binned', () async {
+      await fillTo(3);
+      await repo.createPaper(Paper(
+        id: '',
+        propertyId: 'default',
+        kind: PaperKind.passport,
+        label: 'Passport',
+        expiresOn: '2029-01-01',
+      ));
+      await repo.createSubscription(Subscription(
+        id: '',
+        propertyId: 'default',
+        name: 'Netflix',
+        amountCents: 1099,
+      ));
+
+      expect(await repo.cappedCount(), 5);
+
+      final first = (await repo.activeItems()).first;
+      await repo.softDeleteItem(first.id);
+
+      expect(await repo.cappedCount(), 4);
+    });
+
+    test('the bin glance is the count and the oldest date', () async {
+      await fillTo(2);
+      final items = await repo.activeItems();
+
+      await repo.softDeleteItem(items.first.id);
+      await repo.softDeleteItem(items.last.id);
+
+      final (count, oldest) = await repo.binGlance();
+
+      expect(count, 2);
+      expect(oldest, isNotNull);
+    });
+
+    test('an empty bin has nothing to be soonest', () async {
+      final (count, oldest) = await repo.binGlance();
+
+      expect(count, 0);
+      expect(oldest, isNull);
+    });
+  });
+
   Future<void> unlockPro() => db
       .update(db.settingsTable)
       .write(const SettingsTableCompanion(proUnlock: Value(true)));
