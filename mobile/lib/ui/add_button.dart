@@ -42,22 +42,17 @@ import 'unlock_sheet.dart';
 enum AddKind { receipt, item, subscription, paper }
 
 /*
-  ── Scanning is first, and it is a way of adding a product ─────────────────
+  ── Scanning is not a fourth kind of record ────────────────────────────────
 
-  It lands on the same wizard the Product row opens, with three of the six
-  questions already answered. First on the list because the menu unfolds
-  upwards from the thumb, so the first entry is the nearest one — and because
-  a receipt is what somebody is holding at the moment they think to open this.
+  It was a row of its own here, which read as a fourth thing you can keep —
+  alongside products, subscriptions and documents — when it is in fact a way
+  of adding the first of those. It lands on the Product wizard with three of
+  the six questions already answered.
 
-  Adding it was the line in `_kinds` this file promised it would be.
+  So it sits BESIDE the Product row instead: same line, its own button, gold.
+  See `_scanButton`. The list is back to the three kinds it describes.
 */
 const List<(AddKind, IconData, String, String)> _kinds = [
-  (
-    AddKind.receipt,
-    Icons.document_scanner_outlined,
-    'Scan a receipt',
-    'Read the date and price off it'
-  ),
   (AddKind.item, Icons.work_outline, 'Product', 'Something you own'),
   (
     AddKind.subscription,
@@ -317,6 +312,20 @@ class _StashItButtonState extends State<StashItButton>
 
     if (slice == 0) return const SizedBox.shrink();
 
+    /*
+      ── Scan it rides with Product, and never wraps ───────────────────────
+
+      The two travel together — one spring, one row — because they are one
+      choice offered two ways rather than two choices that happen to be
+      adjacent.
+
+      The PRODUCT pill is the flexible one. A `Row` hands its spare width to
+      whatever is flexible and squeezes it first, so making Product give way
+      is what guarantees "Scan it" keeps its two words on one line at every
+      text scale. The label and the note inside Product ellipsize instead,
+      which costs "Something you own" its last word on a narrow phone and
+      loses nothing anybody needs.
+    */
     return Opacity(
       // Opacity resolves in a sixth of the time the movement takes, so the row
       // is readable while it is still settling rather than fading in after it.
@@ -327,7 +336,15 @@ class _StashItButtonState extends State<StashItButton>
           scale: 0.86 + 0.14 * eased,
           // From the corner nearest the button, which is where it came from.
           alignment: const Alignment(0.8, 1),
-          child: Material(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (kind == AddKind.item) ...[
+                _scanButton(c),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Material(
             color: c.slate700,
             borderRadius: BorderRadius.circular(Radii.pill),
             elevation: 8,
@@ -361,6 +378,8 @@ class _StashItButtonState extends State<StashItButton>
                       children: [
                         Text(
                           label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: fontBody,
                             fontSize: 13.5,
@@ -371,6 +390,8 @@ class _StashItButtonState extends State<StashItButton>
                         const SizedBox(height: 1),
                         Text(
                           note,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: fontBody,
                             fontSize: 11,
@@ -384,6 +405,56 @@ class _StashItButtonState extends State<StashItButton>
                 ),
               ),
             ),
+          ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Scanning a receipt, beside the Product row it feeds.
+  ///
+  /// ── Gold, and the only gold thing on screen while this is open ───────────
+  /// The Stash it pill goes quiet the moment the menu opens, precisely so the
+  /// choices can be read — which leaves the colour free. Filled rather than
+  /// outlined because this is not a fourth option of equal weight: it is the
+  /// fast way to do the most common one, and it should look like it.
+  ///
+  /// ── Two words, one line, always ──────────────────────────────────────────
+  /// `softWrap` off and no `Flexible` around it. The Product pill beside it is
+  /// the flexible one, so a `Row` short of space squeezes that and leaves this
+  /// at its natural width. "Scan" over "it" on two lines would be a button
+  /// that looks broken on exactly the phones that can least afford it.
+  Widget _scanButton(StashColors c) {
+    return Material(
+      color: c.gold,
+      borderRadius: BorderRadius.circular(Radii.pill),
+      elevation: 8,
+      shadowColor: const Color(0x99000000),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.pill),
+        onTap: () => _pick(AddKind.receipt),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.document_scanner_outlined, size: 18, color: c.onGold),
+              const SizedBox(width: 7),
+              Text(
+                'Scan it',
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: c.onGold,
+                ),
+              ),
+            ],
           ),
         ),
       ),
