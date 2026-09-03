@@ -3,7 +3,7 @@
 /// Translated from the `Paper` half of `src/db/types.ts`.
 ///
 /// ── What is deliberately NOT here ─────────────────────────────────────────
-/// No scan, and no document number.
+/// A scan if you want one, and never a document number.
 ///
 /// The web database is unencrypted by design and backups are plaintext zips
 /// that leave the device the moment they are shared. A receipt for a kettle in

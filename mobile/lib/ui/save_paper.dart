@@ -14,8 +14,10 @@ import 'package:flutter/widgets.dart';
 
 import '../billing/current.dart';
 import '../db/repository.dart';
+import '../logic/attachments.dart';
 import '../logic/notify_offer.dart';
 import '../logic/paper_form.dart';
+import '../models/types.dart';
 import '../notify/sync.dart';
 import 'feedback.dart';
 import 'unlock_sheet.dart';
@@ -47,14 +49,27 @@ Future<PaperOutcome> savePaperDraft(
   required Repository repo,
   required PaperDraft draft,
   required bool isNew,
+
+  /// Scans chosen but not yet written. Staged for the same reason an item's
+  /// are — a new document has no id to point at until it is saved. See
+  /// `PendingDoc`.
+  List<PendingDoc> pending = const [],
 }) async {
   try {
     final paper = toPaper(draft, propertyId: repo.propertyId);
 
-    if (isNew) {
-      await repo.createPaper(paper);
-    } else {
-      await repo.savePaper(paper);
+    final paperId = isNew ? await repo.createPaper(paper) : paper.id;
+    if (!isNew) await repo.savePaper(paper);
+
+    /*
+      Written after the document exists, and only then.
+
+      The bytes go into the blobs table and the row that points at them goes
+      into docs — the same two steps an item's attachments take, against
+      `paperId` instead of `itemId`.
+    */
+    for (final scan in pending) {
+      await _writeScan(repo, scan, paperId);
     }
 
     unawaited(syncReminders(repo));
@@ -93,4 +108,36 @@ Future<PaperOutcome> savePaperDraft(
   } catch (e) {
     return PaperNotSaved('That did not save: $e');
   }
+}
+
+/// One staged scan, written against the document it belongs to.
+///
+/// The twin of `_write` in save_item.dart, and deliberately a twin rather than
+/// a shared function taking a `DocOwner`: the two differ by one named
+/// argument, and a shared version would be a switch on the owner wrapping two
+/// lines that are already clear.
+Future<void> _writeScan(
+  Repository repo,
+  PendingDoc scan,
+  String paperId,
+) async {
+  String? blobId;
+
+  if (scan.bytes != null) {
+    blobId = newId();
+    await repo.putBlob(
+      blobId,
+      scan.bytes!,
+      scan.mime ?? 'application/octet-stream',
+    );
+  }
+
+  await repo.createDoc(Doc.onPaper(
+    id: '',
+    paper: paperId,
+    kind: scan.kind,
+    title: scan.title,
+    blobId: blobId,
+    url: scan.url,
+  ));
 }

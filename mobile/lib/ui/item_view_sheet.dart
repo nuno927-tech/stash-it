@@ -397,7 +397,7 @@ class _ItemViewState extends State<ItemView> {
                   runSpacing: 8,
                   children: [
                     for (final doc in docs)
-                      _FileChip(repo: widget.repo, doc: doc),
+                      FileChip(repo: widget.repo, doc: doc),
                   ],
                 ),
             ],
@@ -643,17 +643,22 @@ class _Hero extends StatelessWidget {
 ///
 /// The copy goes to the cache, which Android reclaims. A decrypted receipt
 /// should not be left in permanent storage because somebody glanced at it.
-class _FileChip extends StatefulWidget {
-  const _FileChip({required this.repo, required this.doc});
+/// One attachment, and tapping it hands the file out.
+///
+/// Public because documents hold scans now and draw them the same way. A
+/// second chip would be a second place for "the file for this one is missing"
+/// to be worded differently.
+class FileChip extends StatefulWidget {
+  const FileChip({required this.repo, required this.doc});
 
   final Repository repo;
   final Doc doc;
 
   @override
-  State<_FileChip> createState() => _FileChipState();
+  State<FileChip> createState() => _FileChipState();
 }
 
-class _FileChipState extends State<_FileChip> {
+class _FileChipState extends State<FileChip> {
   bool _busy = false;
 
   Future<void> _open() async {

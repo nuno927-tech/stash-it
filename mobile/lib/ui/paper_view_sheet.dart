@@ -11,11 +11,16 @@
 /// a face at the top, the name at size, the state and the countdown paired,
 /// then details as cells.
 ///
-/// ── Still no scans and no document numbers ────────────────────────────────
-/// There is no photograph here and no field for one. The database is encrypted
-/// at rest, but a `.stashit` backup is a plain zip the moment it is shared —
-/// and that is the path a passport scan would actually escape by. See the
-/// privacy policy, which says so in as many words.
+/// ── Scans live here now, and the lock is what made that possible ──────────
+/// There was no photograph here and no field for one, because a `.stashit`
+/// backup was a plain zip the moment it was shared — and that is the path a
+/// passport scan would actually have escaped by.
+///
+/// A backup can be sealed with a passphrase now, so the objection has an
+/// answer. The lock is asked for before the first scan is taken and cannot be
+/// removed while any remain: see `allowScan` and `whyKeepTheLock`. Document
+/// numbers are still not a field, and that is unchanged — a number typed into
+/// a box is a number in every backup, and nothing about it needs to be.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,7 +31,9 @@ import '../logic/dates.dart';
 import '../logic/papers.dart';
 import '../logic/timeline.dart';
 import '../models/paper.dart';
+import '../models/types.dart';
 import 'confirm_delete.dart';
+import 'item_view_sheet.dart' show FileChip;
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'paper_form_sheet.dart';
@@ -95,6 +102,10 @@ class PaperView extends StatefulWidget {
 class _PaperViewState extends State<PaperView> {
   late Paper _paper = widget.paper;
 
+  /// Held rather than rebuilt: a `FutureBuilder` handed a fresh future on
+  /// every frame re-runs the query for ever.
+  late Future<List<Doc>> _scans = widget.repo.docsForPaper(_paper.id);
+
   /// Gone. See `onGone`.
   void _close() {
     if (widget.onGone != null) {
@@ -116,7 +127,12 @@ class _PaperViewState extends State<PaperView> {
       _close();
       return;
     }
-    setState(() => _paper = fresh);
+    setState(() {
+      _paper = fresh;
+      // The edit sheet is where scans are added, so coming back from it is
+      // exactly when this list is out of date.
+      _scans = widget.repo.docsForPaper(_paper.id);
+    });
   }
 
   Future<void> _delete() async {
@@ -190,24 +206,48 @@ class _PaperViewState extends State<PaperView> {
                   if ((_paper.notes ?? '').trim().isNotEmpty)
                     ViewNote(text: _paper.notes!.trim()),
 
-                  /*
-                    Said on the screen where somebody might expect to attach
-                    one, rather than only in a policy nobody opens. It is a
-                    promise the app keeps by having no field, and the reason is
-                    worth the two lines.
-                  */
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
-                    child: Text(
-                      'No scan is kept. A backup is a plain file the moment '
-                      'you share it, and a scan next to a name travels '
-                      'further than you meant it to.',
-                      style: TextStyle(
-                        fontFamily: fontBody,
-                        fontSize: 11.5,
-                        height: 1.5,
-                        color: c.muted,
-                      ),
+                    child: FutureBuilder<List<Doc>>(
+                      future: _scans,
+                      builder: (context, snap) {
+                        final scans = snap.data;
+                        if (scans == null) return const SizedBox(height: 40);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const ViewLabel('Scans'),
+                            const SizedBox(height: 8),
+                            if (scans.isEmpty)
+                              Text(
+                                /*
+                                  Says what a scan is FOR rather than that
+                                  there isn't one. A renewal office asks for
+                                  the page, not for the expiry date, and that
+                                  is the reason to keep one.
+                                */
+                                'Nothing scanned. A photo of the page is what '
+                                'a renewal actually asks for.',
+                                style: TextStyle(
+                                  fontFamily: fontBody,
+                                  fontSize: 12.5,
+                                  height: 1.45,
+                                  color: c.muted,
+                                ),
+                              )
+                            else
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final scan in scans)
+                                    FileChip(repo: widget.repo, doc: scan),
+                                ],
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],

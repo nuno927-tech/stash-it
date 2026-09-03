@@ -14,7 +14,7 @@
 ///
 /// So the title carries the claim and the line under it carries at most one
 /// qualification. Anything that survived being cut was either a promise — the
-/// documents step's "no scans, no numbers" — or the one fact that makes the
+/// documents step's "never a document number" — or the one fact that makes the
 /// screen worth stopping on.
 ///
 /// The scheduling is the part with a rule in it. "Remind me later" has to mean
@@ -119,8 +119,9 @@ const List<TourStep> tourSteps = [
   /*
     The privacy sentence is not a footnote here. Anyone being asked to put a
     passport into an app is entitled to know what it will actually hold before
-    they start, and the honest answer — dates, no scans, no numbers — is also
-    the reason to trust the rest of it.
+    they start. The honest answer is dates, a scan if they choose to take one,
+    and never a document number — and the scan is the part that made the app
+    insist on a backup passphrase.
   */
   TourStep(
     'papers',
@@ -129,7 +130,7 @@ const List<TourStep> tourSteps = [
     // The privacy line stays whatever else goes. Anybody being asked to put a
     // passport into an app is entitled to know what it holds before they
     // start, and it is the shortest true sentence about it.
-    "Dates only — no scans, no numbers. I'll say when to start renewing.",
+    "Dates, and a scan if you want one. I'll say when to start renewing.",
   ),
   TourStep(
     'subs',

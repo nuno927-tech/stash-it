@@ -83,11 +83,20 @@ const List<(String, String)> _policy = [
         'name Scout calls you.',
   ),
   (
-    'Documents are dates only',
-    'The app deliberately cannot store a scan or a document number — there is '
-        'no field for either, on purpose. A backup is a plain file the moment '
-        'you share it, and a passport number next to a name is a better '
-        'identity-theft package than the scan would be.',
+    'Scans of documents, and the lock they require',
+    'You can photograph a document — a passport page, an insurance '
+        'certificate — and the app keeps it. Because a scan in an unlocked '
+        'backup would be a plain file anyone who opens that folder can read, '
+        'the app asks you to set a backup passphrase before the first one, '
+        'and will not let you remove it while any scan remains. Delete the '
+        'scans and the choice comes back.',
+  ),
+  (
+    'Document numbers are still not a field',
+    'There is nowhere to type a passport or licence number, on purpose. A '
+        'number next to a name is a better identity-theft package than the '
+        'scan is, it is not needed to remind you of a date, and anything the '
+        'app never holds cannot leak.',
   ),
   (
     'Encryption, and what it does not cover',

@@ -185,19 +185,21 @@ class _PaperFormScreenState extends State<PaperFormScreen> {
           /*
             ── What is not on this form, and stays off it ──────────────────
 
-            No scan, and no document number.
+            Scans yes, document numbers no.
 
-            The database is encrypted now, which changes what is possible and
-            not what is wise: a backup is a plaintext zip the moment it is
-            shared, and a passport number next to a name is a better
-            identity-theft package than the scan would be.
+            A backup can be sealed with a passphrase now, and the app insists
+            on one before the first scan — which is what made scans safe to
+            offer at all. A number is different: it is never needed to remind
+            you of a date, it is a better identity-theft package than the scan
+            is, and anything the app never holds cannot leak.
           */
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Text(
-                'Dates and general details only — no scans, no document '
-                'numbers. A backup is a plain file the moment you share it.',
+                'Dates, details and a scan if you want one — but no document '
+                'numbers. Scans need a backup passphrase, which the app will '
+                'ask for.',
                 style: theme.textTheme.bodySmall,
               ),
             ),

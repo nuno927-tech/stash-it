@@ -188,7 +188,7 @@ class _PaperKindCardState extends State<PaperKindCard> {
           something the app has not got round to.
         */
         Text(
-          "No scans or document numbers, just what's needed so Scout can remind "
+          "No document numbers, just what's needed so Scout can remind "
           'you when the time comes. Because your privacy matters.',
           style: TextStyle(
               fontFamily: fontBody, fontSize: 13, height: 1.45, color: c.muted),
