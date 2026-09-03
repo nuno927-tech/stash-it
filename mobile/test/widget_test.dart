@@ -31,7 +31,8 @@ import 'package:stash_it/models/types.dart';
 import 'package:stash_it/ui/add_button.dart' show StashItButton;
 import 'package:stash_it/ui/parts.dart' show StashPill;
 import 'package:stash_it/ui/prefs_scope.dart';
-import 'package:stash_it/ui/settings_tab.dart' show appVersion;
+import 'package:stash_it/ui/settings_tab.dart' show SettingsTab, appVersion;
+import 'package:stash_it/ui/subs_tab.dart' show SubsTab;
 
 void main() {
   Future<StashDatabase> show(
@@ -634,16 +635,27 @@ void main() {
       find.text('Netflix'),
       200,
       /*
-        Named, because there are three scrollables on this screen now: the
-        list, the calendar's grid and the chart. `scrollUntilVisible` defaults
-        to "the one Scrollable" and threw `Too many elements` on the second.
+        ── Named, and named from inside the tab ────────────────────────────
 
-        `.first` is the outer list — an ancestor is visited before its
-        descendants — and it is the only one that actually scrolls; the
-        calendar's grid is shrink-wrapped with `NeverScrollableScrollPhysics`
-        and still counts as one.
+        There are several scrollables here: the list, the calendar's grid,
+        the chart — and, since the tabs became a `PageView`, the pager itself.
+        `scrollUntilVisible` defaults to "the one Scrollable" and threw `Too
+        many elements` on the second one added.
+
+        `find.byType(Scrollable).first` used to be the list. It is the pager
+        now, which is horizontal, so a vertical drag on it does nothing and
+        the row is never reached — a failure that reads as "No element" and
+        looks nothing like its cause.
+
+        Searching inside the tab excludes the pager by construction: the pager
+        is an ancestor of this screen, not a descendant of it.
       */
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .descendant(
+            of: find.byType(SubsTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.pump();
     expect(find.text('Netflix'), findsOneWidget);
@@ -670,15 +682,20 @@ void main() {
     }
 
     /*
-      There are several scrollables on this screen now, and the outer list is
-      the only one that scrolls. An ancestor is visited before its descendants,
-      so `.first` is it.
+      The tab's own list, not the pager the tabs now sit in — see the longer
+      note in the subscriptions test. Inside the tab, the outer list is the
+      first scrollable, because an ancestor is visited before its descendants.
     */
     Future<void> reach(WidgetTester tester, Finder finder) async {
       await tester.scrollUntilVisible(
         finder,
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: find
+            .descendant(
+              of: find.byType(SettingsTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.pump();
     }
