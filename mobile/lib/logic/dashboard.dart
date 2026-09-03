@@ -69,9 +69,18 @@ Metrics metricsFor(List<Item> items, List<Doc> docs, [DateTime? now]) {
   final live = items.where((i) => i.deletedAt == null).toList();
   final liveDocs = docs.where((d) => d.deletedAt == null).toList();
 
+  /*
+    Attachments on DOCUMENTS are skipped here, and everywhere else that counts
+    an item's paperwork.
+
+    A passport scan is an attachment with no `itemId`, and a set built without
+    this check would carry a null — which then matches no item and quietly
+    inflates nothing, but does put a null in a set of ids. Filtering at the
+    source is cheaper to read than wondering later what a null in there meant.
+  */
   final withProof = {
     for (final d in liveDocs)
-      if (_proof.contains(d.kind)) d.itemId,
+      if (_proof.contains(d.kind) && d.itemId != null) d.itemId!,
   };
 
   var covered = 0, endingSoon = 0, expired = 0, untracked = 0;
@@ -264,7 +273,8 @@ List<Gap> gapsFor(List<Item> items, List<Doc> docs) {
   final live = items.where((i) => i.deletedAt == null).toList();
   final withReceipt = {
     for (final d in docs)
-      if (d.deletedAt == null && d.kind == DocKind.receipt) d.itemId,
+      if (d.deletedAt == null && d.kind == DocKind.receipt && d.itemId != null)
+        d.itemId!,
   };
 
   final counts = {for (final k in GapKind.values) k: 0};

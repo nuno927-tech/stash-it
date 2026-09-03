@@ -85,7 +85,11 @@ Map<String, Object?> warrantyToJson(Warranty w) => _tidy({
 
 Map<String, Object?> docToJson(Doc d) => _tidy({
       'id': d.id,
+      // Whichever of the two is set. `_tidy` drops the null one, so a backup
+      // from before documents could hold scans and one written today are the
+      // same shape for every attachment that hangs off an item.
       'itemId': d.itemId,
+      'paperId': d.paperId,
       'kind': d.kind.name,
       'title': d.title,
       // Both halves of the round trip, or a backup made by this app ships the

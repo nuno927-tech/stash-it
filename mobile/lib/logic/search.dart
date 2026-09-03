@@ -411,8 +411,15 @@ List<SearchHit> searchAll(String query, SearchInput input) {
   final titlesByItem = <String, List<String>>{};
   for (final d in input.docs) {
     final title = d.title;
-    if (d.deletedAt != null || title == null || title.isEmpty) continue;
-    titlesByItem.putIfAbsent(d.itemId, () => []).add(title);
+    final item = d.itemId;
+
+    // An attachment on a document is not one of an item's papers, so its
+    // title is not searchable as one. The document's own fields already carry
+    // what it is called.
+    if (d.deletedAt != null || item == null) continue;
+    if (title == null || title.isEmpty) continue;
+
+    titlesByItem.putIfAbsent(item, () => []).add(title);
   }
 
   final hits = <SearchHit>[];

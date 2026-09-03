@@ -306,6 +306,14 @@ CardMerge planCardMerge(
     ));
   }
 
+  /*
+    Only attachments whose item came across.
+
+    A card can carry documents as well now, and a scan on one of those has no
+    `itemId` to remap — it would be filed against an item that is not in the
+    card. Until a card carries paper attachments too, those are dropped rather
+    than reattached to the wrong thing.
+  */
   final docs = <Doc>[
     for (final doc in card.data.docs)
       if (doc.deletedAt == null && itemId.containsKey(doc.itemId))

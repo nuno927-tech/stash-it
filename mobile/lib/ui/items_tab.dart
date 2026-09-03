@@ -267,7 +267,7 @@ class _ItemsTabState extends State<ItemsTab> {
       _subs = subs;
       _withReceipt = {
         for (final d in docs)
-          if (d.kind == DocKind.receipt) d.itemId,
+          if (d.kind == DocKind.receipt && d.itemId != null) d.itemId!,
       };
       _rooms = rooms;
       _grouped = true;

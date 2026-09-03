@@ -142,10 +142,29 @@ enum DocKind { receipt, manual, warranty, photo, other }
 /// `linkStatus` and `lastCheckedAt` from the web schema are still not here,
 /// and that is a real omission rather than this one repeated: they describe a
 /// periodic check on remote URLs that this app does not perform.
+/// Which record an attachment hangs off.
+///
+/// A sealed pair rather than a string, so a `switch` over an owner has to
+/// handle both and adding a third kind of record fails to compile rather than
+/// silently filing its scans nowhere.
+sealed class DocOwner {
+  const DocOwner(this.id);
+  final String id;
+}
+
+class ItemOwner extends DocOwner {
+  const ItemOwner(super.id);
+}
+
+class PaperOwner extends DocOwner {
+  const PaperOwner(super.id);
+}
+
 class Doc {
   const Doc({
     required this.id,
-    required this.itemId,
+    this.itemId,
+    this.paperId,
     this.kind = DocKind.other,
     this.title,
     this.blobId,
@@ -153,8 +172,61 @@ class Doc {
     this.deletedAt,
   });
 
+  /// An attachment on an item — the ordinary case, and every attachment
+  /// written before documents could hold scans.
+  Doc.onItem({
+    required this.id,
+    required String item,
+    this.kind = DocKind.other,
+    this.title,
+    this.blobId,
+    this.url,
+    this.deletedAt,
+  })  : itemId = item,
+        paperId = null;
+
+  /// An attachment on a document — a passport photographed, an insurance
+  /// certificate scanned.
+  Doc.onPaper({
+    required this.id,
+    required String paper,
+    this.kind = DocKind.other,
+    this.title,
+    this.blobId,
+    this.url,
+    this.deletedAt,
+  })  : itemId = null,
+        paperId = paper;
+
   final String id;
-  final String itemId;
+
+  /*
+    Exactly one of these is set — see the note on the `Docs` table.
+
+    They are left public because the database columns are, and every read path
+    that cares should go through `owner` instead: it is the one place that
+    refuses a row holding both or neither, which is a row nothing else in the
+    app knows how to draw.
+  */
+  final String? itemId;
+  final String? paperId;
+
+  /// What this hangs off, or null when the row is malformed.
+  ///
+  /// Null rather than a throw. A backup written by a future version, or a row
+  /// damaged in transit, must not take a screen down — the lists that draw
+  /// attachments skip an owner they cannot resolve, exactly as they skip a
+  /// blob that has gone missing.
+  DocOwner? get owner {
+    final item = itemId;
+    final paper = paperId;
+
+    if (item != null && paper == null) return ItemOwner(item);
+    if (paper != null && item == null) return PaperOwner(paper);
+
+    return null;
+  }
+
   final DocKind kind;
   final String? title;
 

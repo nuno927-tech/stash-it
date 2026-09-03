@@ -503,7 +503,17 @@ Warranty? readWarranty(Object? v) {
 /// one release; see the note on `Doc`.
 Doc readDoc(Map<String, dynamic> j) => Doc(
       id: stringOf(j['id']) ?? '',
-      itemId: stringOf(j['itemId']) ?? '',
+      /*
+        Neither defaulted to an empty string any more.
+
+        `itemId: ''` used to be the fallback for a malformed row, which made a
+        broken attachment look like one belonging to an item whose id is the
+        empty string — invisible, unreachable, and counted. Null on both means
+        `Doc.owner` returns null and the row is skipped, which is what a row
+        nothing can resolve deserves.
+      */
+      itemId: stringOf(j['itemId']),
+      paperId: stringOf(j['paperId']),
       kind: enumOf(j['kind'], DocKind.values, DocKind.other),
       title: stringOf(j['title']),
       blobId: stringOf(j['blobId']),

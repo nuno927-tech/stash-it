@@ -91,7 +91,26 @@ class Items extends Table {
 @DataClassName('DocRow')
 class Docs extends Table {
   TextColumn get id => text()();
-  TextColumn get itemId => text()();
+
+  /*
+    ── One of these two, never both, never neither ──────────────────────────
+
+    An attachment used to belong to an item and only an item, because only
+    items had any. Documents now hold scans as well — a passport photographed
+    rather than only its expiry date — and the row has to say which kind of
+    record it hangs off.
+
+    Two nullable columns rather than an `ownerKind` and an `ownerId`. A kind
+    and an id are two fields that must agree, which is two chances to disagree
+    and the exact shape this file objects to beside `Doc.isLocal`. Two ids
+    cannot disagree: whichever is set IS the answer, and `Doc.owner` refuses a
+    row where that is not exactly one of them.
+
+    `itemId` became nullable in v8. Everything written before then has it set
+    and `paperId` null, which is what the migration backfills to.
+  */
+  TextColumn get itemId => text().nullable()();
+  TextColumn get paperId => text().nullable()();
 
   /// Stored as the enum's name, not its index.
   ///
@@ -366,7 +385,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -418,6 +437,21 @@ class StashDatabase extends _$StashDatabase {
             // no reminder is pending for them. Whether they see the tour is
             // decided by `onboardedAt`, not by this.
             await m.addColumn(settingsTable, settingsTable.tourRemindAt);
+          }
+          if (from < 8) {
+            /*
+              Scans on documents.
+
+              `paperId` is added and `itemId` is widened to nullable, which
+              SQLite cannot do in place — the table is rebuilt. Every existing
+              row keeps its `itemId` and gets a null `paperId`, which is
+              exactly what it already meant.
+
+              The blobs are untouched. This table holds references, not bytes,
+              so a rebuild here moves kilobytes rather than the collection.
+            */
+            await m.addColumn(docs, docs.paperId);
+            await m.alterTable(TableMigration(docs));
           }
           if (from < 7) {
             /*

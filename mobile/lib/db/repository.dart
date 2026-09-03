@@ -153,6 +153,7 @@ class Repository {
           docToRow(Doc(
             id: id,
             itemId: d.itemId,
+            paperId: d.paperId,
             kind: d.kind,
             title: d.title,
             blobId: d.blobId,
@@ -169,6 +170,37 @@ class Repository {
   /// the two things a claim actually asks for — see `metricsFor` — and a manual
   /// is useful without being evidence. The list is short enough that sorting it
   /// by anything else would just be arbitrary.
+  /// How many scans are attached to documents right now.
+  ///
+  /// Counted rather than fetched — see `whyKeepTheLock`, which only needs to
+  /// know whether there are any and how many to say so in a sentence. Reading
+  /// the rows to length them would decrypt nothing (the bytes are elsewhere)
+  /// but would still be a list built to be discarded.
+  Future<int> paperScanCount() async {
+    final rows = db.docs.id.count();
+    final query = db.selectOnly(db.docs)
+      ..addColumns([rows])
+      ..where(db.docs.paperId.isNotNull() &
+          db.docs.blobId.isNotNull() &
+          db.docs.deletedAt.isNull());
+
+    return (await query.getSingle()).read(rows) ?? 0;
+  }
+
+  /// Every attachment on one document.
+  ///
+  /// The mirror of `docsForItem`, and separate rather than one method taking
+  /// a `DocOwner`: the two are different queries on different columns, and a
+  /// single method would have to switch on the owner to build each of them
+  /// anyway. Two short queries beat one that pretends to be general.
+  Future<List<Doc>> docsForPaper(String paperId) async {
+    final rows = await (db.select(db.docs)
+          ..where((t) => t.paperId.equals(paperId) & t.deletedAt.isNull()))
+        .get();
+
+    return rows.map(docOf).toList();
+  }
+
   Future<List<Doc>> docsForItem(String itemId) async {
     final rows = await (db.select(db.docs)
           ..where((t) => t.itemId.equals(itemId) & t.deletedAt.isNull()))

@@ -55,6 +55,7 @@ Item itemOf(ItemRow r) => Item(
 Doc docOf(DocRow r) => Doc(
       id: r.id,
       itemId: r.itemId,
+      paperId: r.paperId,
       kind: enumOf(r.kind, DocKind.values, DocKind.other),
       title: r.title,
       blobId: r.blobId,
@@ -176,7 +177,8 @@ ItemsCompanion itemToRow(Item i, {DateTime? now}) => ItemsCompanion.insert(
 
 DocsCompanion docToRow(Doc d) => DocsCompanion.insert(
       id: d.id,
-      itemId: d.itemId,
+      itemId: Value(d.itemId),
+      paperId: Value(d.paperId),
       kind: Value(d.kind.name),
       title: Value(d.title),
       blobId: Value(d.blobId),

@@ -405,6 +405,31 @@ Uint8List chunkAad(int index, {required bool last}) {
   return out;
 }
 
+/// Why the lock cannot be turned off, or null when it can.
+///
+/// ── The one setting this app refuses to let somebody make worse ───────────
+/// Everything else here is a preference. This is not: a document scan is a
+/// photograph of a passport, a licence, an insurance certificate — the exact
+/// pages somebody impersonates you with — and an unlocked backup is a plain
+/// zip sitting in a cloud folder.
+///
+/// Before scans existed, an unlocked backup risked a list of appliances and
+/// what they cost. That is a real loss and a survivable one. This is not the
+/// same bet, and offering the same switch for both would be the app pretending
+/// it is.
+///
+/// So the lock goes on when the first scan is taken and stays on while any
+/// remain. Deleting the scans turns it back into a choice, which is the honest
+/// way out: the setting follows what the phone is actually carrying.
+///
+/// Pure, and takes a count rather than a database, so the rule is one line to
+/// read and one line to test.
+String? whyKeepTheLock(int scansHeld) => scansHeld == 0
+    ? null
+    : 'Your backups hold '
+        '${scansHeld == 1 ? 'a scanned document' : '$scansHeld scanned documents'}. '
+        'Delete the scans first if you want backups unlocked.';
+
 /// Whether a passphrase is good enough to be worth setting.
 ///
 /// ── One rule, and it is length ─────────────────────────────────────────────

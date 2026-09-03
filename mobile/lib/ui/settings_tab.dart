@@ -62,7 +62,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.12.0';
+const appVersion = '1.13.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -567,6 +567,23 @@ class _SettingsTabState extends State<SettingsTab> {
 
   /// Turns it off.
   Future<void> _clearPassphrase() async {
+    /*
+      Refused while a document scan exists — see `whyKeepTheLock`.
+
+      Checked here rather than by hiding the row, because a control that
+      vanishes teaches nothing. This one stays, is pressed, and answers with
+      the reason and the way out.
+    */
+    final keep = whyKeepTheLock(await widget.repo.paperScanCount());
+    if (keep != null) {
+      if (!mounted) return;
+      feedback(Cue.error);
+      _say(keep);
+      return;
+    }
+
+    if (!mounted) return;
+
     final sure = await confirmUnlockBackups(context);
     if (!sure || !mounted) return;
 
