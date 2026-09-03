@@ -60,30 +60,66 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   Tab _tab = Tab.home;
 
   /*
-    ── Which way the next tab comes from ───────────────────────────────────
+    ── The pages, and the one place that moves them ────────────────────────
 
-    Tabs used to cut: the old one vanished and the new one was simply there,
-    so a swipe and a tap on the bar looked identical and neither said which
-    direction you had moved. A slide is not decoration here — it is the only
-    thing that tells you the app has five screens in a row rather than five
-    unrelated places.
+    A `PageController` rather than a "which way did we come from" flag. The
+    swipe now drags the pages directly, so there is no transition to give a
+    direction to: the direction is wherever the finger went.
 
-    Derived from the enum's order, which is also the order the swipe walks and
-    the order the bar draws. `Tab` is the single list — see the note at the
-    top of this file — so "later in the enum" and "to the right" are the same
-    statement.
+    The bar still needs to move them, and a notification tap still needs to
+    land on a tab, so both go through `_goTo`, which animates. Everything that
+    changes `_tab` afterwards comes back through `_arrived`.
   */
-  bool _forward = true;
+  final PageController _pages = PageController(initialPage: 0);
 
-  /// The one door for changing tabs, so nothing can move without saying which
-  /// way. Every `setState(() => _tab = ...)` used to be its own.
+  /// The one door for changing tabs from code — the bar, a dashboard figure,
+  /// a notification. A finger goes through `_arrived` instead.
   void _goTo(Tab to, {ItemFilter? filter}) {
     if (to == _tab && filter == _itemsFilter) return;
+
     setState(() {
-      _forward = to.index > _tab.index;
       _tab = to;
       _itemsFilter = filter;
     });
+
+    /*
+      Animated, not jumped.
+
+      A tap on the bar and a swipe should arrive at the same place looking the
+      same way — and `hasClients` because a notification can name a tab before
+      this has ever been laid out.
+    */
+    if (_pages.hasClients) {
+      _pages.animateToPage(
+        to.index,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  /// Where the swipe left us. Also fires at the end of `animateToPage`, which
+  /// is why it has to be safe to arrive somewhere it already is.
+  void _arrived(int i) {
+    final to = Tab.values[i];
+    if (to == _tab) return;
+
+    // A lower, rounder note than an ordinary tap: moving between tabs is a
+    // bigger gesture, and pitch carries that better than volume does.
+    feedback(Cue.nav);
+
+    setState(() {
+      _tab = to;
+
+      // Cleared by every arrival that did not ask for it, which is what makes
+      // swiping into Items give the plain list rather than whatever a
+      // dashboard figure last asked for.
+      _itemsFilter = null;
+    });
+
+    // Cheap, and it is what makes the badge appear the moment somebody comes
+    // back from buying. Leaving Settings is the only route to seeing it.
+    _readPro();
   }
 
   /*
@@ -388,6 +424,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _pages.dispose();
     _tourAt?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     pendingLink.removeListener(_handleLink);
@@ -495,158 +532,38 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     return Scaffold(
       body: SafeArea(
         /*
-          ── The swipe, which `logic/swipe.dart` has always known how to do ───
+          ── The pages move with the finger ────────────────────────────────
 
-          `nextTab` and the direction rules were ported in phase 1, tested, and
-          then never called — the sixth green-test-no-caller in this port. The
-          gesture is what makes a five-tab app feel like a phone app rather
-          than a website with a tab bar.
+          This was an `onHorizontalDragEnd` and an `AnimatedSwitcher`: nothing
+          happened until you let go, and then the next screen slid in on its
+          own schedule. The note that used to sit here called a live preview
+          "a much bigger piece of work for something people do without
+          looking", and it had that backwards — a swipe that ignores the drag
+          and only reacts to the release is the thing people notice.
 
-          `onHorizontalDragEnd` rather than tracking the drag: the velocity is
-          the whole signal, and a partial drag with a live preview is a much
-          bigger piece of work for something people do without looking.
+          A `PageView` is the live preview, and it is less code than the
+          animation it replaces. `Tab` is still the single list: the enum's
+          order is the page order, the bar's order, and the order the swipe
+          walks.
         */
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragEnd: (details) {
-            final vx = details.primaryVelocity ?? 0;
+        child: PageView.builder(
+          controller: _pages,
+          onPageChanged: _arrived,
+          itemCount: Tab.values.length,
+          /*
+            The neighbours are built while nothing is happening.
 
-            // Below this it was a scroll that wandered, not a swipe. The web
-            // version fought the browser for the same reason `touch-action:
-            // pan-y` is set there.
-            if (vx.abs() < 220) return;
+            Without this the page you are dragging towards is built at the
+            moment it becomes visible — which is during the drag, on the frame
+            budget the drag is using. Settings reading its figures halfway
+            through a swipe is exactly the hitch this change is meant to
+            remove.
 
-            final to = nextTab(_tab, vx < 0 ? Direction.left : Direction.right);
-            if (to == null) return;
-            _select(to);
-          },
-          child: Column(
-            children: [
-              // The heading belongs to the shell, not to each screen: it has to
-              // be in the same place, at the same size, after every swipe, and
-              // five screens each drawing their own is five chances for one to
-              // drift. Home takes the wordmark — see `Wordmark`.
-              if (_tab == Tab.home)
-                Padding(
-                  // The same 2 and 4 as `TabTitle`, so the wordmark and every
-                  // screen's name sit on exactly the same line. They are the
-                  // same object doing the same job, and a four-pixel drift
-                  // between tabs is visible the moment you swipe.
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      // Baseline would be the instinct and is wrong here: the
-                      // badge has no baseline worth aligning to, only a box.
-                      // Centring the box against the wordmark's line is what
-                      // makes it sit level rather than hang.
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Wordmark(),
-                        if (_pro) ...[
-                          const SizedBox(width: 9),
-                          const ProBadge(),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-              else
-                TabTitle(
-                  switch (_tab) {
-                    Tab.items => 'Items',
-                    Tab.subs => 'Subscriptions',
-                    Tab.papers => 'Documents',
-                    Tab.settings => 'Settings',
-                    Tab.home => '',
-                  },
-                  /*
-                    None. Every screen stands Scout beside its own content, at a
-                    size worth looking at — Settings included, now.
-
-                    He was in this heading for Settings alone, and a pose here
-                    forces the row to align on its bottom edge, which pushed
-                    that one title a few pixels off the line every other tab
-                    sits on. A heading that moves between tabs is the one thing
-                    this widget exists to prevent.
-                  */
-                  pose: null,
-                  /*
-                    ── The album moved off this title ──────────────────────────
-
-                    Ten taps on the word "Settings" used to open Scout's album.
-                    It was well hidden and badly signposted: a heading is the
-                    one thing on a screen nobody suspects of doing anything, so
-                    in practice the only people who found it were told.
-
-                    It lives on Scout himself now, over in the Settings tab —
-                    see `_pokeScout`. Poking the animal is a thing people
-                    already do.
-                  */
-                ),
-
-              Expanded(
-                child: AnimatedSwitcher(
-                  // Long enough to read as travel, short enough that somebody
-                  // stepping through all five tabs is not waiting on it.
-                  duration: const Duration(milliseconds: 240),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-
-                  /*
-                    Both children are on screen together during the swap, one
-                    arriving and one leaving. The default layout stacks them
-                    centred and sizes to the largest, which makes a tall list
-                    shove a short one about mid-transition; this pins both to
-                    fill instead, so neither moves except along x.
-                  */
-                  layoutBuilder: (current, previous) => Stack(
-                    children: [
-                      for (final child in previous)
-                        Positioned.fill(child: child),
-                      if (current != null) Positioned.fill(child: current),
-                    ],
-                  ),
-
-                  /*
-                    Called for the arriving child AND the leaving one, so the
-                    key is what tells them apart. The leaving child's animation
-                    runs in reverse, which is why the same Tween sends it out
-                    the opposite side rather than needing its own.
-                  */
-                  transitionBuilder: (child, animation) {
-                    final arriving = (child.key as ValueKey<String>).value ==
-                        '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}';
-                    final from = _forward ? 1.0 : -1.0;
-
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(arriving ? from : -from, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey(
-                        '${_tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
-                    child: switch (_tab) {
-                      Tab.home => HomeTab(repo: widget.repo, onGo: _select),
-                      Tab.items => ItemsTab(
-                          repo: widget.repo,
-                          filter: _itemsFilter,
-                          onGo: _select,
-                        ),
-                      Tab.subs => SubsTab(repo: widget.repo),
-                      Tab.papers => PapersTab(repo: widget.repo),
-                      Tab.settings => SettingsTab(repo: widget.repo),
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
+            One page either side, so the cost lands on the idle moment after
+            you arrive somewhere rather than on the gesture.
+          */
+          allowImplicitScrolling: true,
+          itemBuilder: (context, i) => _page(Tab.values[i]),
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -685,13 +602,104 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   */
   void _select(Tab to, {ItemFilter? filter}) {
     if (to == _tab && filter == _itemsFilter) return;
-    // A lower, rounder note than an ordinary tap: moving between tabs is a
-    // bigger gesture, and pitch carries that better than volume does.
     feedback(Cue.nav);
     _goTo(to, filter: filter);
-
-    // Cheap, and it is what makes the badge appear the moment somebody comes
-    // back from buying. Leaving Settings is the only route to seeing it.
     _readPro();
+  }
+
+  /*
+    ── The heading travels with its screen ─────────────────────────────────
+
+    It used to sit above the switcher, outside the animation, because five
+    screens each drawing their own heading is five chances for one to drift.
+    It is still written in one place — here — but it is now part of the page,
+    so a half-finished swipe shows half of each screen INCLUDING its title
+    rather than one title hanging over two bodies.
+  */
+  Widget _page(Tab tab) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _heading(tab),
+          Expanded(child: _body(tab)),
+        ],
+      );
+
+  Widget _body(Tab tab) => KeyedSubtree(
+        key: ValueKey('${tab.name}-$_generation-${_itemsFilter?.name ?? ''}'),
+        child: switch (tab) {
+          Tab.home => HomeTab(repo: widget.repo, onGo: _select),
+          Tab.items => ItemsTab(
+              repo: widget.repo,
+              filter: _itemsFilter,
+              onGo: _select,
+            ),
+          Tab.subs => SubsTab(repo: widget.repo),
+          Tab.papers => PapersTab(repo: widget.repo),
+          Tab.settings => SettingsTab(repo: widget.repo),
+        },
+      );
+
+  Widget _heading(Tab tab) {
+    // Written once, here, rather than by each screen: it has to be in the same
+    // place, at the same size, on every tab, and five screens each drawing
+    // their own is five chances for one to drift.
+    if (tab != Tab.home) {
+      return TabTitle(
+        switch (tab) {
+          Tab.items => 'Items',
+          Tab.subs => 'Subscriptions',
+          Tab.papers => 'Documents',
+          Tab.settings => 'Settings',
+          Tab.home => '',
+        },
+        /*
+          None. Every screen stands Scout beside its own content, at a size
+          worth looking at — Settings included, now.
+
+          He was in this heading for Settings alone, and a pose here forces the
+          row to align on its bottom edge, which pushed that one title a few
+          pixels off the line every other tab sits on. A heading that moves
+          between tabs is the one thing this widget exists to prevent.
+        */
+        pose: null,
+        /*
+          ── The album moved off this title ─────────────────────────────────
+
+          Ten taps on the word "Settings" used to open Scout's album. It was
+          well hidden and badly signposted: a heading is the one thing on a
+          screen nobody suspects of doing anything, so in practice the only
+          people who found it were told.
+
+          It lives on Scout himself now, over in the Settings tab — see
+          `_pokeScout`. Poking the animal is a thing people already do.
+        */
+      );
+    }
+
+    // Home takes the wordmark — see `Wordmark`.
+    return Padding(
+      // The same 2 and 4 as `TabTitle`, so the wordmark and every screen's
+      // name sit on exactly the same line. They are the same object doing the
+      // same job, and a four-pixel drift between tabs is visible the moment
+      // you swipe.
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          // Baseline would be the instinct and is wrong here: the badge has no
+          // baseline worth aligning to, only a box. Centring the box against
+          // the wordmark's line is what makes it sit level rather than hang.
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Wordmark(),
+            if (_pro) ...[
+              const SizedBox(width: 9),
+              const ProBadge(),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

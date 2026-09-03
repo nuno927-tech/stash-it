@@ -28,24 +28,14 @@ void main() {
           [Tab.home, Tab.items, Tab.subs, Tab.papers, Tab.settings]);
     });
 
-    test('left goes forward', () {
-      expect(nextTab(Tab.home, Direction.left), Tab.items);
-      expect(nextTab(Tab.items, Direction.left), Tab.subs);
-    });
-
-    test('right goes back', () {
-      expect(nextTab(Tab.subs, Direction.right), Tab.items);
-    });
-
     /*
-      No wrapping. Settings → swipe left → Home would put you at the other end
-      of the app from a gesture that means "next", and the bottom bar is right
-      there showing you there is no next.
+      The three tests that were here walked `nextTab`, which the shell no
+      longer calls: the pages are dragged directly and the `PageView` walks
+      this list itself, ends included.
+
+      So the order above is the whole contract now — it is what the bar draws,
+      what the swipe traverses, and what a tap animates to.
     */
-    test('and the ends are ends', () {
-      expect(nextTab(Tab.settings, Direction.left), isNull);
-      expect(nextTab(Tab.home, Direction.right), isNull);
-    });
   });
 
   group('was that a swipe', () {

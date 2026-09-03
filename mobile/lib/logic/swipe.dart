@@ -30,16 +30,18 @@ enum Tab { home, items, subs, papers, settings }
 
 enum Direction { left, right }
 
-/// The tab a swipe lands on, or null at the ends.
-///
-/// No wrapping. Settings → swipe left → Home would put you at the other end of
-/// the app from a gesture that means "next", and the bottom bar is right there
-/// showing you there is no next.
-Tab? nextTab(Tab current, Direction direction) {
-  final to = current.index + (direction == Direction.left ? 1 : -1);
-  if (to < 0 || to >= Tab.values.length) return null;
-  return Tab.values[to];
-}
+/*
+  ── `nextTab` is gone, and what took its job ──────────────────────────────
+
+  It answered "which tab does a swipe land on, and null at the ends". The
+  shell drags the pages themselves now, so the ordering and the ends are the
+  `PageView`'s: it walks `Tab.values` and stops at both ends without being
+  told.
+
+  Which makes the order test below the important one. It was already the
+  thing that mattered — Subscriptions was once in the bar and not in this
+  list — and it is now the only statement of it.
+*/
 
 class Gesture {
   const Gesture({
