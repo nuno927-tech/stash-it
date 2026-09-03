@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.14.4';
+const appVersion = '1.14.5';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -353,6 +353,10 @@ class _SettingsTabState extends State<SettingsTab> {
       final chosen = files.first;
       final stream = chosen.readStream;
       if (stream == null) return;
+
+      // The picker is a whole other screen and somebody can leave this tab
+      // while it is up. Nothing below may touch a context that has gone.
+      if (!mounted) return;
 
       var wasLocked = false;
 
@@ -693,6 +697,7 @@ class _SettingsTabState extends State<SettingsTab> {
     try {
       final dir = await getTemporaryDirectory();
       final file = File(p.join(dir.path, backupFileName()));
+      if (!mounted) return;
 
       /*
         Behind a sheet with a moving bar, and written straight to the file.
