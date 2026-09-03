@@ -367,7 +367,9 @@ void main() {
       );
       await db.into(db.docs).insert(DocsCompanion.insert(
             id: 'd1',
-            itemId: id,
+            // Wrapped since v8: an attachment can hang off a document
+            // instead, so neither id is required any more.
+            itemId: Value(id),
             kind: const Value('receipt'),
             blobId: const Value('receipt'),
           ));

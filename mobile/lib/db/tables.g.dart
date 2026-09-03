@@ -1020,8 +1020,14 @@ class $DocsTable extends Docs with TableInfo<$DocsTable, DocRow> {
   static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
   @override
   late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
-      'item_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      'item_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _paperIdMeta =
+      const VerificationMeta('paperId');
+  @override
+  late final GeneratedColumn<String> paperId = GeneratedColumn<String>(
+      'paper_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _kindMeta = const VerificationMeta('kind');
   @override
   late final GeneratedColumn<String> kind = GeneratedColumn<String>(
@@ -1058,7 +1064,7 @@ class $DocsTable extends Docs with TableInfo<$DocsTable, DocRow> {
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, itemId, kind, title, blobId, url, createdAt, deletedAt];
+      [id, itemId, paperId, kind, title, blobId, url, createdAt, deletedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1077,8 +1083,10 @@ class $DocsTable extends Docs with TableInfo<$DocsTable, DocRow> {
     if (data.containsKey('item_id')) {
       context.handle(_itemIdMeta,
           itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
-    } else if (isInserting) {
-      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('paper_id')) {
+      context.handle(_paperIdMeta,
+          paperId.isAcceptableOrUnknown(data['paper_id']!, _paperIdMeta));
     }
     if (data.containsKey('kind')) {
       context.handle(
@@ -1116,7 +1124,9 @@ class $DocsTable extends Docs with TableInfo<$DocsTable, DocRow> {
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       itemId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id']),
+      paperId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}paper_id']),
       kind: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
       title: attachedDatabase.typeMapping
@@ -1140,7 +1150,8 @@ class $DocsTable extends Docs with TableInfo<$DocsTable, DocRow> {
 
 class DocRow extends DataClass implements Insertable<DocRow> {
   final String id;
-  final String itemId;
+  final String? itemId;
+  final String? paperId;
 
   /// Stored as the enum's name, not its index.
   ///
@@ -1156,7 +1167,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
   final DateTime? deletedAt;
   const DocRow(
       {required this.id,
-      required this.itemId,
+      this.itemId,
+      this.paperId,
       required this.kind,
       this.title,
       this.blobId,
@@ -1167,7 +1179,12 @@ class DocRow extends DataClass implements Insertable<DocRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['item_id'] = Variable<String>(itemId);
+    if (!nullToAbsent || itemId != null) {
+      map['item_id'] = Variable<String>(itemId);
+    }
+    if (!nullToAbsent || paperId != null) {
+      map['paper_id'] = Variable<String>(paperId);
+    }
     map['kind'] = Variable<String>(kind);
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
@@ -1190,7 +1207,11 @@ class DocRow extends DataClass implements Insertable<DocRow> {
   DocsCompanion toCompanion(bool nullToAbsent) {
     return DocsCompanion(
       id: Value(id),
-      itemId: Value(itemId),
+      itemId:
+          itemId == null && nullToAbsent ? const Value.absent() : Value(itemId),
+      paperId: paperId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paperId),
       kind: Value(kind),
       title:
           title == null && nullToAbsent ? const Value.absent() : Value(title),
@@ -1211,7 +1232,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return DocRow(
       id: serializer.fromJson<String>(json['id']),
-      itemId: serializer.fromJson<String>(json['itemId']),
+      itemId: serializer.fromJson<String?>(json['itemId']),
+      paperId: serializer.fromJson<String?>(json['paperId']),
       kind: serializer.fromJson<String>(json['kind']),
       title: serializer.fromJson<String?>(json['title']),
       blobId: serializer.fromJson<String?>(json['blobId']),
@@ -1225,7 +1247,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'itemId': serializer.toJson<String>(itemId),
+      'itemId': serializer.toJson<String?>(itemId),
+      'paperId': serializer.toJson<String?>(paperId),
       'kind': serializer.toJson<String>(kind),
       'title': serializer.toJson<String?>(title),
       'blobId': serializer.toJson<String?>(blobId),
@@ -1237,7 +1260,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
 
   DocRow copyWith(
           {String? id,
-          String? itemId,
+          Value<String?> itemId = const Value.absent(),
+          Value<String?> paperId = const Value.absent(),
           String? kind,
           Value<String?> title = const Value.absent(),
           Value<String?> blobId = const Value.absent(),
@@ -1246,7 +1270,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
           Value<DateTime?> deletedAt = const Value.absent()}) =>
       DocRow(
         id: id ?? this.id,
-        itemId: itemId ?? this.itemId,
+        itemId: itemId.present ? itemId.value : this.itemId,
+        paperId: paperId.present ? paperId.value : this.paperId,
         kind: kind ?? this.kind,
         title: title.present ? title.value : this.title,
         blobId: blobId.present ? blobId.value : this.blobId,
@@ -1258,6 +1283,7 @@ class DocRow extends DataClass implements Insertable<DocRow> {
     return DocRow(
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      paperId: data.paperId.present ? data.paperId.value : this.paperId,
       kind: data.kind.present ? data.kind.value : this.kind,
       title: data.title.present ? data.title.value : this.title,
       blobId: data.blobId.present ? data.blobId.value : this.blobId,
@@ -1272,6 +1298,7 @@ class DocRow extends DataClass implements Insertable<DocRow> {
     return (StringBuffer('DocRow(')
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
+          ..write('paperId: $paperId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
           ..write('blobId: $blobId, ')
@@ -1283,14 +1310,15 @@ class DocRow extends DataClass implements Insertable<DocRow> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, itemId, kind, title, blobId, url, createdAt, deletedAt);
+  int get hashCode => Object.hash(
+      id, itemId, paperId, kind, title, blobId, url, createdAt, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is DocRow &&
           other.id == this.id &&
           other.itemId == this.itemId &&
+          other.paperId == this.paperId &&
           other.kind == this.kind &&
           other.title == this.title &&
           other.blobId == this.blobId &&
@@ -1301,7 +1329,8 @@ class DocRow extends DataClass implements Insertable<DocRow> {
 
 class DocsCompanion extends UpdateCompanion<DocRow> {
   final Value<String> id;
-  final Value<String> itemId;
+  final Value<String?> itemId;
+  final Value<String?> paperId;
   final Value<String> kind;
   final Value<String?> title;
   final Value<String?> blobId;
@@ -1312,6 +1341,7 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
   const DocsCompanion({
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
+    this.paperId = const Value.absent(),
     this.kind = const Value.absent(),
     this.title = const Value.absent(),
     this.blobId = const Value.absent(),
@@ -1322,7 +1352,8 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
   });
   DocsCompanion.insert({
     required String id,
-    required String itemId,
+    this.itemId = const Value.absent(),
+    this.paperId = const Value.absent(),
     this.kind = const Value.absent(),
     this.title = const Value.absent(),
     this.blobId = const Value.absent(),
@@ -1330,11 +1361,11 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
     this.createdAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        itemId = Value(itemId);
+  }) : id = Value(id);
   static Insertable<DocRow> custom({
     Expression<String>? id,
     Expression<String>? itemId,
+    Expression<String>? paperId,
     Expression<String>? kind,
     Expression<String>? title,
     Expression<String>? blobId,
@@ -1346,6 +1377,7 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
+      if (paperId != null) 'paper_id': paperId,
       if (kind != null) 'kind': kind,
       if (title != null) 'title': title,
       if (blobId != null) 'blob_id': blobId,
@@ -1358,7 +1390,8 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
 
   DocsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? itemId,
+      Value<String?>? itemId,
+      Value<String?>? paperId,
       Value<String>? kind,
       Value<String?>? title,
       Value<String?>? blobId,
@@ -1369,6 +1402,7 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
     return DocsCompanion(
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
+      paperId: paperId ?? this.paperId,
       kind: kind ?? this.kind,
       title: title ?? this.title,
       blobId: blobId ?? this.blobId,
@@ -1387,6 +1421,9 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
     }
     if (itemId.present) {
       map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (paperId.present) {
+      map['paper_id'] = Variable<String>(paperId.value);
     }
     if (kind.present) {
       map['kind'] = Variable<String>(kind.value);
@@ -1417,6 +1454,7 @@ class DocsCompanion extends UpdateCompanion<DocRow> {
     return (StringBuffer('DocsCompanion(')
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
+          ..write('paperId: $paperId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
           ..write('blobId: $blobId, ')
@@ -5553,7 +5591,8 @@ typedef $$ItemsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$DocsTableCreateCompanionBuilder = DocsCompanion Function({
   required String id,
-  required String itemId,
+  Value<String?> itemId,
+  Value<String?> paperId,
   Value<String> kind,
   Value<String?> title,
   Value<String?> blobId,
@@ -5564,7 +5603,8 @@ typedef $$DocsTableCreateCompanionBuilder = DocsCompanion Function({
 });
 typedef $$DocsTableUpdateCompanionBuilder = DocsCompanion Function({
   Value<String> id,
-  Value<String> itemId,
+  Value<String?> itemId,
+  Value<String?> paperId,
   Value<String> kind,
   Value<String?> title,
   Value<String?> blobId,
@@ -5587,6 +5627,9 @@ class $$DocsTableFilterComposer extends Composer<_$StashDatabase, $DocsTable> {
 
   ColumnFilters<String> get itemId => $composableBuilder(
       column: $table.itemId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get paperId => $composableBuilder(
+      column: $table.paperId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get kind => $composableBuilder(
       column: $table.kind, builder: (column) => ColumnFilters(column));
@@ -5622,6 +5665,9 @@ class $$DocsTableOrderingComposer
   ColumnOrderings<String> get itemId => $composableBuilder(
       column: $table.itemId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get paperId => $composableBuilder(
+      column: $table.paperId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get kind => $composableBuilder(
       column: $table.kind, builder: (column) => ColumnOrderings(column));
 
@@ -5655,6 +5701,9 @@ class $$DocsTableAnnotationComposer
 
   GeneratedColumn<String> get itemId =>
       $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get paperId =>
+      $composableBuilder(column: $table.paperId, builder: (column) => column);
 
   GeneratedColumn<String> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
@@ -5699,7 +5748,8 @@ class $$DocsTableTableManager extends RootTableManager<
               $$DocsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> itemId = const Value.absent(),
+            Value<String?> itemId = const Value.absent(),
+            Value<String?> paperId = const Value.absent(),
             Value<String> kind = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> blobId = const Value.absent(),
@@ -5711,6 +5761,7 @@ class $$DocsTableTableManager extends RootTableManager<
               DocsCompanion(
             id: id,
             itemId: itemId,
+            paperId: paperId,
             kind: kind,
             title: title,
             blobId: blobId,
@@ -5721,7 +5772,8 @@ class $$DocsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String itemId,
+            Value<String?> itemId = const Value.absent(),
+            Value<String?> paperId = const Value.absent(),
             Value<String> kind = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> blobId = const Value.absent(),
@@ -5733,6 +5785,7 @@ class $$DocsTableTableManager extends RootTableManager<
               DocsCompanion.insert(
             id: id,
             itemId: itemId,
+            paperId: paperId,
             kind: kind,
             title: title,
             blobId: blobId,
