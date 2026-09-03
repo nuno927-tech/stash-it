@@ -377,12 +377,21 @@ class _Step extends StatelessWidget {
             style: TextStyle(
               fontFamily: fontDisplay,
               fontWeight: FontWeight.w800,
-              // 21 was a heading borrowed from a card. This is the only thing
-              // on the screen, and the tracking tightens as it grows because
-              // Bricolage at 800 sets wide.
-              fontSize: 26,
-              height: 1.2,
-              letterSpacing: -0.7,
+              /*
+                Display size, not heading size.
+
+                21 was a heading borrowed from a card. This is the first thing
+                on a screen that holds one sentence under it — it is the
+                headline of the whole app, and it should read like the
+                wordmark rather than like a section label.
+
+                The tracking tightens as it grows: Bricolage at 800 sets wide,
+                and at this size the default spacing turns a three-word title
+                into three separate words.
+              */
+              fontSize: 32,
+              height: 1.12,
+              letterSpacing: -1.1,
               color: c.gold,
             ),
           ),

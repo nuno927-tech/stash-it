@@ -7,6 +7,16 @@
 /// widget so it can be read as a script — a tour is writing, and writing that
 /// is scattered through a widget tree stops being editable as prose.
 ///
+/// ── One sentence each, and it took a rewrite to get there ─────────────────
+/// These were three-clause paragraphs, and every clause was load-bearing to
+/// whoever wrote it. Nobody reads them: a tour is swiped, not studied, and a
+/// screen that needs eight seconds of reading gets one.
+///
+/// So the title carries the claim and the line under it carries at most one
+/// qualification. Anything that survived being cut was either a promise — the
+/// documents step's "no scans, no numbers" — or the one fact that makes the
+/// screen worth stopping on.
+///
 /// The scheduling is the part with a rule in it. "Remind me later" has to mean
 /// something specific or it means "never", and "never" is what most apps
 /// quietly implement.
@@ -68,9 +78,7 @@ const List<TourStep> tourSteps = [
     'what',
     ScoutPose.waving,
     'Everything you own, with its paperwork',
-    'Warranties, documents and subscriptions in one place — so the receipt is '
-        'somewhere better than a drawer when a claim needs it, and nothing '
-        'lapses because you forgot it existed.',
+    'Warranties, documents and subscriptions, in one place.',
   ),
   /*
     ── This step used to promise something the app cannot do ─────────────────
@@ -93,9 +101,7 @@ const List<TourStep> tourSteps = [
     'add',
     ScoutPose.receipt,
     'Point the camera at the receipt',
-    'Scan a receipt reads the date, the price and the shop off it, and shows '
-        'you what it found before filling anything in. Or type it yourself — '
-        'a name is all it really needs.',
+    'It reads the date, the price and the shop. You check them first.',
   ),
   /*
     The claim pack is the payoff, and it belongs here rather than on a screen
@@ -106,9 +112,8 @@ const List<TourStep> tourSteps = [
     'paper',
     ScoutPose.folder,
     'Then stash the paper too',
-    'When something breaks, Make a claim writes the letter for you — what it '
-        'is, when you bought it, the serial, the receipt attached. Keep the '
-        "original somewhere dry as well: paper doesn't need charging.",
+    'When something breaks, Make a claim writes the letter — receipt '
+        'attached.',
   ),
 
   /*
@@ -121,25 +126,22 @@ const List<TourStep> tourSteps = [
     'papers',
     ScoutPose.clipboard,
     'Passports, licenses, insurance',
-    'The Documents tab watches the things that expire on you. Dates and '
-        "general details only — no scans, no document numbers — and I'll tell "
-        "you when to start renewing, not when it's too late.",
+    // The privacy line stays whatever else goes. Anybody being asked to put a
+    // passport into an app is entitled to know what it holds before they
+    // start, and it is the shortest true sentence about it.
+    "Dates only — no scans, no numbers. I'll say when to start renewing.",
   ),
   TourStep(
     'subs',
     ScoutPose.calendar,
     'And what leaves your account each month',
-    'Add the subscriptions you pay for and the Subscriptions tab shows what a '
-        'month really costs, which months are the heavy ones, and what renews '
-        'next.',
+    'What a month really costs, and what renews next.',
   ),
   TourStep(
     'watch',
     ScoutPose.report,
     'The dashboard is the short version',
-    'The ring is how much is still in date, green to red. Under it, one list '
-        "of everything coming up — ordered by what it costs to ignore, not by "
-        "date — and a note of anything I'm missing.",
+    'The ring is how much is still in date. Under it, what needs you next.',
   ),
 
   /*
@@ -159,9 +161,7 @@ const List<TourStep> tourSteps = [
     'notify',
     ScoutPose.alert,
     'I can nudge you with the app closed',
-    'Reminders are off until you turn them on. When you do, your phone keeps '
-        'the schedule itself — nothing is sent anywhere, and no server is '
-        'told what any of it is about.',
+    'Your phone keeps the schedule itself. Nothing is sent anywhere.',
   ),
   /*
     ── The step that changed most, and the only one that protects anything ───
@@ -183,10 +183,8 @@ const List<TourStep> tourSteps = [
     folderStepKey,
     ScoutPose.acorn,
     'Keep a copy somewhere else',
-    'Nothing is uploaded and there is no account, which keeps it private and '
-        'means a lost phone is a lost stash. Pick a folder your cloud app '
-        'already syncs and it writes a backup there on its own — locked with '
-        'a passphrase, if you set one in Settings.',
+    'A lost phone is a lost stash. Pick a folder your cloud syncs and '
+        'backups go there on their own.',
   ),
 
   /*
@@ -208,9 +206,7 @@ const List<TourStep> tourSteps = [
     nameStepKey,
     ScoutPose.lounge,
     'What should I call you?',
-    'Only used to say hello on the dashboard. It stays on this phone with '
-        'everything else, and you can change or clear it in Settings whenever '
-        'you like.',
+    'Only to say hello. Change it in Settings whenever you like.',
   ),
 ];
 
