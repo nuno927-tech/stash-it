@@ -490,9 +490,13 @@ Uint8List _wav(_Voice voice) {
   final lead = (_leadInMs / 1000 * _rate).round();
   final tail = (_tailMs / 1000 * _rate).round();
 
+  // `fold<int>`, not `fold`: with the sum standing alone the inference held,
+  // and adding the padding either side of it widened the whole expression to
+  // `num`.
+  final tone = lengths.fold<int>(0, (sum, n) => sum + n);
+
   // Zero-filled by construction, so the padding is written by not writing.
-  final samples =
-      Int16List(lead + lengths.fold(0, (sum, n) => sum + n) + tail);
+  final samples = Int16List(lead + tone + tail);
   var at = lead;
 
   for (var n = 0; n < voice.notes.length; n++) {
