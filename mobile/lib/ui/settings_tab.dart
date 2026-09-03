@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.15.0';
+const appVersion = '1.15.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────

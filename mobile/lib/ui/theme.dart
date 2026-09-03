@@ -236,16 +236,27 @@ const StashColors _light = StashColors(
 ///
 /// Darker in the dark theme, not lighter. A shadow on a near-black surface has
 /// almost nowhere to go, so it needs more opacity to register at all.
+///
+/// ── Raised in the light theme, once it was looked at on a phone ────────────
+/// The light values were 0.05 and 0.055, which is a shadow you can only find
+/// by knowing it is there. On a white page, against a card that is four per
+/// cent off white, that left the cards blending into the background — most
+/// visibly on the recent strip, where the card is mostly photograph and the
+/// only thing separating one from the page is its edge.
+///
+/// Still under the threshold where it reads as a drop-shadow rather than as a
+/// raised surface, which is the trap the paragraph above is about. The dark
+/// theme is untouched: it never had the problem.
 List<BoxShadow> cardShadow(StashColors c, {required bool dark}) => [
       BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, dark ? 0.34 : 0.05),
-        blurRadius: 3,
+        color: Color.fromRGBO(0, 0, 0, dark ? 0.34 : 0.09),
+        blurRadius: 4,
         offset: const Offset(0, 1),
       ),
       BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, dark ? 0.28 : 0.055),
-        blurRadius: 16,
-        offset: const Offset(0, 6),
+        color: Color.fromRGBO(0, 0, 0, dark ? 0.28 : 0.10),
+        blurRadius: 20,
+        offset: const Offset(0, 8),
       ),
     ];
 

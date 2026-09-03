@@ -1358,11 +1358,23 @@ class _RecentStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
+    /*
+      ── Room for the shadow, or there is no shadow ────────────────────────
+
+      A horizontal list clips to its own box. The strip was exactly as tall as
+      the cards in it, so every card's shadow was sliced off flat along the
+      bottom edge — the one side a shadow most needs, since it is offset
+      downwards.
+
+      The box is taller than the card by the padding below it, and the cards
+      are still 176: `SizedBox(height:)` is the viewport, and the vertical
+      padding comes out of it before the children are measured.
+    */
     return SizedBox(
-      height: 176,
+      height: 176 + 26,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, i) {
