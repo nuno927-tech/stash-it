@@ -337,7 +337,10 @@ class _Line extends StatelessWidget {
 
   final String label;
   final String shows;
-  final ReadField read;
+
+  // `Object` rather than a bare `ReadField`: the three readings are a date, a
+  // total and a shop, and this row only ever shows the line each was read off.
+  final ReadField<Object> read;
   final bool on;
   final VoidCallback onTap;
   final StashColors c;

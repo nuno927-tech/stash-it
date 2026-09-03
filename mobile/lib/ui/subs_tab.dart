@@ -446,6 +446,7 @@ class _Tile extends StatelessWidget {
 /// Public for the same reason as `PaperTile` — see the note there.
 class SubTile extends StatelessWidget {
   const SubTile({
+    super.key,
     required this.sub,
     this.lit = false,
     this.onTap,

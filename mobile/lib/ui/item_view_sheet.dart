@@ -649,7 +649,7 @@ class _Hero extends StatelessWidget {
 /// second chip would be a second place for "the file for this one is missing"
 /// to be worded differently.
 class FileChip extends StatefulWidget {
-  const FileChip({required this.repo, required this.doc});
+  const FileChip({required this.repo, required this.doc, super.key});
 
   final Repository repo;
   final Doc doc;

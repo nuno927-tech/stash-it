@@ -33,6 +33,7 @@ PaperHit aPaper(String label) => PaperHit(
         propertyId: 'p1',
         kind: PaperKind.passport,
         label: label,
+        expiresOn: '2029-06-01',
       ),
       score: 10,
       fields: const [MatchField.name],

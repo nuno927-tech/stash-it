@@ -16,7 +16,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../db/backup.dart';
 import '../db/repository.dart';
 import '../db/restore.dart';
-import '../io/bundle_file.dart';
 import '../logic/backup_progress.dart';
 import '../logic/bin.dart';
 import '../logic/bundle.dart';
@@ -62,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.14.2';
+const appVersion = '1.14.3';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────

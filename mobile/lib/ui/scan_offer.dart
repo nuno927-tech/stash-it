@@ -20,7 +20,6 @@ library;
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
-import '../logic/attachments.dart';
 import '../models/types.dart';
 import 'feedback.dart';
 import 'pick_doc.dart';
