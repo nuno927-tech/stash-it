@@ -5,6 +5,7 @@ library;
 
 import '../models/types.dart';
 import 'dates.dart';
+import 'format.dart';
 
 enum WarrantyState { covered, endingSoon, expired, unknown }
 
@@ -313,7 +314,7 @@ WarrantyParts countdownParts(
   if (days == 0) return WarrantyParts('Today', lastDayWord);
 
   if (inDays) {
-    return WarrantyParts('$days', days == 1 ? 'day left' : 'days left');
+    return WarrantyParts(grouped(days), days == 1 ? 'day left' : 'days left');
   }
 
   final months = (days / 30.44).floor();

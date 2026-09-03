@@ -47,6 +47,7 @@
 library;
 
 import '../models/settings.dart';
+import 'format.dart';
 import 'warranty.dart' show defaultEndingSoonDays;
 
 enum NudgeKind { backup, warranty }
@@ -188,7 +189,7 @@ BackupStatus? backupStatus({
       ? 'today'
       : days == 1
           ? 'yesterday'
-          : '$days days ago';
+          : '${grouped(days)} days ago';
 
   return BackupStatus(days, tone, 'Backed up $when');
 }

@@ -40,6 +40,7 @@ import 'paper_form_sheet.dart';
 import 'paper_icon.dart';
 import 'share_card_sheet.dart';
 import 'status_pill.dart';
+import 'thumb.dart';
 import 'theme.dart';
 import 'view_sheet_parts.dart';
 
@@ -180,13 +181,17 @@ class _PaperViewState extends State<PaperView> {
                 padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
                 children: [
                   /*
-                    The glyph on a tinted panel, where the item sheet puts a
-                    photograph. Documents have no picture and are never going to
-                    — so this is the face, at size, rather than a gap where a
-                    photograph would have been.
+                    The scan if there is one, the glyph if there is not.
+
+                    That note used to say documents have no picture and never
+                    would. They do now, and the first one somebody took is a
+                    better answer to "did I open the right record" than a
+                    drawing of a passport is — it is their passport.
                   */
-                  ViewFace.bare(
-                    child: PaperGlyph(_paper.kind,
+                  _Face(
+                    repo: widget.repo,
+                    scans: _scans,
+                    glyph: PaperGlyph(_paper.kind,
                         color: _tone(c, status), size: 64),
                   ),
                   ViewHeadline(
@@ -294,5 +299,92 @@ class _PaperViewState extends State<PaperView> {
   String _fromIso(String iso) {
     final d = parseDate(iso);
     return d == null ? iso : dayMonthMaybeYear(d);
+  }
+}
+
+/// The top of the sheet: the first scan, or the kind's glyph.
+///
+/// ── Reading the same future the attachments list reads ────────────────────
+/// `_scans` is already in flight for the list further down the sheet, so this
+/// costs no second query — and the two cannot disagree about what is
+/// attached, which they could if this asked its own question.
+///
+/// A scan that will not decode — a PDF, a file that arrived broken in a
+/// restore — falls back to the glyph rather than to a grey box. The list below
+/// still shows it and still hands it out; this is the face, not the evidence.
+class _Face extends StatelessWidget {
+  const _Face({
+    required this.repo,
+    required this.scans,
+    required this.glyph,
+  });
+
+  final Repository repo;
+  final Future<List<Doc>> scans;
+  final Widget glyph;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return FutureBuilder<List<Doc>>(
+      future: scans,
+      builder: (context, snap) {
+        String? blobId;
+        for (final scan in snap.data ?? const <Doc>[]) {
+          // A link has no bytes to draw. The first one with a file wins,
+          // which is the first one taken.
+          if (scan.blobId != null) {
+            blobId = scan.blobId;
+            break;
+          }
+        }
+
+        if (blobId == null) return ViewFace.bare(child: glyph);
+
+        return FutureBuilder<ImageProvider?>(
+          future: thumbFor(repo, blobId),
+          builder: (context, shot) {
+            final image = shot.data;
+            if (image == null) return ViewFace.bare(child: glyph);
+
+            // The item sheet's photograph, to the pixel: 190 tall, framed,
+            // and dimmed across the bottom third so the name underneath has
+            // an edge to sit against rather than a hard line.
+            return Container(
+              height: 190,
+              margin: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Radii.lg),
+                border: Border.all(color: c.line),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image(
+                    image: image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, _, __) => Center(child: glyph),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.center,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          c.slate900.withValues(alpha: 0.55),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

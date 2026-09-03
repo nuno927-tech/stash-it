@@ -39,6 +39,7 @@ import '../models/paper.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
 import 'dates.dart';
+import 'format.dart';
 import 'papers.dart';
 import 'subscriptions.dart';
 import 'warranty.dart';
@@ -285,12 +286,12 @@ String whenLabelFor(Entry e) => whenLabel(e.urgency, e.days);
 (String, String?) whenParts(Urgency urgency, int days) {
   if (urgency == Urgency.overdue) {
     final n = days.abs();
-    return ('$n', n == 1 ? 'day late' : 'days late');
+    return (grouped(n), n == 1 ? 'day late' : 'days late');
   }
   if (urgency == Urgency.now) return ('now', null);
   if (days <= 0) return ('today', null);
   if (days == 1) return ('tomorrow', null);
-  return ('$days', 'days');
+  return (grouped(days), 'days');
 }
 
 (String, String?) whenPartsFor(Entry e) => whenParts(e.urgency, e.days);

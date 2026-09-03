@@ -201,6 +201,12 @@ void main() {
 
     test('a countdown counts',
         () => expect(whenLabel(Urgency.soon, 5), '5 days'));
+
+    test('and a far one gets its comma', () {
+      // A passport five years out. Four bare digits read as a serial number,
+      // on a screen where the money beside them is grouped.
+      expect(whenLabel(Urgency.later, 1804), '1,804 days');
+    });
     test('one day is named',
         () => expect(whenLabel(Urgency.soon, 1), 'tomorrow'));
     test('and today is', () => expect(whenLabel(Urgency.soon, 0), 'today'));

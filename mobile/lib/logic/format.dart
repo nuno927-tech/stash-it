@@ -33,6 +33,31 @@ const Map<String, String> _symbols = {
 
 String currencySymbol(String currency) => _symbols[currency] ?? currency;
 
+/// A plain count, with the commas a person would write.
+///
+/// ── Why a passport made this necessary ────────────────────────────────────
+/// A document five years out shows "1804 days", which reads as a serial number
+/// rather than a quantity — the eye has to count the digits to find out
+/// whether it is one thousand or eighteen. Money has been grouped since the
+/// first release; the counts beside it were not, on the same screen.
+///
+/// Written here rather than pulled from `intl`: the money path already groups
+/// by hand, and one rule for both is worth more than the locale awareness
+/// nothing else in this app has.
+String grouped(int n) {
+  final digits = n.abs().toString();
+  final out = StringBuffer(n < 0 ? '-' : '');
+
+  for (var i = 0; i < digits.length; i++) {
+    // A separator before every third digit from the right, and never at the
+    // very start — "1,804", not ",1804".
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
+    out.write(digits[i]);
+  }
+
+  return out.toString();
+}
+
 /// Bytes, for somebody deciding whether to attach something.
 ///
 /// ── Three digits at most, and never a decimal below a megabyte ────────────

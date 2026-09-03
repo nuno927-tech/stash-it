@@ -24,6 +24,43 @@ void phone(String input, String want) {
 }
 
 void main() {
+  /*
+    ── Counts are grouped too, and by the same rule ────────────────────────
+
+    A passport five years out showed "1804 days" on the detail sheet, on a
+    screen where every amount of money beside it had a comma in it. The eye
+    has to count the digits of "1804" to find out whether it is one thousand
+    or eighteen.
+  */
+  group('counts', () {
+    test('nothing to group', () {
+      expect(grouped(0), '0');
+      expect(grouped(7), '7');
+      expect(grouped(999), '999');
+    });
+
+    test('a thousand and up', () {
+      expect(grouped(1000), '1,000');
+      expect(grouped(1804), '1,804');
+      expect(grouped(12345), '12,345');
+      expect(grouped(1000000), '1,000,000');
+    });
+
+    test('the separator never leads', () {
+      // The bug this rule is written to avoid is ",1804".
+      for (final n in [100, 1000, 10000, 100000]) {
+        expect(grouped(n).startsWith(','), isFalse);
+      }
+    });
+
+    test('a negative keeps its sign in front', () {
+      // Days late are counted as a negative before they are shown as a
+      // positive, and something reaching for the raw number should not
+      // produce "1,-804".
+      expect(grouped(-1804), '-1,804');
+    });
+  });
+
   group('grouping', () {
     money('', '');
     money('8', '8');

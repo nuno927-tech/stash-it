@@ -16,6 +16,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../logic/format.dart';
 import 'status_pill.dart';
 import 'feedback.dart';
 import 'theme.dart';
@@ -152,7 +153,9 @@ class ViewHeadline extends StatelessWidget {
               const Spacer(),
               if (n != null && n >= 0) ...[
                 Text(
-                  '$n',
+                  // Grouped: a document five years out is "1,804 days", and
+                  // "1804" reads as a serial number rather than a quantity.
+                  grouped(n),
                   style: TextStyle(
                     fontFamily: fontDisplay,
                     fontWeight: FontWeight.w800,
