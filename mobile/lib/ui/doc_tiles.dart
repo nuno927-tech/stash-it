@@ -37,6 +37,12 @@ const Map<DocKind, String> _glyphs = {
       'M14 3v5h5M14 3H6.5A1.5 1.5 0 005 4.5v15A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5V8z',
 };
 
+/// The one control a document gets, in place of the six an item gets.
+const String _cameraGlyph = '''
+<path d="M3 7.5h3.5l1.5-2h8l1.5 2H21v12H3z" />
+<path d="M12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" />
+''';
+
 /// The odd one out: not a file, so not a DocKind glyph.
 const String _linkGlyph = '''
 <path d="M10 13.5a3.5 3.5 0 005 0l3-3a3.5 3.5 0 00-5-5l-1 1" />
@@ -208,6 +214,92 @@ class _Tile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One button, for a document that is only ever a photograph of itself.
+///
+/// ── Why the six tiles are wrong here ──────────────────────────────────────
+/// An item's attachments genuinely come in kinds: a receipt proves what you
+/// paid, a warranty proves what is covered, a manual is neither. Which one it
+/// is changes what the app does with it.
+///
+/// A document's attachment is the document. There is no second kind of
+/// passport, and asking somebody to classify the page they are about to
+/// photograph is six choices standing in front of one obvious action — on the
+/// optional last screen of a wizard, which is exactly where a choice becomes
+/// a reason to stop.
+///
+/// Where the bytes come from is still asked, after the tap, by `askPickSource`
+/// — camera or files, the same question every other attachment asks.
+class ScanButton extends StatelessWidget {
+  const ScanButton({required this.onTap, this.label, super.key});
+
+  final VoidCallback onTap;
+
+  /// Overridden on the wizard's step, where the screen has already asked the
+  /// question and the button only has to be the answer.
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => _Tile(
+        label: label ?? 'Photograph or upload',
+        glyph: _cameraGlyph,
+        onTap: onTap,
+      );
+}
+
+/// What has been chosen and not yet written.
+///
+/// Shared by the long form and the wizard's last step so that removing one
+/// looks and behaves the same in both. Staged, not saved — a cross here is
+/// forgetting something rather than deleting it.
+class StagedScans extends StatelessWidget {
+  const StagedScans({required this.scans, required this.onRemove, super.key});
+
+  final List<PendingDoc> scans;
+  final void Function(PendingDoc) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    if (scans.isEmpty) return const SizedBox.shrink();
+    final c = StashColors.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 14),
+        for (final scan in scans)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.check, size: 16, color: c.moss),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    scan.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 13.5,
+                      color: c.text,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, size: 16, color: c.muted),
+                  onPressed: () {
+                    feedback(Cue.tap);
+                    onRemove(scan);
+                  },
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

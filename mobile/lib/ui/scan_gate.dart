@@ -23,8 +23,11 @@ library;
 import 'package:flutter/material.dart';
 
 import '../io/vault.dart';
+import '../logic/attachments.dart';
+import '../models/types.dart';
 import 'feedback.dart';
 import 'passphrase_sheet.dart';
+import 'pick_doc.dart';
 import 'theme.dart';
 
 /// True when a scan may be taken — either backups are already locked, or one
@@ -94,4 +97,54 @@ Future<bool> allowScan(BuildContext context) async {
 
   await setBackupPassphrase(phrase);
   return true;
+}
+
+/// The whole of taking a scan: the lock, the source, the pictures.
+///
+/// ── One routine, because there are two ways in ────────────────────────────
+/// The long form and the wizard's last step both do this, and the ordering is
+/// the part that must not drift: the passphrase is settled BEFORE the camera
+/// opens, never after. Somebody who photographs a passport and is only then
+/// told they cannot keep it has been made to do the work twice.
+///
+/// Empty when anything is declined — the gate, the source sheet, the picker.
+/// Every one of those is somebody saying no, and none of them is an error.
+///
+/// [label] names the document, so a photograph with no filename of its own is
+/// staged as "Passport" rather than as "Other".
+Future<List<PendingDoc>> takeScan(
+  BuildContext context, {
+  required String label,
+}) async {
+  if (!await allowScan(context) || !context.mounted) return const [];
+
+  final source = await askPickSource(context, title: 'Add a photo');
+  if (source == null || source == PickSource.remove || !context.mounted) {
+    return const [];
+  }
+
+  final picked = await pickDocs(DocKind.other, source);
+  final named = label.trim();
+  if (named.isEmpty) return picked;
+
+  /*
+    Only the ones the picker could not name.
+
+    A file called `passport-2029.pdf` already says more than the document's
+    own label does, and overwriting that with "Passport" would throw away the
+    only thing distinguishing two of them in the staged list.
+  */
+  return [
+    for (final scan in picked)
+      if (scan.title == docKindLabels[DocKind.other])
+        PendingDoc(
+          kind: scan.kind,
+          title: named,
+          bytes: scan.bytes,
+          mime: scan.mime,
+          url: scan.url,
+        )
+      else
+        scan,
+  ];
 }

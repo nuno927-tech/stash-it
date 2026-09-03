@@ -13,7 +13,7 @@
 ///
 /// ── Why so little is left here ─────────────────────────────────────────────
 /// This form shows all three cards at once, which is the right shape for
-/// EDITING. `paper_wizard_sheet.dart` shows the same three one at a time, which
+/// EDITING. `paper_wizard_sheet.dart` shows the same three one at a time, and
 /// is the right shape for the first thirty seconds. They draw the same cards.
 library;
 
@@ -22,20 +22,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
+import '../logic/attachments.dart';
 import '../logic/auto_advance.dart';
 import '../logic/paper_form.dart';
-import '../logic/attachments.dart';
 import '../logic/papers.dart';
 import '../models/paper.dart';
-import '../models/types.dart';
 import '../notify/sync.dart';
 import 'auto_advance.dart';
 import 'confirm_delete.dart';
+import 'doc_tiles.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
-import 'doc_tiles.dart';
 import 'paper_cards.dart';
-import 'pick_doc.dart';
 import 'save_paper.dart';
 import 'scan_gate.dart';
 import 'theme.dart';
@@ -124,30 +122,13 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
   */
   final List<PendingDoc> _scans = [];
 
-  /// Attaching a scan, once the backups are sealed.
-  ///
-  /// The gate is asked BEFORE the camera rather than before the save. Somebody
-  /// who photographs a passport and is then told they cannot keep it has been
-  /// made to do the work twice; asked first, the answer costs a tap.
-  Future<void> _scan(DocKind kind) async {
-    if (!await allowScan(context) || !mounted) return;
-
-    final source = await askPickSource(
-      context,
-      title: 'Add a ${docKindLabels[kind]!.toLowerCase()}',
-    );
-    if (source == null || source == PickSource.remove || !mounted) return;
-
-    final picked = await pickDocs(kind, source);
+  /// Attaching a scan. The lock, the source and the picker are all in
+  /// `takeScan`, shared with the wizard's last step.
+  Future<void> _scan() async {
+    final picked = await takeScan(context, label: _draft.label);
     if (picked.isEmpty || !mounted) return;
 
     setState(() => _scans.addAll(picked));
-  }
-
-  Future<void> _scanLink() async {
-    final doc = await askForLink(context);
-    if (doc == null || !mounted) return;
-    setState(() => _scans.add(doc));
   }
 
   @override
@@ -289,48 +270,22 @@ class _PaperFormSheetState extends State<_PaperFormSheet> {
                   title: 'Scans',
                   children: [
                     /*
-                      The same six tiles the item form offers, because a
-                      document's paperwork is paperwork: a photograph of the
-                      passport page, the insurance certificate, the letter the
-                      renewal came in.
+                      One button, not the item form's six.
+
+                      An item's attachments come in kinds that change what the
+                      app does with them — a receipt proves what you paid, a
+                      manual proves nothing. A document's attachment is the
+                      document, so the only question left is where the bytes
+                      come from, and `takeScan` asks that after the tap.
 
                       Backups are sealed before the first one is taken — see
                       `allowScan` — and cannot be unsealed while any remain.
                     */
-                    DocTiles(onPick: _scan, onLink: _scanLink),
-                    if (_scans.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      for (final scan in _scans)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check, size: 16, color: c.moss),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  scan.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: fontBody,
-                                    fontSize: 13.5,
-                                    color: c.text,
-                                  ),
-                                ),
-                              ),
-                              // Staged, not written — so removing one is
-                              // forgetting it rather than deleting anything.
-                              IconButton(
-                                icon: Icon(Icons.close,
-                                    size: 16, color: c.muted),
-                                onPressed: () =>
-                                    setState(() => _scans.remove(scan)),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
+                    ScanButton(onTap: _scan),
+                    StagedScans(
+                      scans: _scans,
+                      onRemove: (scan) => setState(() => _scans.remove(scan)),
+                    ),
                   ],
                 ),
                 if (!_isNew) ...[

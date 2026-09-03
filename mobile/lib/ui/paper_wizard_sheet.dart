@@ -7,7 +7,7 @@
 /// first thirty seconds of owning the app.
 ///
 /// So creating is those same three cards on three screens, in the order
-/// somebody would answer them. They are not simplified copies —
+/// somebody would answer them, and a fourth screen that offers the camera. They are not simplified copies —
 /// `paper_cards.dart` draws both, so the thirteen tiles, the "Whose" box, the
 /// pair of dates and the five warning choices here are the ones on the long
 /// form, and always will be.
@@ -25,15 +25,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/repository.dart';
+import '../logic/attachments.dart';
 import '../logic/auto_advance.dart';
 import '../logic/paper_form.dart';
 import '../logic/papers.dart';
+import 'doc_tiles.dart';
 import 'feedback.dart';
 import 'form_sheet_parts.dart';
 import 'paper_cards.dart';
 import 'paper_form_sheet.dart';
 import 'save_paper.dart';
-import 'scan_offer.dart';
+import 'scan_gate.dart';
 import 'theme.dart';
 import 'wizard_parts.dart';
 
@@ -55,12 +57,18 @@ Future<bool?> showPaperWizard(BuildContext context,
   );
 }
 
-/// The three questions, in the order somebody answers them.
+/// The four screens, in the order somebody answers them.
 ///
 /// What it is comes first because the tile answers the name as well as the
-/// kind. The warning window comes last because it is the only question about
-/// the app rather than about the document.
-enum _Step { what, dates, warning }
+/// kind. The warning window is the last question about the document.
+///
+/// ── And then the one that is not a question ───────────────────────────────
+/// The scan comes last and answers nothing. It used to be a dialog after the
+/// save, which arrives when somebody has just finished and is putting the
+/// phone down — the worst moment to hand them a camera. As the final screen
+/// it is part of the same run of taps, skippable by pressing save, and the
+/// document is in their hand either way.
+enum _Step { what, dates, warning, scan }
 
 class _Wizard extends StatefulWidget {
   const _Wizard({required this.repo});
@@ -85,6 +93,10 @@ class _WizardState extends State<_Wizard> {
 
   final PageController _pages = PageController();
   _Step _at = _Step.what;
+
+  /// Chosen on the last screen, written once the document has an id — the
+  /// long form stages them the same way, for the same reason.
+  final List<PendingDoc> _scans = [];
 
   bool _saving = false;
   String? _problem;
@@ -177,8 +189,15 @@ class _WizardState extends State<_Wizard> {
             _draft.authority,
             _draft.storedAt,
           ],
-        // The last screen never advances; there is nowhere to go.
-        _Step.warning => const [null],
+        /*
+          Neither of the last two advances by itself.
+
+          The warning window arrives already answered — every document has a
+          lead time — so "complete" would fire the moment it was reached and
+          throw somebody past the choice they were shown. And the scan step is
+          last; there is nowhere to go.
+        */
+        _Step.warning || _Step.scan => const [null],
       };
 
   /*
@@ -266,6 +285,7 @@ class _WizardState extends State<_Wizard> {
       repo: widget.repo,
       draft: _draft,
       isNew: true,
+      pending: _scans,
     );
 
     if (!mounted) return;
@@ -277,29 +297,17 @@ class _WizardState extends State<_Wizard> {
           _saving = false;
         });
 
-      case PaperSaved(:final paperId):
+      case PaperSaved():
         /*
-          Closed first, then asked — and asked from the navigator's context
-          rather than this one.
+          Nothing follows the save any more.
 
-          The sheet is on its way out; a dialog parented to it would be torn
-          down with it. Same shape as the item wizard's receipt reminder, which
-          hit exactly this and is commented there too.
+          A dialog used to open here offering a scan, because the wizard had
+          no room for one. It arrives at the moment somebody has finished and
+          is putting the phone down, which is the worst moment to hand them a
+          camera — so the offer became the fourth screen instead, and this is
+          simply the end.
         */
-        final navigator = Navigator.of(context);
-        final host = navigator.context;
-        navigator.pop(true);
-
-        if (host.mounted) {
-          await offerToScan(
-            host,
-            repo: widget.repo,
-            paperId: paperId,
-            label: _draft.label.trim().isEmpty
-                ? 'it'
-                : _draft.label.trim().toLowerCase(),
-          );
-        }
+        Navigator.of(context).pop(true);
     }
   }
 
@@ -342,6 +350,7 @@ class _WizardState extends State<_Wizard> {
                       _what(),
                       _dates(),
                       _warning(),
+                      _scanStep(),
                     ],
                   ),
                 ),
@@ -371,6 +380,9 @@ class _WizardState extends State<_Wizard> {
                   ready: _named,
                   saving: _saving,
                   onNext: _next,
+                  // "Save document" on the scan screen rather than "Done":
+                  // the step is optional and the button has to read as the way
+                  // past it, not as a confirmation of something taken.
                   lastLabel: 'Save document',
                   quietLabel: _at == _Step.what
                       ? 'Use the full form instead'
@@ -445,5 +457,46 @@ class _WizardState extends State<_Wizard> {
         onChanged: () => setState(() {}),
       ),
     );
+  }
+
+  /*
+    ── The optional one ──────────────────────────────────────────────────────
+
+    Everything before this is a question with a right answer. This one is an
+    offer, and it has to look like one: no refusal, no red text, and the
+    footer's button says "Save document" rather than "Done" so that walking
+    past it is the obvious move.
+
+    Why it earns a screen at all: a renewal office asks for the page, not for
+    the date somebody typed in. The document is in their hand right now — it
+    will not be in a week.
+  */
+  Widget _scanStep() {
+    return WizardAsk(
+      question: 'Photograph it?',
+      hint: 'Optional. A renewal usually asks for the page itself.',
+      answer: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ScanButton(
+            // The screen has asked the question; the button is the answer.
+            label: 'Camera or files',
+            onTap: _scan,
+          ),
+          StagedScans(
+            scans: _scans,
+            onRemove: (scan) => setState(() => _scans.remove(scan)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The lock, the source and the picker — the long form's own routine.
+  Future<void> _scan() async {
+    final picked = await takeScan(context, label: _draft.label);
+    if (picked.isEmpty || !mounted) return;
+
+    setState(() => _scans.addAll(picked));
   }
 }
