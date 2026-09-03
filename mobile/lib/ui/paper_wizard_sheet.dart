@@ -33,6 +33,7 @@ import 'form_sheet_parts.dart';
 import 'paper_cards.dart';
 import 'paper_form_sheet.dart';
 import 'save_paper.dart';
+import 'scan_offer.dart';
 import 'theme.dart';
 import 'wizard_parts.dart';
 
@@ -276,8 +277,29 @@ class _WizardState extends State<_Wizard> {
           _saving = false;
         });
 
-      case PaperSaved():
-        Navigator.of(context).pop(true);
+      case PaperSaved(:final paperId):
+        /*
+          Closed first, then asked — and asked from the navigator's context
+          rather than this one.
+
+          The sheet is on its way out; a dialog parented to it would be torn
+          down with it. Same shape as the item wizard's receipt reminder, which
+          hit exactly this and is commented there too.
+        */
+        final navigator = Navigator.of(context);
+        final host = navigator.context;
+        navigator.pop(true);
+
+        if (host.mounted) {
+          await offerToScan(
+            host,
+            repo: widget.repo,
+            paperId: paperId,
+            label: _draft.label.trim().isEmpty
+                ? 'it'
+                : _draft.label.trim().toLowerCase(),
+          );
+        }
     }
   }
 

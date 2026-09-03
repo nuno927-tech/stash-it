@@ -634,8 +634,36 @@ class Repository {
         .write(const SubscriptionsCompanion(deletedAt: Value(null)));
   }
 
-  Future<void> _erasePaper(String id) =>
-      (db.delete(db.papers)..where((t) => t.id.equals(id))).go();
+  /// ── A deleted document takes its scans with it ──────────────────────────
+  ///
+  /// This was one line: delete the row. That was correct while a document was
+  /// dates and nothing else, and became a leak the moment documents could hold
+  /// a photograph of a passport — the paper row would go and the scan would
+  /// stay, pointing at an id nothing resolves, invisible on every screen and
+  /// present in every backup from then on.
+  ///
+  /// The same shape as `_erase` for items, and deliberately so: blobs first
+  /// while the rows that name them still exist, then the rows, then the record
+  /// — inside one transaction, so a failure halfway leaves the collection as
+  /// it was rather than half-erased.
+  Future<void> _erasePaper(String id) => db.transaction(() async {
+        final scans = await (db.select(db.docs)
+              ..where((t) => t.paperId.equals(id)))
+            .get();
+
+        final blobIds = <String>{
+          for (final s in scans)
+            if (s.blobId != null) s.blobId!,
+        };
+
+        if (blobIds.isNotEmpty) {
+          await (db.delete(db.blobs)..where((t) => t.id.isIn(blobIds.toList())))
+              .go();
+        }
+
+        await (db.delete(db.docs)..where((t) => t.paperId.equals(id))).go();
+        await (db.delete(db.papers)..where((t) => t.id.equals(id))).go();
+      });
 
   Future<void> _eraseSubscription(String id) => db.transaction(() async {
         final row = await (db.select(db.subscriptions)
@@ -790,10 +818,19 @@ class Repository {
       if (row.logoBlobId != null) referenced.add(row.logoBlobId!);
     }
 
-    final all = await db.select(db.blobs).get();
+    /*
+      Ids only.
+
+      This read every blob to list their ids — decrypting the whole collection
+      to answer a question about names. The same mistake `storageBytes` had,
+      one method away, found while adding paper scans to the walk above.
+    */
+    final ids = db.blobs.id;
+    final query = db.selectOnly(db.blobs)..addColumns([ids]);
+
     return [
-      for (final b in all)
-        if (!referenced.contains(b.id)) b.id,
+      for (final row in await query.get())
+        if (!referenced.contains(row.read(ids))) row.read(ids)!,
     ];
   }
 }

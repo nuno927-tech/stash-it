@@ -29,7 +29,14 @@ sealed class PaperOutcome {
 
 /// It is in the database.
 class PaperSaved extends PaperOutcome {
-  const PaperSaved();
+  const PaperSaved(this.paperId);
+
+  /// The row it went into, so a caller can attach something to it.
+  ///
+  /// The wizard offers a scan after the save rather than asking for one
+  /// mid-flow, and an offer needs something to attach to. For an edit this is
+  /// the id it already had.
+  final String paperId;
 }
 
 /// It did not save, and this is the sentence to show.
@@ -82,7 +89,7 @@ Future<PaperOutcome> savePaperDraft(
     // to save without — so a save here always earns the offer.
     if (datedSave(expiresOn: draft.expiresOn)) armNotifyOffer();
 
-    return const PaperSaved();
+    return PaperSaved(paperId);
   } on CapReached catch (e) {
     /*
       The wall, and the way through it, in the same moment.
