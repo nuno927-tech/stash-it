@@ -343,6 +343,49 @@ class _Step extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
       child: Column(
         children: [
+          /*
+            ── The title leads, Scout answers, the detail follows ────────────
+
+            Scout used to be first and the words came underneath him, which
+            made every screen a picture with a caption. The picture is the
+            charm and the title is the point, and on a screen somebody swipes
+            through in eight seconds the point should not be the second thing
+            they reach.
+
+            So: the claim, then the drawing of Scout illustrating it, then the
+            sentence that explains it. He sits between the two rather than
+            above both, which also gives him the whole middle of the screen to
+            be drawn in.
+          */
+          const SizedBox(height: 6),
+          /*
+            ── Gold, and not honey ───────────────────────────────────────────
+
+            `c.gold` is the brand colour — the "it" in the wordmark, every
+            button, every link. `c.honey` is a state: it means action needed,
+            everywhere else in the app. A tour title is not a warning, and
+            spending the warning colour on nine screens of introduction is how
+            a colour stops meaning anything by the time it matters.
+
+            Both are darkened in the light theme rather than being one hex
+            value, so this holds its contrast on white as well — see the note
+            at the top of the palette.
+          */
+          Text(
+            step.title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: fontDisplay,
+              fontWeight: FontWeight.w800,
+              // 21 was a heading borrowed from a card. This is the only thing
+              // on the screen, and the tracking tightens as it grows because
+              // Bricolage at 800 sets wide.
+              fontSize: 26,
+              height: 1.2,
+              letterSpacing: -0.7,
+              color: c.gold,
+            ),
+          ),
           Expanded(
             child: Center(
               child: Scout(
@@ -363,25 +406,15 @@ class _Step extends StatelessWidget {
             ),
           ),
           Text(
-            step.title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              fontSize: 21,
-              height: 1.2,
-              letterSpacing: -0.5,
-              color: c.text,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
             step.body,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: fontBody,
-              fontSize: 13.5,
-              height: 1.5,
+              // Up from 13.5, which was a caption size doing a paragraph's
+              // job — these are two or three sentences somebody is meant to
+              // actually read, not a note under a control.
+              fontSize: 15.5,
+              height: 1.55,
               color: c.muted,
             ),
           ),
