@@ -131,10 +131,31 @@ void main() {
       it will actually hold before they start. These pin the two promises the
       app makes about itself, so a copy edit cannot quietly withdraw one.
     */
-    test('the documents step still says no scans and no numbers', () {
+    test('the documents step offers the scan, and no step still refuses it', () {
+      /*
+        This used to pin "no scans", which was true and is not any more.
+
+        A promise that has been withdrawn is more dangerous in a test than an
+        untested one: it passes for months and then reads as the app still
+        making it. So the assertion turns around — the step says a scan is
+        possible, and no step anywhere still says it is not.
+      */
       final papers = tourSteps.firstWhere((s) => s.key == 'papers');
-      expect(papers.body, contains('no scans'));
-      expect(papers.body, contains('no document numbers'));
+      expect(papers.body.toLowerCase(), contains('scan'));
+
+      for (final step in tourSteps) {
+        expect(step.body.toLowerCase().contains('no scans'), isFalse,
+            reason: '"${step.key}" still refuses scans');
+      }
+    });
+
+    test('and document numbers are still not a thing the app holds', () {
+      // The promise that did survive: there is nowhere to type a passport
+      // number, and no step may imply there is.
+      for (final step in tourSteps) {
+        expect(step.body.toLowerCase().contains('number'), isFalse,
+            reason: '"${step.key}" mentions a number');
+      }
     });
 
     test('and promises to warn before it is too late, not after', () {
@@ -165,10 +186,18 @@ void main() {
       expect(notify.body.toLowerCase(), contains('nothing is sent'));
     });
 
-    test('the backup step still puts the backup on the user', () {
-      final safe = tourSteps.firstWhere((s) => s.key == 'safe');
-      expect(safe.body, contains('no account'));
-      expect(safe.body.toLowerCase(), contains('back up now'));
+    test('the backup step asks for a folder, and says they happen on their own',
+        () {
+      /*
+        Also rewritten rather than deleted. Backups are automatic now and go
+        to a folder somebody picks on this very screen — "back up now" was the
+        instruction when it was a button they had to remember to press.
+
+        What has to stay true is that the file lands somewhere of theirs.
+      */
+      final safe = tourSteps.firstWhere((s) => s.key == folderStepKey);
+      expect(safe.body.toLowerCase(), contains('folder'));
+      expect(safe.body.toLowerCase(), contains('on their own'));
     });
   });
 }

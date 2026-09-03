@@ -339,170 +339,185 @@ class _Step extends StatelessWidget {
     final asks = step.key == tour.nameStepKey;
     final typing = asks && MediaQuery.viewInsetsOf(context).bottom > 0;
 
+    /*
+      ── Scrolls, because the step has to fit a small screen too ────────────
+
+      Title, Scout and a sentence come to about 350 logical pixels, and a
+      short handset with the text scale turned up leaves less than that. It
+      overflowed rather than scrolled, which on a phone is a black-and-yellow
+      barber's pole across the first screen anybody ever sees.
+
+      The `Spacer` that used to sit at the bottom is gone with it. The column
+      already starts at the top, so the slack was always going to be
+      underneath — the Spacer was only naming it, and a Spacer cannot live
+      inside something that scrolls.
+    */
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
-      child: Column(
-        children: [
-          /*
-            ── The title leads, Scout answers, the detail follows ────────────
-
-            Scout used to be first and the words came underneath him, which
-            made every screen a picture with a caption. The picture is the
-            charm and the title is the point, and on a screen somebody swipes
-            through in eight seconds the point should not be the second thing
-            they reach.
-
-            So: the claim, then the drawing of Scout illustrating it, then the
-            sentence that explains it. He sits between the two rather than
-            above both, which also gives him the whole middle of the screen to
-            be drawn in.
-          */
-          const SizedBox(height: 6),
-          /*
-            ── Gold, and not honey ───────────────────────────────────────────
-
-            `c.gold` is the brand colour — the "it" in the wordmark, every
-            button, every link. `c.honey` is a state: it means action needed,
-            everywhere else in the app. A tour title is not a warning, and
-            spending the warning colour on nine screens of introduction is how
-            a colour stops meaning anything by the time it matters.
-
-            Both are darkened in the light theme rather than being one hex
-            value, so this holds its contrast on white as well — see the note
-            at the top of the palette.
-          */
-          Text(
-            step.title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w800,
-              /*
-                Display size, not heading size.
-
-                21 was a heading borrowed from a card. This is the first thing
-                on a screen that holds one sentence under it — it is the
-                headline of the whole app, and it should read like the
-                wordmark rather than like a section label.
-
-                The tracking tightens as it grows: Bricolage at 800 sets wide,
-                and at this size the default spacing turns a three-word title
-                into three separate words.
-              */
-              fontSize: 32,
-              height: 1.12,
-              letterSpacing: -1.1,
-              color: c.gold,
-            ),
-          ),
-          /*
-            ── The three of them are one block, and the slack goes below ─────
-
-            Scout was in an `Expanded`, which centred him in everything left
-            over — so he floated in the middle of the screen with a gap above
-            him and a gap below, and the sentence he illustrates ended up
-            pinned to the bottom, a long way from the title it belongs to.
-
-            Title, drawing, sentence now sit together at the top and read as
-            one thing. The empty space is all at the bottom, where the dots and
-            the buttons are, which is where empty space belongs on a screen
-            somebody is swiping through.
-
-            Twenty-six between them rather than twelve. Twelve read as one
-            block that had been squashed; this is three things that belong
-            together and are not touching. The gap is the same above and below
-            Scout so he sits in his own space rather than being attached to
-            whichever line he happens to be nearer.
-          */
-          const SizedBox(height: 26),
-          Scout(
-            pose: _poses[step.pose]!,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             /*
-              Smaller on the step that has a field under it, and smaller again
-              once the keyboard is actually up.
+              ── The title leads, Scout answers, the detail follows ────────────
 
-              He is not dropped entirely while typing, though there is room
-              to. The whole point of that step is that it is Scout asking your
-              name — losing him mid-answer turns a greeting into a form field.
+              Scout used to be first and the words came underneath him, which
+              made every screen a picture with a caption. The picture is the
+              charm and the title is the point, and on a screen somebody swipes
+              through in eight seconds the point should not be the second thing
+              they reach.
+
+              So: the claim, then the drawing of Scout illustrating it, then the
+              sentence that explains it. He sits between the two rather than
+              above both, which also gives him the whole middle of the screen to
+              be drawn in.
             */
-            height: typing ? 64 : (asks ? 118 : 168),
-            motion: const [ScoutMotion.float, ScoutMotion.breathe],
-            shadow: true,
-          ),
-          const SizedBox(height: 26),
-          Text(
-            step.body,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: fontBody,
-              // Up from 13.5, which was a caption size doing a paragraph's
-              // job — these are two or three sentences somebody is meant to
-              // actually read, not a note under a control.
-              fontSize: 15.5,
-              height: 1.55,
-              color: c.muted,
-            ),
-          ),
-          /*
-            Everything the step has to say is above this line; below it is
-            room to breathe. `Spacer` rather than `Expanded` so it gives way
-            first when the keyboard arrives — it is the only child that can be
-            squeezed to nothing without losing anything.
-          */
-          if (step.key == tour.folderStepKey) ...[
-            const SizedBox(height: 18),
-            _FolderButton(repo: repo),
-          ],
-          if (asks) ...[
-            const SizedBox(height: 16),
-            TextField(
-              controller: name,
-              focusNode: focus,
+            const SizedBox(height: 6),
+            /*
+              ── Gold, and not honey ───────────────────────────────────────────
+
+              `c.gold` is the brand colour — the "it" in the wordmark, every
+              button, every link. `c.honey` is a state: it means action needed,
+              everywhere else in the app. A tour title is not a warning, and
+              spending the warning colour on nine screens of introduction is how
+              a colour stops meaning anything by the time it matters.
+
+              Both are darkened in the light theme rather than being one hex
+              value, so this holds its contrast on white as well — see the note
+              at the top of the palette.
+            */
+            Text(
+              step.title,
               textAlign: TextAlign.center,
-              textCapitalization: TextCapitalization.words,
-              // Done rather than next: this is the last step, and a keyboard
-              // offering "next" on the final field suggests there is more.
-              textInputAction: TextInputAction.done,
               style: TextStyle(
                 fontFamily: fontDisplay,
                 fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: c.text,
+                /*
+                  Display size, not heading size.
+
+                  21 was a heading borrowed from a card. This is the first thing
+                  on a screen that holds one sentence under it — it is the
+                  headline of the whole app, and it should read like the
+                  wordmark rather than like a section label.
+
+                  The tracking tightens as it grows: Bricolage at 800 sets wide,
+                  and at this size the default spacing turns a three-word title
+                  into three separate words.
+                */
+                fontSize: 32,
+                height: 1.12,
+                letterSpacing: -1.1,
+                color: c.gold,
               ),
-              decoration: InputDecoration(
-                hintText: 'Scout',
-                hintStyle: TextStyle(
+            ),
+            /*
+              ── The three of them are one block, and the slack goes below ─────
+
+              Scout was in an `Expanded`, which centred him in everything left
+              over — so he floated in the middle of the screen with a gap above
+              him and a gap below, and the sentence he illustrates ended up
+              pinned to the bottom, a long way from the title it belongs to.
+
+              Title, drawing, sentence now sit together at the top and read as
+              one thing. The empty space is all at the bottom, where the dots and
+              the buttons are, which is where empty space belongs on a screen
+              somebody is swiping through.
+
+              Twenty-six between them rather than twelve. Twelve read as one
+              block that had been squashed; this is three things that belong
+              together and are not touching. The gap is the same above and below
+              Scout so he sits in his own space rather than being attached to
+              whichever line he happens to be nearer.
+            */
+            const SizedBox(height: 26),
+            Scout(
+              pose: _poses[step.pose]!,
+              /*
+                Smaller on the step that has a field under it, and smaller again
+                once the keyboard is actually up.
+
+                He is not dropped entirely while typing, though there is room
+                to. The whole point of that step is that it is Scout asking your
+                name — losing him mid-answer turns a greeting into a form field.
+              */
+              height: typing ? 64 : (asks ? 118 : 168),
+              motion: const [ScoutMotion.float, ScoutMotion.breathe],
+              shadow: true,
+            ),
+            const SizedBox(height: 26),
+            Text(
+              step.body,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: fontBody,
+                // Up from 13.5, which was a caption size doing a paragraph's
+                // job — these are two or three sentences somebody is meant to
+                // actually read, not a note under a control.
+                fontSize: 15.5,
+                height: 1.55,
+                color: c.muted,
+              ),
+            ),
+            /*
+              Everything the step has to say is above this line. What follows
+              is the one step that has a control and the one that has a field;
+              when the keyboard covers them the column scrolls rather than
+              being squeezed, which is why the Spacer went.
+            */
+            if (step.key == tour.folderStepKey) ...[
+              const SizedBox(height: 18),
+              _FolderButton(repo: repo),
+            ],
+            if (asks) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: name,
+                focusNode: focus,
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.words,
+                // Done rather than next: this is the last step, and a keyboard
+                // offering "next" on the final field suggests there is more.
+                textInputAction: TextInputAction.done,
+                style: TextStyle(
                   fontFamily: fontDisplay,
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
-                  color: c.muted,
+                  color: c.text,
                 ),
-                filled: true,
-                fillColor: c.field,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                  borderSide: BorderSide(color: c.washGoldLine),
+                decoration: InputDecoration(
+                  hintText: 'Scout',
+                  hintStyle: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    color: c.muted,
+                  ),
+                  filled: true,
+                  fillColor: c.field,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(Radii.sm),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(Radii.sm),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(Radii.sm),
+                    borderSide: BorderSide(color: c.washGoldLine),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Optional',
-              style: TextStyle(
-                  fontFamily: fontBody, fontSize: 11.5, color: c.muted),
-            ),
+              const SizedBox(height: 6),
+              Text(
+                'Optional',
+                style: TextStyle(
+                    fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+              ),
+            ],
           ],
-          const Spacer(),
-        ],
+        ),
       ),
     );
   }
