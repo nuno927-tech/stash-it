@@ -385,12 +385,13 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+          await _blobSizeIndex();
           await _seed();
         },
 
@@ -453,6 +454,9 @@ class StashDatabase extends _$StashDatabase {
             await m.addColumn(docs, docs.paperId);
             await m.alterTable(TableMigration(docs));
           }
+          if (from < 9) {
+            await _blobSizeIndex();
+          }
           if (from < 7) {
             /*
               Automatic backups. Null on every existing install, which reads as
@@ -473,6 +477,28 @@ class StashDatabase extends _$StashDatabase {
           // something rather than being quietly ignored.
           await customStatement('PRAGMA foreign_keys = ON');
         },
+      );
+
+  /*
+    ── An index on the size, and why it is worth one ─────────────────────────
+
+    The Settings tab shows how much room the photographs take, which is
+    `SELECT SUM(byte_length) FROM blobs`. That reads fast on paper and does
+    not: `bytes` sits before `byte_length` in the row, and a photograph does
+    not fit in one page, so reaching the column after it means walking that
+    row's overflow pages — every one of which SQLCipher decrypts.
+
+    On a collection with a couple of hundred photographs in it, adding up
+    three-figure numbers meant decrypting the entire collection. Twice this
+    screen has been made "faster" without that being the thing fixed.
+
+    An index carrying the id and the size answers both questions from the
+    index and never opens a row: the total on this screen, and the per-file
+    sizes the claim sheet lists. Building it reads those two columns once, at
+    upgrade — a real cost, paid once, instead of on every visit to the tab.
+  */
+  Future<void> _blobSizeIndex() => customStatement(
+        'CREATE INDEX IF NOT EXISTS blobs_by_size ON blobs (id, byte_length)',
       );
 
   /// A new install needs a property to hang everything off, and a settings row

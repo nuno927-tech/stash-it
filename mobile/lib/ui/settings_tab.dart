@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.16.2';
+const appVersion = '1.17.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1026,85 +1026,100 @@ class _SettingsTabState extends State<SettingsTab> {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return FutureBuilder<Settings>(
-      future: _settings,
-      builder: (context, snap) {
-        final settings = snap.data;
-        if (settings == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final prefs = PrefsScope.of(context);
 
-        final prefs = PrefsScope.of(context);
+    /*
+      ── The heading does not wait for the database ────────────────────────
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            /*
-              ── Outside the scroller, like the greeting on Home ──────────────
+      The whole screen used to be inside the `FutureBuilder`, so arriving here
+      meant a centred spinner where the page should be, and then the page —
+      one read's worth of nothing, on the tab people already say is slow.
 
-              The subtitle is a caption on the heading, and a caption that
-              scrolls away from the thing it captions is just the first row of
-              the list. Scout goes with it because he is standing next to the
-              title, not next to Appearance.
+      The title and Scout owe nothing to the settings row, so they are drawn
+      on the first frame. Only the cards, which genuinely need the answer,
+      wait for it.
+    */
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        /*
+          ── Outside the scroller, like the greeting on Home ──────────────
 
-              This is the same fix the dashboard had: chrome above, content
-              below, and the line between them in one place per screen.
-            */
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-              child: Row(
-                // The text sits at the top of the row, tight under the title,
-                // and Scout hangs below it. Centred, he was 132 tall and the
-                // subtitle was being pushed down to his middle — a caption on
-                // the heading floating halfway down the screen.
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'How Stash it behaves.',
-                      style: TextStyle(
-                        fontFamily: fontDisplay,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w200,
-                        letterSpacing: -0.4,
-                        color: c.muted,
-                      ),
-                    ),
+          The subtitle is a caption on the heading, and a caption that
+          scrolls away from the thing it captions is just the first row of
+          the list. Scout goes with it because he is standing next to the
+          title, not next to Appearance.
+
+          This is the same fix the dashboard had: chrome above, content
+          below, and the line between them in one place per screen.
+        */
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+          child: Row(
+            // The text sits at the top of the row, tight under the title,
+            // and Scout hangs below it. Centred, he was 132 tall and the
+            // subtitle was being pushed down to his middle — a caption on
+            // the heading floating halfway down the screen.
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'How Stash it behaves.',
+                  style: TextStyle(
+                    fontFamily: fontDisplay,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w200,
+                    letterSpacing: -0.4,
+                    color: c.muted,
                   ),
-                  /*
-                    ── Ten taps on Scout ──────────────────────────────────────
-
-                    It was ten taps on the word "Settings", which is a fine
-                    hiding place and a poor invitation: a heading is the one
-                    thing on a screen nobody suspects of doing anything.
-
-                    A mascot is the opposite. He is already the only object on
-                    the screen that looks alive, and poking an animal to see
-                    what happens is a thing people do without being asked —
-                    which is exactly the behaviour an easter egg needs.
-
-                    Every tap ticks, so somebody who tries it twice learns the
-                    app noticed. That tick is the whole invitation.
-                  */
-                  GestureDetector(
-                    // Named so the test can poke him without guessing which
-                    // Scout on the screen is the one that answers.
-                    key: const Key('scout-easter-egg'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _pokeScout,
-                    child: const Scout(
-                      pose: ScoutPose.settings,
-                      height: 132,
-                      motion: [ScoutMotion.breathe],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            Expanded(child: _cards(context, c, settings, prefs)),
-          ],
-        );
-      },
+              /*
+                ── Ten taps on Scout ──────────────────────────────────────
+
+                It was ten taps on the word "Settings", which is a fine
+                hiding place and a poor invitation: a heading is the one
+                thing on a screen nobody suspects of doing anything.
+
+                A mascot is the opposite. He is already the only object on
+                the screen that looks alive, and poking an animal to see
+                what happens is a thing people do without being asked —
+                which is exactly the behaviour an easter egg needs.
+
+                Every tap ticks, so somebody who tries it twice learns the
+                app noticed. That tick is the whole invitation.
+              */
+              GestureDetector(
+                // Named so the test can poke him without guessing which
+                // Scout on the screen is the one that answers.
+                key: const Key('scout-easter-egg'),
+                behavior: HitTestBehavior.opaque,
+                onTap: _pokeScout,
+                child: const Scout(
+                  pose: ScoutPose.settings,
+                  height: 132,
+                  motion: [ScoutMotion.breathe],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: FutureBuilder<Settings>(
+            future: _settings,
+            builder: (context, snap) {
+              final settings = snap.data;
+
+              // Empty, not a spinner. The read is a few milliseconds and a
+              // spinner that appears and vanishes inside one blink is more
+              // movement than waiting was.
+              if (settings == null) return const SizedBox.shrink();
+
+              return _cards(context, c, settings, prefs);
+            },
+          ),
+        ),
+      ],
     );
   }
 
