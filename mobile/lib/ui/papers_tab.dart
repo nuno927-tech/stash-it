@@ -372,13 +372,14 @@ class _Tiles extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: _Tile('$total', 'DOCUMENTS')),
+                    Expanded(child: FigureTile('$total', 'DOCUMENTS')),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _Tile(
+                      child: FigureTile(
                         '$needing',
                         'NEEDS ACTION',
                         tone: needing > 0 ? c.honey : null,
+                        lit: needing > 0,
                         onTap:
                             needing > 0 ? () => onFind(PaperState.renew) : null,
                       ),
@@ -389,10 +390,11 @@ class _Tiles extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _Tile(
+                      child: FigureTile(
                         '$expired',
                         'OUT OF DATE',
                         tone: expired > 0 ? c.ember : null,
+                        lit: expired > 0,
                         onTap: expired > 0
                             ? () => onFind(PaperState.expired)
                             : null,
@@ -400,7 +402,7 @@ class _Tiles extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _Tile(
+                      child: FigureTile(
                         // The date to start, not the date it expires. The whole
                         // reason this tab sorts by renew-by is that those two
                         // are different, and only one of them is actionable.
@@ -429,81 +431,6 @@ class _Tiles extends StatelessWidget {
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile(
-    this.value,
-    this.label, {
-    this.tone,
-    this.onTap,
-    this.small = false,
-  });
-
-  final String value;
-  final String label;
-  final Color? tone;
-  final VoidCallback? onTap;
-
-  /// A date rather than a count, so it needs less room to itself.
-  final bool small;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(Radii.lg),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
-        decoration: BoxDecoration(
-          color: tone == null ? c.slate700 : c.washGoldSoft,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(
-              color: tone == null ? Colors.transparent : c.washGoldLine),
-          boxShadow: cardShadow(c,
-              dark: Theme.of(context).brightness == Brightness.dark),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontFamily: fontDisplay,
-                  fontWeight: FontWeight.w200,
-                  fontSize: small ? 19 : 23,
-                  letterSpacing: -0.8,
-                  height: 1.05,
-                  color: tone ?? c.text,
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: fontBody,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.67,
-                color: c.muted,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One document, drawn the same way wherever it appears.
-///
-/// Public because the Items tab's search draws it too — a query now answers
-/// across all three kinds, and a second row widget for a document would be one
-/// that starts identical to this and drifts the first time either is touched.
 class PaperTile extends StatelessWidget {
   const PaperTile({
     required this.paper,

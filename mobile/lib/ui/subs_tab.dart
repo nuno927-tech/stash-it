@@ -333,6 +333,8 @@ class _Tiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
     /*
       ── Scout stands to the right of the grid, not above it ─────────────────
 
@@ -352,31 +354,38 @@ class _Tiles extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _Tile(_money(totalMonthlyCents(subs)), 'A MONTH',
-                          lead: true),
+                      child: FigureTile(
+                        _money(totalMonthlyCents(subs)),
+                        'A MONTH',
+                        // The figure this tab is about, so it carries the
+                        // wash and the gold.
+                        lit: true,
+                        tone: c.gold,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                        child: _Tile(_money(totalYearlyCents(subs)), 'A YEAR')),
+                        child: FigureTile(
+                            _money(totalYearlyCents(subs)), 'A YEAR')),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
-                      child: _Tile(
+                      child: FigureTile(
                         '${subs.length}',
                         subs.length == 1 ? 'SERVICE' : 'SERVICES',
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _Tile(
+                      child: FigureTile(
                         _money(week.cents),
                         'DUE THIS WEEK',
                         // Amber only when there is something to be due. A
                         // coloured zero is an alarm about nothing.
-                        warn: week.count > 0,
+                        tone: week.count > 0 ? c.honey : null,
                       ),
                     ),
                   ],
@@ -390,69 +399,6 @@ class _Tiles extends StatelessWidget {
               pose: ScoutPose.calendar,
               height: 132,
               motion: [ScoutMotion.breathe],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tile extends StatelessWidget {
-  const _Tile(this.value, this.label, {this.lead = false, this.warn = false});
-
-  final String value;
-  final String label;
-  final bool lead;
-  final bool warn;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return Container(
-      // Smaller than they were: these four are a caption on the calendar under
-      // them, not the subject of the screen.
-      padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
-      decoration: BoxDecoration(
-        color: lead ? c.washGoldSoft : c.slate700,
-        borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: lead ? c.washGoldLine : Colors.transparent),
-        boxShadow: cardShadow(c,
-            dark: Theme.of(context).brightness == Brightness.dark),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontFamily: fontDisplay,
-                fontWeight: FontWeight.w200,
-                fontSize: 23,
-                letterSpacing: -0.8,
-                height: 1.05,
-                color: lead
-                    ? c.gold
-                    : warn
-                        ? c.honey
-                        : c.text,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: fontBody,
-              fontSize: 9.5,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.67,
-              color: c.muted,
             ),
           ),
         ],

@@ -2,6 +2,7 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 
@@ -1267,6 +1268,93 @@ class PickingBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One figure in a pill: the number, and what it counts underneath.
+///
+/// ── One tile, because there were two identical ones ───────────────────────
+/// Documents and Subscriptions each had a private copy, and they had already
+/// drifted — one could be tapped and coloured, the other could be lit gold.
+/// Items now shows figures too, and a third copy is how a screen ends up with
+/// a slightly different corner radius that nobody can explain.
+///
+/// [lit] is the gold wash, for the figure a screen is actually about. [tone]
+/// colours the number alone, which is how "3 out of date" goes red without
+/// the tile shouting.
+class FigureTile extends StatelessWidget {
+  const FigureTile(
+    this.value,
+    this.label, {
+    this.tone,
+    this.lit = false,
+    this.onTap,
+    this.small = false,
+    super.key,
+  });
+
+  final String value;
+  final String label;
+  final Color? tone;
+  final bool lit;
+  final VoidCallback? onTap;
+
+  /// A date rather than a count, so it needs less room to itself.
+  final bool small;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(Radii.lg),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
+        decoration: BoxDecoration(
+          color: lit ? c.washGoldSoft : c.slate700,
+          borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(color: lit ? c.washGoldLine : Colors.transparent),
+          boxShadow: cardShadow(c,
+              dark: Theme.of(context).brightness == Brightness.dark),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontWeight: FontWeight.w200,
+                  fontSize: small ? 19 : 23,
+                  letterSpacing: -0.8,
+                  height: 1.05,
+                  color: tone ?? c.text,
+                  // Figures of the same width, so two tiles side by side line
+                  // up and a changing number does not shuffle the ones after
+                  // it.
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.67,
+                color: c.muted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

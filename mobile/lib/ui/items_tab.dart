@@ -564,39 +564,42 @@ class _ItemsTabState extends State<ItemsTab> {
   /// rates, and inventing one produces a total that is confidently wrong and
   /// impossible to check — so a mixed collection reports its biggest currency
   /// and says which.
+  /*
+    ── Two pills, like the other three tabs ──────────────────────────────────
+
+    It was one 30-point number with a sentence trailing off it: "$4,210
+    recorded across 31 items". That is the same two facts every other tab
+    states as figures in a row, written as prose instead — so Items was the
+    one screen whose header did not look like a header.
+
+    Two, not four. Documents and Subscriptions have a state worth counting
+    separately; an item is either here or it is not, and the filter chips
+    directly underneath already answer "how many are lapsed".
+  */
   Widget _worth(List<Item> all, StashColors c) {
     final totals = valueByCurrency(all);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 2, 0, 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(
-            totals.isEmpty ? '—' : shortMoney(totals.first),
-            style: TextStyle(
-              fontFamily: fontDisplay,
-              fontWeight: FontWeight.w200,
-              fontSize: 30,
-              letterSpacing: -1.05,
-              height: 1,
-              color: c.text,
+          Expanded(
+            child: FigureTile(
+              totals.isEmpty ? '—' : shortMoney(totals.first),
+              // The currency is named only when there is more than one, which
+              // is the only time the number is ambiguous.
+              totals.length > 1 ? 'WORTH · ${totals.first.currency}' : 'WORTH',
+              // The figure this tab is about, the way "A MONTH" is on
+              // Subscriptions.
+              lit: true,
+              tone: c.gold,
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              'recorded across ${all.length} ${all.length == 1 ? 'item' : 'items'}'
-              '${totals.length > 1 ? ' · ${totals.first.currency}' : ''}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: fontBody,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w300,
-                color: c.muted,
-              ),
+          Expanded(
+            child: FigureTile(
+              '${all.length}',
+              all.length == 1 ? 'ITEM' : 'ITEMS',
             ),
           ),
         ],
