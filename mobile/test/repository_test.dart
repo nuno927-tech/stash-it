@@ -53,18 +53,21 @@ void main() {
     */
     test('the cap counts all three kinds, and skips the binned', () async {
       await fillTo(3);
-      await repo.createPaper(Paper(
+      await repo.createPaper(const Paper(
         id: '',
         propertyId: 'default',
         kind: PaperKind.passport,
         label: 'Passport',
         expiresOn: '2029-01-01',
       ));
-      await repo.createSubscription(Subscription(
+      await repo.createSubscription(const Subscription(
         id: '',
         propertyId: 'default',
         name: 'Netflix',
+        cadence: Cadence.monthly,
+        anchorDate: '2026-08-22',
         amountCents: 1099,
+        currency: 'USD',
       ));
 
       expect(await repo.cappedCount(), 5);
