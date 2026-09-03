@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import '../db/repository.dart';
 import '../logic/item_icon.dart';
 import '../models/types.dart';
+import 'theme.dart';
 import 'warranty_ring.dart';
 
 final Map<String, ImageProvider?> _cache = {};
@@ -125,4 +126,35 @@ IconData itemIcon(Item item) {
     IconKey.watch => Icons.watch,
     IconKey.box => Icons.inventory_2_outlined,
   };
+}
+
+/// Just the picture, filling its box.
+///
+/// Shared by the dashboard's recent strip and the Items gallery, which want
+/// exactly the same thing: the photograph, cropped to whatever shape it has
+/// been given, and something honest in its place when there is not one.
+class ItemPhoto extends StatelessWidget {
+  const ItemPhoto({required this.repo, required this.item, super.key});
+
+  final Repository repo;
+  final Item item;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    return FutureBuilder<ImageProvider?>(
+      future: thumbFor(repo, item.thumbBlobId ?? item.photoBlobId),
+      builder: (context, snap) {
+        final image = snap.data;
+        if (image == null) {
+          return Container(
+            color: c.slate600,
+            child: Icon(Icons.inventory_2_outlined, size: 28, color: c.muted),
+          );
+        }
+        return Image(image: image, fit: BoxFit.cover);
+      },
+    );
+  }
 }

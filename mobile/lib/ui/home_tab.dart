@@ -1401,7 +1401,7 @@ class _RecentStrip extends StatelessWidget {
                       child: Stack(
                         children: [
                           Positioned.fill(
-                              child: _Photo(repo: repo, item: item)),
+                              child: ItemPhoto(repo: repo, item: item)),
                           Positioned(
                             top: 8,
                             right: 8,
@@ -1457,33 +1457,6 @@ class _RecentStrip extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-/// Just the picture, filling its box.
-class _Photo extends StatelessWidget {
-  const _Photo({required this.repo, required this.item});
-
-  final Repository repo;
-  final Item item;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = StashColors.of(context);
-
-    return FutureBuilder<ImageProvider?>(
-      future: thumbFor(repo, item.thumbBlobId ?? item.photoBlobId),
-      builder: (context, snap) {
-        final image = snap.data;
-        if (image == null) {
-          return Container(
-            color: c.slate600,
-            child: Icon(Icons.inventory_2_outlined, size: 28, color: c.muted),
-          );
-        }
-        return Image(image: image, fit: BoxFit.cover);
-      },
     );
   }
 }

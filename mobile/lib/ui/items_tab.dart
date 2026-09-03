@@ -139,6 +139,23 @@ class _ItemsTabState extends State<ItemsTab> {
   bool _grouped = false;
 
   /*
+    ── Pictures instead of rows ────────────────────────────────────────────
+
+    A row is the right shape for "what expires next": a name, a date, a state,
+    forty of them on a screen. It is the wrong shape for "which sofa did I
+    buy" — that question is answered by the photograph, and in a row the
+    photograph is a thumbnail the size of a fingernail.
+
+    So it is a view, not a sort. The order and the filter both still apply;
+    only the shape of what they produce changes, which is why the chip sits
+    after the sorts rather than among them.
+
+    Not remembered between visits, for the same reason the sort is not: it
+    answers a question somebody has right now.
+  */
+  bool _gallery = false;
+
+  /*
     ── What the right-hand pane is showing ─────────────────────────────────
 
     Only ever set on a wide screen — see `splitView`. On a phone, tapping a row
@@ -512,7 +529,9 @@ class _ItemsTabState extends State<ItemsTab> {
                         pose: all.isEmpty ? ScoutPose.receipt : ScoutPose.alert,
                         poseHeight: all.isEmpty ? 180 : 120,
                       )
-                    : _sort == _Sort.room && _grouped
+                    : _gallery
+                        ? _photoGrid(shown)
+                        : _sort == _Sort.room && _grouped
                         ? _roomList(shown, c)
                         : ListView.builder(
                             // One past the end, for the way into the bin.
@@ -860,7 +879,8 @@ class _ItemsTabState extends State<ItemsTab> {
     );
   }
 
-  /// How the list is ordered: one row, full width, under everything else.
+  /// How the list is ordered, and what shape it comes in: one row, full
+  /// width, under everything else.
   Widget _sortChips() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -877,6 +897,24 @@ class _ItemsTabState extends State<ItemsTab> {
                 setState(() => _sort = sort);
               },
             ),
+
+          /*
+            Last, and after a gap the others do not have.
+
+            The four before it are one choice between four; this is a switch,
+            and putting it in the same run without saying so would make it
+            look like a fifth way to sort. The space is the whole distinction,
+            so it is deliberate rather than decorative.
+          */
+          const SizedBox(width: 5),
+          _Chip(
+            label: 'Photos',
+            on: _gallery,
+            onTap: () {
+              feedback(Cue.tap);
+              setState(() => _gallery = !_gallery);
+            },
+          ),
         ],
       ),
     );
@@ -916,6 +954,61 @@ class _ItemsTabState extends State<ItemsTab> {
   ///
   /// One flat `ListView` rather than nested ones: a scroller inside a scroller
   /// fights the gesture, and every heading would need its own height guess.
+  /*
+    ── The same list, drawn as pictures ──────────────────────────────────────
+
+    Two across on a phone. Three would put a sofa in a box the width of a
+    thumbnail, which is the shape this view exists to escape; one would be a
+    row with a bigger photograph, which is the shape it already had.
+
+    Everything else is the list's: the same `shown`, already sorted and
+    filtered, and the same tap, long-press and selection behaviour. A view that
+    quietly showed a different set of items from the one the chips describe
+    would be the worst kind of lie a filter can tell.
+
+    Room headings are not drawn here. They are a list device — a heading needs
+    a full-width line to sit on, and grouping a grid by inserting them turns it
+    into several grids with different column counts.
+  */
+  Widget _photoGrid(List<Item> shown) {
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              // Taller than it is wide: a square photograph with a name and a
+              // line of warranty under it needs the room, and a squarer tile
+              // crops the picture rather than the words.
+              childAspectRatio: 0.78,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _PhotoTile(
+                repo: widget.repo,
+                item: shown[i],
+                picking: _picked != null,
+                picked: _picked?.contains(shown[i].id) ?? false,
+                onTap: () =>
+                    _picked == null ? _open(shown[i]) : _pick(shown[i].id),
+                onLongPress:
+                    _picked == null ? () => _startPicking(shown[i].id) : null,
+              ),
+              childCount: shown.length,
+            ),
+          ),
+        ),
+
+        // The way into the bin, and the clearance the list gives its last row
+        // so the add button does not sit on top of it.
+        SliverToBoxAdapter(child: _BinLink(repo: widget.repo)),
+        const SliverToBoxAdapter(child: SizedBox(height: 96)),
+      ],
+    );
+  }
+
   Widget _roomList(List<Item> shown, StashColors c) {
     final names = {for (final r in _rooms) r.id: r.name};
 
@@ -1491,3 +1584,122 @@ class _ItemTile extends StatelessWidget {
 /// A wrong icon is worse than a neutral one — it looks like the app has
 /// misunderstood the thing — so anything the keyword table does not recognise
 /// gets a plain box rather than a guess.
+
+/// One item as a picture, for the gallery.
+///
+/// Deliberately not `_ItemTile` with a photograph bolted on: a row states a
+/// date and a state in words because it has the width for them, and this has
+/// the picture instead. The two say the same things in different registers,
+/// and forcing one widget to do both would be a pile of `if (gallery)`.
+///
+/// No swipe to delete. A grid has no left and right to swipe along without
+/// fighting the tab swipe underneath it, and long-press already opens the
+/// selection this view can act through.
+class _PhotoTile extends StatelessWidget {
+  const _PhotoTile({
+    required this.repo,
+    required this.item,
+    required this.picking,
+    required this.picked,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  final Repository repo;
+  final Item item;
+  final bool picking;
+  final bool picked;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+    final left = warrantyParts(item);
+
+    return StashCard(
+      clip: true,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: ItemPhoto(repo: repo, item: item)),
+
+                  // The ring in the corner rather than around the picture: at
+                  // this size a ring round the whole thing is a hoop with a
+                  // stamp inside it. Same decision as the recent strip.
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: ItemArtLive(
+                      repo: repo,
+                      item: item,
+                      size: 30,
+                      stroke: 2.6,
+                      fallback: const SizedBox.shrink(),
+                    ),
+                  ),
+
+                  // The tick leads while picking, over the photograph, because
+                  // that is the thing a tap changes.
+                  if (picking)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Icon(
+                        picked ? Icons.check_circle : Icons.circle_outlined,
+                        size: 22,
+                        // White rather than a palette colour: this one sits on
+                        // a photograph, which can be any colour at all, and
+                        // both themes' muted greys disappear into half of them.
+                        color: picked ? c.gold : Colors.white,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: c.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    left.unit == 'no warranty'
+                        ? 'No warranty'
+                        : left.value == 'Lifetime'
+                            ? 'Covered for life'
+                            : '${left.value} ${left.unit}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 12,
+                      color: c.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
