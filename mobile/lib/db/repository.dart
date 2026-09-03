@@ -181,6 +181,32 @@ class Repository {
     return (await query.getSingle()).read(rows) ?? 0;
   }
 
+  /// The picture to put on each document's row, by document id.
+  ///
+  /// ── One query for a list, not one per row ─────────────────────────────
+  /// A tile that fetched its own would run a query per row per rebuild, which
+  /// is the same trap `thumb.dart` was written to avoid — that cache is keyed
+  /// by blob id and cannot help with the LOOKUP of which blob a document has.
+  ///
+  /// Two columns, not the rows: this is a table of references, but reading all
+  /// of it to keep two fields is the habit that made the Settings tab slow.
+  /// The first scan wins, which is the one somebody took first.
+  Future<Map<String, String>> paperCovers() async {
+    final query = db.selectOnly(db.docs)
+      ..addColumns([db.docs.paperId, db.docs.blobId])
+      ..where(db.docs.paperId.isNotNull() &
+          db.docs.blobId.isNotNull() &
+          db.docs.deletedAt.isNull());
+
+    final out = <String, String>{};
+    for (final row in await query.get()) {
+      final paper = row.read(db.docs.paperId);
+      final blob = row.read(db.docs.blobId);
+      if (paper != null && blob != null) out.putIfAbsent(paper, () => blob);
+    }
+    return out;
+  }
+
   /// How many scans hang off this particular handful of documents.
   ///
   /// For the share sheet, which has to decide whether to ask about scans at

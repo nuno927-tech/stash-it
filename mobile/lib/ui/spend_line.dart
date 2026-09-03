@@ -194,14 +194,36 @@ class _LinePainter extends CustomPainter {
     }
 
     if (points.length > 1) {
-      // Gold at the curve, nothing at the baseline. It gives the line a body
-      // without becoming a second solid shape competing with it.
-      final area = Path()..moveTo(points.first.dx, labelRoom + h);
-      for (final p in points) {
-        area.lineTo(p.dx, p.dy);
+      /*
+        ── One curve, drawn once, used twice ─────────────────────────────────
+
+        The fill used to be built with straight `lineTo`s between the points
+        while the line above it was drawn with cubics. So the shading rose to
+        each dot in a straight line and the line itself curved somewhere else,
+        and on any month that was not on the diagonal you could see daylight
+        between them — the fill looked pinned to the dots rather than sitting
+        under the line.
+
+        Now the area IS the line, continued down to the floor and closed. The
+        two cannot disagree because there is only one path.
+
+        Rounded through the points rather than straight between them: the
+        control points sit half a step either side at the neighbours' heights,
+        which is a Catmull-Rom curve in the only form Flutter's Path offers —
+        and it will not overshoot below zero on a month with nothing in it,
+        which a naive spline would.
+      */
+      final stroke = Path()..moveTo(points.first.dx, points.first.dy);
+      for (var i = 1; i < points.length; i++) {
+        final a = points[i - 1];
+        final b = points[i];
+        final mid = (a.dx + b.dx) / 2;
+        stroke.cubicTo(mid, a.dy, mid, b.dy, b.dx, b.dy);
       }
-      area
+
+      final area = Path.from(stroke)
         ..lineTo(points.last.dx, labelRoom + h)
+        ..lineTo(points.first.dx, labelRoom + h)
         ..close();
 
       canvas.drawPath(
@@ -219,22 +241,6 @@ class _LinePainter extends CustomPainter {
             ],
           ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
       );
-
-      final stroke = Path()..moveTo(points.first.dx, points.first.dy);
-      for (var i = 1; i < points.length; i++) {
-        /*
-          Rounded through the points rather than straight between them.
-
-          The control points sit half a step either side at the neighbours'
-          heights, which is a Catmull-Rom curve in the only form Flutter's Path
-          offers — and it will not overshoot below zero on a month with nothing
-          in it, which a naive spline would.
-        */
-        final a = points[i - 1];
-        final b = points[i];
-        final mid = (a.dx + b.dx) / 2;
-        stroke.cubicTo(mid, a.dy, mid, b.dy, b.dx, b.dy);
-      }
 
       canvas.drawPath(
         stroke,

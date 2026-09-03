@@ -216,69 +216,89 @@ class _SubsTabState extends State<SubsTab> {
 
         final next = sorted.isEmpty ? null : sorted.first;
 
-        return ListView(
-          padding: const EdgeInsets.only(bottom: 120),
-          children: [
-            if (_picked != null)
-              PickingBar(
-                count: _picked!.length,
-                onCancel: _stopPicking,
-                onSend: _picked!.isEmpty ? null : _sendPicked,
-              )
-            else
-              _Tiles(subs: subs, week: week),
-            const SizedBox(height: 14),
-            RenewalCalendar(
-              subs: subs,
-              selected: _day,
-              onSelect: (d) => setState(() => _day = d),
-            ),
-            if (next != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                        fontFamily: fontBody, fontSize: 12.5, color: c.muted),
-                    children: [
-                      const TextSpan(text: 'Next up: '),
-                      TextSpan(
-                        text: next.name,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, color: c.text),
+        /*
+          ── The figures hold still while everything else moves ─────────────
+
+          The month's total, the week's, and Scout beside them: those are what
+          the tab is FOR, and they were the first child of the list, so they
+          left the screen the moment somebody scrolled to the calendar under
+          them.
+
+          The calendar, the rows and the year graph scroll below. Same shape
+          as Items and Documents.
+        */
+        return SizedBox.expand(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_picked != null)
+                PickingBar(
+                  count: _picked!.length,
+                  onCancel: _stopPicking,
+                  onSend: _picked!.isEmpty ? null : _sendPicked,
+                )
+              else
+                _Tiles(subs: subs, week: week),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(top: 14, bottom: 120),
+                  children: [
+                    RenewalCalendar(
+                      subs: subs,
+                      selected: _day,
+                      onSelect: (d) => setState(() => _day = d),
+                    ),
+                    if (next != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                                fontFamily: fontBody, fontSize: 12.5, color: c.muted),
+                            children: [
+                              const TextSpan(text: 'Next up: '),
+                              TextSpan(
+                                text: next.name,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700, color: c.text),
+                              ),
+                              TextSpan(
+                                text:
+                                    ' on the ${_ordinal(nextRenewal(next)?.day ?? 1)}, '
+                                    '${_money(next.amountCents)}.',
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      TextSpan(
-                        text:
-                            ' on the ${_ordinal(nextRenewal(next)?.day ?? 1)}, '
-                            '${_money(next.amountCents)}.',
+                    const SectionTitle('Everything you pay for'),
+                    for (final sub in sorted)
+                      SubTile(
+                        sub: sub,
+                        lit: charged(sub),
+                        picking: _picked != null,
+                        picked: _picked?.contains(sub.id) ?? false,
+                        onTap: () => _picked == null ? open(sub) : _pick(sub.id),
+                        onLongPress:
+                            _picked == null ? () => _startPicking(sub.id) : null,
+                        onDelete: () => _delete(sub),
                       ),
-                    ],
-                  ),
+                    const SectionTitle('The year ahead'),
+                    SpendLine(spend: spend),
+                    if (top != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                        child: Text(
+                          'Biggest is ${top.name}, at '
+                          '${_money(monthlyCents(top))} a month.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            const SectionTitle('Everything you pay for'),
-            for (final sub in sorted)
-              SubTile(
-                sub: sub,
-                lit: charged(sub),
-                picking: _picked != null,
-                picked: _picked?.contains(sub.id) ?? false,
-                onTap: () => _picked == null ? open(sub) : _pick(sub.id),
-                onLongPress:
-                    _picked == null ? () => _startPicking(sub.id) : null,
-                onDelete: () => _delete(sub),
-              ),
-            const SectionTitle('The year ahead'),
-            SpendLine(spend: spend),
-            if (top != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Text(
-                  'Biggest is ${top.name}, at ${_money(monthlyCents(top))} a month.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );

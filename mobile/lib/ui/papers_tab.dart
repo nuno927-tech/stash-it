@@ -32,6 +32,7 @@ import 'parts.dart';
 import 'share_card_sheet.dart';
 import 'scout.dart';
 import 'swipe_to_delete.dart';
+import 'thumb.dart';
 import 'theme.dart';
 import 'undo_bar.dart';
 
@@ -217,14 +218,27 @@ class _PapersTabState extends State<PapersTab> {
     );
   }
 
+  /*
+    The list and its pictures in one go.
+
+    Two awaits rather than a `FutureBuilder` per row: a tile that fetched its
+    own cover would query once per row per rebuild. See `paperCovers`.
+  */
+  Future<(List<Paper>, Map<String, String>)> _load() async => (
+        await widget.repo.activePapers(),
+        await widget.repo.paperCovers(),
+      );
+
   Widget _body(BuildContext context) {
-    return FutureBuilder<List<Paper>>(
-      future: widget.repo.activePapers(),
+    return FutureBuilder<(List<Paper>, Map<String, String>)>(
+      future: _load(),
       builder: (context, snap) {
-        final all = snap.data;
-        if (all == null) {
+        final got = snap.data;
+        if (got == null) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        final (all, covers) = got;
 
         if (all.isEmpty) {
           // The same sentence as the other three tabs; only the pose differs —
@@ -257,42 +271,68 @@ class _PapersTabState extends State<PapersTab> {
           _keys.putIfAbsent(p.id, GlobalKey.new);
         }
 
-        return ListView(
-          controller: _scroll,
-          padding: const EdgeInsets.only(bottom: 120),
-          children: [
-            if (_picked != null)
-              PickingBar(
-                count: _picked!.length,
-                onCancel: _stopPicking,
-                onSend: _picked!.isEmpty ? null : _sendPicked,
-              )
-            else
-              _Tiles(
-                total: all.length,
-                needing: needing,
-                expired: expired,
-                next: next,
-                // Each chip scrolls to the first row it is about and lights it
-                // up. A count that cannot take you to what it counted is a
-                // number you have to go and find by hand.
-                onFind: (state) => _find(sorted, state),
+        /*
+          ── The figures hold still while the list moves ────────────────────
+
+          They used to be the first child of the ListView, so scrolling to a
+          document took the count of documents off the top of the screen —
+          and the chips are how somebody gets BACK to a state they were
+          looking at. A control that scrolls away is a control you have to go
+          and find.
+
+          Same shape as the Items tab: a fixed header, and the rows in an
+          `Expanded` below it.
+        */
+        return SizedBox.expand(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_picked != null)
+                PickingBar(
+                  count: _picked!.length,
+                  onCancel: _stopPicking,
+                  onSend: _picked!.isEmpty ? null : _sendPicked,
+                )
+              else
+                _Tiles(
+                  total: all.length,
+                  needing: needing,
+                  expired: expired,
+                  next: next,
+                  // Each chip scrolls to the first row it is about and lights
+                  // it up. A count that cannot take you to what it counted is
+                  // a number you have to go and find by hand.
+                  onFind: (state) => _find(sorted, state),
+                ),
+              Expanded(
+                child: ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.only(bottom: 120),
+                  children: [
+                    const SectionTitle('Expiring'),
+                    for (final paper in sorted)
+                      PaperTile(
+                        key: _keys[paper.id],
+                        paper: paper,
+                        repo: widget.repo,
+                        // The scan, if there is one. Null keeps the glyph.
+                        cover: covers[paper.id],
+                        lit: _lit == paper.id,
+                        picking: _picked != null,
+                        picked: _picked?.contains(paper.id) ?? false,
+                        onTap: () =>
+                            _picked == null ? open(paper) : _pick(paper.id),
+                        onLongPress: _picked == null
+                            ? () => _startPicking(paper.id)
+                            : null,
+                        onDelete: () => _delete(paper),
+                      ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
-            const SectionTitle('Expiring'),
-            for (final paper in sorted)
-              PaperTile(
-                key: _keys[paper.id],
-                paper: paper,
-                lit: _lit == paper.id,
-                picking: _picked != null,
-                picked: _picked?.contains(paper.id) ?? false,
-                onTap: () => _picked == null ? open(paper) : _pick(paper.id),
-                onLongPress:
-                    _picked == null ? () => _startPicking(paper.id) : null,
-                onDelete: () => _delete(paper),
-              ),
-            const SizedBox(height: 24),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -467,6 +507,8 @@ class _Tile extends StatelessWidget {
 class PaperTile extends StatelessWidget {
   const PaperTile({
     required this.paper,
+    this.repo,
+    this.cover,
     this.lit = false,
     this.onTap,
     this.onLongPress,
@@ -477,6 +519,21 @@ class PaperTile extends StatelessWidget {
   });
 
   final Paper paper;
+
+  /*
+    ── The scan takes the icon's place, when there is one ───────────────────
+
+    The glyph exists to tell a passport from a car at a glance, and a
+    photograph of the passport does that better — it is the actual thing,
+    which is what somebody recognises fastest in a list of their own
+    documents.
+
+    Both optional, and null means the glyph: search results build this tile
+    too, where the rows are a mix of items, documents and subscriptions and
+    the glyph is doing the "what kind of thing is this" job instead.
+  */
+  final Repository? repo;
+  final String? cover;
 
   /// Just scrolled to by a chip.
   final bool lit;
@@ -557,7 +614,7 @@ class PaperTile extends StatelessWidget {
           // The kind's own mark, not the same sheet of paper thirteen times.
           // A passport, a paw and a car are told apart before the label under
           // them is read, which is the whole reason a list has icons.
-          child: PaperGlyph(paper.kind, color: tone, size: 19),
+          child: _Face(paper: paper, repo: repo, cover: cover, tone: tone),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -676,5 +733,53 @@ class PaperTile extends StatelessWidget {
           ? 'Expires ${dayMonthMaybeYear(expiry)}'
           : 'Start ${dayMonthMaybeYear(start)}',
     };
+  }
+}
+
+/// The scan if there is one, the kind's glyph if there is not.
+///
+/// The glyph is drawn while the picture is being fetched rather than a gap or
+/// a spinner: the row is already the right height, the answer arrives in a few
+/// milliseconds, and a list that fills in as you look at it is worse than one
+/// that simply changes.
+class _Face extends StatelessWidget {
+  const _Face({
+    required this.paper,
+    required this.repo,
+    required this.cover,
+    required this.tone,
+  });
+
+  final Paper paper;
+  final Repository? repo;
+  final String? cover;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = PaperGlyph(paper.kind, color: tone, size: 19);
+    final id = cover;
+    final from = repo;
+    if (id == null || from == null) return glyph;
+
+    return FutureBuilder<ImageProvider?>(
+      // Cached by blob id, so this is one query for the app's lifetime rather
+      // than one per frame of a scroll — see `thumb.dart`.
+      future: thumbFor(from, id),
+      builder: (context, snap) {
+        final image = snap.data;
+        if (image == null) return glyph;
+
+        // Inside the ring rather than under it: the coloured edge means the
+        // document wants something, and a photograph must not cover it.
+        return ClipOval(
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Image(image: image, fit: BoxFit.cover),
+          ),
+        );
+      },
+    );
   }
 }
