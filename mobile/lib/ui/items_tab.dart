@@ -419,13 +419,20 @@ class _ItemsTabState extends State<ItemsTab> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       /*
-                        Scout stands beside the figures and the search box, and
-                        the chips run under both of them.
+                        ── Who stands next to Scout, and who runs under him ──
 
-                        They were in the left column with him, on about two
-                        thirds of the width, which is what pushed four short
-                        sort words onto two lines. Full width fits them in the
-                        one row they belong in.
+                        He is 132 tall and the figures and search box together
+                        are shorter than that, so anything under this Row
+                        started below the bottom of him: a band of empty space
+                        between the search box and the first chip.
+
+                        The counts go in the column beside him, which is where
+                        the eye already is and which fills that space with the
+                        one thing on this screen carrying news. There are one
+                        or two of them and they are short.
+
+                        The four sorts run full width underneath, because at
+                        two thirds of the width they wrapped onto two lines.
                       */
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,6 +443,10 @@ class _ItemsTabState extends State<ItemsTab> {
                               children: [
                                 _worth(all, c),
                                 _search(c),
+                                if (!everywhere) ...[
+                                  const SizedBox(height: 9),
+                                  _filterChips(all, c),
+                                ],
                               ],
                             ),
                           ),
@@ -465,8 +476,7 @@ class _ItemsTabState extends State<ItemsTab> {
                         chips.
                       */
                       if (!everywhere) ...[
-                        const SizedBox(height: 10),
-                        _chips(all, c),
+                        _sortChips(),
                         _alsoDocuments(c),
                       ],
                     ],
@@ -795,18 +805,18 @@ class _ItemsTabState extends State<ItemsTab> {
     );
   }
 
-  Widget _chips(List<Item> all, StashColors c) {
-    void pick(ItemFilter f) {
-      feedback(Cue.tap);
-      setState(() => _filter = _filter == f ? null : f);
-    }
-
+  /// The counts, beside Scout and directly under the search box.
+  ///
+  /// These are the only chips carrying news: something is lapsed, something
+  /// needs action. A sort order is a preference somebody sets once, so it goes
+  /// below — see `_sortChips`.
+  Widget _filterChips(List<Item> all, StashColors c) {
     int countOf(ItemFilter f) =>
         all.where((i) => matchesFilter(f, i, withReceipt: _withReceipt)).length;
 
     /*
-      The three standing controls, plus — only while it is on — whichever
-      arrival filter brought you here.
+      The standing filters, plus — only while it is on — whichever arrival
+      filter brought you here.
 
       A filter with nothing in it is not offered: a chip for a category you own
       nothing in is a control that does nothing, sitting where a useful one
@@ -821,60 +831,52 @@ class _ItemsTabState extends State<ItemsTab> {
       if (_filter != null && !standingFilters.contains(_filter)) _filter!,
     ];
 
-    /*
-      ── What is wrong, before how it is ordered ───────────────────────────
+    if (offered.isEmpty) return const SizedBox.shrink();
 
-      The sorts used to come first, so the row nearest the search box was
-      "Expiring · Newest · A-Z · Room" and the counts that say something is
-      lapsed sat underneath them.
-
-      Those counts are the only chips carrying news. Somebody arriving at this
-      screen wants to know what needs them, and a sort order is a preference
-      they set once and rarely revisit — so the news goes directly under the
-      search box and the ordering goes below it.
-    */
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(left: 16),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
         children: [
-          if (offered.isNotEmpty) ...[
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: [
-                for (final f in offered)
-                  _Chip(
-                    label: '${filterLabel[f]} ${countOf(f)}',
-                    on: _filter == f,
-                    tone: switch (f) {
-                      // The chip wears the colour of the arc that opened it.
-                      ItemFilter.inDate => c.moss,
-                      ItemFilter.endingSoon => c.honey,
-                      ItemFilter.lapsed => c.ember,
-                      _ => c.line,
-                    },
-                    onTap: () => pick(f),
-                  ),
-              ],
+          for (final f in offered)
+            _Chip(
+              label: '${filterLabel[f]} ${countOf(f)}',
+              on: _filter == f,
+              tone: switch (f) {
+                // The chip wears the colour of the arc that opened it.
+                ItemFilter.inDate => c.moss,
+                ItemFilter.endingSoon => c.honey,
+                ItemFilter.lapsed => c.ember,
+                _ => c.line,
+              },
+              onTap: () {
+                feedback(Cue.tap);
+                setState(() => _filter = _filter == f ? null : f);
+              },
             ),
-            const SizedBox(height: 7),
-          ],
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              for (final sort in _Sort.values)
-                _Chip(
-                  label: _sortLabel[sort]!,
-                  on: _sort == sort,
-                  onTap: () {
-                    feedback(Cue.tap);
-                    setState(() => _sort = sort);
-                  },
-                ),
-            ],
-          ),
+        ],
+      ),
+    );
+  }
+
+  /// How the list is ordered: one row, full width, under everything else.
+  Widget _sortChips() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          for (final sort in _Sort.values)
+            _Chip(
+              label: _sortLabel[sort]!,
+              on: _sort == sort,
+              onTap: () {
+                feedback(Cue.tap);
+                setState(() => _sort = sort);
+              },
+            ),
         ],
       ),
     );
