@@ -43,14 +43,26 @@ class TourStep {
 /// minute the receipt is still in your hand. Told at the end it is advice; told
 /// there it is an instruction you can act on.
 ///
-/// ── Eight, and it was nearly eleven ───────────────────────────────────────
+/// ── Nine, and it was nearly fourteen ──────────────────────────────────────
 /// Documents, subscriptions and reminders all arrived after this was written,
-/// and the obvious move — a screen each, appended — would have made a
-/// fourteen-tap introduction to an app whose whole pitch is that it is quick.
-/// So two of the originals were folded into their neighbours rather than kept.
+/// then automatic backups, reading a receipt and the claim pack after that.
+/// The obvious move — a screen each, appended — would have made a fourteen-tap
+/// introduction to an app whose whole pitch is that it is quick.
 ///
 /// **A tour is a budget. Every screen added has to displace one, or it is not
 /// worth the tap it costs.**
+///
+/// So none of the three newest got a screen. Reading a receipt replaced the
+/// sentence in the adding step that described a thing this app never did; the
+/// claim pack went into the step that asks somebody to keep the paperwork,
+/// because that is the step that should say what keeping it buys; and
+/// automatic backups rewrote the step that used to end by shrugging.
+///
+/// ── Two of these ask rather than tell ─────────────────────────────────────
+/// The backup folder and the name. Both are skippable, both are offered again
+/// in Settings, and neither blocks the Next button — a tour that will not let
+/// you past a permission dialog is a tour people uninstall rather than
+/// finish.
 const List<TourStep> tourSteps = [
   TourStep(
     'what',
@@ -60,21 +72,43 @@ const List<TourStep> tourSteps = [
         'somewhere better than a drawer when a claim needs it, and nothing '
         'lapses because you forgot it existed.',
   ),
+  /*
+    ── This step used to promise something the app cannot do ─────────────────
+
+    It said a receipt shared from your mail app arrives with the shop, date and
+    price already filled in. That came over from the web version's script and
+    was never true here: the only thing this app accepts by sharing is a
+    `.stashcard` — see the manifest.
+
+    A sentence like that is worse than a missing feature. It is on the second
+    screen anybody sees, it describes the exact thing they are about to try,
+    and the first thing they learn about the app is that it says things that
+    are not so.
+
+    What replaces it is the same promise made honestly. Scan a receipt reads
+    the date, the total and the shop off the photograph, on this phone, and
+    shows what it read before it fills anything in.
+  */
   TourStep(
     'add',
     ScoutPose.receipt,
-    'Adding something takes a photo and a date',
-    'Name it, photograph it, say when you bought it and how long the warranty '
-        'runs. Or share a receipt straight from your mail app and the shop, '
-        'date and price arrive already filled in.',
+    'Point the camera at the receipt',
+    'Scan a receipt reads the date, the price and the shop off it, and shows '
+        'you what it found before filling anything in. Or type it yourself — '
+        'a name is all it really needs.',
   ),
+  /*
+    The claim pack is the payoff, and it belongs here rather than on a screen
+    of its own — this is the step that asks somebody to do the boring thing,
+    so it is the step that should say what the boring thing buys.
+  */
   TourStep(
     'paper',
     ScoutPose.folder,
     'Then stash the paper too',
-    'A photo settles most claims. Some still want the original, so keep it in '
-        "a folder somewhere dry — the app holds the copy, you hold the proof. "
-        "Paper doesn't need charging.",
+    'When something breaks, Make a claim writes the letter for you — what it '
+        'is, when you bought it, the serial, the receipt attached. Keep the '
+        "original somewhere dry as well: paper doesn't need charging.",
   ),
 
   /*
@@ -129,13 +163,30 @@ const List<TourStep> tourSteps = [
         'the schedule itself — nothing is sent anywhere, and no server is '
         'told what any of it is about.',
   ),
+  /*
+    ── The step that changed most, and the only one that protects anything ───
+
+    It used to end at "the backup is on you", which was true and was also the
+    app shrugging: a reminder to do something manually only works on people
+    who act on reminders, and the ones who do not are exactly the ones who
+    lose a phone with everything on it.
+
+    Automatic backups are the answer and they need one thing the app cannot
+    decide — a folder. So this step ASKS, the way the name step asks.
+
+    Before the name step, deliberately: a folder is worth more than a
+    greeting. Skippable like everything else here, and skipping costs nothing
+    somebody cannot get back — Settings has the same card, and the overdue
+    nudge still fires for anybody who never sets one.
+  */
   TourStep(
-    'safe',
+    folderStepKey,
     ScoutPose.acorn,
-    'It all lives on this phone',
-    'Nothing is uploaded and there is no account. That keeps it private and '
-        'puts the backup on you: Back up now in Settings makes one file you '
-        'can send to Drive, Files, or yourself.',
+    'Keep a copy somewhere else',
+    'Nothing is uploaded and there is no account, which keeps it private and '
+        'means a lost phone is a lost stash. Pick a folder your cloud app '
+        'already syncs and it writes a backup there on its own — locked with '
+        'a passphrase, if you set one in Settings.',
   ),
 
   /*
@@ -162,6 +213,13 @@ const List<TourStep> tourSteps = [
         'you like.',
   ),
 ];
+
+/// The step that offers to set up automatic backups.
+///
+/// Named rather than positional, for the same reason as [nameStepKey]: the
+/// script has to be reorderable without a button turning up on the wrong
+/// screen.
+const String folderStepKey = 'safe';
 
 /// The step that carries a text field rather than only words.
 ///

@@ -18,6 +18,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../io/backup_folder.dart';
 import '../logic/tour.dart' as tour;
 import '../db/repository.dart';
 import 'feedback.dart';
@@ -225,6 +226,7 @@ class _TourState extends State<_Tour> {
                   step: tour.stepAt(i),
                   name: _name,
                   focus: _nameFocus,
+                  repo: widget.repo,
                 ),
               ),
             ),
@@ -233,8 +235,10 @@ class _TourState extends State<_Tour> {
               The dots say how much is left.
 
               A tour with no visible end is a tour people leave, because the
-              only honest guess about its length is "more than this". Eight
-              dots is a promise you can see.
+              only honest guess about its length is "more than this". A row of
+              dots is a promise you can see — and it counts the script rather
+              than a number written here, so adding a step cannot leave the
+              promise saying something the tour does not honour.
             */
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -314,9 +318,13 @@ class _Step extends StatelessWidget {
     required this.step,
     required this.name,
     required this.focus,
+    required this.repo,
   });
 
   final tour.TourStep step;
+
+  /// For the one step that writes something. See `_FolderButton`.
+  final Repository repo;
 
   /// Shared with the sheet, so what is typed here survives a swipe back and
   /// forth and is still there to be saved on the last tap.
@@ -377,6 +385,10 @@ class _Step extends StatelessWidget {
               color: c.muted,
             ),
           ),
+          if (step.key == tour.folderStepKey) ...[
+            const SizedBox(height: 18),
+            _FolderButton(repo: repo),
+          ],
           if (asks) ...[
             const SizedBox(height: 16),
             TextField(
@@ -430,3 +442,116 @@ class _Step extends StatelessWidget {
     );
   }
 }
+/// The one control in the tour that changes anything.
+///
+/// ── Asking for a folder here, rather than only in Settings ────────────────
+/// Automatic backups are the single thing in this app that protects somebody
+/// who never opens Settings, and they cannot start until a folder is chosen.
+/// A card in Settings serves the people who go looking; this serves everyone
+/// else, at the one moment they are already being told why it matters.
+///
+/// ── It asks Android, and Android may say no ───────────────────────────────
+/// The picker is a whole other app and it can be backed out of, which is not
+/// a failure and is not treated as one. Nothing is written unless a folder
+/// comes back, the step stays skippable either way, and the Next button is
+/// never blocked on it — a tour that will not let you past a permission
+/// dialog is a tour people uninstall rather than finish.
+class _FolderButton extends StatefulWidget {
+  const _FolderButton({required this.repo});
+
+  final Repository repo;
+
+  @override
+  State<_FolderButton> createState() => _FolderButtonState();
+}
+
+class _FolderButtonState extends State<_FolderButton> {
+  String? _chosen;
+  bool _busy = false;
+
+  Future<void> _pick() async {
+    setState(() => _busy = true);
+
+    try {
+      final tree = await pickBackupFolder();
+      if (tree == null || !mounted) return;
+
+      final label = await folderLabel(tree);
+      final settings = await widget.repo.settings();
+
+      await widget.repo.saveSettings(settings.copyWith(
+        backupFolder: tree,
+        backupFolderLabel: label ?? 'the folder you chose',
+        clearAutoBackupError: true,
+      ));
+
+      if (mounted) setState(() => _chosen = label ?? 'that folder');
+    } catch (_) {
+      // A picker that would not open, or a grant Android declined. Neither is
+      // worth an error on an introduction — Settings offers it again.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+
+    if (_chosen case final where?) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 17, color: c.moss),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              'Backing up to $where',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: fontBody,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: c.text,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        FilledButton(
+          onPressed: _busy ? null : cued(_pick),
+          style: FilledButton.styleFrom(
+            backgroundColor: c.gold,
+            foregroundColor: c.onGold,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+          ),
+          child: Text(
+            'Choose a folder',
+            style: TextStyle(
+              fontFamily: fontDisplay,
+              fontWeight: FontWeight.w800,
+              fontSize: 14.5,
+              color: c.onGold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          // Said before the picker opens, not after. Somebody about to be
+          // handed Android's folder chooser should know why.
+          'Or skip it and set one up later in Settings.',
+          style: TextStyle(fontFamily: fontBody, fontSize: 11.5, color: c.muted),
+        ),
+      ],
+    );
+  }
+}
+
