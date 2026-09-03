@@ -367,8 +367,17 @@ Future<void> _play(Cue cue) async {
   // and `tap` is asked for sixty times an evening.
   final bytes = _rendered[cue] ??= _wav(_voiceFor(cue));
 
-  // Stopped first, so a fast run of taps is a run of ticks rather than a pile.
-  await _player.stop();
+  /*
+    Stopped only when something is actually playing.
+
+    A fast run of taps should be a run of ticks rather than a pile, which is
+    what the stop is for. Calling it unconditionally also tore down an idle
+    stream before every single cue — so the output went back to sleep between
+    taps and each one had to wake it again, which is the thing the padding
+    above exists to survive. Doing both is asking for the problem twice.
+  */
+  if (_player.state == PlayerState.playing) await _player.stop();
+
   await _player.play(BytesSource(bytes), volume: 1);
 }
 
@@ -420,6 +429,29 @@ Future<void> previewCue(Cue cue,
 
 const int _rate = 44100;
 
+/*
+  ── Silence at both ends, and why a tick needs it ─────────────────────────
+
+  The shortest cue is 32 milliseconds of quiet sine. That is below what some
+  phones can reliably reproduce from a standing start: the audio path sleeps
+  when nothing is playing, and waking the output takes tens of milliseconds
+  during which the first part of the buffer is simply lost. On a handset that
+  wakes quickly you hear every cue; on one with more aggressive audio power
+  management the short ones vanish and the long ones survive — which is not a
+  difference in what the app sent, only in what the device managed to play.
+
+  So every cue now begins with silence. The output wakes during the padding
+  and the tone arrives into a stream that is already running. It costs a few
+  kilobytes per cue in a buffer that is built once, and nothing at all in
+  perceived latency: the padding is shorter than the gap between a finger
+  landing and the ear expecting a reply.
+
+  The tail is the same argument at the other end, for a device that tears the
+  stream down the instant the samples run out.
+*/
+const int _leadInMs = 45;
+const int _tailMs = 30;
+
 /// A voice as a mono 16-bit WAV.
 Uint8List _wav(_Voice voice) {
   final perNote = (voice.step * _rate).round();
@@ -434,8 +466,13 @@ Uint8List _wav(_Voice voice) {
       n == last ? perNote * voice.holdLast : perNote,
   ];
 
-  final samples = Int16List(lengths.fold(0, (sum, n) => sum + n));
-  var at = 0;
+  final lead = (_leadInMs / 1000 * _rate).round();
+  final tail = (_tailMs / 1000 * _rate).round();
+
+  // Zero-filled by construction, so the padding is written by not writing.
+  final samples =
+      Int16List(lead + lengths.fold(0, (sum, n) => sum + n) + tail);
+  var at = lead;
 
   for (var n = 0; n < voice.notes.length; n++) {
     final freq = voice.notes[n];
