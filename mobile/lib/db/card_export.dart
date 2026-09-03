@@ -86,6 +86,28 @@ Future<CardContents> gatherCard(StashDatabase db, CardPick pick) async {
           .map(docOf)
           .toList();
 
+  /*
+    ── Scans of the documents, and only on a separate say-so ─────────────────
+
+    `pick.scans`, not `pick.attachments`. A receipt for a dishwasher and a
+    photograph of a passport are not the same disclosure, and somebody who
+    ticked one has not agreed to the other — see the note on `CardPick.scans`.
+
+    Read under the flag rather than filtered after it, for the same reason the
+    attachment blobs are: bytes that were never fetched cannot leak by a later
+    mistake. With it off, the scan rows do not travel either — an attachment
+    row with no file behind it would land on the recipient's document as a
+    permanently broken entry they cannot fix or delete their way out of.
+  */
+  final paperIds = pick.scans ? papers.map((p) => p.id).toList() : <String>[];
+  final scans = paperIds.isEmpty
+      ? <Doc>[]
+      : (await (db.select(db.docs)
+                ..where((t) => t.paperId.isIn(paperIds) & t.deletedAt.isNull()))
+              .get())
+          .map(docOf)
+          .toList();
+
   final roomIds = {
     for (final item in items)
       if (item.roomId != null) item.roomId!,
@@ -110,8 +132,8 @@ Future<CardContents> gatherCard(StashDatabase db, CardPick pick) async {
     removed before writing".
   */
   final blobs = <String, List<int>>{};
-  if (pick.attachments) {
-    final wanted = <String>{
+  final wanted = <String>{
+    if (pick.attachments) ...[
       for (final item in items) ...[
         if (item.thumbBlobId != null) item.thumbBlobId!,
         if (item.photoBlobId != null) item.photoBlobId!,
@@ -120,22 +142,31 @@ Future<CardContents> gatherCard(StashDatabase db, CardPick pick) async {
         if (doc.blobId != null) doc.blobId!,
       for (final sub in subs)
         if (sub.logoBlobId != null) sub.logoBlobId!,
-    };
+    ],
+    // Already empty unless `pick.scans` is on. Stated again anyway: this set
+    // is the only place bytes get named, and a reader should be able to see
+    // both gates without going and checking a query forty lines up.
+    if (pick.scans)
+      for (final scan in scans)
+        if (scan.blobId != null) scan.blobId!,
+  };
 
-    if (wanted.isNotEmpty) {
-      final rows = await (db.select(db.blobs)
-            ..where((t) => t.id.isIn(wanted.toList())))
-          .get();
-      for (final b in rows) {
-        blobs[blobPath(b.id, b.mime)] = b.bytes;
-      }
+  if (wanted.isNotEmpty) {
+    final rows =
+        await (db.select(db.blobs)..where((t) => t.id.isIn(wanted.toList())))
+            .get();
+    for (final b in rows) {
+      blobs[blobPath(b.id, b.mime)] = b.bytes;
     }
   }
 
   return CardContents(
     {
       'items': [for (final i in items) itemToJson(i)],
-      'docs': [for (final d in docs) docToJson(d)],
+      'docs': [
+        for (final d in docs) docToJson(d),
+        for (final s in scans) docToJson(s),
+      ],
       'rooms': [for (final r in rooms) roomToJson(r)],
       'subscriptions': [for (final s in subs) subscriptionToJson(s)],
       'papers': [for (final p in papers) paperToJson(p)],
@@ -169,11 +200,14 @@ Future<void> applyCardMerge(StashDatabase db, CardMerge merge) async {
     for (final item in merge.items) {
       await db.into(db.items).insert(itemToRow(item));
     }
-    for (final doc in merge.docs) {
-      await db.into(db.docs).insert(docToRow(doc));
-    }
     for (final paper in merge.papers) {
       await db.into(db.papers).insert(paperToRow(paper));
+    }
+    // After both owners, because an attachment now hangs off either an item
+    // or a document. Nothing enforces that order today; it costs nothing to
+    // write the rows in an order that stays valid if something ever does.
+    for (final doc in merge.docs) {
+      await db.into(db.docs).insert(docToRow(doc));
     }
     for (final sub in merge.subscriptions) {
       await db.into(db.subscriptions).insert(subscriptionToRow(sub));

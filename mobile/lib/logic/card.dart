@@ -34,6 +34,7 @@ class CardPick {
     this.papers = const {},
     this.subscriptions = const {},
     this.attachments = false,
+    this.scans = false,
   });
 
   final Set<String> items;
@@ -57,6 +58,24 @@ class CardPick {
   */
   final bool attachments;
 
+  /*
+    ── A document scan is its own decision, and not the one above ────────────
+
+    The switch above covers photographs of possessions and the receipts that
+    came with them. This covers a photograph of a passport, a licence, an
+    insurance certificate — the pages somebody is impersonated with.
+
+    They are not the same risk and they must not share a control. Somebody who
+    turns on attachments to send a receipt with a dishwasher has not agreed to
+    send a passport page with a passport, and an app that reads one tick as
+    both is an app that leaked something on their behalf.
+
+    Off by default, like the other, and only ever shown when the card actually
+    contains one — a switch for a thing that is not there is a question nobody
+    was asked.
+  */
+  final bool scans;
+
   int get count => items.length + papers.length + subscriptions.length;
   bool get isEmpty => count == 0;
 
@@ -65,6 +84,7 @@ class CardPick {
   CardPick toggleSubscription(String id) =>
       _copy(subscriptions: _flip(subscriptions, id));
   CardPick withAttachments(bool on) => _copy(attachments: on);
+  CardPick withScans(bool on) => _copy(scans: on);
 
   static Set<String> _flip(Set<String> from, String id) =>
       from.contains(id) ? ({...from}..remove(id)) : {...from, id};
@@ -74,12 +94,14 @@ class CardPick {
     Set<String>? papers,
     Set<String>? subscriptions,
     bool? attachments,
+    bool? scans,
   }) =>
       CardPick(
         items: items ?? this.items,
         papers: papers ?? this.papers,
         subscriptions: subscriptions ?? this.subscriptions,
         attachments: attachments ?? this.attachments,
+        scans: scans ?? this.scans,
       );
 }
 
@@ -307,44 +329,77 @@ CardMerge planCardMerge(
   }
 
   /*
-    Only attachments whose item came across.
+    Papers before attachments, because an attachment needs their new ids.
 
-    A card can carry documents as well now, and a scan on one of those has no
-    `itemId` to remap — it would be filed against an item that is not in the
-    card. Until a card carries paper attachments too, those are dropped rather
-    than reattached to the wrong thing.
+    Everything in a card is re-issued an id on arrival — two stashes that
+    never met cannot be trusted to disagree about which record is which. So a
+    scan cannot be filed until the document it hangs off has landed and been
+    written down here.
   */
-  final docs = <Doc>[
-    for (final doc in card.data.docs)
-      if (doc.deletedAt == null && itemId.containsKey(doc.itemId))
-        Doc(
+  final paperId = <String, String>{};
+  final papers = <Paper>[];
+
+  for (final paper in card.data.papers) {
+    if (paper.deletedAt != null || !takes(paper.id)) continue;
+    final made = newId();
+    paperId[paper.id] = made;
+    papers.add(Paper(
+      id: made,
+      propertyId: propertyId,
+      kind: paper.kind,
+      label: paper.label,
+      holder: paper.holder,
+      expiresOn: paper.expiresOn,
+      issuedOn: paper.issuedOn,
+      leadDays: paper.leadDays,
+      authority: paper.authority,
+      storedAt: paper.storedAt,
+      notes: paper.notes,
+      createdAt: at,
+    ));
+  }
+
+  /*
+    Only attachments whose owner came across.
+
+    An attachment hangs off an item or off a document, and either one may have
+    been left behind — unticked on the preview screen, or deleted before the
+    card was made. A scan whose document did not arrive has nothing to be
+    filed against, and filing it against whatever is nearest is how a passport
+    page ends up attached to a dishwasher.
+
+    So the owner is looked up, and no owner means the attachment is dropped.
+    Nothing is reattached by guesswork.
+  */
+  final docs = <Doc>[];
+
+  for (final doc in card.data.docs) {
+    if (doc.deletedAt != null) continue;
+
+    // Sealed, so a third kind of owner has to be handled here rather than
+    // silently falling through and losing its attachments.
+    final made = switch (doc.owner) {
+      ItemOwner(:final id) when itemId.containsKey(id) => Doc.onItem(
           id: newId(),
-          itemId: itemId[doc.itemId]!,
+          item: itemId[id]!,
           kind: doc.kind,
           title: doc.title,
           blobId: mapBlob(doc.blobId),
           url: doc.url,
         ),
-  ];
-
-  final papers = <Paper>[
-    for (final paper in card.data.papers)
-      if (paper.deletedAt == null && takes(paper.id))
-        Paper(
+      PaperOwner(:final id) when paperId.containsKey(id) => Doc.onPaper(
           id: newId(),
-          propertyId: propertyId,
-          kind: paper.kind,
-          label: paper.label,
-          holder: paper.holder,
-          expiresOn: paper.expiresOn,
-          issuedOn: paper.issuedOn,
-          leadDays: paper.leadDays,
-          authority: paper.authority,
-          storedAt: paper.storedAt,
-          notes: paper.notes,
-          createdAt: at,
+          paper: paperId[id]!,
+          kind: doc.kind,
+          title: doc.title,
+          blobId: mapBlob(doc.blobId),
+          url: doc.url,
         ),
-  ];
+      ItemOwner() || PaperOwner() || null => null,
+    };
+
+    if (made != null) docs.add(made);
+  }
 
   final subscriptions = <Subscription>[
     for (final sub in card.data.subscriptions)

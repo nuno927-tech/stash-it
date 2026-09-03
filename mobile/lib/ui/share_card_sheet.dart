@@ -11,6 +11,10 @@
 /// by default, because a receipt is a photograph of a piece of paper that
 /// often carries the last four digits of a card and sometimes a home address —
 /// see the note on `CardPick.attachments`.
+///
+/// A scan of a document gets a switch of its own, shown only when the card
+/// holds one. Ticking "photos and receipts" is not permission to send a
+/// passport page — see the note on `CardPick.scans`.
 library;
 
 import 'package:flutter/material.dart';
@@ -55,10 +59,20 @@ class _ShareSheetState extends State<_ShareSheet> {
   /// The message text, rebuilt whenever the picks change.
   String? _preview;
 
+  /// How many scans the chosen documents hold. Zero hides the second switch.
+  int _scans = 0;
+
   @override
   void initState() {
     super.initState();
     _readPreview();
+    _countScans();
+  }
+
+  Future<void> _countScans() async {
+    final got = await widget.repo.scanCountForPapers(_pick.papers);
+    if (!mounted) return;
+    setState(() => _scans = got);
   }
 
   /*
@@ -191,58 +205,43 @@ class _ShareSheetState extends State<_ShareSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            InkWell(
-              onTap: () {
-                feedback(Cue.tap);
-                setState(
-                    () => _pick = _pick.withAttachments(!_pick.attachments));
-              },
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Include photos and receipts',
-                            style: TextStyle(
-                              fontFamily: fontBody,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: c.text,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            // Says the actual risk rather than "may contain
-                            // personal information", which is a phrase people
-                            // have learned to read past.
-                            'Receipts often show card digits and addresses.',
-                            style: TextStyle(
-                              fontFamily: fontBody,
-                              fontSize: 11.5,
-                              color: c.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _pick.attachments,
-                      activeThumbColor: c.gold,
-                      onChanged: (on) {
-                        feedback(Cue.tap);
-                        setState(() => _pick = _pick.withAttachments(on));
-                      },
-                    ),
-                  ],
-                ),
-              ),
+            _Choice(
+              on: _pick.attachments,
+              title: 'Include photos and receipts',
+              // Says the actual risk rather than "may contain personal
+              // information", which is a phrase people have learned to read
+              // past.
+              says: 'Receipts often show card digits and addresses.',
+              onTap: () => setState(
+                  () => _pick = _pick.withAttachments(!_pick.attachments)),
+              c: c,
             ),
+
+            /*
+              ── A second tick, and only when there is something behind it ────
+
+              Not folded into the one above. That switch is about photographs
+              of possessions; this one is about a photograph of a passport,
+              and reading a single tick as permission for both is how the app
+              sends a licence on somebody's behalf.
+
+              Hidden entirely when the chosen documents carry no scans, so it
+              is a question that only ever appears when it is a real one.
+            */
+            if (_scans > 0)
+              _Choice(
+                on: _pick.scans,
+                title: _scans == 1
+                    ? 'Include the document scan'
+                    : 'Include the $_scans document scans',
+                // Named, because the general warning does not land for this.
+                // A passport page is not "personal information", it is the
+                // page somebody is impersonated with.
+                says: 'Passports and licences can be used to impersonate you.',
+                onTap: () =>
+                    setState(() => _pick = _pick.withScans(!_pick.scans)),
+                c: c,
+              ),
             if (_said != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
@@ -294,6 +293,78 @@ class _ShareSheetState extends State<_ShareSheet> {
                   color: _busy || _preview == null ? c.muted : c.gold,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One switch, its name and the plain sentence under it.
+///
+/// Two of these, and they had to look identical — a scan tick drawn slightly
+/// differently would read as a different kind of control, and the whole point
+/// is that they are two separate answers to the same sort of question.
+class _Choice extends StatelessWidget {
+  const _Choice({
+    required this.on,
+    required this.title,
+    required this.says,
+    required this.onTap,
+    required this.c,
+  });
+
+  final bool on;
+  final String title;
+  final String says;
+  final VoidCallback onTap;
+  final StashColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        feedback(Cue.tap);
+        onTap();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: c.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    says,
+                    style: TextStyle(
+                      fontFamily: fontBody,
+                      fontSize: 11.5,
+                      color: c.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: on,
+              activeThumbColor: c.gold,
+              onChanged: (_) {
+                feedback(Cue.tap);
+                onTap();
+              },
             ),
           ],
         ),

@@ -258,6 +258,66 @@ void main() {
       expect(merged.docs, isEmpty);
     });
 
+    test('a scan follows its document to its new id', () {
+      final merged = planCardMerge(
+        parse(cardEntries(
+          papers: [aPaper(id: 'p1')],
+          docs: [const Doc(id: 'd1', paperId: 'p1', kind: DocKind.other)],
+        )),
+        propertyId: 'mine',
+        existingRooms: const [],
+        newId: ids,
+      );
+
+      expect(merged.docs.single.paperId, merged.papers.single.id);
+      expect(merged.docs.single.itemId, isNull);
+      expect(merged.docs.single.id, isNot('d1'));
+    });
+
+    test('a scan whose document was not taken is dropped', () {
+      /*
+        The one that matters most on this side.
+
+        A scan with nowhere to go must not be filed against whatever is
+        nearest — a passport page attached to somebody's dishwasher is worse
+        than the scan simply not arriving.
+      */
+      final merged = planCardMerge(
+        parse(cardEntries(
+          items: [anItem(id: 'i1')],
+          papers: [aPaper(id: 'p1')],
+          docs: [const Doc(id: 'd1', paperId: 'p1', kind: DocKind.other)],
+        )),
+        propertyId: 'mine',
+        existingRooms: const [],
+        newId: ids,
+        keep: {'i1'},
+      );
+
+      expect(merged.papers, isEmpty);
+      expect(merged.docs, isEmpty);
+    });
+
+    test('an attachment owned by both, or by neither, is dropped', () {
+      // Not writable through the named constructors, and possible in a file
+      // written by something else. It resolves to nowhere — see `Doc.owner`.
+      final merged = planCardMerge(
+        parse(cardEntries(
+          items: [anItem(id: 'i1')],
+          papers: [aPaper(id: 'p1')],
+          docs: [
+            const Doc(id: 'd1', itemId: 'i1', paperId: 'p1'),
+            const Doc(id: 'd2'),
+          ],
+        )),
+        propertyId: 'mine',
+        existingRooms: const [],
+        newId: ids,
+      );
+
+      expect(merged.docs, isEmpty);
+    });
+
     test('the sender bin does not travel', () {
       // A card is what somebody chose to send, not their deleted rows.
       final merged = planCardMerge(

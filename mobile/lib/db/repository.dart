@@ -164,12 +164,6 @@ class Repository {
     return id;
   }
 
-  /// The files attached to one item, receipts first.
-  ///
-  /// That order rather than by date: a receipt and a warranty certificate are
-  /// the two things a claim actually asks for — see `metricsFor` — and a manual
-  /// is useful without being evidence. The list is short enough that sorting it
-  /// by anything else would just be arbitrary.
   /// How many scans are attached to documents right now.
   ///
   /// Counted rather than fetched — see `whyKeepTheLock`, which only needs to
@@ -181,6 +175,25 @@ class Repository {
     final query = db.selectOnly(db.docs)
       ..addColumns([rows])
       ..where(db.docs.paperId.isNotNull() &
+          db.docs.blobId.isNotNull() &
+          db.docs.deletedAt.isNull());
+
+    return (await query.getSingle()).read(rows) ?? 0;
+  }
+
+  /// How many scans hang off this particular handful of documents.
+  ///
+  /// For the share sheet, which has to decide whether to ask about scans at
+  /// all. A switch offered for something the card does not contain is a
+  /// question nobody was asked, and one that gets ticked out of habit.
+  Future<int> scanCountForPapers(Iterable<String> paperIds) async {
+    final ids = paperIds.toList();
+    if (ids.isEmpty) return 0;
+
+    final rows = db.docs.id.count();
+    final query = db.selectOnly(db.docs)
+      ..addColumns([rows])
+      ..where(db.docs.paperId.isIn(ids) &
           db.docs.blobId.isNotNull() &
           db.docs.deletedAt.isNull());
 
@@ -201,6 +214,12 @@ class Repository {
     return rows.map(docOf).toList();
   }
 
+  /// The files attached to one item, receipts first.
+  ///
+  /// That order rather than by date: a receipt and a warranty certificate are
+  /// the two things a claim actually asks for — see `metricsFor` — and a manual
+  /// is useful without being evidence. The list is short enough that sorting it
+  /// by anything else would just be arbitrary.
   Future<List<Doc>> docsForItem(String itemId) async {
     final rows = await (db.select(db.docs)
           ..where((t) => t.itemId.equals(itemId) & t.deletedAt.isNull()))
