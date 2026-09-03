@@ -395,25 +395,35 @@ class _Step extends StatelessWidget {
               color: c.gold,
             ),
           ),
-          Expanded(
-            child: Center(
-              child: Scout(
-                pose: _poses[step.pose]!,
-                /*
-                  Smaller on the step that has a field under it, and smaller
-                  again once the keyboard is actually up.
+          /*
+            ── The three of them are one block, and the slack goes below ─────
 
-                  He is not dropped entirely while typing, though there is
-                  room to. The whole point of this step is that it is Scout
-                  asking your name — losing him mid-answer turns a greeting
-                  into a form field.
-                */
-                height: typing ? 64 : (asks ? 118 : 168),
-                motion: const [ScoutMotion.float, ScoutMotion.breathe],
-                shadow: true,
-              ),
-            ),
+            Scout was in an `Expanded`, which centred him in everything left
+            over — so he floated in the middle of the screen with a gap above
+            him and a gap below, and the sentence he illustrates ended up
+            pinned to the bottom, a long way from the title it belongs to.
+
+            Title, drawing, sentence now sit together at the top and read as
+            one thing. The empty space is all at the bottom, where the dots and
+            the buttons are, which is where empty space belongs on a screen
+            somebody is swiping through.
+          */
+          const SizedBox(height: 12),
+          Scout(
+            pose: _poses[step.pose]!,
+            /*
+              Smaller on the step that has a field under it, and smaller again
+              once the keyboard is actually up.
+
+              He is not dropped entirely while typing, though there is room
+              to. The whole point of that step is that it is Scout asking your
+              name — losing him mid-answer turns a greeting into a form field.
+            */
+            height: typing ? 64 : (asks ? 118 : 168),
+            motion: const [ScoutMotion.float, ScoutMotion.breathe],
+            shadow: true,
           ),
+          const SizedBox(height: 12),
           Text(
             step.body,
             textAlign: TextAlign.center,
@@ -427,6 +437,12 @@ class _Step extends StatelessWidget {
               color: c.muted,
             ),
           ),
+          /*
+            Everything the step has to say is above this line; below it is
+            room to breathe. `Spacer` rather than `Expanded` so it gives way
+            first when the keyboard arrives — it is the only child that can be
+            squeezed to nothing without losing anything.
+          */
           if (step.key == tour.folderStepKey) ...[
             const SizedBox(height: 18),
             _FolderButton(repo: repo),
@@ -479,11 +495,13 @@ class _Step extends StatelessWidget {
                   fontFamily: fontBody, fontSize: 11.5, color: c.muted),
             ),
           ],
+          const Spacer(),
         ],
       ),
     );
   }
 }
+
 /// The one control in the tour that changes anything.
 ///
 /// ── Asking for a folder here, rather than only in Settings ────────────────
