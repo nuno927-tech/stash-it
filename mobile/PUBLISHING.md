@@ -198,7 +198,7 @@ wordmark near the middle; the edges get cropped on some screens.
 ## Step 3 — Build the file you upload
 
 ```powershell
-cd "C:\Stash it APK"
+cd "C:\Stash it\mobile"
 flutter build appbundle --release
 ```
 

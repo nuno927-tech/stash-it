@@ -60,7 +60,7 @@ It will ask for:
 ### Then
 
 ```powershell
-copy "C:\Stash it APK\android\key.properties.example" "C:\Stash it APK\android\key.properties"
+copy "C:\Stash it\mobile\android\key.properties.example" "C:\Stash it\mobile\android\key.properties"
 ```
 
 and fill in the two passwords. Both that file and the `.jks` are gitignored.
@@ -78,8 +78,15 @@ story for the key is you.
 
 ## 2. Check it is actually signed
 
+> **Build from `C:\Stash it\mobile`, not from `C:\Stash it APK`.**
+>
+> That second folder is the pre-monorepo copy of this app and it is still a
+> complete, buildable, signable Flutter project sitting at version 0.61.1. A
+> bundle built there uploads happily and is missing every release since — and
+> nothing about the build output says so. It is kept only as an archive.
+
 ```powershell
-cd "C:\Stash it APK"
+cd "C:\Stash it\mobile"
 flutter build appbundle --release
 ```
 
