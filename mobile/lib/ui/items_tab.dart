@@ -966,46 +966,92 @@ class _ItemsTabState extends State<ItemsTab> {
     quietly showed a different set of items from the one the chips describe
     would be the worst kind of lie a filter can tell.
 
-    Room headings are not drawn here. They are a list device — a heading needs
-    a full-width line to sit on, and grouping a grid by inserting them turns it
-    into several grids with different column counts.
+    Under the Room sort it is one grid per room, each under the same heading
+    the list uses — same widget, so the name is in the display face and the
+    count and the collapse behave identically. A grid does not stop a heading
+    from working; it only means each group is its own grid rather than all of
+    them being one.
   */
   Widget _photoGrid(List<Item> shown) {
+    final byRoom = _sort == _Sort.room && _grouped;
+
     return CustomScrollView(
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              // Taller than it is wide: a square photograph with a name and a
-              // line of warranty under it needs the room, and a squarer tile
-              // crops the picture rather than the words.
-              childAspectRatio: 0.78,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => _PhotoTile(
-                repo: widget.repo,
-                item: shown[i],
-                picking: _picked != null,
-                picked: _picked?.contains(shown[i].id) ?? false,
-                onTap: () =>
-                    _picked == null ? _open(shown[i]) : _pick(shown[i].id),
-                onLongPress:
-                    _picked == null ? () => _startPicking(shown[i].id) : null,
-              ),
-              childCount: shown.length,
-            ),
+        if (byRoom)
+          ..._roomSlivers(shown)
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+            sliver: _grid(shown),
           ),
-        ),
 
         // The way into the bin, and the clearance the list gives its last row
         // so the add button does not sit on top of it.
         SliverToBoxAdapter(child: _BinLink(repo: widget.repo)),
         const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
+    );
+  }
+
+  /// A heading and a grid per room, in the order the rooms screen was dragged
+  /// into, with the unassigned pile last.
+  List<Widget> _roomSlivers(List<Item> shown) {
+    final names = {for (final r in _rooms) r.id: r.name};
+    final order = <String>[...names.keys, ''];
+
+    final out = <Widget>[];
+    for (final id in order) {
+      final group = shown.where((i) => (i.roomId ?? '') == id).toList();
+      if (group.isEmpty) continue;
+
+      final shut = _shut.contains(id);
+      out.add(SliverToBoxAdapter(
+        child: _RoomHeader(
+          name: id.isEmpty ? 'Nowhere yet' : (names[id] ?? 'Somewhere'),
+          count: group.length,
+          shut: shut,
+          onTap: () {
+            feedback(shut ? Cue.expand : Cue.collapse);
+            setState(() => shut ? _shut.remove(id) : _shut.add(id));
+          },
+        ),
+      ));
+
+      if (shut) continue;
+      out.add(SliverPadding(
+        // Room above and below, so the pictures are a group under their
+        // heading rather than a block wedged between two of them.
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        sliver: _grid(group),
+      ));
+    }
+
+    return out;
+  }
+
+  Widget _grid(List<Item> items) {
+    return SliverGrid(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        // Taller than it is wide: a square photograph with a name and a line
+        // of warranty under it needs the room, and a squarer tile crops the
+        // picture rather than the words.
+        childAspectRatio: 0.78,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, i) => _PhotoTile(
+          repo: widget.repo,
+          item: items[i],
+          picking: _picked != null,
+          picked: _picked?.contains(items[i].id) ?? false,
+          onTap: () => _picked == null ? _open(items[i]) : _pick(items[i].id),
+          onLongPress:
+              _picked == null ? () => _startPicking(items[i].id) : null,
+        ),
+        childCount: items.length,
+      ),
     );
   }
 
