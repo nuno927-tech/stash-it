@@ -407,8 +407,14 @@ class _Step extends StatelessWidget {
             one thing. The empty space is all at the bottom, where the dots and
             the buttons are, which is where empty space belongs on a screen
             somebody is swiping through.
+
+            Twenty-six between them rather than twelve. Twelve read as one
+            block that had been squashed; this is three things that belong
+            together and are not touching. The gap is the same above and below
+            Scout so he sits in his own space rather than being attached to
+            whichever line he happens to be nearer.
           */
-          const SizedBox(height: 12),
+          const SizedBox(height: 26),
           Scout(
             pose: _poses[step.pose]!,
             /*
@@ -423,7 +429,7 @@ class _Step extends StatelessWidget {
             motion: const [ScoutMotion.float, ScoutMotion.breathe],
             shadow: true,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 26),
           Text(
             step.body,
             textAlign: TextAlign.center,
