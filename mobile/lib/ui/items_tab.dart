@@ -415,46 +415,60 @@ class _ItemsTabState extends State<ItemsTab> {
               else
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _worth(all, c),
-                            _search(c),
+                      /*
+                        Scout stands beside the figures and the search box, and
+                        the chips run under both of them.
 
-                            /*
-                              ── The chips stand down while searching ────────
-
-                              Sort and filter both answer "which of my items am
-                              I looking at", and a query has already answered
-                              it — with a better answer, since the results are
-                              ordered by how well they match.
-
-                              They also cannot be honest here: a list holding
-                              documents and subscriptions cannot be sorted by
-                              room or filtered to lapsed warranties, and chips
-                              that silently apply to a third of what is on
-                              screen are worse than no chips.
-                            */
-                            if (!everywhere) ...[
-                              const SizedBox(height: 10),
-                              _chips(all, c),
-                              _alsoDocuments(c),
-                            ],
-                          ],
-                        ),
+                        They were in the left column with him, on about two
+                        thirds of the width, which is what pushed four short
+                        sort words onto two lines. Full width fits them in the
+                        one row they belong in.
+                      */
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _worth(all, c),
+                                _search(c),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, top: 6),
+                            child: Scout(
+                              pose: ScoutPose.receipt,
+                              height: 132,
+                              motion: const [ScoutMotion.breathe],
+                            ),
+                          ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, top: 6),
-                        child: Scout(
-                          pose: ScoutPose.receipt,
-                          height: 132,
-                          motion: const [ScoutMotion.breathe],
-                        ),
-                      ),
+
+                      /*
+                        ── The chips stand down while searching ──────────────
+
+                        Sort and filter both answer "which of my items am I
+                        looking at", and a query has already answered it —
+                        with a better answer, since the results are ordered by
+                        how well they match.
+
+                        They also cannot be honest here: a list holding
+                        documents and subscriptions cannot be sorted by room or
+                        filtered to lapsed warranties, and chips that silently
+                        apply to a third of what is on screen are worse than no
+                        chips.
+                      */
+                      if (!everywhere) ...[
+                        const SizedBox(height: 10),
+                        _chips(all, c),
+                        _alsoDocuments(c),
+                      ],
                     ],
                   ),
                 ),
@@ -749,7 +763,9 @@ class _ItemsTabState extends State<ItemsTab> {
     if (count == 0) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(top: 9),
+      // 10 rather than 16: the InkWell holds another 6 of its own, so the
+      // words start on the same line as the chips above them.
+      padding: const EdgeInsets.only(top: 9, left: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.sm),
         onTap: () {
@@ -805,28 +821,24 @@ class _ItemsTabState extends State<ItemsTab> {
       if (_filter != null && !standingFilters.contains(_filter)) _filter!,
     ];
 
+    /*
+      ── What is wrong, before how it is ordered ───────────────────────────
+
+      The sorts used to come first, so the row nearest the search box was
+      "Expiring · Newest · A-Z · Room" and the counts that say something is
+      lapsed sat underneath them.
+
+      Those counts are the only chips carrying news. Somebody arriving at this
+      screen wants to know what needs them, and a sort order is a preference
+      they set once and rarely revisit — so the news goes directly under the
+      search box and the ordering goes below it.
+    */
     return Padding(
-      padding: const EdgeInsets.only(left: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              for (final sort in _Sort.values)
-                _Chip(
-                  label: _sortLabel[sort]!,
-                  on: _sort == sort,
-                  onTap: () {
-                    feedback(Cue.tap);
-                    setState(() => _sort = sort);
-                  },
-                ),
-            ],
-          ),
           if (offered.isNotEmpty) ...[
-            const SizedBox(height: 7),
             Wrap(
               spacing: 7,
               runSpacing: 7,
@@ -846,7 +858,23 @@ class _ItemsTabState extends State<ItemsTab> {
                   ),
               ],
             ),
+            const SizedBox(height: 7),
           ],
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final sort in _Sort.values)
+                _Chip(
+                  label: _sortLabel[sort]!,
+                  on: _sort == sort,
+                  onTap: () {
+                    feedback(Cue.tap);
+                    setState(() => _sort = sort);
+                  },
+                ),
+            ],
+          ),
         ],
       ),
     );
