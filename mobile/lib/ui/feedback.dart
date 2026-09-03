@@ -96,28 +96,47 @@ enum _Wave { sine, triangle, square }
 ///
 /// The buzz table next door has always been a switch and has always been
 /// exhaustive. This is the same table it was, with colons for arrows.
+/*
+  ── The gains, and why the quiet end came up ──────────────────────────────
+
+  The table ran from 0.035 to 0.075 — a bit over two to one, which is a real
+  dynamic range on a laptop and a fiction on a phone. The cues route to the
+  system stream, which is quieter than media to begin with, and the bottom of
+  that range sat under the point where a small speaker in a room with people
+  in it produces anything at all. On one handset the tick was there and on
+  another it was not, and both were playing the same samples.
+
+  The floor is 0.055 now and the ceiling has barely moved, so the range is
+  nearer one and a half to one. That is less dynamic on paper and more of it
+  audible in practice — and a difference nobody can hear was never a
+  difference, only a number that looked like one.
+
+  Everything is still relative in the same order: a tap is the quietest thing
+  in the set, filing something is louder than agreeing with you, and the
+  fanfare is on top.
+*/
 _Voice _voiceFor(Cue cue) => switch (cue) {
   // Ordinary buttons: one short, quiet blip. This fires on nearly every tap,
   // so it has to be the least interesting sound in the set — anything with
   // character becomes irritating by the twentieth press.
-  Cue.tap => const _Voice([880], 0.032, _Wave.sine, 0.035),
+  Cue.tap => const _Voice([880], 0.032, _Wave.sine, 0.055),
 
   // Moving between tabs is a bigger gesture, so it gets a lower, rounder note.
   // Pitch carries the distinction better than volume does.
-  Cue.nav => const _Voice([392], 0.055, _Wave.sine, 0.05),
+  Cue.nav => const _Voice([392], 0.055, _Wave.sine, 0.062),
 
   // Rising to open, falling to close: the direction is the whole message.
-  Cue.expand => const _Voice([523.25, 698.46], 0.045, _Wave.sine, 0.04),
-  Cue.collapse => const _Voice([698.46, 523.25], 0.045, _Wave.sine, 0.04),
+  Cue.expand => const _Voice([523.25, 698.46], 0.045, _Wave.sine, 0.058),
+  Cue.collapse => const _Voice([698.46, 523.25], 0.045, _Wave.sine, 0.058),
 
   /*
     Two quick ticks, up. Short enough to be a click rather than a phrase — this
     marks a mode change, and a mode change that announces itself with a tune is
     a mode change people stop entering.
   */
-  Cue.pick => const _Voice([784, 1046.5], 0.03, _Wave.sine, 0.045),
+  Cue.pick => const _Voice([784, 1046.5], 0.03, _Wave.sine, 0.06),
 
-  Cue.save => const _Voice([587.33, 880], 0.075, _Wave.sine, 0.07),
+  Cue.save => const _Voice([587.33, 880], 0.075, _Wave.sine, 0.075),
 
   /*
     ── Something went into the stash ──────────────────────────────────────────
@@ -144,18 +163,20 @@ _Voice _voiceFor(Cue cue) => switch (cue) {
       [659.25, 987.77, 1318.51],
       0.05,
       _Wave.triangle,
-      0.06,
+      0.07,
       holdLast: 3,
     ),
-  Cue.attach => const _Voice([523.25, 784], 0.06, _Wave.triangle, 0.06),
-  Cue.delete => const _Voice([392, 261.63], 0.075, _Wave.sine, 0.06),
-  Cue.error => const _Voice([233.08, 233.08], 0.11, _Wave.square, 0.04),
+  Cue.attach => const _Voice([523.25, 784], 0.06, _Wave.triangle, 0.07),
+  Cue.delete => const _Voice([392, 261.63], 0.075, _Wave.sine, 0.07),
+  // Lifted least of the quiet ones: a square wave carries more energy than a
+  // sine at the same gain, which is why it started lowest.
+  Cue.error => const _Voice([233.08, 233.08], 0.11, _Wave.square, 0.055),
 
   // The app opening. Three rising notes, under a fifth of a second — long
   // enough to be a phrase rather than a beep, short enough that it is finished
   // before the dashboard has settled. Heard at most once per launch, which is
   // the only reason it is allowed to have a shape at all.
-  Cue.launch => const _Voice([523.25, 659.25, 880], 0.062, _Wave.sine, 0.05),
+  Cue.launch => const _Voice([523.25, 659.25, 880], 0.062, _Wave.sine, 0.062),
 
   /*
     ── Finding Scout's album ────────────────────────────────────────────────
@@ -176,7 +197,7 @@ _Voice _voiceFor(Cue cue) => switch (cue) {
       [392, 523.25, 659.25, 784, 1046.5],
       0.058,
       _Wave.triangle,
-      0.075,
+      0.08,
       holdLast: 6,
     ),
 };
