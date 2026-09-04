@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 1.23.1+161
+version: 1.24.0+162
 
 environment:
   sdk: ^3.5.0
@@ -135,6 +135,12 @@ dependencies:
   # policy. Nothing is posted anywhere: a `mailto:` needs no server, and a
   # server is the one thing this app has spent its life not having.
   url_launcher: ^6.3.0
+
+  # Play's own rating sheet. Twice in a lifetime, after the app has already
+  # done its job — the cadence is in lib/logic/review.dart and the plugin is
+  # behind lib/io/review.dart, because it cannot run in a test and does
+  # nothing at all on a phone without Play Services.
+  in_app_review: ^2.0.9
 
   # ── The home screen widgets ────────────────────────────────────────────
   #

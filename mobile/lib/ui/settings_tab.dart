@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.23.1';
+const appVersion = '1.24.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1913,6 +1913,28 @@ class _SettingsTabState extends State<SettingsTab> {
         ),
 
         /*
+          ── The way to rate it that never interrupts anybody ────────────────
+
+          The app does ask, twice in a lifetime, and only after it has done its
+          job — see `logic/review.dart`. This is the other half of that
+          bargain: somebody who WANTS to say something has a door that is
+          always open, and does not have to wait to be asked.
+
+          It opens the Play listing rather than firing the in-app sheet. Play's
+          sheet is quota'd and frequently draws nothing at all, so a button
+          that called it would do nothing on most presses — which is the one
+          thing a button may not do.
+        */
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: _BigButton(
+            label: 'Rate Stash it',
+            icon: Icons.star_outline,
+            onTap: () => _open(Uri.parse(storeUrl)),
+          ),
+        ),
+
+        /*
               ── The version, and the second hidden gesture ──────────────────
 
               Ten taps here opens the developer tools. It is a separate run from
@@ -2228,12 +2250,29 @@ class _SettingsTabState extends State<SettingsTab> {
           child: Center(
             child: FractionallySizedBox(
               widthFactor: 0.5,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(Radii.md),
-                child: Image.asset(
-                  'assets/brand/flux-studios.png',
-                  fit: BoxFit.contain,
-                  width: double.infinity,
+              /*
+                ── The height is declared, not discovered ───────────────────
+
+                A flick down this page used to stop half way through this
+                logo. An `Image.asset` has no size until the PNG has been
+                decoded, so at the moment a fling begins the list's scroll
+                extent is short by the height of this picture — and the
+                ballistic animation is aimed at the end of the list as it was
+                understood then. The image then decodes, the list gets taller,
+                and the scroll has already stopped.
+
+                520 by 251 is the asset, so the box knows its shape before the
+                file has been read and the extent is right on the first frame.
+              */
+              child: AspectRatio(
+                aspectRatio: 520 / 251,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(Radii.md),
+                  child: Image.asset(
+                    'assets/brand/flux-studios.png',
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                  ),
                 ),
               ),
             ),

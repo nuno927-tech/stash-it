@@ -254,6 +254,26 @@ won't let you publish until every one has a green tick.
 - **Contact email** — this is shown publicly on your listing.
 - **Privacy policy URL** — the one from step 2.4.
 
+### 5.1a Ratings
+
+The app asks for a review twice in its lifetime, through Play's own in-app
+review sheet, and only once it has earned it: a fortnight installed, five
+separate days of use, ten records, a backup that actually ran, and no crash in
+the last week. The rules are in `lib/logic/review.dart` and every one of them
+has a test.
+
+Two things Google's policy rules out, and this app does not do:
+
+- No "Do you like Stash it?" before the sheet, and no sending unhappy people
+  somewhere other than Play. The sheet goes to everybody who reaches it.
+- No button that fires the sheet. Play quotas it and frequently draws nothing,
+  and a button that usually does nothing is worse than no button. The Settings
+  row opens the store listing instead.
+
+Play's quota sits on top of all of this, so on a device that has seen its share
+of review sheets recently, nothing will appear. That is expected and there is
+nothing to debug.
+
 ### 5.2 Data safety
 
 This is the one most people get wrong. Your answers are unusually simple because

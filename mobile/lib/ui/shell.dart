@@ -17,12 +17,15 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Tab;
 
 import '../db/repository.dart';
+import '../io/crash_log.dart';
 import '../io/incoming_card.dart';
+import '../io/review.dart';
 import '../io/auto_backup_run.dart';
 import '../io/widget_mirror.dart';
 import '../logic/bundle.dart';
 import '../logic/item_filter.dart';
 import '../logic/deep_link.dart';
+import '../logic/review.dart';
 import '../logic/swipe.dart';
 import '../notify/pending_link.dart';
 import 'add_button.dart';
@@ -230,6 +233,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     pendingLink.addListener(_handleLink);
     _readPro();
 
+    // One row per day, whatever brought the app up — see `noteUsedToday`.
+    unawaited(widget.repo.noteUsedToday());
+
     /*
       ── A .stashcard, tapped ────────────────────────────────────────────────
 
@@ -386,6 +392,57 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() => _generation++);
     unawaited(mirrorWidgets(widget.repo));
+
+    /*
+      ── And, very occasionally, the rating sheet ──────────────────────────
+
+      Here rather than on launch, because this is the callback that means
+      something went into the stash — the only moment the app has actually
+      done its job, and the only honest time to ask somebody to vouch for it.
+
+      `maybeAskForReview` refuses far more often than it agrees: see
+      `logic/review.dart`, which wants a fortnight, five separate days, ten
+      records, a backup that worked and a week with no crash in it, and gives
+      up entirely after the second time.
+    */
+    unawaited(_maybeReview());
+  }
+
+  /// Gathers the facts, asks the pure rule, and spends the moment if it says
+  /// yes. Everything here is swallowed: nothing about a rating prompt may
+  /// interrupt what somebody was doing.
+  Future<void> _maybeReview() async {
+    try {
+      final settings = await widget.repo.settings();
+      final crashes = await readCrashes();
+
+      final ready = timeToAsk(ReviewFacts(
+        installedAt: settings.installedAt,
+        daysUsed: settings.daysUsed,
+        records: await widget.repo.cappedCount(),
+        // "The data left this phone somehow" — by the automatic backup or by
+        // somebody sharing a file. Either counts: the app kept its promise.
+        backedUpAt: settings.lastBackupAt ?? settings.lastAutoBackupAt,
+        lastCrashAt: crashes.isEmpty ? null : crashes.first.at,
+        askedAt: settings.reviewAskedAt,
+        asks: settings.reviewAsks,
+      ));
+
+      if (!ready) return;
+
+      /*
+        Recorded whether or not Play draws anything.
+
+        The quota is Google's and it is opaque: a request that shows nothing
+        still spends the moment as far as this app can tell. Recording only on
+        success would mean asking again next week, and again the week after,
+        which is the nagging this cadence exists to prevent.
+      */
+      await askForReview();
+      await widget.repo.noteReviewAsked();
+    } catch (_) {
+      // A rating prompt that can break a save is one worth deleting.
+    }
   }
 
   void _say(String message) {

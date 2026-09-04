@@ -65,6 +65,11 @@ class Settings {
     this.displayName,
     this.onboardedAt,
     this.tourRemindAt,
+    this.installedAt,
+    this.daysUsed = 0,
+    this.usedOn,
+    this.reviewAskedAt,
+    this.reviewAsks = 0,
     this.theme,
     this.sounds,
     this.haptics,
@@ -172,6 +177,20 @@ class Settings {
   /// When "Skip" on the tour said to ask again. Null means nothing is pending.
   final DateTime? tourRemindAt;
 
+  /*
+    ── What the rating prompt reads, and nothing else does ──────────────────
+
+    When this stash began, how many separate DAYS the app has been opened, the
+    last day counted, and the record of having asked. The cadence built on them
+    is in `logic/review.dart`; none of it is here, because a threshold living
+    beside a field gets changed without anybody arguing about it.
+  */
+  final DateTime? installedAt;
+  final int daysUsed;
+  final DateTime? usedOn;
+  final DateTime? reviewAskedAt;
+  final int reviewAsks;
+
   Settings copyWith({
     List<int>? reminderOffsetsDays,
     String? currency,
@@ -200,6 +219,11 @@ class Settings {
     String? displayName,
     DateTime? onboardedAt,
     DateTime? tourRemindAt,
+    DateTime? installedAt,
+    int? daysUsed,
+    DateTime? usedOn,
+    DateTime? reviewAskedAt,
+    int? reviewAsks,
     ThemeChoice? theme,
     bool? sounds,
     bool? haptics,
@@ -229,6 +253,11 @@ class Settings {
         displayName: displayName ?? this.displayName,
         onboardedAt: onboardedAt ?? this.onboardedAt,
         tourRemindAt: tourRemindAt ?? this.tourRemindAt,
+        installedAt: installedAt ?? this.installedAt,
+        daysUsed: daysUsed ?? this.daysUsed,
+        usedOn: usedOn ?? this.usedOn,
+        reviewAskedAt: reviewAskedAt ?? this.reviewAskedAt,
+        reviewAsks: reviewAsks ?? this.reviewAsks,
         theme: theme ?? this.theme,
         sounds: sounds ?? this.sounds,
         haptics: haptics ?? this.haptics,

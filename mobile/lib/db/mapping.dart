@@ -128,6 +128,11 @@ Settings settingsOf(SettingsRow r) => Settings(
       displayName: r.displayName,
       onboardedAt: r.onboardedAt,
       tourRemindAt: r.tourRemindAt,
+      installedAt: r.installedAt,
+      daysUsed: r.daysUsed,
+      usedOn: r.usedOn,
+      reviewAskedAt: r.reviewAskedAt,
+      reviewAsks: r.reviewAsks,
       theme: r.theme == null
           ? null
           : enumOf(r.theme, ThemeChoice.values, ThemeChoice.system),
@@ -255,6 +260,11 @@ SettingsTableCompanion settingsToRow(Settings s) => SettingsTableCompanion(
       displayName: Value(s.displayName),
       onboardedAt: Value(s.onboardedAt),
       tourRemindAt: Value(s.tourRemindAt),
+      installedAt: Value(s.installedAt),
+      daysUsed: Value(s.daysUsed),
+      usedOn: Value(s.usedOn),
+      reviewAskedAt: Value(s.reviewAskedAt),
+      reviewAsks: Value(s.reviewAsks),
       theme: Value(s.theme?.name),
       sounds: Value(s.sounds),
       haptics: Value(s.haptics),

@@ -322,6 +322,29 @@ class SettingsTable extends Table {
   /// anybody who did not ask to be interrupted.
   DateTimeColumn get tourRemindAt => dateTime().nullable()();
 
+  /*
+    ── What the rating prompt is allowed to know ────────────────────────────
+
+    Four fields, and every one of them is a fact the app already had a reason
+    to hold. `installedAt` is when this stash began. `daysUsed` counts DAYS the
+    app was opened, not launches — `usedOn` is the last one counted, and is the
+    only reason the count cannot be inflated by an app that reopens itself.
+
+    `reviewAskedAt` and `reviewAsks` are the record of having asked. Two, ever
+    — see `logic/review.dart`, which holds the whole cadence and none of the
+    storage.
+
+    They are NOT in `settingsToJson`, so they do not travel in a backup. That
+    file is a shared format the web app reads too, and none of this means
+    anything there — and a restore onto a new handset genuinely is a new
+    install, which starts its own fortnight rather than inheriting one.
+  */
+  DateTimeColumn get installedAt => dateTime().nullable()();
+  IntColumn get daysUsed => integer().withDefault(const Constant(0))();
+  DateTimeColumn get usedOn => dateTime().nullable()();
+  DateTimeColumn get reviewAskedAt => dateTime().nullable()();
+  IntColumn get reviewAsks => integer().withDefault(const Constant(0))();
+
   TextColumn get theme => text().nullable()();
   BoolColumn get sounds => boolean().nullable()();
   BoolColumn get haptics => boolean().nullable()();
@@ -385,7 +408,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -456,6 +479,22 @@ class StashDatabase extends _$StashDatabase {
           }
           if (from < 9) {
             await _blobSizeIndex();
+          }
+          if (from < 10) {
+            /*
+              The rating prompt's memory.
+
+              Nullable and zero-defaulted, so an existing install reads as "no
+              install date known" — which `timeToAsk` treats as a reason not to
+              ask rather than as a reason to. Somebody who upgrades starts the
+              clock on their next launch, which is the honest reading: the app
+              does not know how long they have had it.
+            */
+            await m.addColumn(settingsTable, settingsTable.installedAt);
+            await m.addColumn(settingsTable, settingsTable.daysUsed);
+            await m.addColumn(settingsTable, settingsTable.usedOn);
+            await m.addColumn(settingsTable, settingsTable.reviewAskedAt);
+            await m.addColumn(settingsTable, settingsTable.reviewAsks);
           }
           if (from < 7) {
             /*

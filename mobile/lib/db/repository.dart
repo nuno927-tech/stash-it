@@ -229,6 +229,50 @@ class Repository {
     return (count, oldest);
   }
 
+  /*
+    ── One row per day, counted on arrival ──────────────────────────────────
+
+    Called on every launch and every return from the background. It writes at
+    most once a day: `usedOn` holds the day already counted, so a person who
+    opens the app forty times on a Tuesday is one day, and an app that reopens
+    ITSELF — a widget tap, a notification — cannot inflate the number the
+    rating prompt reads.
+
+    It also sets `installedAt` the first time it ever runs, which on an upgrade
+    means today. That reads as "the app does not know how long they have had
+    it", and `timeToAsk` treats not knowing as a reason to wait.
+  */
+  Future<void> noteUsedToday([DateTime? now]) async {
+    final at = now ?? DateTime.now();
+    final today = DateTime(at.year, at.month, at.day);
+
+    final was = await settings();
+    final counted = was.usedOn;
+
+    final sameDay = counted != null &&
+        counted.year == today.year &&
+        counted.month == today.month &&
+        counted.day == today.day;
+
+    if (sameDay && was.installedAt != null) return;
+
+    await saveSettings(was.copyWith(
+      installedAt: was.installedAt ?? today,
+      usedOn: today,
+      daysUsed: sameDay ? was.daysUsed : was.daysUsed + 1,
+    ));
+  }
+
+  /// Remembers that the sheet was requested. Not that anybody rated anything —
+  /// Play does not say, and the app must never pretend it knows.
+  Future<void> noteReviewAsked([DateTime? now]) async {
+    final was = await settings();
+    await saveSettings(was.copyWith(
+      reviewAskedAt: now ?? DateTime.now(),
+      reviewAsks: was.reviewAsks + 1,
+    ));
+  }
+
   /// The picture to put on each document's row, by document id.
   ///
   /// ── One query for a list, not one per row ─────────────────────────────
