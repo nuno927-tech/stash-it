@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.23.0';
+const appVersion = '1.23.1';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1403,9 +1403,19 @@ class _SettingsTabState extends State<SettingsTab> {
               Here rather than anywhere else because a widget IS appearance —
               it is what the app looks like when nobody has opened it.
             */
-            const SizedBox(height: 14),
+            /*
+              The rule sits where every other rule on this card does.
+
+              It had 14 above it and 10 below, on top of the 4 the rule and the
+              switch row each carry of their own — so the line under Haptics
+              had nearly three times the air of every other line, and read as a
+              gap somebody forgot to fill rather than as a section starting.
+
+              6 below, which is the heading's own breathing room and nothing
+              more.
+            */
             _Rule(c),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(
               'Home screen widgets',
               style: TextStyle(
