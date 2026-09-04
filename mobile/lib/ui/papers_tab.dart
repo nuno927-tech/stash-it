@@ -422,12 +422,13 @@ class _Tiles extends StatelessWidget {
                           reason this tab sorts by renew-by is that those two
                           are different, and only one of them is actionable.
 
-                          With the year when the year is news. A passport comes
-                          up for renewal in 2030, and "Aug 6" on a screen where
-                          every other date is this year reads as this year —
-                          see `dayMonthMaybeYear`.
+                          The year every time, not only when it differs from
+                          this one. The rows below can leave it off because
+                          they are sentences with a countdown beside them; this
+                          is a bare date in a box, and a bare date is one the
+                          reader has to assume something about.
                         */
-                        start == null ? '—' : dayMonthMaybeYear(start),
+                        start == null ? '—' : dayMonthYear(start),
                         'UP NEXT',
                         small: true,
                         onTap: next == null ? null : () => onOpen(next!),

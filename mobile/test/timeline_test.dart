@@ -565,5 +565,17 @@ void main() {
       expect(dayMonthMaybeYear(DateTime(2027, 1, 1), DateTime(2026, 12, 31)),
           'Jan 1, 2027');
     });
+
+    /*
+      The tile on the Documents tab uses the other one.
+
+      "Maybe" is right in a sentence with a countdown beside it and wrong in a
+      box containing nothing but a date: there is no context for the reader to
+      leave the year out of.
+    */
+    test('and the always version says it even for this year', () {
+      expect(dayMonthYear(DateTime(2026, 8, 6)), 'Aug 6, 2026');
+      expect(dayMonthYear(DateTime(2031, 4, 3)), 'Apr 3, 2031');
+    });
   });
 }

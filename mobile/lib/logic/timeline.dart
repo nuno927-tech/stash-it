@@ -341,6 +341,20 @@ String dayMonthMaybeYear(DateTime d, [DateTime? now]) {
   return d.year == today.year ? dayMonth(d) : '${dayMonth(d)}, ${d.year}';
 }
 
+/// "Aug 6, 2026" — the year every time, whatever year it is.
+///
+/// ── Where "maybe" is not good enough ──────────────────────────────────────
+/// The rule above leaves the year off when it is this year, because a sentence
+/// carries the context: "Expires Aug 6" sits in a row about one document,
+/// under a heading, next to a countdown.
+///
+/// A figure tile has none of that. It is a bare date in a box labelled UP
+/// NEXT, and a bare date with no year is a date the reader has to assume
+/// something about — including, on a screen full of documents that expire
+/// years out, assuming wrong. Four extra characters, once, in the one place
+/// with nothing else to go on.
+String dayMonthYear(DateTime d) => '${dayMonth(d)}, ${d.year}';
+
 /* --------------------------------------------------------------- the ring */
 
 /// One count, split by what it is made of.
