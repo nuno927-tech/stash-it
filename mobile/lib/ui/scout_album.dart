@@ -344,38 +344,60 @@ class _Seasons extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (final season in Season.values)
-              Expanded(
-                child: Column(
-                  children: [
-                    Scout(
-                      pose: ScoutPose.acorn,
-                      dressed: season,
-                      height: 86,
-                      // Breathing only. Four floating squirrels in one row is
-                      // a row nobody can read — the same note as `_Row`.
-                      motion: const [ScoutMotion.breathe],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _when[season]!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: fontBody,
-                        fontSize: 10.5,
-                        height: 1.35,
-                        // The one you would see today, named in gold.
-                        color: season == now ? c.gold : c.muted,
+
+        /*
+          ── Two by two, not four across ─────────────────────────────────────
+
+          Four in a row on a phone gives each one about eighty pixels, which
+          is small enough that the blossom, the sunglasses and the mittens —
+          the entire point of having four — turn into texture.
+
+          Two by two doubles the width each gets. The album is the one screen
+          in the app whose whole job is looking at him, so it should let
+          somebody do that.
+        */
+        for (final pair in [
+          [Season.spring, Season.summer],
+          [Season.autumn, Season.winter],
+        ]) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final season in pair)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Scout(
+                        pose: ScoutPose.acorn,
+                        dressed: season,
+                        height: 150,
+                        // Breathing only. Four floating squirrels on one
+                        // screen is a screen nobody can read — the same note
+                        // as `_Row`.
+                        motion: const [ScoutMotion.breathe],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _when[season]!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: fontBody,
+                          fontSize: 11.5,
+                          height: 1.35,
+                          fontWeight: season == now
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          // The one you would see today, named in gold.
+                          color: season == now ? c.gold : c.muted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
       ],
     );
   }

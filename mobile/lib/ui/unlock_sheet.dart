@@ -36,6 +36,7 @@ import 'package:flutter/material.dart';
 import '../billing/billing.dart';
 import '../db/repository.dart';
 import '../logic/limits.dart';
+import '../logic/season.dart';
 import 'feedback.dart';
 import 'pro_badge.dart';
 import 'scout.dart';
@@ -289,6 +290,16 @@ class _UnlockState extends State<_Unlock> {
                 */
                 height: (MediaQuery.sizeOf(context).height * 0.19)
                     .clamp(96.0, 180.0),
+                /*
+                  Dressed for the month, like the launch and lock screens.
+
+                  This is the third place he stands alone holding the acorn
+                  with nothing to read beside him — and it is the screen where
+                  somebody is deciding whether the people behind the app are
+                  worth five pounds. A squirrel who noticed it was October is a
+                  small argument for yes.
+                */
+                dressed: seasonOf(DateTime.now()),
                 motion: const [ScoutMotion.float, ScoutMotion.breathe],
                 // Three pixels. He is at the top of a list that clips at its
                 // own edge, and there are eight of padding above him.
