@@ -273,13 +273,26 @@ class _UnlockState extends State<_Unlock> {
             Center(
               child: Scout(
                 pose: ScoutPose.acorn,
-                // Smaller again. The mascot is the welcome, not the argument,
-                // and this screen has to fit on a phone without scrolling.
-                height: 96,
+                /*
+                  ── As big as the phone can spare ──────────────────────────
+
+                  A fixed number cannot be right here. The rest of this sheet
+                  is a title, a line, four perks and two buttons — call it 600
+                  pixels — and what is left over is whatever the handset has
+                  above that. On a tall phone that is room for a proper
+                  mascot; on a short one it is nearly nothing, and a fixed 150
+                  would push the buttons off the bottom of exactly the screens
+                  that can least afford it.
+
+                  A share of the height, floored so he never becomes a sticker
+                  and capped so he never becomes the argument.
+                */
+                height: (MediaQuery.sizeOf(context).height * 0.19)
+                    .clamp(96.0, 180.0),
                 motion: const [ScoutMotion.float, ScoutMotion.breathe],
-                // Half the usual lift. Nine pixels of bounce needs nine
-                // pixels of sky, and there are eight.
-                floatBy: 4,
+                // Three pixels. He is at the top of a list that clips at its
+                // own edge, and there are eight of padding above him.
+                floatBy: 3,
                 shadow: true,
               ),
             ),
