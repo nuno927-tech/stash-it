@@ -303,6 +303,7 @@ class _PapersTabState extends State<PapersTab> {
                   // it up. A count that cannot take you to what it counted is
                   // a number you have to go and find by hand.
                   onFind: (state) => _find(sorted, state),
+                  onOpen: open,
                 ),
               Expanded(
                 child: ListView(
@@ -350,6 +351,7 @@ class _Tiles extends StatelessWidget {
     required this.expired,
     required this.next,
     required this.onFind,
+    required this.onOpen,
   });
 
   final int total;
@@ -357,6 +359,18 @@ class _Tiles extends StatelessWidget {
   final int expired;
   final Paper? next;
   final void Function(PaperState?) onFind;
+
+  /*
+    ── The counts find, this one opens ────────────────────────────────────
+
+    The three counts name a group, so tapping one scrolls to the first of
+    them and lights it: the answer to "which are these" is the rows.
+
+    UP NEXT names a single document. Scrolling to it and lighting it made
+    somebody tap twice for one answer — the tile already said which one it
+    meant, and the only thing left to want is what is on it.
+  */
+  final void Function(Paper) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -403,13 +417,20 @@ class _Tiles extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: FigureTile(
-                        // The date to start, not the date it expires. The whole
-                        // reason this tab sorts by renew-by is that those two
-                        // are different, and only one of them is actionable.
-                        start == null ? '—' : dayMonth(start),
+                        /*
+                          The date to start, not the date it expires. The whole
+                          reason this tab sorts by renew-by is that those two
+                          are different, and only one of them is actionable.
+
+                          With the year when the year is news. A passport comes
+                          up for renewal in 2030, and "Aug 6" on a screen where
+                          every other date is this year reads as this year —
+                          see `dayMonthMaybeYear`.
+                        */
+                        start == null ? '—' : dayMonthMaybeYear(start),
                         'UP NEXT',
                         small: true,
-                        onTap: next == null ? null : () => onFind(null),
+                        onTap: next == null ? null : () => onOpen(next!),
                       ),
                     ),
                   ],
