@@ -3942,6 +3942,39 @@ class $SettingsTableTable extends SettingsTable
   late final GeneratedColumn<DateTime> tourRemindAt = GeneratedColumn<DateTime>(
       'tour_remind_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _installedAtMeta =
+      const VerificationMeta('installedAt');
+  @override
+  late final GeneratedColumn<DateTime> installedAt = GeneratedColumn<DateTime>(
+      'installed_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _daysUsedMeta =
+      const VerificationMeta('daysUsed');
+  @override
+  late final GeneratedColumn<int> daysUsed = GeneratedColumn<int>(
+      'days_used', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _usedOnMeta = const VerificationMeta('usedOn');
+  @override
+  late final GeneratedColumn<DateTime> usedOn = GeneratedColumn<DateTime>(
+      'used_on', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _reviewAskedAtMeta =
+      const VerificationMeta('reviewAskedAt');
+  @override
+  late final GeneratedColumn<DateTime> reviewAskedAt =
+      GeneratedColumn<DateTime>('review_asked_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _reviewAsksMeta =
+      const VerificationMeta('reviewAsks');
+  @override
+  late final GeneratedColumn<int> reviewAsks = GeneratedColumn<int>(
+      'review_asks', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _themeMeta = const VerificationMeta('theme');
   @override
   late final GeneratedColumn<String> theme = GeneratedColumn<String>(
@@ -4056,6 +4089,11 @@ class $SettingsTableTable extends SettingsTable
         displayName,
         onboardedAt,
         tourRemindAt,
+        installedAt,
+        daysUsed,
+        usedOn,
+        reviewAskedAt,
+        reviewAsks,
         theme,
         sounds,
         haptics,
@@ -4153,6 +4191,32 @@ class $SettingsTableTable extends SettingsTable
           _tourRemindAtMeta,
           tourRemindAt.isAcceptableOrUnknown(
               data['tour_remind_at']!, _tourRemindAtMeta));
+    }
+    if (data.containsKey('installed_at')) {
+      context.handle(
+          _installedAtMeta,
+          installedAt.isAcceptableOrUnknown(
+              data['installed_at']!, _installedAtMeta));
+    }
+    if (data.containsKey('days_used')) {
+      context.handle(_daysUsedMeta,
+          daysUsed.isAcceptableOrUnknown(data['days_used']!, _daysUsedMeta));
+    }
+    if (data.containsKey('used_on')) {
+      context.handle(_usedOnMeta,
+          usedOn.isAcceptableOrUnknown(data['used_on']!, _usedOnMeta));
+    }
+    if (data.containsKey('review_asked_at')) {
+      context.handle(
+          _reviewAskedAtMeta,
+          reviewAskedAt.isAcceptableOrUnknown(
+              data['review_asked_at']!, _reviewAskedAtMeta));
+    }
+    if (data.containsKey('review_asks')) {
+      context.handle(
+          _reviewAsksMeta,
+          reviewAsks.isAcceptableOrUnknown(
+              data['review_asks']!, _reviewAsksMeta));
     }
     if (data.containsKey('theme')) {
       context.handle(
@@ -4259,6 +4323,16 @@ class $SettingsTableTable extends SettingsTable
           .read(DriftSqlType.dateTime, data['${effectivePrefix}onboarded_at']),
       tourRemindAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}tour_remind_at']),
+      installedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}installed_at']),
+      daysUsed: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}days_used'])!,
+      usedOn: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}used_on']),
+      reviewAskedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}review_asked_at']),
+      reviewAsks: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}review_asks'])!,
       theme: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}theme']),
       sounds: attachedDatabase.typeMapping
@@ -4321,6 +4395,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// deliberate skip sets it — see `tourDue`, which refuses to interrupt
   /// anybody who did not ask to be interrupted.
   final DateTime? tourRemindAt;
+  final DateTime? installedAt;
+  final int daysUsed;
+  final DateTime? usedOn;
+  final DateTime? reviewAskedAt;
+  final int reviewAsks;
   final String? theme;
   final bool? sounds;
   final bool? haptics;
@@ -4354,6 +4433,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       this.displayName,
       this.onboardedAt,
       this.tourRemindAt,
+      this.installedAt,
+      required this.daysUsed,
+      this.usedOn,
+      this.reviewAskedAt,
+      required this.reviewAsks,
       this.theme,
       this.sounds,
       this.haptics,
@@ -4400,6 +4484,17 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     if (!nullToAbsent || tourRemindAt != null) {
       map['tour_remind_at'] = Variable<DateTime>(tourRemindAt);
     }
+    if (!nullToAbsent || installedAt != null) {
+      map['installed_at'] = Variable<DateTime>(installedAt);
+    }
+    map['days_used'] = Variable<int>(daysUsed);
+    if (!nullToAbsent || usedOn != null) {
+      map['used_on'] = Variable<DateTime>(usedOn);
+    }
+    if (!nullToAbsent || reviewAskedAt != null) {
+      map['review_asked_at'] = Variable<DateTime>(reviewAskedAt);
+    }
+    map['review_asks'] = Variable<int>(reviewAsks);
     if (!nullToAbsent || theme != null) {
       map['theme'] = Variable<String>(theme);
     }
@@ -4470,6 +4565,16 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       tourRemindAt: tourRemindAt == null && nullToAbsent
           ? const Value.absent()
           : Value(tourRemindAt),
+      installedAt: installedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(installedAt),
+      daysUsed: Value(daysUsed),
+      usedOn:
+          usedOn == null && nullToAbsent ? const Value.absent() : Value(usedOn),
+      reviewAskedAt: reviewAskedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewAskedAt),
+      reviewAsks: Value(reviewAsks),
       theme:
           theme == null && nullToAbsent ? const Value.absent() : Value(theme),
       sounds:
@@ -4527,6 +4632,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       displayName: serializer.fromJson<String?>(json['displayName']),
       onboardedAt: serializer.fromJson<DateTime?>(json['onboardedAt']),
       tourRemindAt: serializer.fromJson<DateTime?>(json['tourRemindAt']),
+      installedAt: serializer.fromJson<DateTime?>(json['installedAt']),
+      daysUsed: serializer.fromJson<int>(json['daysUsed']),
+      usedOn: serializer.fromJson<DateTime?>(json['usedOn']),
+      reviewAskedAt: serializer.fromJson<DateTime?>(json['reviewAskedAt']),
+      reviewAsks: serializer.fromJson<int>(json['reviewAsks']),
       theme: serializer.fromJson<String?>(json['theme']),
       sounds: serializer.fromJson<bool?>(json['sounds']),
       haptics: serializer.fromJson<bool?>(json['haptics']),
@@ -4562,6 +4672,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'displayName': serializer.toJson<String?>(displayName),
       'onboardedAt': serializer.toJson<DateTime?>(onboardedAt),
       'tourRemindAt': serializer.toJson<DateTime?>(tourRemindAt),
+      'installedAt': serializer.toJson<DateTime?>(installedAt),
+      'daysUsed': serializer.toJson<int>(daysUsed),
+      'usedOn': serializer.toJson<DateTime?>(usedOn),
+      'reviewAskedAt': serializer.toJson<DateTime?>(reviewAskedAt),
+      'reviewAsks': serializer.toJson<int>(reviewAsks),
       'theme': serializer.toJson<String?>(theme),
       'sounds': serializer.toJson<bool?>(sounds),
       'haptics': serializer.toJson<bool?>(haptics),
@@ -4593,6 +4708,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           Value<String?> displayName = const Value.absent(),
           Value<DateTime?> onboardedAt = const Value.absent(),
           Value<DateTime?> tourRemindAt = const Value.absent(),
+          Value<DateTime?> installedAt = const Value.absent(),
+          int? daysUsed,
+          Value<DateTime?> usedOn = const Value.absent(),
+          Value<DateTime?> reviewAskedAt = const Value.absent(),
+          int? reviewAsks,
           Value<String?> theme = const Value.absent(),
           Value<bool?> sounds = const Value.absent(),
           Value<bool?> haptics = const Value.absent(),
@@ -4630,6 +4750,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         onboardedAt: onboardedAt.present ? onboardedAt.value : this.onboardedAt,
         tourRemindAt:
             tourRemindAt.present ? tourRemindAt.value : this.tourRemindAt,
+        installedAt: installedAt.present ? installedAt.value : this.installedAt,
+        daysUsed: daysUsed ?? this.daysUsed,
+        usedOn: usedOn.present ? usedOn.value : this.usedOn,
+        reviewAskedAt:
+            reviewAskedAt.present ? reviewAskedAt.value : this.reviewAskedAt,
+        reviewAsks: reviewAsks ?? this.reviewAsks,
         theme: theme.present ? theme.value : this.theme,
         sounds: sounds.present ? sounds.value : this.sounds,
         haptics: haptics.present ? haptics.value : this.haptics,
@@ -4688,6 +4814,15 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       tourRemindAt: data.tourRemindAt.present
           ? data.tourRemindAt.value
           : this.tourRemindAt,
+      installedAt:
+          data.installedAt.present ? data.installedAt.value : this.installedAt,
+      daysUsed: data.daysUsed.present ? data.daysUsed.value : this.daysUsed,
+      usedOn: data.usedOn.present ? data.usedOn.value : this.usedOn,
+      reviewAskedAt: data.reviewAskedAt.present
+          ? data.reviewAskedAt.value
+          : this.reviewAskedAt,
+      reviewAsks:
+          data.reviewAsks.present ? data.reviewAsks.value : this.reviewAsks,
       theme: data.theme.present ? data.theme.value : this.theme,
       sounds: data.sounds.present ? data.sounds.value : this.sounds,
       haptics: data.haptics.present ? data.haptics.value : this.haptics,
@@ -4736,6 +4871,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
           ..write('tourRemindAt: $tourRemindAt, ')
+          ..write('installedAt: $installedAt, ')
+          ..write('daysUsed: $daysUsed, ')
+          ..write('usedOn: $usedOn, ')
+          ..write('reviewAskedAt: $reviewAskedAt, ')
+          ..write('reviewAsks: $reviewAsks, ')
           ..write('theme: $theme, ')
           ..write('sounds: $sounds, ')
           ..write('haptics: $haptics, ')
@@ -4768,6 +4908,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         displayName,
         onboardedAt,
         tourRemindAt,
+        installedAt,
+        daysUsed,
+        usedOn,
+        reviewAskedAt,
+        reviewAsks,
         theme,
         sounds,
         haptics,
@@ -4799,6 +4944,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.displayName == this.displayName &&
           other.onboardedAt == this.onboardedAt &&
           other.tourRemindAt == this.tourRemindAt &&
+          other.installedAt == this.installedAt &&
+          other.daysUsed == this.daysUsed &&
+          other.usedOn == this.usedOn &&
+          other.reviewAskedAt == this.reviewAskedAt &&
+          other.reviewAsks == this.reviewAsks &&
           other.theme == this.theme &&
           other.sounds == this.sounds &&
           other.haptics == this.haptics &&
@@ -4828,6 +4978,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> displayName;
   final Value<DateTime?> onboardedAt;
   final Value<DateTime?> tourRemindAt;
+  final Value<DateTime?> installedAt;
+  final Value<int> daysUsed;
+  final Value<DateTime?> usedOn;
+  final Value<DateTime?> reviewAskedAt;
+  final Value<int> reviewAsks;
   final Value<String?> theme;
   final Value<bool?> sounds;
   final Value<bool?> haptics;
@@ -4856,6 +5011,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
     this.tourRemindAt = const Value.absent(),
+    this.installedAt = const Value.absent(),
+    this.daysUsed = const Value.absent(),
+    this.usedOn = const Value.absent(),
+    this.reviewAskedAt = const Value.absent(),
+    this.reviewAsks = const Value.absent(),
     this.theme = const Value.absent(),
     this.sounds = const Value.absent(),
     this.haptics = const Value.absent(),
@@ -4885,6 +5045,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.displayName = const Value.absent(),
     this.onboardedAt = const Value.absent(),
     this.tourRemindAt = const Value.absent(),
+    this.installedAt = const Value.absent(),
+    this.daysUsed = const Value.absent(),
+    this.usedOn = const Value.absent(),
+    this.reviewAskedAt = const Value.absent(),
+    this.reviewAsks = const Value.absent(),
     this.theme = const Value.absent(),
     this.sounds = const Value.absent(),
     this.haptics = const Value.absent(),
@@ -4914,6 +5079,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? displayName,
     Expression<DateTime>? onboardedAt,
     Expression<DateTime>? tourRemindAt,
+    Expression<DateTime>? installedAt,
+    Expression<int>? daysUsed,
+    Expression<DateTime>? usedOn,
+    Expression<DateTime>? reviewAskedAt,
+    Expression<int>? reviewAsks,
     Expression<String>? theme,
     Expression<bool>? sounds,
     Expression<bool>? haptics,
@@ -4946,6 +5116,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (displayName != null) 'display_name': displayName,
       if (onboardedAt != null) 'onboarded_at': onboardedAt,
       if (tourRemindAt != null) 'tour_remind_at': tourRemindAt,
+      if (installedAt != null) 'installed_at': installedAt,
+      if (daysUsed != null) 'days_used': daysUsed,
+      if (usedOn != null) 'used_on': usedOn,
+      if (reviewAskedAt != null) 'review_asked_at': reviewAskedAt,
+      if (reviewAsks != null) 'review_asks': reviewAsks,
       if (theme != null) 'theme': theme,
       if (sounds != null) 'sounds': sounds,
       if (haptics != null) 'haptics': haptics,
@@ -4978,6 +5153,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       Value<String?>? displayName,
       Value<DateTime?>? onboardedAt,
       Value<DateTime?>? tourRemindAt,
+      Value<DateTime?>? installedAt,
+      Value<int>? daysUsed,
+      Value<DateTime?>? usedOn,
+      Value<DateTime?>? reviewAskedAt,
+      Value<int>? reviewAsks,
       Value<String?>? theme,
       Value<bool?>? sounds,
       Value<bool?>? haptics,
@@ -5007,6 +5187,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       displayName: displayName ?? this.displayName,
       onboardedAt: onboardedAt ?? this.onboardedAt,
       tourRemindAt: tourRemindAt ?? this.tourRemindAt,
+      installedAt: installedAt ?? this.installedAt,
+      daysUsed: daysUsed ?? this.daysUsed,
+      usedOn: usedOn ?? this.usedOn,
+      reviewAskedAt: reviewAskedAt ?? this.reviewAskedAt,
+      reviewAsks: reviewAsks ?? this.reviewAsks,
       theme: theme ?? this.theme,
       sounds: sounds ?? this.sounds,
       haptics: haptics ?? this.haptics,
@@ -5068,6 +5253,21 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     }
     if (tourRemindAt.present) {
       map['tour_remind_at'] = Variable<DateTime>(tourRemindAt.value);
+    }
+    if (installedAt.present) {
+      map['installed_at'] = Variable<DateTime>(installedAt.value);
+    }
+    if (daysUsed.present) {
+      map['days_used'] = Variable<int>(daysUsed.value);
+    }
+    if (usedOn.present) {
+      map['used_on'] = Variable<DateTime>(usedOn.value);
+    }
+    if (reviewAskedAt.present) {
+      map['review_asked_at'] = Variable<DateTime>(reviewAskedAt.value);
+    }
+    if (reviewAsks.present) {
+      map['review_asks'] = Variable<int>(reviewAsks.value);
     }
     if (theme.present) {
       map['theme'] = Variable<String>(theme.value);
@@ -5131,6 +5331,11 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('displayName: $displayName, ')
           ..write('onboardedAt: $onboardedAt, ')
           ..write('tourRemindAt: $tourRemindAt, ')
+          ..write('installedAt: $installedAt, ')
+          ..write('daysUsed: $daysUsed, ')
+          ..write('usedOn: $usedOn, ')
+          ..write('reviewAskedAt: $reviewAskedAt, ')
+          ..write('reviewAsks: $reviewAsks, ')
           ..write('theme: $theme, ')
           ..write('sounds: $sounds, ')
           ..write('haptics: $haptics, ')
@@ -6968,6 +7173,11 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
   Value<DateTime?> tourRemindAt,
+  Value<DateTime?> installedAt,
+  Value<int> daysUsed,
+  Value<DateTime?> usedOn,
+  Value<DateTime?> reviewAskedAt,
+  Value<int> reviewAsks,
   Value<String?> theme,
   Value<bool?> sounds,
   Value<bool?> haptics,
@@ -6998,6 +7208,11 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<String?> displayName,
   Value<DateTime?> onboardedAt,
   Value<DateTime?> tourRemindAt,
+  Value<DateTime?> installedAt,
+  Value<int> daysUsed,
+  Value<DateTime?> usedOn,
+  Value<DateTime?> reviewAskedAt,
+  Value<int> reviewAsks,
   Value<String?> theme,
   Value<bool?> sounds,
   Value<bool?> haptics,
@@ -7067,6 +7282,21 @@ class $$SettingsTableTableFilterComposer
 
   ColumnFilters<DateTime> get tourRemindAt => $composableBuilder(
       column: $table.tourRemindAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get installedAt => $composableBuilder(
+      column: $table.installedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get daysUsed => $composableBuilder(
+      column: $table.daysUsed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get usedOn => $composableBuilder(
+      column: $table.usedOn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get reviewAskedAt => $composableBuilder(
+      column: $table.reviewAskedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reviewAsks => $composableBuilder(
+      column: $table.reviewAsks, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get theme => $composableBuilder(
       column: $table.theme, builder: (column) => ColumnFilters(column));
@@ -7167,6 +7397,22 @@ class $$SettingsTableTableOrderingComposer
       column: $table.tourRemindAt,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get installedAt => $composableBuilder(
+      column: $table.installedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get daysUsed => $composableBuilder(
+      column: $table.daysUsed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get usedOn => $composableBuilder(
+      column: $table.usedOn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get reviewAskedAt => $composableBuilder(
+      column: $table.reviewAskedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get reviewAsks => $composableBuilder(
+      column: $table.reviewAsks, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get theme => $composableBuilder(
       column: $table.theme, builder: (column) => ColumnOrderings(column));
 
@@ -7263,6 +7509,21 @@ class $$SettingsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get tourRemindAt => $composableBuilder(
       column: $table.tourRemindAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get installedAt => $composableBuilder(
+      column: $table.installedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get daysUsed =>
+      $composableBuilder(column: $table.daysUsed, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get usedOn =>
+      $composableBuilder(column: $table.usedOn, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get reviewAskedAt => $composableBuilder(
+      column: $table.reviewAskedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get reviewAsks => $composableBuilder(
+      column: $table.reviewAsks, builder: (column) => column);
+
   GeneratedColumn<String> get theme =>
       $composableBuilder(column: $table.theme, builder: (column) => column);
 
@@ -7343,6 +7604,11 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
             Value<DateTime?> tourRemindAt = const Value.absent(),
+            Value<DateTime?> installedAt = const Value.absent(),
+            Value<int> daysUsed = const Value.absent(),
+            Value<DateTime?> usedOn = const Value.absent(),
+            Value<DateTime?> reviewAskedAt = const Value.absent(),
+            Value<int> reviewAsks = const Value.absent(),
             Value<String?> theme = const Value.absent(),
             Value<bool?> sounds = const Value.absent(),
             Value<bool?> haptics = const Value.absent(),
@@ -7372,6 +7638,11 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             displayName: displayName,
             onboardedAt: onboardedAt,
             tourRemindAt: tourRemindAt,
+            installedAt: installedAt,
+            daysUsed: daysUsed,
+            usedOn: usedOn,
+            reviewAskedAt: reviewAskedAt,
+            reviewAsks: reviewAsks,
             theme: theme,
             sounds: sounds,
             haptics: haptics,
@@ -7401,6 +7672,11 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String?> displayName = const Value.absent(),
             Value<DateTime?> onboardedAt = const Value.absent(),
             Value<DateTime?> tourRemindAt = const Value.absent(),
+            Value<DateTime?> installedAt = const Value.absent(),
+            Value<int> daysUsed = const Value.absent(),
+            Value<DateTime?> usedOn = const Value.absent(),
+            Value<DateTime?> reviewAskedAt = const Value.absent(),
+            Value<int> reviewAsks = const Value.absent(),
             Value<String?> theme = const Value.absent(),
             Value<bool?> sounds = const Value.absent(),
             Value<bool?> haptics = const Value.absent(),
@@ -7430,6 +7706,11 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             displayName: displayName,
             onboardedAt: onboardedAt,
             tourRemindAt: tourRemindAt,
+            installedAt: installedAt,
+            daysUsed: daysUsed,
+            usedOn: usedOn,
+            reviewAskedAt: reviewAskedAt,
+            reviewAsks: reviewAsks,
             theme: theme,
             sounds: sounds,
             haptics: haptics,

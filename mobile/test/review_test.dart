@@ -23,20 +23,28 @@ DateTime daysAgo(int n) => now.subtract(Duration(days: n));
 /// Somebody the app has served well: two months in, used often, a real stash,
 /// backups working, nothing broken. Every test below takes this and spoils
 /// exactly one thing.
+///
+/// The two "has it happened at all" facts are booleans rather than nullable
+/// dates, and that is not a style choice — `backedUpAt ?? daysAgo(1)` reads a
+/// deliberately-passed null as "not supplied" and hands back the default, so
+/// the test for "no backup yet" was quietly testing a stash WITH a backup. It
+/// passed for the wrong reason until the assertion caught it.
 ReviewFacts earned({
   DateTime? installedAt,
+  bool everInstalled = true,
   int daysUsed = 20,
   int records = 30,
-  DateTime? backedUpAt,
+  bool backedUp = true,
   DateTime? lastCrashAt,
   DateTime? askedAt,
   int asks = 0,
 }) =>
     ReviewFacts(
-      installedAt: installedAt ?? daysAgo(60),
+      installedAt:
+          everInstalled ? (installedAt ?? daysAgo(60)) : null,
       daysUsed: daysUsed,
       records: records,
-      backedUpAt: backedUpAt ?? daysAgo(1),
+      backedUpAt: backedUp ? daysAgo(1) : null,
       lastCrashAt: lastCrashAt,
       askedAt: askedAt,
       asks: asks,
@@ -68,18 +76,7 @@ void main() {
       being prompted the day they upgrade.
     */
     test('and an unknown install date waits', () {
-      expect(
-        timeToAsk(
-          ReviewFacts(
-            installedAt: null,
-            daysUsed: 40,
-            records: 100,
-            backedUpAt: daysAgo(1),
-          ),
-          now: now,
-        ),
-        isFalse,
-      );
+      expect(timeToAsk(earned(everInstalled: false), now: now), isFalse);
     });
   });
 
@@ -108,7 +105,7 @@ void main() {
     it is asking about something that has not happened.
   */
   test('nothing until a backup has actually worked', () {
-    expect(timeToAsk(earned(backedUpAt: null), now: now), isFalse);
+    expect(timeToAsk(earned(backedUp: false), now: now), isFalse);
   });
 
   group('not on the back of a bad week', () {
