@@ -534,41 +534,56 @@ class PaperTile extends StatelessWidget {
       PaperState.valid => StashStatus.settled,
     };
 
-    final body = Row(
-      children: [
+    /*
+      ── Stretched, so a scan can be as tall as the row it is on ────────────
+
+      The leading square was 36 across whatever else the row held, which is
+      about the size of a favicon — fine for a glyph, which is a symbol, and
+      far too small for a photograph of a passport, which is a picture of a
+      thing somebody is trying to recognise.
+
+      `IntrinsicHeight` measures the row and `stretch` hands that height to the
+      picture, so it grows with the row rather than being a number that has to
+      be kept in step with one. The tick is wrapped in a `Center` because a
+      stretched icon is a squashed icon.
+    */
+    final body = IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         // The tick leads the row while picking, ahead of the status ring —
         // it is the thing a tap changes.
         if (picking) ...[
-          Icon(
-            picked ? Icons.check_circle : Icons.circle_outlined,
-            size: 21,
-            color: picked ? c.gold : c.slate600,
+          Center(
+            child: Icon(
+              picked ? Icons.check_circle : Icons.circle_outlined,
+              size: 21,
+              color: picked ? c.gold : c.slate600,
+            ),
           ),
           const SizedBox(width: 11),
         ],
         /*
-          Anything needing action is circled, the same way the ring marks it on
-          the dashboard. Two screens, one visual language: if it has a coloured
-          edge, it wants something from you.
+          Anything needing action wears a coloured edge, the same way the ring
+          marks it on the dashboard — round a glyph, square round a scan. Two
+          screens, one visual language: a coloured edge means it wants
+          something from you.
         */
-        Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border:
-                Border.all(color: acts ? tone : Colors.transparent, width: 2),
-          ),
-          // The kind's own mark, not the same sheet of paper thirteen times.
-          // A passport, a paw and a car are told apart before the label under
-          // them is read, which is the whole reason a list has icons.
-          child: _Face(paper: paper, repo: repo, cover: cover, tone: tone),
+        _Face(
+          paper: paper,
+          repo: repo,
+          cover: cover,
+          tone: tone,
+          acts: acts,
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            // Centred rather than top-aligned: the row is stretched now, so
+            // without this the words would ride up against the top of a
+            // picture taller than they are.
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
@@ -629,8 +644,9 @@ class PaperTile extends StatelessWidget {
           have I got. Identical widget, identical vocabulary — see `paperParts`
           and `countdownParts` — so eleven months reads the same on both.
         */
-        TimeLeft(parts: paperParts(paper), colour: tone),
-      ],
+        Center(child: TimeLeft(parts: paperParts(paper), colour: tone)),
+        ],
+      ),
     );
 
     /*
@@ -687,6 +703,19 @@ class PaperTile extends StatelessWidget {
 
 /// The scan if there is one, the kind's glyph if there is not.
 ///
+/// ── Two shapes, because they are two different things ─────────────────────
+/// The glyph is a symbol: a passport, a paw, a car, told apart before the
+/// label under them is read. A symbol wants a small, contained frame, and it
+/// is drawn in the status colour inside a circle that carries the same
+/// coloured edge the ring uses on the dashboard.
+///
+/// A scan is a picture of the actual document, and its whole value is being
+/// recognisable. At 36 pixels it was a smudge. So it takes the full height of
+/// the row — the Row stretches it, so it grows with whatever the row holds
+/// rather than being a number kept in step by hand — and squares off, because
+/// a photograph cropped to a circle loses its corners, which on a document is
+/// where the useful part usually is.
+///
 /// The glyph is drawn while the picture is being fetched rather than a gap or
 /// a spinner: the row is already the right height, the answer arrives in a few
 /// milliseconds, and a list that fills in as you look at it is worse than one
@@ -697,6 +726,7 @@ class _Face extends StatelessWidget {
     required this.repo,
     required this.cover,
     required this.tone,
+    required this.acts,
   });
 
   final Paper paper;
@@ -704,12 +734,16 @@ class _Face extends StatelessWidget {
   final String? cover;
   final Color tone;
 
+  /// Whether this document wants something. The coloured edge means the same
+  /// here as everywhere else in the app.
+  final bool acts;
+
   @override
   Widget build(BuildContext context) {
-    final glyph = PaperGlyph(paper.kind, color: tone, size: 19);
     final id = cover;
     final from = repo;
-    if (id == null || from == null) return glyph;
+
+    if (id == null || from == null) return _glyph();
 
     return FutureBuilder<ImageProvider?>(
       // Cached by blob id, so this is one query for the app's lifetime rather
@@ -717,18 +751,43 @@ class _Face extends StatelessWidget {
       future: thumbFor(from, id),
       builder: (context, snap) {
         final image = snap.data;
-        if (image == null) return glyph;
+        if (image == null) return _glyph();
 
-        // Inside the ring rather than under it: the coloured edge means the
-        // document wants something, and a photograph must not cover it.
-        return ClipOval(
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Image(image: image, fit: BoxFit.cover),
+        return Container(
+          width: 46,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Radii.sm),
+            border: Border.all(
+              color: acts ? tone : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Image(
+            image: image,
+            fit: BoxFit.cover,
+            // A file that will not decode — a PDF, something broken in a
+            // restore — is not an error worth a red box on a list row.
+            errorBuilder: (context, _, __) => _glyph(),
           ),
         );
       },
     );
   }
+
+  Widget _glyph() => Center(
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: acts ? tone : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: PaperGlyph(paper.kind, color: tone, size: 19),
+        ),
+      );
 }
