@@ -119,12 +119,25 @@ class Scout extends StatefulWidget {
     required this.pose,
     required this.height,
     this.motion = const [],
+    this.floatBy = 9,
     this.shadow = false,
     super.key,
   });
 
   final ScoutPose pose;
   final double height;
+
+  /*
+    ── How far the float lifts him ─────────────────────────────────────────
+
+    Nine pixels, which is the web version's keyframe and right on a screen
+    where he is standing in space with room above his ears.
+
+    It is wrong on a sheet whose first child he is: the list clips at its own
+    top edge, so the lift took the top of his head off on every cycle. The
+    caller knows how much room it has and this does not, so the caller says.
+  */
+  final double floatBy;
 
   /// At most two. See the note at the top of the file.
   final List<ScoutMotion> motion;
@@ -243,7 +256,7 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
             .transform((math.sin(c.value * 2 * math.pi - math.pi / 2) + 1) / 2);
 
         final lift = widget.motion.contains(ScoutMotion.float)
-            ? -9.0 * wave(_float)
+            ? -widget.floatBy * wave(_float)
             : 0.0;
 
         final breath =

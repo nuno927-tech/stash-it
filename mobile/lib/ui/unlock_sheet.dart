@@ -104,6 +104,22 @@ class _UnlockState extends State<_Unlock> {
   bool _busy = false;
   String? _said;
 
+  /*
+    ── The moment it goes through ──────────────────────────────────────────
+
+    It used to close the sheet on `unlocked`: the fanfare played over a screen
+    that was already sliding away, and the last thing somebody saw after paying
+    was the list they came from.
+
+    Somebody has just given money to a one-person app with no server behind
+    it. That deserves to be answered by name, on a screen of its own, with
+    Scout off duty in a deck chair — the pose the album keeps for exactly this
+    and which nothing else in the app had ever earned.
+
+    They close it themselves. Nothing here is waiting on the app.
+  */
+  bool _thanks = false;
+
   Future<void> _run(Future<BuyResult> Function() action,
       {required bool buying}) async {
     setState(() {
@@ -117,7 +133,10 @@ class _UnlockState extends State<_Unlock> {
     switch (result) {
       case BuyResult.unlocked:
         feedback(Cue.unlock);
-        Navigator.of(context).pop(true);
+        setState(() {
+          _busy = false;
+          _thanks = true;
+        });
 
       case BuyResult.cancelled:
         // Backing out is not an error and does not want a message. They know.
@@ -140,9 +159,91 @@ class _UnlockState extends State<_Unlock> {
     }
   }
 
+  /// What a purchase, or a restore that found one, lands on.
+  ///
+  /// Everything the offer sheet was arguing is now settled, so none of it is
+  /// here: no perks, no price, no second button. A sentence, the animal, and
+  /// the way out.
+  Widget _thankYou(StashColors c) {
+    return FractionallySizedBox(
+      heightFactor: 0.9,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Scout(
+                pose: ScoutPose.lounge,
+                height: 168,
+                motion: [ScoutMotion.float, ScoutMotion.breathe],
+                // Room to spare on this screen, so he gets the full lift back.
+                shadow: true,
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Thank you',
+                style: TextStyle(
+                  fontFamily: fontDisplay,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 30,
+                  letterSpacing: -1,
+                  color: c.gold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                // Named, because it is a person paying a person. "Your
+                // purchase has been processed" is what a company says.
+                'You are supporting Scout and Stash it — and there will never '
+                'be anything else to pay for.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: fontBody,
+                  fontSize: 14.5,
+                  height: 1.55,
+                  color: c.muted,
+                ),
+              ),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  // True: the caller reads this as "something changed, go and
+                  // read the entitlement again".
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.gold,
+                    foregroundColor: c.onGold,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                    ),
+                  ),
+                  child: Text(
+                    'Back to it',
+                    style: TextStyle(
+                      fontFamily: fontDisplay,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: c.onGold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
+
+    if (_thanks) return _thankYou(c);
 
     return FractionallySizedBox(
       // Taller than it was, because there is a list on it now. Not full
@@ -152,19 +253,24 @@ class _UnlockState extends State<_Unlock> {
       child: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
+          // 8 at the top, which is the float's headroom. A list clips at its
+          // own edge and Scout is the first thing in it.
+          padding: const EdgeInsets.fromLTRB(22, 8, 22, 20),
           children: [
             Center(
               child: Scout(
                 pose: ScoutPose.acorn,
-                // Smaller than the 150 it was. The mascot is the welcome, not
-                // the argument, and the argument now needs the room.
-                height: 112,
+                // Smaller again. The mascot is the welcome, not the argument,
+                // and this screen has to fit on a phone without scrolling.
+                height: 96,
                 motion: const [ScoutMotion.float, ScoutMotion.breathe],
+                // Half the usual lift. Nine pixels of bounce needs nine
+                // pixels of sky, and there are eight.
+                floatBy: 4,
                 shadow: true,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -175,7 +281,7 @@ class _UnlockState extends State<_Unlock> {
                   style: TextStyle(
                     fontFamily: fontDisplay,
                     fontWeight: FontWeight.w800,
-                    fontSize: 30,
+                    fontSize: 27,
                     letterSpacing: -0.9,
                     height: 1.1,
                     color: c.text,
@@ -189,42 +295,51 @@ class _UnlockState extends State<_Unlock> {
                 ],
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
             Text(
               widget.owned
                   // No count, and no limit named. Saying "you have 34 of 20"
                   // to somebody who paid to stop being counted would be a
                   // strange thing to put in front of them.
-                  ? 'Yours, on this Google account, for good. Here is what that '
-                      'covers.'
-                  // The number they are at, said back. Somebody who arrived
-                  // here by being refused already knows they are full; somebody
-                  // who came from Settings does not, and the same sentence
-                  // serves both.
+                  ? 'Yours on this Google account, for good.'
+                  /*
+                    The number they are at, said back. Somebody who arrived
+                    here by being refused already knows they are full;
+                    somebody who came from Settings does not, and one sentence
+                    serves both.
+
+                    "The only thing this app will ever ask you to pay for"
+                    went with the trim. It is a good line and it is the second
+                    perk below, said once instead of twice.
+                  */
                   : 'You have ${widget.count} of $freeItemLimit. One payment '
-                      'lifts the limit for good — and it is the only thing this '
-                      'app will ever ask you to pay for.',
+                      'lifts the limit for good.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: fontBody,
-                fontSize: 14,
-                height: 1.55,
+                fontSize: 13.5,
+                height: 1.45,
                 color: c.muted,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             /*
-              ── The list, and the order it is in ────────────────────────────
+              ── Four, and the order they are in ─────────────────────────────
 
               Unlimited first, because it is the thing being bought. Then the
-              shape of the payment, because "one payment" is the objection
-              most people arrive with. Then the three privacy lines, which are
-              the reason to want this app rather than a cheaper one — and
-              which are equally true of the free version, said here because
-              this is where somebody is deciding whether the thing is worth
-              anything.
+              shape of the payment, because "one payment" is the objection most
+              people arrive with. Then privacy, which is the reason to want
+              this app rather than a cheaper one — and which is equally true of
+              the free version, said here because this is where somebody is
+              deciding whether the thing is worth anything.
+
+              It was six. Three of them were one argument said three ways — no
+              cloud, no servers, encrypted — and a list long enough to scroll
+              is a list somebody stops reading at the third line anyway. The
+              claims are all still here; they are in four lines instead of six,
+              and the screen ends where the phone does.
 
               Every line is a fact somebody could check by turning off the
               wifi. That is the test a claim on this screen has to pass.
@@ -232,41 +347,28 @@ class _UnlockState extends State<_Unlock> {
             const _Perk(
               icon: Icons.all_inclusive,
               title: 'Unlimited everything',
-              body: 'Items, documents and subscriptions, as many as you like. '
-                  'Photos, receipts and manuals with them.',
+              body: 'Items, documents and subscriptions, with the photos and '
+                  'receipts that go with them.',
             ),
             const _Perk(
               icon: Icons.check_circle_outline,
               title: 'Paid once, yours for good',
-              body: 'Not a subscription. No renewal, no expiry, and it comes '
-                  'back on a new phone with the same Google account.',
+              body: 'Not a subscription. It comes back on a new phone with the '
+                  'same Google account.',
             ),
             const _Perk(
               icon: Icons.phone_android_outlined,
-              title: 'Everything stays on your phone',
-              body: 'No account to make, no cloud to sign into. Nothing is '
-                  'uploaded, so nothing can be sold or read.',
-            ),
-            const _Perk(
-              icon: Icons.cloud_off_outlined,
-              title: 'No servers, nothing to leak',
-              body: 'There is no company database holding your receipts. '
-                  'There is nothing to breach, because there is nothing there.',
-            ),
-            const _Perk(
-              icon: Icons.lock_outline,
-              title: 'Encrypted on the device',
-              body: 'The database is encrypted with a key held in the phone\'s '
-                  'own secure storage, and can be locked behind your '
-                  'fingerprint.',
+              title: 'Nothing leaves your phone',
+              body: 'No account, no cloud, no company database to breach. '
+                  'Encrypted here, and lockable behind your fingerprint.',
             ),
             const _Perk(
               icon: Icons.block_outlined,
               title: 'No ads, ever',
-              body: 'Nothing to dismiss, nothing tracking you between apps, '
-                  'and no reason for either — you paid instead.',
+              body: 'Nothing to dismiss, and nothing following you between '
+                  'apps.',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             /*
               Owned: a thank-you and a way out, and deliberately no store call
@@ -276,6 +378,9 @@ class _UnlockState extends State<_Unlock> {
             */
             if (widget.owned) ...[
               Text(
+                // The same thought as the thank-you screen, one step quieter:
+                // that one is the moment it happened, this is a page somebody
+                // has come back to afterwards.
                 'Thanks for supporting Scout and Stash it.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -460,6 +565,8 @@ class _UnlockState extends State<_Unlock> {
     );
   }
 }
+
+
 
 /// One reason, as an icon, a claim and a sentence backing it up.
 ///
