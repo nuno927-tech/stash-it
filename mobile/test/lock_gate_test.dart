@@ -66,4 +66,49 @@ void main() {
           isFalse);
     });
   });
+
+  /*
+    ── The prompt's own resume must not be read as a return ────────────────
+
+    Reported from a phone: leave the app, come back, the fingerprint sheet
+    appears, scan — and the sheet comes straight back, for ever. The only way
+    in was the app switcher, which is somebody discovering by accident that a
+    recent departure beats an old one.
+
+    The gate kept the moment the app was backgrounded and never cleared it. The
+    biometric sheet is an app coming to the front, so dismissing it delivers
+    another `resumed` — which found an hours-old timestamp and locked the app
+    the user had just unlocked.
+  */
+  group('a departure is answered once', () {
+    final now = DateTime(2026, 9, 3, 9);
+
+    test('a resume with nothing to answer never re-locks', () {
+      expect(relockOnResume(enabled: true, leftAt: null, now: now), isFalse);
+    });
+
+    test('a long departure still re-locks, once', () {
+      final left = now.subtract(const Duration(minutes: 40));
+
+      expect(relockOnResume(enabled: true, leftAt: left, now: now), isTrue);
+
+      // The gate clears it at that point; the sheet's own resume arrives with
+      // nothing to answer.
+      expect(relockOnResume(enabled: true, leftAt: null, now: now), isFalse);
+    });
+
+    test('a short one does not, and the grace rule is the same one', () {
+      final left = now.subtract(const Duration(seconds: 4));
+
+      expect(relockOnResume(enabled: true, leftAt: left, now: now), isFalse);
+      expect(shouldRelock(enabled: true, away: const Duration(seconds: 4)),
+          isFalse);
+    });
+
+    test('and the switch still governs all of it', () {
+      final left = now.subtract(const Duration(hours: 3));
+
+      expect(relockOnResume(enabled: false, leftAt: left, now: now), isFalse);
+    });
+  });
 }

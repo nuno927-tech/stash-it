@@ -53,6 +53,31 @@ const Duration lockGrace = Duration(seconds: 30);
 bool shouldRelock({required bool enabled, required Duration away}) =>
     enabled && away >= lockGrace;
 
+/*
+  ── The loop this exists to end ────────────────────────────────────────────
+
+  The gate recorded when the app was left and worked out, on every resume, how
+  long it had been away. It never cleared that timestamp — so after a
+  successful unlock it was still holding the moment the app was backgrounded
+  minutes or hours earlier.
+
+  The biometric sheet is itself an app coming to the front, so dismissing it
+  delivers another `resumed`. That one arrived after the unlock had finished,
+  found the old timestamp, decided the app had been away for an hour and asked
+  again. Scanning a finger produced the prompt again, for ever.
+
+  A departure is CONSUMED by the resume that answers it. Null means there is
+  nothing to answer — the sheet's own resume, or a second resume after one has
+  already been dealt with — and nothing to answer can never re-lock.
+*/
+bool relockOnResume({
+  required bool enabled,
+  required DateTime? leftAt,
+  required DateTime now,
+}) =>
+    leftAt != null &&
+    shouldRelock(enabled: enabled, away: now.difference(leftAt));
+
 class LockGate extends StatefulWidget {
   const LockGate({required this.repo, required this.child, super.key});
 
@@ -121,10 +146,16 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
         _leftAt = DateTime.now();
 
       case AppLifecycleState.resumed:
-        final away = _leftAt == null
-            ? Duration.zero
-            : DateTime.now().difference(_leftAt!);
-        if (shouldRelock(enabled: true, away: away)) {
+        // Consumed here, before anything is decided, so a second resume for
+        // the same departure cannot ask a second time.
+        final left = _leftAt;
+        _leftAt = null;
+
+        if (relockOnResume(
+          enabled: true,
+          leftAt: left,
+          now: DateTime.now(),
+        )) {
           setState(() => _open = false);
           _ask();
         }
@@ -166,6 +197,12 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
       );
 
       if (!mounted) return;
+
+      // Nothing left to answer. Belt and braces with the consumption on
+      // resume: whichever of the two runs first, the stale departure is gone
+      // before the sheet's own resume can be read as one.
+      _leftAt = null;
+
       setState(() {
         _asking = false;
         _open = ok;
@@ -190,6 +227,8 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
         trust.
       */
       if (!mounted) return;
+      _leftAt = null;
+
       setState(() {
         _asking = false;
         _open = true;
