@@ -2,7 +2,7 @@ name: stash_it
 description: >-
   Warranties, documents and subscriptions — every date you'd rather not miss.
 publish_to: none
-version: 1.25.0+164
+version: 1.26.0+165
 
 environment:
   sdk: ^3.5.0
@@ -184,6 +184,13 @@ flutter:
     # Scout, thirteen poses. Copied from the PWA's `src/assets/mascot/` rather
     # than redrawn — same renders, same alpha, same contact shadows, so the two
     # apps cannot drift apart by one of them being touched up.
+    #
+    # Plus four seasonal acorns, which are this app's own: blossom, sunglasses,
+    # leaves and a bobble hat. They were delivered as one 1024 sheet over white
+    # and the same sheet over black, so the alpha is exact rather than keyed —
+    # two knowns and one unknown per pixel. See lib/logic/season.dart for when
+    # each is shown, and the note on `Scout.dressed` for why only this pose
+    # gets to wear anything.
     - assets/mascot/
 
     # The maker's plate at the foot of Settings. One image, cropped from the

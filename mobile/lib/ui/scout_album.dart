@@ -14,6 +14,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../logic/season.dart';
 import 'feedback.dart';
 import 'scout.dart';
 import 'theme.dart';
@@ -186,6 +187,22 @@ class _Album extends StatelessWidget {
                     _Row(pose: entry.key, name: entry.value.$1),
                     const SizedBox(height: 18),
                   ],
+
+                  /*
+                    ── The four the app only ever shows one of ───────────────
+
+                    He dresses for the month on the launch screen and the lock
+                    screen, which means three of these are invisible at any
+                    given time and one of them is invisible for nine months of
+                    the year.
+
+                    An album is the written-down record of the cast. A set that
+                    can only be seen in December is exactly the thing that gets
+                    forgotten, and this is the one screen with room to show all
+                    four at once.
+                  */
+                  const _Seasons(),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -278,6 +295,86 @@ class _Row extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The seasonal acorn poses, all four, whatever month it is.
+class _Seasons extends StatelessWidget {
+  const _Seasons();
+
+  static const Map<Season, String> _when = {
+    Season.spring: 'March to May',
+    Season.summer: 'June to August',
+    Season.autumn: 'September to November',
+    Season.winter: 'December to February',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StashColors.of(context);
+    final now = seasonOf(DateTime.now());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'And he dresses for the month',
+          style: TextStyle(
+            fontFamily: fontDisplay,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            letterSpacing: -0.3,
+            color: c.text,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          // Said, because otherwise it is four drawings with no explanation —
+          // and the whole charm is that it happens without being announced.
+          'On the launch screen and the lock screen. You will only ever catch '
+          'one of these at a time.',
+          style: TextStyle(
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            height: 1.5,
+            color: c.muted,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final season in Season.values)
+              Expanded(
+                child: Column(
+                  children: [
+                    Scout(
+                      pose: ScoutPose.acorn,
+                      dressed: season,
+                      height: 86,
+                      // Breathing only. Four floating squirrels in one row is
+                      // a row nobody can read — the same note as `_Row`.
+                      motion: const [ScoutMotion.breathe],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _when[season]!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: fontBody,
+                        fontSize: 10.5,
+                        height: 1.35,
+                        // The one you would see today, named in gold.
+                        color: season == now ? c.gold : c.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
       ],
     );

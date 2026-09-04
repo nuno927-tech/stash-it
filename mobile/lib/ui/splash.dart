@@ -22,6 +22,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../logic/season.dart';
+
 import 'parts.dart';
 import 'scout.dart';
 import 'theme.dart';
@@ -131,6 +133,18 @@ class _SplashState extends State<Splash> with SingleTickerProviderStateMixin {
                         pose: ScoutPose.acorn,
                         height: height * 0.5,
                         motion: const [ScoutMotion.float, ScoutMotion.pop],
+                        /*
+                          Dressed for the time of year — blossom, sunglasses,
+                          leaves, a bobble hat.
+
+                          Here because it is a second of screen with nothing
+                          on it to read, which is the only place in the app
+                          where something purely for the pleasure of it costs
+                          nothing. Somebody who opens the app in October and
+                          again in December is being told, quietly, that
+                          somebody is still looking after this.
+                        */
+                        dressed: seasonOf(DateTime.now()),
                         shadow: true,
                       ),
                       SizedBox(height: height * 0.06),

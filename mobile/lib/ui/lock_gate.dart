@@ -25,6 +25,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../db/repository.dart';
 import '../logic/prefs.dart';
+import '../logic/season.dart';
 import 'parts.dart';
 import 'scout.dart';
 import 'theme.dart';
@@ -274,6 +275,10 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
                 pose: ScoutPose.acorn,
                 height: height * 0.32,
                 motion: const [ScoutMotion.breathe],
+                // The same Scout the launch screen just showed, still dressed
+                // for the month. The lock is part of opening the app, and it
+                // should not look like a different app.
+                dressed: seasonOf(DateTime.now()),
                 shadow: true,
               ),
               const SizedBox(height: 24),

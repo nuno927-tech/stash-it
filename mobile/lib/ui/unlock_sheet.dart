@@ -174,14 +174,27 @@ class _UnlockState extends State<_Unlock> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              /*
+                The biggest Scout in the app, and the screen that earns it.
+
+                There are four things here and one of them is a squirrel in a
+                deck chair. Everything else on this sheet was argument; this is
+                the reward, and a reward drawn at sheet-icon size is a reward
+                that reads as a receipt.
+
+                Three pixels of float. He is in a fixed column with no room
+                above him, and this is a screen somebody is looking AT rather
+                than reading past — a bounce big enough to notice is a bounce
+                that starts to look like fidgeting.
+              */
               const Scout(
                 pose: ScoutPose.lounge,
-                height: 168,
+                height: 240,
                 motion: [ScoutMotion.float, ScoutMotion.breathe],
-                // Room to spare on this screen, so he gets the full lift back.
+                floatBy: 3,
                 shadow: true,
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
               Text(
                 'Thank you',
                 style: TextStyle(

@@ -21,6 +21,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../logic/season.dart';
+
 enum ScoutPose {
   /// Guarding the thing itself — the launch screen, and the install prompt.
   acorn,
@@ -107,7 +109,10 @@ enum ScoutMotion {
   pop,
 }
 
-String _asset(ScoutPose pose) => 'assets/mascot/scout-${pose.name}.webp';
+String _asset(ScoutPose pose, Season? dressed) =>
+    dressed == null || pose != ScoutPose.acorn
+        ? 'assets/mascot/scout-${pose.name}.webp'
+        : 'assets/mascot/scout-acorn-${dressed.name}.webp';
 
 /// Scout at a given height, optionally moving.
 ///
@@ -121,6 +126,7 @@ class Scout extends StatefulWidget {
     this.motion = const [],
     this.floatBy = 9,
     this.shadow = false,
+    this.dressed,
     super.key,
   });
 
@@ -138,6 +144,24 @@ class Scout extends StatefulWidget {
     caller knows how much room it has and this does not, so the caller says.
   */
   final double floatBy;
+
+  /*
+    ── The one pose allowed to dress for the weather ────────────────────────
+
+    Blossom in spring, sunglasses in summer, falling leaves in autumn, a bobble
+    hat in winter. Only on `acorn`, and that is a rule rather than a shortage
+    of drawings.
+
+    Every other pose in this app MEANS something — `alert` says a thing needs
+    you, `lounge` says nothing does, `folder` says it is filed. Those are a
+    vocabulary, and decoration on top of a word changes what the word looks
+    like. `acorn` is the one pose whose meaning is only "here I am, holding the
+    thing", which is why it can wear a hat without saying anything new.
+
+    Null on every screen that has not asked, which is all of them but the
+    launch screen, the lock screen and the album.
+  */
+  final Season? dressed;
 
   /// At most two. See the note at the top of the file.
   final List<ScoutMotion> motion;
@@ -238,7 +262,7 @@ class _ScoutState extends State<Scout> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final image = Image.asset(
-      _asset(widget.pose),
+      _asset(widget.pose, widget.dressed),
       height: widget.height,
       fit: BoxFit.contain,
       // The renders are large; letting Flutter decode them at display size
