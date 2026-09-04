@@ -100,7 +100,20 @@ class _Album extends StatelessWidget {
     final roster = scoutRoster.entries.toList();
 
     return FractionallySizedBox(
-      heightFactor: 0.66,
+      /*
+        Nearly the whole screen.
+
+        Two thirds was the height of a sheet that asks something and gets out
+        of the way. This one asks nothing — it is thirteen drawings, four of
+        them now two by two, and a page of backstory nobody has to read. The
+        only thing anybody does here is look, and at two thirds they were
+        looking through a letterbox.
+
+        Not 1.0: the strip of app still showing along the top is what says
+        this is a sheet somebody can dismiss rather than a screen they have
+        been taken to.
+      */
+      heightFactor: 0.94,
       child: SafeArea(
         top: false,
         child: Column(
