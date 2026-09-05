@@ -51,9 +51,72 @@ class _CoverageListState extends State<CoverageList> {
   /// Which policies have their "Additional details" open.
   final Set<int> _detailed = {};
 
+  /*
+    ── Three fields per policy, and the keys and nodes they need ────────────
+
+    Keyed by the policy's index rather than held in a list, because a policy
+    can be added at any time and the map only ever grows to the number of
+    policies somebody actually opened the details on — usually one, often
+    none.
+
+    `_top` is a key on the first field's label, so opening the disclosure can
+    scroll it to the top of the screen. The nodes are what make the key in the
+    corner of the keyboard walk down the card rather than dismissing it.
+  */
+  final Map<int, GlobalKey> _top = {};
+  final Map<int, FocusNode> _covers = {};
+  final Map<int, FocusNode> _provider = {};
+  final Map<int, FocusNode> _policy = {};
+
+  GlobalKey _topKey(int i) => _top.putIfAbsent(i, GlobalKey.new);
+  FocusNode _node(Map<int, FocusNode> of, int i) =>
+      of.putIfAbsent(i, FocusNode.new);
+
+  @override
+  void dispose() {
+    for (final node in [..._covers.values, ..._provider.values,
+      ..._policy.values]) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
   void _changed(VoidCallback change) {
     setState(change);
     widget.onChanged();
+  }
+
+  /*
+    ── Opening the details takes you to them ────────────────────────────────
+
+    The disclosure sits low on a card that is already tall, so opening it used
+    to reveal three fields below the fold and leave somebody looking at the
+    button they had just pressed. They then scrolled, found the first field,
+    and tapped it — three actions to answer a question the app had just asked.
+
+    So the first field is brought to the top of the screen and given the
+    keyboard. After the frame, because none of it exists to be scrolled to
+    until the disclosure has been built.
+  */
+  void _openDetails(int i) {
+    _changed(() => _detailed.add(i));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final at = _topKey(i).currentContext;
+      if (at == null || !mounted) return;
+
+      await Scrollable.ensureVisible(
+        at,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        // Flush to the top: the three fields underneath are the point, and
+        // every pixel above the first one is a pixel of them hidden by the
+        // keyboard.
+        alignment: 0,
+      );
+
+      if (mounted) _node(_covers, i).requestFocus();
+    });
   }
 
   @override
@@ -271,17 +334,29 @@ class _CoverageListState extends State<CoverageList> {
         FormPill(
           label: 'Additional details',
           on: _detailed.contains(i) || _hasDetails(cov),
-          onTap: () => _changed(() {
-            if (!_detailed.remove(i)) _detailed.add(i);
-          }),
+          onTap: () {
+            // Closing is just a toggle. Opening is a journey — see
+            // `_openDetails`.
+            if (_detailed.contains(i)) {
+              _changed(() => _detailed.remove(i));
+            } else {
+              _openDetails(i);
+            }
+          },
         ),
         if (_detailed.contains(i) || _hasDetails(cov)) ...[
           const SizedBox(height: 12),
-          const FieldLabel('What it covers'),
+          FieldLabel('What it covers', key: _topKey(i)),
           TextBox(
             initial: cov.covers,
             hint: 'Parts and labor, not accidental damage',
             onChanged: (v) => cov.covers = v,
+            focus: _node(_covers, i),
+            // Two more fields under this one, so the key in the corner walks
+            // to them rather than putting the keyboard away — see the note on
+            // `TextBox.action`.
+            action: TextInputAction.next,
+            onSubmitted: () => _node(_provider, i).requestFocus(),
           ),
           const SizedBox(height: 10),
           Row(
@@ -296,6 +371,9 @@ class _CoverageListState extends State<CoverageList> {
                       initial: cov.provider,
                       hint: 'Optional',
                       onChanged: (v) => cov.provider = v,
+                      focus: _node(_provider, i),
+                      action: TextInputAction.next,
+                      onSubmitted: () => _node(_policy, i).requestFocus(),
                     ),
                   ],
                 ),
@@ -310,6 +388,10 @@ class _CoverageListState extends State<CoverageList> {
                       initial: cov.policyNumber,
                       hint: 'Optional',
                       onChanged: (v) => cov.policyNumber = v,
+                      focus: _node(_policy, i),
+                      // The tick, and it means what it says: this is the last
+                      // field on the card, so finishing it IS finishing.
+                      onSubmitted: () => _node(_policy, i).unfocus(),
                     ),
                   ],
                 ),
