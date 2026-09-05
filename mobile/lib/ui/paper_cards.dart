@@ -229,6 +229,36 @@ class _PaperDatesCardState extends State<PaperDatesCard> {
   final FocusNode _authority = FocusNode();
   final FocusNode _storedAt = FocusNode();
 
+  /// On the row those two boxes sit in, so tapping either can lift it clear
+  /// of the keyboard.
+  final GlobalKey _typedRow = GlobalKey();
+
+  /*
+    ── A field somebody TAPPED, not one the app chose ──────────────────────
+
+    These two sit at the foot of the card, and the keyboard opens over the
+    bottom half of the screen — so tapping either put the cursor in a box
+    behind it.
+
+    Flutter scrolls the caret into view by itself, which is enough on a card
+    with room underneath and not enough on one that ends where the fields do.
+    Asking again, once the keyboard has finished arriving, is what makes it
+    reliable on both. `focusThenReveal` re-requests a focus the node already
+    has, which is a no-op.
+  */
+  @override
+  void initState() {
+    super.initState();
+
+    for (final node in [_authority, _storedAt]) {
+      node.addListener(() {
+        if (node.hasFocus && mounted) {
+          focusThenReveal(context, focus: node, at: _typedRow);
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _authority.dispose();
@@ -307,6 +337,7 @@ class _PaperDatesCardState extends State<PaperDatesCard> {
         ),
         const SizedBox(height: 14),
         Row(
+          key: _typedRow,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
