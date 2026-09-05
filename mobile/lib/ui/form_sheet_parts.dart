@@ -810,3 +810,60 @@ class NameField extends StatelessWidget {
     );
   }
 }
+
+/*
+  ── Focus first, scroll second, and wait in between ───────────────────────
+
+  Revealing a field and giving it the keyboard is two actions in a fixed
+  order, and the obvious order is the wrong one.
+
+  Scrolling first puts the field where it should be, and then the keyboard
+  opens underneath it — taking a third of the screen away and pushing the
+  field straight back behind itself. The scroll was measured against a
+  viewport that no longer exists by the time anybody looks at it.
+
+  So: ask for the keyboard, wait for it to actually take its space, and only
+  then work out where the field should sit. The wait is a poll rather than a
+  fixed delay because keyboards open at wildly different speeds — a fixed
+  delay is either a stutter on a fast phone or too short on a slow one.
+
+  It gives up after 700ms and scrolls anyway. A hardware keyboard, or a
+  device that reports nothing, must still end with the field on screen.
+*/
+Future<void> focusThenReveal(
+  BuildContext context, {
+  required FocusNode focus,
+  required GlobalKey at,
+  double alignment = 0,
+}) async {
+  focus.requestFocus();
+
+  const step = Duration(milliseconds: 40);
+  const limit = Duration(milliseconds: 700);
+
+  var waited = Duration.zero;
+  var last = -1.0;
+
+  while (waited < limit) {
+    if (!context.mounted) return;
+
+    final insets = MediaQuery.viewInsetsOf(context).bottom;
+    // Open, and the same two frames running: the keyboard has finished
+    // arriving and the viewport is the size it is going to be.
+    if (insets > 0 && insets == last) break;
+
+    last = insets;
+    await Future<void>.delayed(step);
+    waited += step;
+  }
+
+  final target = at.currentContext;
+  if (target == null || !context.mounted) return;
+
+  await Scrollable.ensureVisible(
+    target,
+    duration: const Duration(milliseconds: 280),
+    curve: Curves.easeOutCubic,
+    alignment: alignment,
+  );
+}

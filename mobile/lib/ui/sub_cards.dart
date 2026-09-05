@@ -319,18 +319,12 @@ class _SubBillingCardState extends State<SubBillingCard> {
     keyboard.
   */
   void _openSplit() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final at = _splitTop.currentContext;
-      if (at == null || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-      await Scrollable.ensureVisible(
-        at,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0,
-      );
-
-      if (mounted) _payTo.requestFocus();
+      // Keyboard first, then the scroll, or the field ends up behind it —
+      // see `focusThenReveal`.
+      focusThenReveal(context, focus: _payTo, at: _splitTop);
     });
   }
 

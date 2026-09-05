@@ -101,21 +101,21 @@ class _CoverageListState extends State<CoverageList> {
   void _openDetails(int i) {
     _changed(() => _detailed.add(i));
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final at = _topKey(i).currentContext;
-      if (at == null || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-      await Scrollable.ensureVisible(
-        at,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        // Flush to the top: the three fields underneath are the point, and
-        // every pixel above the first one is a pixel of them hidden by the
-        // keyboard.
-        alignment: 0,
-      );
+      /*
+        Keyboard first, then the scroll — see `focusThenReveal`.
 
-      if (mounted) _node(_covers, i).requestFocus();
+        The other way round put the field exactly where it should be and then
+        let the keyboard open underneath it, which pushed it straight back
+        behind itself.
+
+        Flush to the top, because the two fields under this one are the rest
+        of the answer and every pixel above the first is a pixel of them lost
+        to the keyboard.
+      */
+      focusThenReveal(context, focus: _node(_covers, i), at: _topKey(i));
     });
   }
 
