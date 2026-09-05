@@ -216,6 +216,15 @@ class _WizardState extends State<_Wizard> {
     super.dispose();
   }
 
+  /*
+    Which half of the calendar has been answered.
+
+    Reset when the date is cleared, so somebody who starts again gets the same
+    two-part question rather than an advance on their first tap.
+  */
+  bool _pickedYear = false;
+  bool _pickedDay = false;
+
   bool get _named => _name.text.trim().isNotEmpty;
   bool get _last => _at == _Step.values.last;
 
@@ -291,7 +300,24 @@ class _WizardState extends State<_Wizard> {
   List<Object?> _answersFor(_Step step) => switch (step) {
         _Step.what => [_name.text, _photo, _draft.priceText],
         _Step.room => [_draft.roomId],
-        _Step.bought => [_draft.purchaseDate],
+        /*
+          ── Both halves of the date, deliberately ──────────────────────────
+
+          `CalendarDatePicker` reports a change when the YEAR is picked as
+          well as when a day is tapped — choosing 2023 hands back the same day
+          in 2023 — so a single field here meant the screen advanced the
+          instant somebody opened the year list and chose one, before they had
+          said which day.
+
+          Both, then. Tapping a day alone does not advance either: the
+          countdowns on every screen after this are measured from this date,
+          and a screen that leaves while somebody is still working on it is
+          worse than one they press Next on.
+        */
+        _Step.bought => [
+            if (_pickedYear) _draft.purchaseDate else null,
+            if (_pickedDay) _draft.purchaseDate else null,
+          ],
         _Step.cover => [
             _cover?.label,
             // Lifetime has no length, so on that unit it is not a question.
@@ -847,7 +873,37 @@ class _WizardState extends State<_Wizard> {
                   // The sheet pickers tick when a date comes back; this one is
                   // the same answer to the same question and was silent.
                   feedback(Cue.tap);
-                  setState(() => _draft.purchaseDate = toIsoDate(picked));
+
+                  /*
+                    Which half changed, worked out rather than told.
+
+                    The widget gives one callback for both, so the answer is
+                    in the dates: picking a year keeps the day and month it
+                    was already showing, and tapping a day keeps the year.
+                    Either can be true on the same change — 29 February to a
+                    non-leap year moves both — and either being true is enough
+                    to count that half as answered.
+                  */
+                  /*
+                    Compared against what the calendar was SHOWING, not
+                    against what is stored.
+
+                    On arrival nothing is stored and the calendar opens on
+                    today — so treating "no date yet" as "everything changed"
+                    would mark both halves answered on the first tap, which is
+                    the advance this is here to prevent.
+                  */
+                  final was =
+                      parseDate(_draft.purchaseDate) ?? today;
+
+                  setState(() {
+                    if (picked.year != was.year) _pickedYear = true;
+                    if (picked.day != was.day || picked.month != was.month) {
+                      _pickedDay = true;
+                    }
+
+                    _draft.purchaseDate = toIsoDate(picked);
+                  });
                 },
               ),
             ),
@@ -857,7 +913,12 @@ class _WizardState extends State<_Wizard> {
             Center(
               child: _Quiet(
                 label: 'Clear',
-                onTap: () => setState(() => _draft.purchaseDate = ''),
+                onTap: () => setState(() {
+                  _draft.purchaseDate = '';
+                  // Starting again means both halves are unanswered again.
+                  _pickedYear = false;
+                  _pickedDay = false;
+                }),
               ),
             ),
           ],
