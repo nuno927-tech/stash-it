@@ -451,9 +451,14 @@ class MoneyBox extends StatelessWidget {
     required this.initial,
     required this.currency,
     required this.onChanged,
+    this.focus,
     this.hint = '12.99',
     super.key,
   });
+
+  /// Held by the card, so something else on it can hand the number pad over —
+  /// the subscription's calendar does exactly that once a date is picked.
+  final FocusNode? focus;
 
   final String initial;
 
@@ -482,6 +487,7 @@ class MoneyBox extends StatelessWidget {
           Expanded(
             child: TextFormField(
               initialValue: initial,
+              focusNode: focus,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               style:

@@ -244,10 +244,18 @@ class _SubBillingCardState extends State<SubBillingCard> {
   final FocusNode _payTo = FocusNode();
   final FocusNode _payHow = FocusNode();
 
+  /// The amount, so the calendar can hand the number pad straight to it.
+  final FocusNode _amount = FocusNode();
+
+  /// On the split fields, so turning the toggle on can bring them up the
+  /// screen rather than revealing them under the keyboard.
+  final GlobalKey _splitTop = GlobalKey();
+
   @override
   void dispose() {
     _payTo.dispose();
     _payHow.dispose();
+    _amount.dispose();
     super.dispose();
   }
 
@@ -283,6 +291,47 @@ class _SubBillingCardState extends State<SubBillingCard> {
       widget.draft.startedDate = iso;
     }
     widget.onChanged();
+
+    /*
+      ── The renewal hands over to the amount ────────────────────────────────
+
+      They sit side by side and they are one thought: when it renews and what
+      it costs. Pressing OK on the calendar used to close it and leave the
+      cursor nowhere, so the next tap was on a box eight pixels to the right —
+      which the app already knew was the next thing to fill in.
+
+      Only from the renewal date. "Started" is the last field on the card and
+      has nothing after it to hand anything to.
+    */
+    if (anchor && mounted) _amount.requestFocus();
+  }
+
+  /*
+    ── Turning on the split brings its fields to you ───────────────────────
+
+    The toggle sits at the foot of a card that is already tall, so switching it
+    on revealed two fields below the fold — and then the keyboard would have
+    covered them anyway. Somebody answered a question by scrolling to find
+    where the answer went.
+
+    Same shape as the coverage card's Additional details: after the frame that
+    builds them, bring the first one to the top of the screen and give it the
+    keyboard.
+  */
+  void _openSplit() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final at = _splitTop.currentContext;
+      if (at == null || !mounted) return;
+
+      await Scrollable.ensureVisible(
+        at,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0,
+      );
+
+      if (mounted) _payTo.requestFocus();
+    });
   }
 
   /// What this will cost per month, while it is being typed.
@@ -366,6 +415,7 @@ class _SubBillingCardState extends State<SubBillingCard> {
                   MoneyBox(
                     initial: widget.draft.amountText,
                     currency: widget.draft.currency,
+                    focus: _amount,
                     onChanged: (v) {
                       widget.draft.amountText = v;
                       widget.onChanged();
@@ -436,13 +486,16 @@ class _SubBillingCardState extends State<SubBillingCard> {
                 feedback(v ? Cue.expand : Cue.collapse);
                 widget.draft.shared = v;
                 widget.onChanged();
+
+                // Turning it off is just a toggle; turning it on is a journey.
+                if (v) _openSplit();
               },
             ),
           ],
         ),
         if (widget.draft.shared) ...[
           const SizedBox(height: 12),
-          const FieldLabel('Who it goes to'),
+          FieldLabel('Who it goes to', key: _splitTop),
           /*
             The action key goes to the next box, not away.
 
