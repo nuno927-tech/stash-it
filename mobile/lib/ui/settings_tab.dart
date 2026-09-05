@@ -26,6 +26,7 @@ import '../logic/devmode.dart';
 import '../io/auto_backup_run.dart';
 import '../io/backup_folder.dart';
 import '../io/crash_log.dart';
+import '../io/review.dart';
 import '../logic/crash_log.dart';
 import '../io/sealed_backup.dart';
 import '../io/vault.dart';
@@ -61,7 +62,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.27.2';
+const appVersion = '1.28.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -116,6 +117,7 @@ class _SettingsTabState extends State<SettingsTab> {
   /// What the last test notification did, shown under the button that sent it.
   /// Null until one is sent, which is when the row explains itself instead.
   String? _testedNotification;
+  String? _testedReview;
 
   /*
     ── What "something is wrong" should already know ─────────────────────────
@@ -2203,6 +2205,46 @@ class _SettingsTabState extends State<SettingsTab> {
                             ? 'Sent. If nothing appeared, the phone is holding '
                                 'it — check the app in Android settings.'
                             : 'This phone would not send one.');
+                      },
+              ),
+              _Rule(c),
+
+              /*
+                ── The rating sheet, without the fortnight ──────────────────
+
+                `timeToAsk` will not agree to one until a fortnight after the
+                install, five separate days of use and a backup that worked.
+                That is the whole point of it, and it also means the prompt
+                cannot be seen before a release goes out — and not seeing a
+                thing work is how a thing ships broken.
+
+                So this skips the rule and asks Play directly. It does NOT
+                record the ask: spending one of somebody's two real prompts to
+                check the plumbing would be the developer tools changing the
+                app's behaviour for its owner, which is the one thing they may
+                not do.
+
+                Play's quota still applies and is opaque, so "nothing
+                appeared" is an ordinary outcome rather than a failure — the
+                line below says so instead of reporting an error.
+              */
+              _LinkRow(
+                label: 'Test the rating prompt',
+                note: _testedReview ??
+                    'Asks Play for its sheet now, skipping the fortnight.',
+                onTap: _busy
+                    ? null
+                    : () async {
+                        feedback(Cue.tap);
+                        final asked = await askForReview();
+                        if (!mounted) return;
+
+                        setState(() => _testedReview = asked
+                            ? 'Asked. Play decides whether to draw anything, '
+                                'and nothing appearing is normal once its '
+                                'quota is spent.'
+                            : 'Play Services did not answer — a sideloaded '
+                                'build or an emulator, most likely.');
                       },
               ),
               _Rule(c),
