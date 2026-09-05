@@ -225,7 +225,19 @@ class _WizardState extends State<_Wizard> {
   /* ------------------------------------------------------------- moving on */
 
   void _go(_Step to) {
-    _nameFocus.unfocus();
+    /*
+      ── Whatever has the keyboard, not whichever field we remembered ────────
+
+      This unfocused `_nameFocus` alone. That is the field on the FIRST screen,
+      so leaving any other one with the keyboard up carried it to the next
+      screen: type a price, press Next, and the number pad followed you onto
+      the photograph step and sat there over it.
+
+      `FocusScope.unfocus` drops whatever actually holds focus, which is the
+      only version that cannot be wrong about which field that was. The other
+      two wizards have always done it this way.
+    */
+    FocusScope.of(context).unfocus();
     _pages.animateToPage(
       to.index,
       duration: const Duration(milliseconds: 280),
@@ -655,7 +667,9 @@ class _WizardState extends State<_Wizard> {
       return;
     }
 
-    _nameFocus.unfocus();
+    // Arriving anywhere else closes the keyboard, whichever field had it —
+    // see `_go`.
+    FocusScope.of(context).unfocus();
 
     /*
       Nothing to open on arrival any more.
