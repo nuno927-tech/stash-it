@@ -52,14 +52,16 @@ import 'theme.dart';
 import 'view_sheet_parts.dart';
 
 /// Opens the sheet. Resolves once it closes.
-Future<void> showItemView(
+/// Opens the record. True when it was binned or erased while it was open, so
+/// the list behind can stop describing something that is no longer there.
+Future<bool?> showItemView(
   BuildContext context, {
   required Repository repo,
   required Item item,
 }) {
   feedback(Cue.expand);
 
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<bool>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,
@@ -120,12 +122,16 @@ class _ItemViewState extends State<ItemView> {
   Room? _room;
 
   /// Gone. See `ItemView.onGone` for why a pane cannot just pop.
+  ///
+  /// Pops `true`: the list behind reads it as "the thing you were looking at
+  /// no longer exists", which is the one fact it cannot work out for itself
+  /// from a sheet closing.
   void _close() {
     if (widget.onGone != null) {
       widget.onGone!();
       return;
     }
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(true);
   }
 
   @override

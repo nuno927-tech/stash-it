@@ -104,6 +104,16 @@ const Map<_Sort, String> _sortLabel = {
 
 class _ItemsTabState extends State<ItemsTab> {
   String _query = '';
+
+  /*
+    ── The box owns its text, so something has to own the box ───────────────
+
+    `_query` was the only record of what had been typed, and a `TextField`
+    with no controller keeps its own copy. Clearing the state would have left
+    the words sitting in the field, describing a search that was no longer
+    happening.
+  */
+  final TextEditingController _typed = TextEditingController();
   _Sort _sort = _Sort.expiry;
 
   /*
@@ -227,6 +237,29 @@ class _ItemsTabState extends State<ItemsTab> {
   void initState() {
     super.initState();
     _readContext();
+  }
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  /*
+    ── A search for something that has been deleted ─────────────────────────
+
+    Search for a kettle, open it, bin it — and the list came back still
+    filtered to "kettle", which now matches nothing. The screen was empty, the
+    words explaining why were in a box above the fold, and the app looked
+    broken at the exact moment it had just done what was asked.
+
+    A query is a question about what you own. Deleting the answer retires the
+    question, so the box empties and the whole list comes back.
+  */
+  void _forgetSearch() {
+    if (_query.isEmpty) return;
+    _typed.clear();
+    setState(() => _query = '');
   }
 
   /// A fresh instruction from the shell replaces whatever the chips were set
@@ -588,7 +621,10 @@ class _ItemsTabState extends State<ItemsTab> {
                   repo: widget.repo,
                   item: open,
                   pane: true,
-                  onGone: () => setState(() => _openId = null),
+                  onGone: () {
+                    setState(() => _openId = null);
+                    _forgetSearch();
+                  },
                 ),
           emptyLine: 'Pick something on the left to see its cover, its '
               'receipts and everything else you kept with it.',
@@ -667,6 +703,7 @@ class _ItemsTabState extends State<ItemsTab> {
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
+                controller: _typed,
                 onChanged: (v) => setState(() => _query = v),
                 style: TextStyle(
                     fontFamily: fontBody, fontSize: 13.5, color: c.text),
@@ -939,6 +976,10 @@ class _ItemsTabState extends State<ItemsTab> {
     unawaited(syncReminders(widget.repo));
 
     if (!mounted) return;
+
+    // Swiped from a search, the same as deleted from the record — see
+    // `_forgetSearch`.
+    _forgetSearch();
     showUndo(
       context,
       message: '${item.name} moved to the bin.',
@@ -1160,7 +1201,11 @@ class _ItemsTabState extends State<ItemsTab> {
       setState(() => _openId = item.id);
       return;
     } else {
-      await showItemView(context, repo: widget.repo, item: item);
+      // True when it was binned or erased while open — see `showItemView`.
+      if (await showItemView(context, repo: widget.repo, item: item) == true) {
+        if (!mounted) return;
+        _forgetSearch();
+      }
     }
     if (!mounted) return;
     await maybeOfferNotifications(context, widget.repo);
