@@ -13,11 +13,15 @@ enum ContactKind { question, idea, bug }
 
 /// Where the contact links go.
 ///
-/// The app's own address rather than a personal one. Two reasons, and the
+/// The studio's address rather than a personal one. Two reasons, and the
 /// second is the one that matters: it can be handed to somebody else without
 /// changing the app, and it does not put a private inbox on the Play Store
 /// listing for anybody who wants to shout at a squirrel.
-const String developerEmail = 'StashitScout@gmail.com';
+///
+/// Read by `contactUri` and by nothing else, so changing it here changes every
+/// link in the app: the three contact buttons and the problem report that
+/// carries the diagnostics.
+const String developerEmail = 'FLuXappStudios@gmail.com';
 
 const Map<ContactKind, String> _subject = {
   ContactKind.question: 'Stash it — a question',

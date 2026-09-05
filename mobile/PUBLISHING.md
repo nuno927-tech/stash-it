@@ -251,7 +251,10 @@ won't let you publish until every one has a green tick.
   part.
 - Upload the icon, feature graphic and screenshots from step 2.5.
 - **Category** — Productivity. **Tags** — pick 3–5.
-- **Contact email** — this is shown publicly on your listing.
+- **Contact email** — `FLuXappStudios@gmail.com`, the same address the app's
+  contact links use (`developerEmail` in `lib/logic/contact.dart`) and the same
+  one the privacy policy gives. Shown publicly on the listing, which is why it
+  is not a personal inbox.
 - **Privacy policy URL** — the one from step 2.4.
 
 ### 5.1a Ratings
