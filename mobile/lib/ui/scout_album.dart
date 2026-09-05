@@ -400,8 +400,17 @@ class _Seasons extends StatelessWidget {
                           fontWeight: season == now
                               ? FontWeight.w700
                               : FontWeight.w400,
-                          // The one you would see today, named in gold.
-                          color: season == now ? c.gold : c.muted,
+                          /*
+                            All four in gold.
+
+                            The muted three read as disabled — as though the
+                            other seasons were something you had not unlocked
+                            yet, which is the opposite of what this row says.
+                            They are all his, all year; only one of them is
+                            today, and the weight says which without spending
+                            a second colour on it.
+                          */
+                          color: c.gold,
                         ),
                       ),
                     ],
