@@ -251,6 +251,10 @@ class _SubBillingCardState extends State<SubBillingCard> {
   /// screen rather than revealing them under the keyboard.
   final GlobalKey _splitTop = GlobalKey();
 
+  /// On the amount, for the same reason: the calendar hands it the keyboard,
+  /// and a field with a keyboard over it is a field nobody can see.
+  final GlobalKey _amountTop = GlobalKey();
+
   @override
   void dispose() {
     _payTo.dispose();
@@ -303,7 +307,17 @@ class _SubBillingCardState extends State<SubBillingCard> {
       Only from the renewal date. "Started" is the last field on the card and
       has nothing after it to hand anything to.
     */
-    if (anchor && mounted) _amount.requestFocus();
+    /*
+      The number pad opens over the bottom half of the screen, and Amount sits
+      in the middle of a tall card — so handing it the keyboard without moving
+      anything put the cursor in a box nobody could see.
+
+      `focusThenReveal` waits for the keyboard before deciding where the field
+      should sit, which is the only order that works — see the note there.
+    */
+    if (anchor && mounted) {
+      focusThenReveal(context, focus: _amount, at: _amountTop);
+    }
   }
 
   /*
@@ -405,7 +419,7 @@ class _SubBillingCardState extends State<SubBillingCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const FieldLabel('Amount'),
+                  FieldLabel('Amount', key: _amountTop),
                   MoneyBox(
                     initial: widget.draft.amountText,
                     currency: widget.draft.currency,

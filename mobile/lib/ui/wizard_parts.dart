@@ -79,7 +79,19 @@ class WizardAsk extends StatelessWidget {
 
     // Scrolls, because a step can be taller than what the keyboard leaves.
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
+      /*
+        ── Room under the last field, so it can be lifted clear ─────────────
+
+        `ensureVisible` can only scroll as far as the content allows. With
+        nothing below the last field there is nothing to scroll INTO, so a
+        field near the foot of a card can end up as low as the keyboard
+        however hard anything asks.
+
+        120 is enough to bring any of them well clear, and it is invisible: a
+        scroll view at rest shows the top of its content, so this is empty
+        space past the end of a card somebody has already read.
+      */
+      padding: const EdgeInsets.fromLTRB(28, 0, 28, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
