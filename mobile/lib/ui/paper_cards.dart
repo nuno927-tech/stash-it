@@ -46,6 +46,7 @@ class PaperKindCard extends StatefulWidget {
     required this.label,
     required this.onChanged,
     this.title = 'What is it',
+    this.askWhoseNext = false,
     super.key,
   });
 
@@ -57,17 +58,52 @@ class PaperKindCard extends StatefulWidget {
   final VoidCallback onChanged;
   final String title;
 
+  /*
+    ── Only where the card IS the screen ────────────────────────────────────
+
+    In the wizard this card is the whole question, so answering it should ask
+    the next one. On the long form it is the first of three stacked cards, and
+    somebody who taps Passport there is reading down a form — moving the page
+    and opening a keyboard under them would be the app grabbing the wheel.
+  */
+  final bool askWhoseNext;
+
   @override
   State<PaperKindCard> createState() => _PaperKindCardState();
 }
 
 class _PaperKindCardState extends State<PaperKindCard> {
-  /// Tapping a tile renames the box, unless somebody typed in it.
+  /// Whose it is, and the label above it — the next question after the tiles.
+  final FocusNode _holder = FocusNode();
+  final GlobalKey _holderTop = GlobalKey();
+
+  @override
+  void dispose() {
+    _holder.dispose();
+    super.dispose();
+  }
+
+  /*
+    ── Picking a kind answers one question and asks the next ────────────────
+
+    The tiles are the top of a tall card and "Whose" is near the bottom of it,
+    so tapping Passport used to leave somebody looking at a lit tile with the
+    next question below the fold. The app knew what it wanted to ask; it just
+    did not say so.
+
+    Keyboard first, then the scroll — see `focusThenReveal`. The other order
+    puts the field exactly where it belongs and then opens the keyboard over
+    the top of it.
+  */
   void _pickKind(PaperKind kind) {
     feedback(Cue.tap);
     widget.draft.pickKind(kind);
     widget.label.text = widget.draft.label;
     widget.onChanged();
+
+    if (widget.askWhoseNext && mounted) {
+      focusThenReveal(context, focus: _holder, at: _holderTop);
+    }
   }
 
   @override
@@ -164,9 +200,10 @@ class _PaperKindCardState extends State<PaperKindCard> {
           ),
           const SizedBox(height: 12),
         ],
-        const FieldLabel('Whose'),
+        FieldLabel('Whose', key: _holderTop),
         TextBox(
           initial: widget.draft.holder,
+          focus: _holder,
           hint: 'Optional',
           onChanged: (v) {
             widget.draft.holder = v;

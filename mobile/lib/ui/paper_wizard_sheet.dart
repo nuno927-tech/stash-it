@@ -424,6 +424,9 @@ class _WizardState extends State<_Wizard> {
         // its headings — it stacks all three and needs them to tell the cards
         // apart.
         title: '',
+        // The card is the screen here, so answering it asks the next question
+        // — see `PaperKindCard.askWhoseNext`.
+        askWhoseNext: true,
         draft: _draft,
         label: _label,
         // The wizard's own auto-advance and its footer both read the name, so
@@ -474,7 +477,17 @@ class _WizardState extends State<_Wizard> {
   Widget _scanStep() {
     return WizardAsk(
       question: 'Photograph it?',
-      hint: 'Optional. A renewal usually asks for the page itself.',
+      /*
+        The passphrase, said here rather than sprung later.
+
+        `allowScan` will ask for one before the camera opens — a scan in an
+        unlocked backup is a plain file in a cloud folder — and a requirement
+        somebody meets first and understands afterwards feels like a toll.
+        Said on the way in, it reads as the reason it is.
+      */
+      hint: 'Optional, upload a copy of your document for your personal '
+          'records. Note, uploading a document requires that your backup is '
+          'encrypted with a passphrase, because your privacy matters.',
       answer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
