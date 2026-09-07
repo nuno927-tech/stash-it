@@ -32,6 +32,21 @@ import 'theme.dart';
 
 /* ---------------------------------------------------------------- service */
 
+/*
+  ── Two numbers the grid's arithmetic rests on ──────────────────────────────
+
+  `_tileHeight` is a mark at 38, seven of gap, two lines at 10.5 and ten of
+  padding top and bottom — measured rather than guessed, and fixed so that
+  every row is the same height whatever the names in it are.
+
+  `_roomForEverythingElse` is what the sheet spends on the question, the hint,
+  the name box, the rail and the footer. It only has to be roughly right: it
+  decides between two rows and three, and being ten pixels out never changes
+  that answer.
+*/
+const double _tileHeight = 92;
+const double _roomForEverythingElse = 250;
+
 /// Which service this is: the grid, or whatever you type instead.
 ///
 /// ── The grid is the field ─────────────────────────────────────────────────
@@ -45,6 +60,8 @@ class SubServiceCard extends StatelessWidget {
     required this.name,
     required this.onChanged,
     this.title = 'Service',
+    this.oneScreen = false,
+    this.nameFocus,
     super.key,
   });
 
@@ -60,6 +77,24 @@ class SubServiceCard extends StatelessWidget {
   /// The heading on the card. Both screens use the same words, so the wizard's
   /// question and the card underneath it never disagree about what is on it.
   final String title;
+
+  /*
+    ── Wizard shape, or form shape ──────────────────────────────────────────
+
+    On the wizard this card IS the screen and it has to fit on one, with the
+    keyboard up: the box goes first and takes the cursor, and the grid gets
+    whatever height is left, showing whole rows and scrolling to the rest.
+
+    On the long form it is the first of three stacked cards. Nothing there
+    should take the keyboard on arrival — somebody is reading down a form —
+    and a bounded, scrolling grid inside a scrolling form is two scrollers
+    fighting over the same drag.
+  */
+  final bool oneScreen;
+
+  /// Owned by the caller, so the wizard can put the cursor here as the step
+  /// arrives. Null on the form, which takes no focus on its own.
+  final FocusNode? nameFocus;
 
   /// Picking one off the grid answers three questions at once.
   void _choose(ServiceDef service) {
@@ -85,8 +120,16 @@ class SubServiceCard extends StatelessWidget {
     */
     final matches = searchServices(draft.name);
 
-    return SheetCard(
-      title: title,
+    /*
+      Built as two pieces so the order can change.
+
+      The wizard needs the box first and the form needs it last — see
+      `oneScreen` — and a list that is assembled in one order and then reversed
+      by conditionals is a list nobody can read.
+    */
+    final grid = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         /*
           ── Once one is chosen, the grid goes ────────────────────────────────
@@ -160,13 +203,19 @@ class SubServiceCard extends StatelessWidget {
               // names wrap to three lines.
               final width = (box.maxWidth - gap * 4) / 5;
 
-              return Wrap(
+              final grid = Wrap(
                 spacing: gap,
                 runSpacing: gap,
                 children: [
                   for (final service in matches)
                     SizedBox(
                       width: width,
+                      // Fixed, so a row is a known height. A `Wrap` sizes each
+                      // row to its tallest child, and "Nintendo Switch Online"
+                      // on two lines beside "Hulu" on one made the rows
+                      // different heights — which makes "how many rows fit"
+                      // unanswerable.
+                      height: _tileHeight,
                       child: _ServiceTile(
                         service: service,
                         onTap: () => _choose(service),
@@ -174,41 +223,94 @@ class SubServiceCard extends StatelessWidget {
                     ),
                 ],
               );
+
+              if (!oneScreen) return grid;
+
+              /*
+                ── Whole rows, and the rest below the fold ──────────────────
+
+                With the keyboard up there is room for two or three rows of
+                fifty-seven tiles. Showing a strip of a fourth would be the
+                card saying "there is more" in the least useful way there is —
+                half a picture, cut through the middle.
+
+                So the box is a whole number of rows and the remainder scrolls.
+                The floor is one row: a grid of nothing is worse than a grid
+                that is obviously short.
+              */
+              const pitch = _tileHeight + gap;
+
+              /*
+                Measured against the SHEET, not the screen. The wizard is
+                seventy-two per cent of the display and the keyboard comes out
+                of that, so the screen's own height would answer a question
+                nobody is asking.
+              */
+              final room = MediaQuery.sizeOf(context).height * 0.72 -
+                  MediaQuery.viewInsetsOf(context).bottom -
+                  _roomForEverythingElse;
+
+              /*
+                Two at the least, four at the most.
+
+                One row is a strip, not a grid, and on a short phone with the
+                keyboard up the arithmetic would land there — the step scrolls,
+                so a second row half below the fold is better than a first row
+                alone above it. Four is where a grid stops being scannable and
+                starts being a page.
+              */
+              final rows = (room / pitch).floor().clamp(2, 4);
+
+              return SizedBox(
+                height: rows * pitch - gap,
+                child: SingleChildScrollView(child: grid),
+              );
             },
           ),
-        const SizedBox(height: 14),
+      ],
+    );
 
-        /*
-          ── The box goes under the grid, not over it ─────────────────────────
+    /*
+      ── Under the grid on the form, over it on the wizard ──────────────────
 
-          It was the first thing on the card, which put a text box in front of
-          somebody whose answer was almost certainly one of the fifty pictures
-          below it — and on a new subscription it took focus, so the keyboard
-          arrived and covered the grid before it had been looked at.
+      On the long form it belongs underneath: somebody scanning three stacked
+      cards is almost certainly going to tap one of the fifty pictures, and a
+      text box above them reads as the app asking for typing it does not need.
+      There it is what it looks like — the way out for the gym, the window
+      cleaner and the one service we have no logo for.
 
-          Underneath, it reads as what it actually is: the way out for the gym,
-          the window cleaner and the one service we do not have a logo for.
+      On the wizard the screen has one question and the box takes the cursor as
+      it opens, so it has to be the thing at the top. A field with the keyboard
+      under it and the grid above it would push the grid off the screen the
+      moment anybody arrived.
 
-          The same field the item wizard uses for a product name — `NameField`,
-          which is where that style now lives. These two screens are one swipe
-          apart in the same sheet and both ask what a thing is called; this one
-          was a body-face box at 17 and that one a display-face line at 23.
-        */
-        NameField(
-          controller: name,
-          hint: 'Netflix, Spotify, the gym...',
-          onChanged: (v) {
-            draft.name = v;
+      The same field the item wizard uses for a product name — `NameField`,
+      which is where that style lives. These two screens are one swipe apart in
+      the same sheet and both ask what a thing is called.
+    */
+    final box = NameField(
+      controller: name,
+      focus: nameFocus,
+      hint: 'Netflix, Spotify, the gym...',
+      onChanged: (v) {
+        draft.name = v;
 
-            // Typing over a chosen service unpicks it. Otherwise a
-            // subscription called "Netflix account" keeps Netflix's id, and
-            // the id is what the rest of the app trusts.
-            final picked = serviceFor(draft.serviceId);
-            if (picked != null && picked.name != v) draft.serviceId = null;
+        // Typing over a chosen service unpicks it. Otherwise a subscription
+        // called "Netflix account" keeps Netflix's id, and the id is what the
+        // rest of the app trusts.
+        final picked = serviceFor(draft.serviceId);
+        if (picked != null && picked.name != v) draft.serviceId = null;
 
-            onChanged();
-          },
-        ),
+        onChanged();
+      },
+    );
+
+    return SheetCard(
+      title: title,
+      children: [
+        if (oneScreen) ...[box, const SizedBox(height: 14)],
+        grid,
+        if (!oneScreen) ...[const SizedBox(height: 14), box],
       ],
     );
   }

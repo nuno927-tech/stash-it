@@ -99,20 +99,35 @@ class _WizardState extends State<_Wizard> {
   final Set<_Step> _advanced = {};
 
   /*
-    ── Nothing takes focus on arrival ──────────────────────────────────────
+    ── The box takes the cursor, and the grid keeps its place ──────────────
 
-    The item wizard opens its keyboard, because its first question is a text
-    field and nothing else on the screen can be tapped. This one is the
-    opposite: the first question is fifty logos, and the box underneath them is
-    the way out for the gym. A keyboard on arrival would cover the answer.
+    This used to arrive with nothing focused, on the reasoning that the first
+    question is fifty logos and a keyboard would cover them.
 
-    That is the same reason the box sits under the grid rather than over it —
-    see the note in `SubServiceCard`.
+    It covers them because the box was underneath. With the box first and the
+    grid bounded to whole rows in what is left — see `SubServiceCard.oneScreen`
+    — both are on screen at once: type "spo" and the grid narrows to Spotify
+    while you watch, which is faster than either the typing or the hunting was
+    on its own.
   */
+  final FocusNode _nameFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // After the sheet has finished arriving. Asking for focus during the
+    // build that opens a modal route is asking a route that is still animating
+    // for the keyboard.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _nameFocus.requestFocus();
+    });
+  }
 
   @override
   void dispose() {
     _name.dispose();
+    _nameFocus.dispose();
     _pages.dispose();
     super.dispose();
   }
@@ -387,6 +402,12 @@ class _WizardState extends State<_Wizard> {
     // Arriving complete is not becoming complete — see `_advance`.
     if (cardFilled(_answersFor(to))) _advanced.add(to);
 
+    if (to == _Step.service) {
+      // Back on the first question, which is a box with the cursor in it.
+      _nameFocus.requestFocus();
+      return;
+    }
+
     FocusScope.of(context).unfocus();
   }
 
@@ -399,6 +420,10 @@ class _WizardState extends State<_Wizard> {
       question: 'What service are you paying for?',
       hint: 'Tap one, or type anything we do not have a logo for.',
       answer: SubServiceCard(
+        // The card is the whole screen here: box first, grid bounded to the
+        // rows that fit — see `SubServiceCard.oneScreen`.
+        oneScreen: true,
+        nameFocus: _nameFocus,
         // No heading on any of the three cards here. The question above each
         // one already says what is on it, so the heading was that question
         // repeated in smaller type one line below itself. The long form keeps
