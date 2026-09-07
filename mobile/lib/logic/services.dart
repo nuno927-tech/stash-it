@@ -459,6 +459,26 @@ const List<ServiceDef> services = [
     domain: 'skillshare.com',
     path: 'M4 6h6v3H7v2h3v7H4v-3h3v-2H4zm10 0h6v3h-3v2h3v7h-6v-3h3v-2h-3z',
   ),
+  /*
+    ── A drawn mark, not the wordmark ───────────────────────────────────────
+
+    The tiles above carry each brand's own logo path. This one is a pin with a
+    family inside it, because I do not have Life360's official path and an
+    approximation of somebody's trademark is worse than an honest generic — it
+    looks like their logo drawn badly, which is a claim about them rather than
+    about the subscription.
+
+    The colour is theirs, which is the part that does the recognising at
+    tile size anyway.
+  */
+  ServiceDef(
+    id: 'life360',
+    name: 'Life360',
+    colour: 0xFF6C3CE9,
+    domain: 'life360.com',
+    path:
+        'M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm-2.3 5.4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm4.6 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM12 11.4c1.9 0 3.4 1 3.4 2.2v.8H8.6v-.8c0-1.2 1.5-2.2 3.4-2.2z',
+  ),
   ServiceDef(
     id: 'gym',
     name: 'Gym membership',

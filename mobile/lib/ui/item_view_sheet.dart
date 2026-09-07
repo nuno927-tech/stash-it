@@ -668,8 +668,40 @@ class _FileChipState extends State<FileChip> {
   bool _busy = false;
 
   Future<void> _open() async {
+    if (_busy) return;
+
+    /*
+      ── A link is opened, not shared ────────────────────────────────────────
+
+      This returned immediately when there was no `blobId`, which is exactly
+      what a link is: a manual on the maker's site has a url and no bytes. So
+      the chip drew, said the right name, took the tap and did nothing at all
+      — the worst of the three, because nothing about it looked broken.
+
+      The url was tidied to a real one with a scheme when it was saved (see
+      `tidyUrl`), so there is nothing to fix up here.
+    */
+    final url = widget.doc.url;
+    if (url != null) {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return;
+
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No app on this phone could open that link.'),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     final blobId = widget.doc.blobId;
-    if (blobId == null || _busy) return;
+    if (blobId == null) return;
 
     setState(() => _busy = true);
     try {
