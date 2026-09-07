@@ -227,6 +227,29 @@ class _WizardState extends State<_Wizard> {
   }
 
   /*
+    ── A logo tapped is the whole answer ───────────────────────────────────
+
+    `_advance` refuses while the keyboard is up, and it is right to: it fires
+    off the name box, where a keyboard means somebody is mid-word. This screen
+    now opens WITH the keyboard, so that guard would have meant a tap on a logo
+    never moved anything.
+
+    A tap is not typing. It answers the question completely — the name, the id
+    and the mark, all three — so it puts the keyboard away and goes on, once,
+    with the same beat so the tile is seen to light up first.
+  */
+  void _pickedService() {
+    if (_at != _Step.service || _advanced.contains(_Step.service)) return;
+    _advanced.add(_Step.service);
+
+    FocusScope.of(context).unfocus();
+
+    Future<void>.delayed(const Duration(milliseconds: 260), () {
+      if (mounted && _at == _Step.service) _go(_Step.billing);
+    });
+  }
+
+  /*
     ── Out through the form, with the name ─────────────────────────────────
 
     Somebody adding eight services is served worse by three screens each than by
@@ -424,6 +447,7 @@ class _WizardState extends State<_Wizard> {
         // rows that fit — see `SubServiceCard.oneScreen`.
         oneScreen: true,
         nameFocus: _nameFocus,
+        onPicked: _pickedService,
         // No heading on any of the three cards here. The question above each
         // one already says what is on it, so the heading was that question
         // repeated in smaller type one line below itself. The long form keeps

@@ -62,6 +62,7 @@ class SubServiceCard extends StatelessWidget {
     this.title = 'Service',
     this.oneScreen = false,
     this.nameFocus,
+    this.onPicked,
     super.key,
   });
 
@@ -96,6 +97,16 @@ class SubServiceCard extends StatelessWidget {
   /// arrives. Null on the form, which takes no focus on its own.
   final FocusNode? nameFocus;
 
+  /*
+    ── Chosen off the grid, which is different from changed ─────────────────
+
+    `onChanged` fires on every keystroke as well, and the wizard treats those
+    two very differently: typing means somebody is still working, tapping a
+    logo means they have finished the question. Only the tap is worth acting
+    on, so only the tap gets its own callback.
+  */
+  final VoidCallback? onPicked;
+
   /// Picking one off the grid answers three questions at once.
   void _choose(ServiceDef service) {
     feedback(Cue.tap);
@@ -103,6 +114,7 @@ class SubServiceCard extends StatelessWidget {
     draft.name = service.name;
     name.text = service.name;
     onChanged();
+    onPicked?.call();
   }
 
   @override
