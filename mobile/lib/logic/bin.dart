@@ -53,7 +53,7 @@ String daysLeftLabel(int days) {
 /// Deleting frees a slot immediately — that is deliberate, so someone at the
 /// limit can make room — but it means an unchecked restore would be a hole you
 /// could drive the whole tier through: fill up, delete the lot, fill up again,
-/// restore the lot. Fifty items on a twenty-five item tier, by pressing undo.
+/// restore the lot. Fifty items on a fifteen item tier, by pressing undo.
 ///
 /// Nothing is lost either way. The item stays in the bin, and its own countdown
 /// is the only thing that can remove it.

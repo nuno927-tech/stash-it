@@ -17,33 +17,33 @@ void main() {
   tearDown(() => capEnforced = true);
 
   group('the line', () {
-    test('is twenty', () => expect(freeItemLimit, 20));
+    test('is fifteen', () => expect(freeItemLimit, 15));
 
-    test('nineteen saved leaves room for one', () {
-      expect(canAddItem(19, free), isTrue);
+    test('fourteen saved leaves room for one', () {
+      expect(canAddItem(14, free), isTrue);
     });
 
     /*
       At the line, not past it. `count` is what is already stored, so the
-      twentieth save happens at count 19 — an off-by-one here is the
-      difference between a tier that holds twenty and one that holds
-      twenty-one, and nothing else in the app would notice.
+      fifteenth save happens at count 14 — an off-by-one here is the
+      difference between a tier that holds fifteen and one that holds sixteen,
+      and nothing else in the app would notice.
     */
-    test('twenty saved is full', () => expect(canAddItem(20, free), isFalse));
+    test('fifteen saved is full', () => expect(canAddItem(15, free), isFalse));
     test('and so is anything beyond',
         () => expect(canAddItem(40, free), isFalse));
 
     test('paying removes the question', () {
-      expect(canAddItem(20, paid), isTrue);
+      expect(canAddItem(15, paid), isTrue);
       expect(canAddItem(4000, paid), isTrue);
     });
   });
 
   group('remainingFree', () {
     test('counts down', () {
-      expect(remainingFree(0, free), 20);
-      expect(remainingFree(15, free), 5);
-      expect(remainingFree(20, free), 0);
+      expect(remainingFree(0, free), 15);
+      expect(remainingFree(10, free), 5);
+      expect(remainingFree(15, free), 0);
     });
 
     /*
@@ -71,23 +71,23 @@ void main() {
 
   group('shouldMentionCap', () {
     /*
-      Not at one of twenty, and not only at twenty. A counter that appears on
+      Not at one of fifteen, and not only at fifteen. A counter that appears on
       the first save is a shop; one that appears only at the wall is an ambush.
       Five is where the number stops being noise and starts being warning.
     */
     test('stays quiet with room to spare', () {
       expect(shouldMentionCap(0, free), isFalse);
-      expect(shouldMentionCap(14, free), isFalse);
+      expect(shouldMentionCap(9, free), isFalse);
     });
 
     test('speaks up inside the last five', () {
+      expect(shouldMentionCap(10, free), isTrue);
+      expect(shouldMentionCap(14, free), isTrue);
       expect(shouldMentionCap(15, free), isTrue);
-      expect(shouldMentionCap(19, free), isTrue);
-      expect(shouldMentionCap(20, free), isTrue);
     });
 
     test('and never to somebody who has paid', () {
-      expect(shouldMentionCap(19, paid), isFalse);
+      expect(shouldMentionCap(14, paid), isFalse);
       expect(shouldMentionCap(9999, paid), isFalse);
     });
   });

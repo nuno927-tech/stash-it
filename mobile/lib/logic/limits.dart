@@ -9,16 +9,21 @@ import '../models/settings.dart';
 
 /// How many records the free tier holds, **when the cap is on**.
 ///
-/// ── Twenty, not twenty-five ───────────────────────────────────────────────
-/// Twenty is enough to hold a household's real paperwork — passports, the car,
-/// the boiler, four appliances, the streaming services — and not enough to
-/// hold a whole house. That is the line the tier is meant to sit on: somebody
-/// who has entered twenty things has stopped evaluating the app and started
-/// depending on it.
+/// ── Fifteen ───────────────────────────────────────────────────────────────
+/// Enough to hold a household's real paperwork — passports, the car, the
+/// boiler, a few appliances, the streaming services — and not enough to hold a
+/// whole house. That is the line the tier is meant to sit on: somebody who has
+/// entered fifteen things has stopped evaluating the app and started depending
+/// on it.
 ///
-/// A round number also matters more than it should. "20 of 20" is a sentence
+/// It was twenty, and twenty-five before that. Each move down is the same
+/// judgement made again with more of the app built: the number is not a
+/// measure of generosity, it is the point at which somebody knows whether this
+/// is the app they are going to keep.
+///
+/// A round number matters more than it should. "15 of 15" is a sentence
 /// somebody can hold in their head; "23 of 25" is arithmetic.
-const int freeItemLimit = 20;
+const int freeItemLimit = 15;
 
 /// ── The cap is on ─────────────────────────────────────────────────────────
 ///
@@ -62,7 +67,7 @@ int? remainingFree(int count, Entitlements e) {
 /*
   ── When to mention it ──────────────────────────────────────────────────────
 
-  Not at one of twenty, and not only at twenty. A counter that appears on the
+  Not at one of fifteen, and not only at fifteen. A counter that appears on the
   first save is a shop, and one that appears only at the wall is an ambush —
   somebody who has just typed a passport into a form and pressed Save has
   earned better than being told the app is full.

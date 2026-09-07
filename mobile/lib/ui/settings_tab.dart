@@ -62,7 +62,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.31.1';
+const appVersion = '1.32.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1271,7 +1271,7 @@ class _SettingsTabState extends State<SettingsTab> {
                       const SizedBox(height: 12),
 
                       /*
-                            A bar, because "14 of 20" is a fact and a bar is a
+                            A bar, because "11 of 15" is a fact and a bar is a
                             feeling — and the feeling is the useful half of the
                             answer here. It turns amber inside the last five,
                             the same threshold `shouldMentionCap` uses, so the

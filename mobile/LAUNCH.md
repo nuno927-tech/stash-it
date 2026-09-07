@@ -112,7 +112,7 @@ Not a feature list. The shape that works:
 >
 > [video]
 >
-> Free, one optional one-time unlock above 20 items. No ads, no tracking, no
+> Free, one optional one-time unlock above 15 items. No ads, no tracking, no
 > account.
 
 Then answer everything. The comments are the marketing; the post is the excuse

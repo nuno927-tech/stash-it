@@ -336,7 +336,7 @@ class _UnlockState extends State<_Unlock> {
 
             Text(
               widget.owned
-                  // No count, and no limit named. Saying "you have 34 of 20"
+                  // No count, and no limit named. Saying "you have 34 of 15"
                   // to somebody who paid to stop being counted would be a
                   // strange thing to put in front of them.
                   ? 'Yours on this Google account, for good.'
@@ -575,14 +575,14 @@ class _UnlockState extends State<_Unlock> {
             const SizedBox(height: 18),
 
             /*
-              What happens to the twenty they already have, said out loud.
+              What happens to the fifteen they already have, said out loud.
 
               It is the first question somebody has when an app tells them they
               are full, and leaving it unanswered invites the worst guess.
               Nothing is hidden, nothing is deleted, nothing is held hostage —
-              the only thing the limit stops is adding the twenty-first.
+              the only thing the limit stops is adding the sixteenth.
             */
-            // Only on the offer. It answers "what happens to my twenty if I
+            // Only on the offer. It answers "what happens to my fifteen if I
             // don't pay", which is not a question anybody who has paid is
             // asking.
             if (!widget.owned)
