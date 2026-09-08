@@ -51,7 +51,6 @@ import 'parts.dart';
 import 'prefs_scope.dart';
 import 'privacy.dart';
 import 'tour_screen.dart';
-import 'pro_badge.dart';
 import '../io/card_file.dart';
 import 'ask_text.dart';
 import 'backup_sheets.dart';
@@ -62,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.33.1';
+const appVersion = '1.34.0';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1065,15 +1064,26 @@ class _SettingsTabState extends State<SettingsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  'How Stash it behaves.',
-                  style: TextStyle(
-                    fontFamily: fontDisplay,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w200,
-                    letterSpacing: -0.4,
-                    color: c.muted,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'How Stash it behaves.',
+                      style: TextStyle(
+                        fontFamily: fontDisplay,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w200,
+                        letterSpacing: -0.4,
+                        color: c.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // The offer, in the space that was empty beside Scout —
+                    // see `_proSlot`.
+                    _proSlot(context, c),
+                  ],
                 ),
               ),
               /*
@@ -1125,6 +1135,237 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
+  /*
+    ── The offer sits beside Scout, not under everything ────────────────────
+
+    It was the first child of the scrolling list: a full-width gold card under
+    a header that already had a hundred and thirty pixels of empty page to the
+    left of the mascot. Two large gold things stacked, and a hole between them.
+
+    Narrower and in the header instead. It fills the space that was there
+    anyway, it is still the first thing on the screen, and it is now visibly
+    part of the heading rather than the first of ten settings — which is what
+    it always was: the one thing on this page that is not a preference.
+  */
+  Widget _proSlot(BuildContext context, StashColors c) {
+      /* ---------------------------------------------------- go pro */
+
+      /*
+            ── Why this is first, and why it looks different ─────────────
+
+            It was ninth of ten, styled as a card like every other card,
+            titled "Free tier" — a status row about a limit rather than an
+            offer. Somebody who wanted to pay had to scroll past theme,
+            sounds, notifications, the lock, reminders, backup and the bin
+            to find out how, and nothing on the way down suggested there
+            was anything to find.
+
+            So it moved to the top and stopped pretending to be a setting.
+            Gold fill, gold edge, and the only button on this screen that
+            is not a row — because it is the one thing here that is not a
+            preference, and a page of identical cards is a page where the
+            one that matters is invisible.
+
+            It disappears entirely once unlocked. A card saying "unlimited"
+            to somebody who has already paid is a receipt, and a receipt is
+            what the Play Store is for.
+          */
+    return FutureBuilder<Settings>(
+      future: _settings,
+      builder: (context, settingsSnap) {
+          final entitlements = settingsSnap.data?.entitlements;
+          if (entitlements == null) return const SizedBox.shrink();
+
+          /*
+                ── Paid, so the offer becomes a receipt ────────────────────
+
+                This used to return nothing at all, which meant the single
+                most visible consequence of paying was that something
+                disappeared off the top of Settings. The card that had been
+                asking for money every time you opened the screen simply
+                stopped existing, and there was nowhere in the app that
+                acknowledged the purchase had happened.
+
+                It keeps the same slot and the same shape — gold wash, gold
+                edge, first thing on the page — so what changes is the
+                sentence rather than the layout.
+              */
+          if (entitlements.proUnlock) {
+            return _ProCard(
+              onTap: () async {
+                final count = await _count;
+                if (!context.mounted) return;
+                await showUnlock(
+                  context,
+                  repo: widget.repo,
+                  billing: appBilling,
+                  count: count,
+                  owned: true,
+                );
+              },
+            );
+          }
+
+          return FutureBuilder<int>(
+            future: _count,
+            builder: (context, countSnap) {
+              final count = countSnap.data;
+              if (count == null) return const SizedBox.shrink();
+
+              final left = remainingFree(count, entitlements) ?? 0;
+              final full = left == 0;
+
+              return Container(
+                // No margin any more. It sits inside the header's own padding
+                // and takes whatever width is left beside Scout, so a second
+                // set of insets here would be a card indented twice.
+                padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
+                decoration: BoxDecoration(
+                  color: c.washGold,
+                  borderRadius: BorderRadius.circular(Radii.lg),
+                  border: Border.all(color: c.gold.withValues(alpha: 0.45)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(Icons.workspace_premium_outlined,
+                            size: 20, color: c.gold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Go Pro',
+                            style: TextStyle(
+                              fontFamily: fontDisplay,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
+                              color: c.text,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'One payment',
+                          style: TextStyle(
+                            fontFamily: fontBody,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: c.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Down from 34 with the card. It is still the biggest
+                        // thing on it, which is what made it the answer.
+                        Text('$count', style: figureStyle(c, size: 28)),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3, left: 5),
+                          child: Text(
+                            'of $freeItemLimit saved',
+                            style: TextStyle(
+                              fontFamily: fontBody,
+                              fontSize: 12.5,
+                              color: c.muted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    /*
+                          A bar, because "11 of 15" is a fact and a bar is a
+                          feeling — and the feeling is the useful half of the
+                          answer here. It turns amber inside the last five,
+                          the same threshold `shouldMentionCap` uses, so the
+                          colour and the wording can never disagree about
+                          what "nearly full" means.
+                        */
+                    /*
+                          Filled rather than drawn.
+
+                          The bar is the one thing on this card that is a
+                          quantity rather than a sentence, and it sits under
+                          a number that says the same thing. Arriving full
+                          made it read as a background shape; filling makes
+                          it read as a measurement of something.
+
+                          `TweenAnimationBuilder` also handles the case that
+                          matters more than first paint: saving an item
+                          nudges the bar along instead of jumping it, so the
+                          movement is legible as "that one you just added".
+                        */
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(
+                          begin: 0,
+                          end: (count / freeItemLimit).clamp(0.0, 1.0),
+                        ),
+                        duration: const Duration(milliseconds: 850),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, filled, _) =>
+                            LinearProgressIndicator(
+                          value: MediaQuery.of(context).disableAnimations
+                              ? (count / freeItemLimit).clamp(0.0, 1.0)
+                              : filled,
+                          minHeight: 7,
+                          backgroundColor: c.field,
+                          valueColor: AlwaysStoppedAnimation(
+                            full
+                                ? c.ember
+                                : (left <= warnWhenLeft ? c.honey : c.gold),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      /*
+                        Two short lines, not four.
+
+                        The long version listed what Pro buys — unlimited
+                        everything, one payment, no ads, nothing uploaded — on
+                        a card that was the width of the screen. It is a
+                        column beside Scout now, and all four of those claims
+                        are on the sheet this opens, said properly and with
+                        room. Here they were a wall.
+                      */
+                      full
+                          ? 'Full. Nothing is lost — the limit only stops new '
+                              'ones.'
+                          : 'Unlimited, for one payment.',
+                      style: hintStyle(c),
+                    ),
+                    const SizedBox(height: 12),
+                    _BigButton(
+                      label: 'Go Pro',
+                      icon: Icons.lock_open_outlined,
+                      onTap: () async {
+                        final unlocked = await showUnlock(
+                          context,
+                          repo: widget.repo,
+                          billing: appBilling,
+                          count: count,
+                        );
+                        if (unlocked) _refresh();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+  }
+
   Widget _cards(
     BuildContext context,
     StashColors c,
@@ -1143,211 +1384,6 @@ class _SettingsTabState extends State<SettingsTab> {
       */
       padding: const EdgeInsets.only(bottom: 24),
       children: [
-        /* ---------------------------------------------------- go pro */
-
-        /*
-              ── Why this is first, and why it looks different ─────────────
-
-              It was ninth of ten, styled as a card like every other card,
-              titled "Free tier" — a status row about a limit rather than an
-              offer. Somebody who wanted to pay had to scroll past theme,
-              sounds, notifications, the lock, reminders, backup and the bin
-              to find out how, and nothing on the way down suggested there
-              was anything to find.
-
-              So it moved to the top and stopped pretending to be a setting.
-              Gold fill, gold edge, and the only button on this screen that
-              is not a row — because it is the one thing here that is not a
-              preference, and a page of identical cards is a page where the
-              one that matters is invisible.
-
-              It disappears entirely once unlocked. A card saying "unlimited"
-              to somebody who has already paid is a receipt, and a receipt is
-              what the Play Store is for.
-            */
-        FutureBuilder<Settings>(
-          future: _settings,
-          builder: (context, settingsSnap) {
-            final entitlements = settingsSnap.data?.entitlements;
-            if (entitlements == null) return const SizedBox.shrink();
-
-            /*
-                  ── Paid, so the offer becomes a receipt ────────────────────
-
-                  This used to return nothing at all, which meant the single
-                  most visible consequence of paying was that something
-                  disappeared off the top of Settings. The card that had been
-                  asking for money every time you opened the screen simply
-                  stopped existing, and there was nowhere in the app that
-                  acknowledged the purchase had happened.
-
-                  It keeps the same slot and the same shape — gold wash, gold
-                  edge, first thing on the page — so what changes is the
-                  sentence rather than the layout.
-                */
-            if (entitlements.proUnlock) {
-              return _ProCard(
-                onTap: () async {
-                  final count = await _count;
-                  if (!context.mounted) return;
-                  await showUnlock(
-                    context,
-                    repo: widget.repo,
-                    billing: appBilling,
-                    count: count,
-                    owned: true,
-                  );
-                },
-              );
-            }
-
-            return FutureBuilder<int>(
-              future: _count,
-              builder: (context, countSnap) {
-                final count = countSnap.data;
-                if (count == null) return const SizedBox.shrink();
-
-                final left = remainingFree(count, entitlements) ?? 0;
-                final full = left == 0;
-
-                return Container(
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-                  padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
-                  decoration: BoxDecoration(
-                    color: c.washGold,
-                    borderRadius: BorderRadius.circular(Radii.lg),
-                    border: Border.all(color: c.gold.withValues(alpha: 0.45)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(Icons.workspace_premium_outlined,
-                              size: 20, color: c.gold),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Go Pro',
-                              style: TextStyle(
-                                fontFamily: fontDisplay,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.6,
-                                color: c.text,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'One payment',
-                            style: TextStyle(
-                              fontFamily: fontBody,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: c.gold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('$count', style: figureStyle(c, size: 34)),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4, left: 5),
-                            child: Text(
-                              'of $freeItemLimit saved',
-                              style: TextStyle(
-                                fontFamily: fontBody,
-                                fontSize: 14,
-                                color: c.muted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      /*
-                            A bar, because "11 of 15" is a fact and a bar is a
-                            feeling — and the feeling is the useful half of the
-                            answer here. It turns amber inside the last five,
-                            the same threshold `shouldMentionCap` uses, so the
-                            colour and the wording can never disagree about
-                            what "nearly full" means.
-                          */
-                      /*
-                            Filled rather than drawn.
-
-                            The bar is the one thing on this card that is a
-                            quantity rather than a sentence, and it sits under
-                            a number that says the same thing. Arriving full
-                            made it read as a background shape; filling makes
-                            it read as a measurement of something.
-
-                            `TweenAnimationBuilder` also handles the case that
-                            matters more than first paint: saving an item
-                            nudges the bar along instead of jumping it, so the
-                            movement is legible as "that one you just added".
-                          */
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(Radii.pill),
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween(
-                            begin: 0,
-                            end: (count / freeItemLimit).clamp(0.0, 1.0),
-                          ),
-                          duration: const Duration(milliseconds: 850),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, filled, _) =>
-                              LinearProgressIndicator(
-                            value: MediaQuery.of(context).disableAnimations
-                                ? (count / freeItemLimit).clamp(0.0, 1.0)
-                                : filled,
-                            minHeight: 7,
-                            backgroundColor: c.field,
-                            valueColor: AlwaysStoppedAnimation(
-                              full
-                                  ? c.ember
-                                  : (left <= warnWhenLeft ? c.honey : c.gold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        full
-                            ? 'Full. Nothing is lost and nothing is hidden — '
-                                'the limit only stops new ones.'
-                            : 'Unlimited items, documents and subscriptions '
-                                'for one payment. No subscription, no ads, '
-                                'and nothing leaves your phone.',
-                        style: hintStyle(c),
-                      ),
-                      const SizedBox(height: 14),
-                      _BigButton(
-                        label: 'Go Pro',
-                        icon: Icons.lock_open_outlined,
-                        onTap: () async {
-                          final unlocked = await showUnlock(
-                            context,
-                            repo: widget.repo,
-                            billing: appBilling,
-                            count: count,
-                          );
-                          if (unlocked) _refresh();
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        ),
-
         /* ------------------------------------------------ appearance */
 
         _Card(
@@ -3226,19 +3262,19 @@ class _ProCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StashColors.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-      child: Material(
-        color: c.washGold,
+    // No padding of its own: it sits in the header's column, beside Scout,
+    // which already has the page's insets — see `_proSlot`.
+    return Material(
+      color: c.washGold,
+      borderRadius: BorderRadius.circular(Radii.lg),
+      child: InkWell(
         borderRadius: BorderRadius.circular(Radii.lg),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.lg),
-          onTap: () {
-            feedback(Cue.tap);
-            onTap();
-          },
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 15, 14, 16),
+        onTap: () {
+          feedback(Cue.tap);
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.lg),
               border: Border.all(color: c.gold.withValues(alpha: 0.45)),
@@ -3246,38 +3282,48 @@ class _ProCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                /*
+                  ── Narrower, so the row loses what it can spare ────────────
+
+                  This is about two hundred pixels wide now rather than a whole
+                  screen. The badge went: it says PRO beside a card that says
+                  Stash it Pro, which was a luxury at full width and a
+                  collision here.
+
+                  The chevron stays. Without it this is a status panel that
+                  happens to be tappable, which nobody discovers.
+                */
                 Row(
                   children: [
                     Icon(Icons.workspace_premium_outlined,
-                        size: 20, color: c.gold),
-                    const SizedBox(width: 8),
+                        size: 18, color: c.gold),
+                    const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         'Stash it Pro',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: fontDisplay,
-                          fontSize: 20,
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.6,
+                          letterSpacing: -0.5,
                           color: c.text,
                         ),
                       ),
                     ),
-                    const ProBadge(),
-                    const SizedBox(width: 4),
-                    // A chevron, because the card does something. Without one
-                    // it is a status panel that happens to be tappable, which
-                    // nobody discovers.
-                    Icon(Icons.chevron_right, size: 20, color: c.muted),
+                    Icon(Icons.chevron_right, size: 18, color: c.muted),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  'Unlimited. Thanks for supporting Scout and Stash it',
+                  // Shorter, for a narrower card. The thank-you it used to
+                  // carry is on the screen this opens, said properly.
+                  'Unlimited, for good.',
                   style: TextStyle(
                     fontFamily: fontBody,
-                    fontSize: 13,
-                    height: 1.45,
+                    fontSize: 12.5,
+                    height: 1.4,
                     color: c.muted,
                   ),
                 ),
@@ -3285,7 +3331,6 @@ class _ProCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
