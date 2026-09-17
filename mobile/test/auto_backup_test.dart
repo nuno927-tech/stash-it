@@ -25,12 +25,14 @@ bool due({
   int everyDays = 30,
   int itemCount = 10,
   DateTime? lastAt,
+  DateTime? changedAt,
 }) =>
     autoBackupDue(
       folder: folder,
       everyDays: everyDays,
       itemCount: itemCount,
       lastAt: lastAt,
+      changedAt: changedAt,
       now: today,
     );
 
@@ -67,6 +69,23 @@ void main() {
     test('nor one made a day short of the interval', () {
       expect(due(everyDays: 30, lastAt: addDays(today, -29)), isFalse);
     });
+
+    /*
+      ── An untouched stash, and why this one is not about nagging ────────────
+
+      Nobody sees an automatic backup, so the argument is not about
+      interruption. It is the prune: only `backupsToKeep` files survive, oldest
+      out first, so five cycles of writing the same day five times throws away
+      the older file that predates whatever somebody deleted by mistake. A
+      rolling window of identical copies protects against nothing the newest
+      one does not.
+    */
+    test('an untouched stash writes nothing, however long it has been', () {
+      expect(
+        due(lastAt: addDays(today, -400), changedAt: addDays(today, -500)),
+        isFalse,
+      );
+    });
   });
 
   group('when it runs', () {
@@ -87,6 +106,13 @@ void main() {
 
     test('and long overdue is still due', () {
       expect(due(everyDays: 30, lastAt: addDays(today, -400)), isTrue);
+    });
+
+    test('one save is enough to make it due again', () {
+      expect(
+        due(lastAt: addDays(today, -400), changedAt: addDays(today, -1)),
+        isTrue,
+      );
     });
 
     test('the time of day does not matter', () {

@@ -161,6 +161,7 @@ class Repository {
             deletedAt: d.deletedAt,
           )),
         );
+    await _touched();
     return id;
   }
 
@@ -401,6 +402,11 @@ class Repository {
                 isSeed: const Value(true),
               ),
             );
+
+        // Everything is gone and `lastBackupAt` went with it, so the reminder
+        // is in its "never" state either way. Stamped anyway: the clock must
+        // never be able to point at records that no longer exist.
+        await _touched();
       });
 
   /* ------------------------------------------------------------- rooms */
@@ -421,12 +427,15 @@ class Repository {
             // adjusting untouched seed rooms must not touch it.
           ),
         );
+    await _touched();
     return id;
   }
 
-  Future<void> renameRoom(String id, String name) =>
-      (db.update(db.rooms)..where((t) => t.id.equals(id))).write(
-          RoomsCompanion(name: Value(name.trim()), isSeed: const Value(false)));
+  Future<void> renameRoom(String id, String name) async {
+    await (db.update(db.rooms)..where((t) => t.id.equals(id))).write(
+        RoomsCompanion(name: Value(name.trim()), isSeed: const Value(false)));
+    await _touched();
+  }
 
   /// Writes the whole order at once.
   ///
@@ -439,6 +448,7 @@ class Repository {
           await (db.update(db.rooms)..where((t) => t.id.equals(idsInOrder[i])))
               .write(RoomsCompanion(sortOrder: Value(i)));
         }
+        await _touched();
       });
 
   /// Soft delete, and the items in it are moved out rather than removed.
@@ -454,6 +464,7 @@ class Repository {
     await (db.update(db.rooms)..where((t) => t.id.equals(id)))
         .write(RoomsCompanion(deletedAt: Value(DateTime.now())));
 
+    await _touched();
     return orphaned;
   }
 
@@ -477,6 +488,30 @@ class Repository {
 
   Future<Settings> settings() async =>
       settingsOf(await db.select(db.settingsTable).getSingle());
+
+  /// When a record last changed, or null if the app does not know.
+  ///
+  /// ── Read here rather than off `Settings` ──────────────────────────────────
+  /// `Settings` is the shape a backup file carries, and this must not be in it
+  /// — a restored file would bring the old phone's change clock with it. Keeping
+  /// the field off the model is how that stays true without anybody policing it,
+  /// the same argument `settingsToRow` makes about the unlock.
+  Future<DateTime?> lastChangeAt() async =>
+      (await db.select(db.settingsTable).getSingle()).changedAt;
+
+  /*
+    ── The one line every write ends with ────────────────────────────────────
+
+    `changedAt` has to move when ANY record does: a saved item, a binned
+    passport, a restored subscription, a photograph attached, the thirty-day
+    bin sweep. The backup reminder reads it, so a write that forgets this is a
+    write that can leave the app saying a backup is current when it is not.
+
+    Awaited, on the same path as the change, deliberately. See the note in
+    tables.dart for the version that watched the database instead and why it
+    was taken out again.
+  */
+  Future<void> _touched() => db.touch();
 
   /* --------------------------------------------------------------- the cap */
 
@@ -591,11 +626,14 @@ class Repository {
               ),
               now: now),
         );
+    await _touched();
     return id;
   }
 
-  Future<void> saveItem(Item item) =>
-      db.update(db.items).replace(itemToRow(item));
+  Future<void> saveItem(Item item) async {
+    await db.update(db.items).replace(itemToRow(item));
+    await _touched();
+  }
 
   Future<String> createPaper(Paper draft) async {
     await _requireRoom();
@@ -613,6 +651,7 @@ class Repository {
           storedAt: draft.storedAt,
           notes: draft.notes,
         )));
+    await _touched();
     return id;
   }
 
@@ -633,14 +672,19 @@ class Repository {
           remindDays: draft.remindDays,
           notes: draft.notes,
         )));
+    await _touched();
     return id;
   }
 
-  Future<void> savePaper(Paper p) =>
-      db.update(db.papers).replace(paperToRow(p));
+  Future<void> savePaper(Paper p) async {
+    await db.update(db.papers).replace(paperToRow(p));
+    await _touched();
+  }
 
-  Future<void> saveSubscription(Subscription s) =>
-      db.update(db.subscriptions).replace(subscriptionToRow(s));
+  Future<void> saveSubscription(Subscription s) async {
+    await db.update(db.subscriptions).replace(subscriptionToRow(s));
+    await _touched();
+  }
 
   /*
     Documents and subscriptions go to the bin too.
@@ -650,17 +694,27 @@ class Repository {
     storage, not about people. Deleting the wrong passport is exactly as bad as
     deleting the wrong kettle, and the thirty-day window already exists.
   */
-  Future<void> softDeletePaper(String id) =>
-      (db.update(db.papers)..where((t) => t.id.equals(id)))
-          .write(PapersCompanion(deletedAt: Value(DateTime.now())));
+  Future<void> softDeletePaper(String id) async {
+    await (db.update(db.papers)..where((t) => t.id.equals(id)))
+        .write(PapersCompanion(deletedAt: Value(DateTime.now())));
+    await _touched();
+  }
 
-  Future<void> softDeleteSubscription(String id) =>
-      (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
-          .write(SubscriptionsCompanion(deletedAt: Value(DateTime.now())));
+  Future<void> softDeleteSubscription(String id) async {
+    await (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
+        .write(SubscriptionsCompanion(deletedAt: Value(DateTime.now())));
+    await _touched();
+  }
 
   /// Settings, minus the entitlements and the notification switch — see
   /// `settingsToRow` for why both are structurally excluded rather than merely
   /// left out.
+  ///
+  /// **Not a change to the stash**, and deliberately not stamped. Settings do
+  /// travel in a backup, so switching from dollars to pounds does technically
+  /// date the file — and reminding somebody to re-export their whole collection
+  /// because they changed a preference is precisely the noise the change clock
+  /// exists to remove. Records are what a backup is for.
   Future<void> saveSettings(Settings s) =>
       db.update(db.settingsTable).write(settingsToRow(s));
 
@@ -703,9 +757,11 @@ class Repository {
   /* ------------------------------------------------------------- the bin */
 
   /// Soft delete. Frees a slot immediately; erased after thirty days.
-  Future<void> softDeleteItem(String id) =>
-      (db.update(db.items)..where((t) => t.id.equals(id)))
-          .write(ItemsCompanion(deletedAt: Value(DateTime.now())));
+  Future<void> softDeleteItem(String id) async {
+    await (db.update(db.items)..where((t) => t.id.equals(id)))
+        .write(ItemsCompanion(deletedAt: Value(DateTime.now())));
+    await _touched();
+  }
 
   /// Brings one back, **if there is room**.
   ///
@@ -720,6 +776,7 @@ class Repository {
     await _requireRoom();
     await (db.update(db.items)..where((t) => t.id.equals(id)))
         .write(ItemsCompanion(deletedAt: Value(null)));
+    await _touched();
   }
 
   /// Everything in the bin, **soonest to go first**.
@@ -769,6 +826,11 @@ class Repository {
         }
         await (db.delete(db.docs)..where((t) => t.itemId.equals(itemId))).go();
         await (db.delete(db.items)..where((t) => t.id.equals(itemId))).go();
+
+        // In here rather than in the three callers — the sweep, "delete now"
+        // and "empty bin" all end up on this line, which is the same argument
+        // the routine itself is written around.
+        await _touched();
       });
 
   /* ── Documents and subscriptions in the bin ─────────────────────────────
@@ -804,12 +866,14 @@ class Repository {
     await _requireRoom();
     await (db.update(db.papers)..where((t) => t.id.equals(id)))
         .write(const PapersCompanion(deletedAt: Value(null)));
+    await _touched();
   }
 
   Future<void> restoreSubscription(String id) async {
     await _requireRoom();
     await (db.update(db.subscriptions)..where((t) => t.id.equals(id)))
         .write(const SubscriptionsCompanion(deletedAt: Value(null)));
+    await _touched();
   }
 
   /// ── A deleted document takes its scans with it ──────────────────────────
@@ -841,6 +905,7 @@ class Repository {
 
         await (db.delete(db.docs)..where((t) => t.paperId.equals(id))).go();
         await (db.delete(db.papers)..where((t) => t.id.equals(id))).go();
+        await _touched();
       });
 
   Future<void> _eraseSubscription(String id) => db.transaction(() async {
@@ -854,6 +919,7 @@ class Repository {
           await (db.delete(db.blobs)..where((t) => t.id.equals(logo))).go();
         }
         await (db.delete(db.subscriptions)..where((t) => t.id.equals(id))).go();
+        await _touched();
       });
 
   /// Skip the wait. Only reachable from the bin, and only after a confirmation.
@@ -918,6 +984,13 @@ class Repository {
 
   /* --------------------------------------------------------------- blobs */
 
+  /// Not stamped on the change clock, and it does not need to be.
+  ///
+  /// A blob is only ever written beside the row that names it — the item that
+  /// carries the photograph, the document that carries the scan — and that
+  /// row's write stamps, in either order. Stamping here as well would be a
+  /// second settings write for every picture in a restore, for a fact already
+  /// recorded.
   Future<void> putBlob(String id, Uint8List bytes, String mime) =>
       db.into(db.blobs).insertOnConflictUpdate(BlobsCompanion.insert(
             id: id,

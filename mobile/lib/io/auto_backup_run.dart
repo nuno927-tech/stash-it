@@ -80,6 +80,7 @@ Future<AutoBackupResult> autoBackupIfDue(Repository repo) async {
       everyDays: settings.backupReminderDays,
       itemCount: items.length,
       lastAt: settings.lastAutoBackupAt,
+      changedAt: await repo.lastChangeAt(),
     )) {
       return const AutoBackupResult(wrote: false);
     }

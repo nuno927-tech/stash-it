@@ -83,6 +83,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         everyDays: settings.backupReminderDays,
         itemCount: items.length,
         lastBackupAt: settings.lastBackupAt,
+        // The same fact the scheduler reads. A preview that showed a backup
+        // reminder the scheduler will not send is a screen that lies about the
+        // one thing it exists to show.
+        changedAt: await widget.repo.lastChangeAt(),
       ),
     ]..sort((a, b) => a.on.compareTo(b.on));
 

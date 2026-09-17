@@ -137,6 +137,24 @@ Future<RestoreResult> restoreInto(
       await db.update(db.settingsTable).write(settingsToRow(settings));
     }
 
+    /*
+      ── The change clock is cleared, not carried and not set ────────────────
+
+      Every record on this phone was just replaced, so whatever the clock said
+      a moment ago describes rows that no longer exist. Nor can it be set to
+      the restored `lastBackupAt` and called current: that date is when the
+      OTHER phone last exported, which was a different file from this one, so
+      "these records match a backup" is not something this code knows.
+
+      Null is the app saying it does not know, which `anythingNewToBackUp`
+      reads as a reason to go on reminding. One extra suggestion to back up,
+      the first time, after restoring everything you own onto a new handset, is
+      the right side to be wrong on.
+    */
+    await db
+        .update(db.settingsTable)
+        .write(const SettingsTableCompanion(changedAt: Value(null)));
+
     return RestoreResult(
       items: data.items.length,
       docs: data.docs.length,

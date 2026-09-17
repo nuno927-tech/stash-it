@@ -144,21 +144,45 @@ android {
             }
 
             /*
-               ── Shrinking is off, and this is a decision ────────────────────
+               ── Shrinking is on, and the old reasons did not survive ────────
 
-               R8 strips classes nothing appears to reference, and three things
-               in this app are reached in ways it cannot see: SQLCipher's
-               native bindings, Drift's generated code, and the notification
-               receivers named as strings in AndroidManifest.xml.
+               This read "shrinking is off, and this is a decision" and gave
+               three things R8 could not see: SQLCipher's native bindings,
+               Drift's generated code, and the notification receivers named as
+               strings in AndroidManifest.xml. Two of those were wrong.
 
-               The failure mode is the bad one — it builds, it installs, and it
-               throws on the first database open, on a release build, on
-               somebody else's phone. The app is a few megabytes of Dart and a
-               SQLite binary; the download saved is not worth that risk before
-               there is a single user. Revisit with `--analyze-size` once the
-               store listing exists.
+               Drift generates DART. It compiles into libapp.so, which R8 never
+               opens — there was never anything there to strip. And R8 parses
+               AndroidManifest.xml, so a receiver named in it is kept without
+               anybody asking. Only the third was real, and the plugins that
+               need reflection ship their own keep rules inside their .aar.
+
+               What settled it was Play: "DEX code optimization is below our
+               threshold — Obfuscation (1%)". One percent is the score for an
+               app where R8 never ran. It is a warning on the production review
+               now and a 25% floor from February 2027.
+
+               The old note's fear is still the right one to hold — the failure
+               mode is a build that installs and throws on somebody else's
+               phone. That is what proguard-rules.pro is for, and it is why a
+               release build gets exercised on a real device before it is
+               uploaded rather than after.
             */
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
+            /*
+               Resources are a separate question and the answer is still no.
+
+               Play measures the DEX, and resource shrinking does not touch it —
+               turning this on would buy nothing against the warning and add the
+               one failure this app is least able to see coming: a drawable or a
+               font stripped because only a home screen widget referenced it, in
+               a process that is not ours, on a launcher we cannot test in CI.
+            */
             isShrinkResources = false
         }
     }

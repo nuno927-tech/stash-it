@@ -9,6 +9,7 @@
 library;
 
 import 'dates.dart';
+import 'nudges.dart' show anythingNewToBackUp;
 
 /// How many backups to keep in the folder.
 ///
@@ -40,17 +41,31 @@ const int backupsToKeep = 5;
 ///   And never having backed up counts as due, which is the case that matters:
 ///   the interval is measured from the last backup, so with no last backup
 ///   there is nothing to measure and the answer is now.
+///
+/// ── And nothing new is nothing to write ────────────────────────────────────
+/// This one is not about being interrupted — nobody sees an automatic backup —
+/// so the argument for the guard is different and stronger. Only
+/// [backupsToKeep] files are kept, and the prune is by age. An untouched stash
+/// therefore spends five cycles replacing its own history with five identical
+/// copies of the same day, and the older file that predates whatever somebody
+/// deleted by mistake is gone — thrown away to make room for a duplicate.
+///
+/// The rolling window is only worth keeping if the things in it differ.
 bool autoBackupDue({
   required String? folder,
   required int everyDays,
   required int itemCount,
   required DateTime? lastAt,
+  DateTime? changedAt,
   DateTime? now,
 }) {
   if (folder == null || folder.trim().isEmpty) return false;
   if (everyDays <= 0) return false;
   if (itemCount <= 0) return false;
   if (lastAt == null) return true;
+  if (!anythingNewToBackUp(lastBackupAt: lastAt, changedAt: changedAt)) {
+    return false;
+  }
 
   final today = startOfDay(now ?? DateTime.now());
   return !today.isBefore(startOfDay(addDays(lastAt, everyDays)));

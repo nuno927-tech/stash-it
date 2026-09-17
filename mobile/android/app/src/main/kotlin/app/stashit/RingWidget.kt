@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -129,9 +128,22 @@ class RingWidget : HomeWidgetProvider() {
     private fun faceFor(path: String, want: Int): Bitmap? {
         if (!File(path).exists()) return null
 
-        val full = BitmapFactory.decodeFile(path) ?: return null
-
         val width = minOf(if (want > 0) want else MAX_WIDTH, MAX_WIDTH)
+
+        /*
+           ── Sampled on the way in, then trimmed to the exact width ───────────
+
+           This read the whole 2 MB face and scaled it afterwards, which gets
+           the peak backwards: the cost is the full-size bitmap, and it was
+           being paid in full every time before any of it was given back.
+
+           `Bitmaps.atMost` halves during the decode, so the pixels are never
+           allocated. It only halves, though — the result is between the target
+           and twice it — so the exact scale below still runs, on an image a
+           quarter the size or less. Play's check named the first half of this;
+           the second half is why the answer still looks right.
+        */
+        val full = Bitmaps.atMost(path, width) ?: return null
         if (width >= full.width) return full
 
         // Height follows width. Scaling the two independently would squash the

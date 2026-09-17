@@ -107,6 +107,40 @@ int endingSoonDays(Settings? settings) {
 int? _daysSince(DateTime? then, DateTime now) =>
     then == null ? null : now.difference(then).inDays;
 
+/// Whether the stash holds anything the last backup does not.
+///
+/// ── The reminder used to be a calendar, and a calendar is not the question ─
+/// "Thirty days since you exported" was the whole rule, so somebody whose
+/// stash was finished — and most stashes finish, because you buy a washing
+/// machine once — got a monthly instruction to write a file identical to the
+/// one they already had. Every one of those is wrong, and a warning that is
+/// wrong every time is a warning people learn to dismiss without reading.
+/// Then it is wrong on the month it mattered.
+///
+/// So the interval says *when to look* and this says *whether there is
+/// anything to look at*. Both have to agree before anybody is interrupted.
+///
+/// ── Two nulls, and they do not mean the same thing ────────────────────────
+/// No backup is the loudest yes there is: nothing anywhere but this phone.
+///
+/// No change date is the app admitting it does not know — an install that
+/// predates the column, or a stash that has not been touched since the upgrade
+/// — and not knowing is a reason to go on asking. **Silence has to be earned
+/// by a fact.** The alternative is an app that reasons its way into saying
+/// nothing, which is the failure this whole file exists to avoid.
+///
+/// ── And a tie counts as new ───────────────────────────────────────────────
+/// Both dates are stored to the second, so a change and a backup in the same
+/// second are indistinguishable — and one of them really did happen after the
+/// other. `!isBefore` rather than `isAfter` puts that one second on the side of
+/// reminding, which is the same principle as the paragraph above: the app may
+/// only be quiet about something it actually knows.
+bool anythingNewToBackUp({DateTime? lastBackupAt, DateTime? changedAt}) {
+  if (lastBackupAt == null) return true;
+  if (changedAt == null) return true;
+  return !changedAt.isBefore(lastBackupAt);
+}
+
 /// Time to export again.
 ///
 /// Suppressed on an empty collection: nagging someone to back up nothing is how
@@ -114,11 +148,18 @@ int? _daysSince(DateTime? then, DateTime now) =>
 /// saying never, and must not be read as "every zero days".
 Nudge? backupNudge({
   DateTime? lastBackupAt,
+  DateTime? changedAt,
   required int everyDays,
   required int itemCount,
   DateTime? now,
 }) {
   if (everyDays <= 0 || itemCount == 0) return null;
+
+  // Nothing has changed, so the backup on file is still a complete copy —
+  // however old it is. See `anythingNewToBackUp`.
+  if (!anythingNewToBackUp(lastBackupAt: lastBackupAt, changedAt: changedAt)) {
+    return null;
+  }
 
   final since = _daysSince(lastBackupAt, now ?? DateTime.now());
   if (since != null && since < everyDays) return null;
@@ -165,6 +206,7 @@ class BackupStatus {
 /// nudge follows.
 BackupStatus? backupStatus({
   DateTime? lastBackupAt,
+  DateTime? changedAt,
   required int everyDays,
   required int itemCount,
   DateTime? now,
@@ -176,6 +218,28 @@ BackupStatus? backupStatus({
     return const BackupStatus(null, BackupTone.never, 'Never backed up');
   }
 
+  final when = days == 0
+      ? 'today'
+      : days == 1
+          ? 'yesterday'
+          : '${grouped(days)} days ago';
+
+  /*
+    ── An old backup and a stale backup are different things ────────────────
+
+    This line used to go amber on age alone, which quietly equated "written a
+    while ago" with "missing something". For a stash that has not changed
+    since, those are opposites: the file on disk is a complete copy, and the
+    number beside it is just how long ago the person finished.
+
+    So a stash with nothing new says so and stays green, and the age is still
+    printed — the point is not to hide it, it is to stop it being read as a
+    problem when it is not one.
+  */
+  if (!anythingNewToBackUp(lastBackupAt: lastBackupAt, changedAt: changedAt)) {
+    return BackupStatus(days, BackupTone.ok, 'Backed up $when · up to date');
+  }
+
   /*
     "Due" follows the interval the user chose, and falls back to a month when
     they chose never. Turning the reminder off is a decision about being
@@ -184,12 +248,6 @@ BackupStatus? backupStatus({
   */
   final every = everyDays > 0 ? everyDays : 30;
   final tone = days >= every ? BackupTone.due : BackupTone.ok;
-
-  final when = days == 0
-      ? 'today'
-      : days == 1
-          ? 'yesterday'
-          : '${grouped(days)} days ago';
 
   return BackupStatus(days, tone, 'Backed up $when');
 }
@@ -229,6 +287,7 @@ List<Nudge> dueNudges({
   Settings? settings,
   required int itemCount,
   required int endingSoon,
+  DateTime? changedAt,
   DateTime? now,
 }) {
   final s = settings;
@@ -237,6 +296,7 @@ List<Nudge> dueNudges({
   return [
     backupNudge(
       lastBackupAt: s.lastBackupAt,
+      changedAt: changedAt,
       everyDays: s.backupReminderDays,
       itemCount: itemCount,
       now: now ?? DateTime.now(),

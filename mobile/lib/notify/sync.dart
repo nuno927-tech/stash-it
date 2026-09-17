@@ -79,6 +79,10 @@ Future<int> syncReminders(Repository repo) async {
       everyDays: settings.backupReminderDays,
       itemCount: items.length,
       lastBackupAt: settings.lastBackupAt,
+      // Read fresh rather than off `settings`, on purpose — it is not on that
+      // object, so no backup file can carry another phone's clock in. See
+      // `lastChangeAt`.
+      changedAt: await repo.lastChangeAt(),
     ),
   ]..sort((a, b) => a.on.compareTo(b.on));
 

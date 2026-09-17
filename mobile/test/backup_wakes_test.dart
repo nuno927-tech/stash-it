@@ -55,6 +55,73 @@ void main() {
 
       expect(wakes.first.on, isNot(toIsoDate(today)));
     });
+
+    /*
+      ── The one that arrives uninvited ───────────────────────────────────────
+
+      A notification telling somebody to duplicate a file they already have is
+      the notification that gets this app's reminders switched off entirely —
+      and that takes every warranty date with it. So an untouched stash sends
+      nothing, however long ago the backup was.
+    */
+    test('an untouched stash is not chased, however old the backup', () {
+      expect(
+        backupWakes(
+          everyDays: 30,
+          itemCount: 10,
+          lastBackupAt: addDays(today, -400),
+          changedAt: addDays(today, -500),
+          now: today,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('and one save later it is overdue again, starting today', () {
+      final wakes = backupWakes(
+        everyDays: 30,
+        itemCount: 10,
+        lastBackupAt: addDays(today, -400),
+        changedAt: addDays(today, -1),
+        now: today,
+      );
+
+      expect(wakes.first.on, toIsoDate(today));
+    });
+
+    /*
+      Not knowing when the stash last changed is not evidence that it has not.
+      Every install that predates the column starts here, and the reminder must
+      behave exactly as it did before it existed.
+    */
+    test('not knowing keeps the old behaviour', () {
+      expect(
+        backupWakes(
+          everyDays: 30,
+          itemCount: 10,
+          lastBackupAt: addDays(today, -400),
+          now: today,
+        ),
+        isNotEmpty,
+      );
+    });
+
+    /*
+      Nothing has ever been written anywhere. There is no file to be current,
+      so the change clock has nothing to say about it.
+    */
+    test('never backed up is chased even with an untouched stash', () {
+      expect(
+        backupWakes(
+          everyDays: 30,
+          itemCount: 10,
+          lastBackupAt: null,
+          changedAt: addDays(today, -500),
+          now: today,
+        ),
+        isNotEmpty,
+      );
+    });
   });
 
   group('when the interval falls due', () {

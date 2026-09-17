@@ -105,6 +105,7 @@ class _Home {
     final subs = await repo.activeSubscriptions();
     final docs = await repo.activeDocs();
     final settings = await repo.settings();
+    final changedAt = await repo.lastChangeAt();
 
     return _Home(
       empty: items.isEmpty && papers.isEmpty && subs.isEmpty,
@@ -112,6 +113,7 @@ class _Home {
       line: buildTimeline(items, subs, papers),
       backup: backupStatus(
         lastBackupAt: settings.lastBackupAt,
+        changedAt: changedAt,
         everyDays: settings.backupReminderDays,
         itemCount: items.length,
       ),

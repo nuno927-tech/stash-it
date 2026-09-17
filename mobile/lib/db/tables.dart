@@ -283,6 +283,31 @@ class SettingsTable extends Table {
       integer().withDefault(const Constant(30))();
 
   /*
+    ── When the stash last changed, and why the reminder needs it ────────────
+
+    The backup reminder used to be a calendar and nothing else: thirty days
+    since the last export, therefore a warning. For anybody whose stash is
+    finished — and most stashes finish, because you buy a washing machine once
+    — that is a monthly instruction to write a file identical to the one they
+    already have. A reminder that is wrong every time is a reminder people
+    learn to swipe away, and then it is wrong on the month that mattered.
+
+    So this is stamped whenever any RECORD changes, and the reminder compares
+    it against `lastBackupAt`. Nothing new since the last backup means the
+    backup is still a complete copy, however old it is.
+
+    **Null means "no idea", and no idea is read as "remind me".** Every
+    install that predates this column starts there, and the app must not
+    reason its way into silence from a fact it does not have.
+
+    Not in `settingsToJson`, so it does not travel in a backup — the same rule
+    the rating columns follow, and for a sharper reason here: a restored file
+    would carry the source phone's change clock onto a handset whose own
+    records are a different age.
+  */
+  DateTimeColumn get changedAt => dateTime().nullable()();
+
+  /*
     ── The folder backups are written to, and how the last attempt went ──────
 
     `backupFolder` is a document tree URI Android handed over when somebody
@@ -408,7 +433,7 @@ class StashDatabase extends _$StashDatabase {
   /// one describes the *tables*, and never leaves the phone. They start apart
   /// and will drift further — adding an index bumps this and not that.
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -496,6 +521,18 @@ class StashDatabase extends _$StashDatabase {
             await m.addColumn(settingsTable, settingsTable.reviewAskedAt);
             await m.addColumn(settingsTable, settingsTable.reviewAsks);
           }
+          if (from < 11) {
+            /*
+              The change clock the backup reminder reads.
+
+              Null on every existing install, which `anythingNewToBackUp`
+              treats as "do not know" and therefore as a reason to go on
+              reminding. The first save after the upgrade sets it, and from
+              then on the reminder is about the records rather than the
+              calendar.
+            */
+            await m.addColumn(settingsTable, settingsTable.changedAt);
+          }
           if (from < 7) {
             /*
               Automatic backups. Null on every existing install, which reads as
@@ -517,6 +554,27 @@ class StashDatabase extends _$StashDatabase {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  /* ------------------------------------------------- the change clock */
+
+  /*
+    ── Stamped by the writer, and NOT by a listener ──────────────────────────
+
+    The first version of this watched `tableUpdates` and stamped from the
+    callback, on the reasoning that one watcher cannot be forgotten the way
+    twenty-five call sites can. It was the wrong trade, and the test suite said
+    so by hanging: a write issued from inside a stream callback is a write
+    nobody is awaiting, at a moment nobody chose — during the opening sequence,
+    inside somebody else's transaction, or in a widget test whose clock is fake
+    and never runs it at all.
+
+    So it is stamped here, on the same awaited path as the change itself, and
+    `_touched` is the only way in. A save that forgets to call it is a bug; a
+    save that hangs because a background write is queued behind the database
+    opening is a bug that takes a day to find. The second kind is worse.
+  */
+  Future<void> touch([DateTime? at]) => update(settingsTable)
+      .write(SettingsTableCompanion(changedAt: Value(at ?? DateTime.now())));
 
   /*
     ── An index on the size, and why it is worth one ─────────────────────────

@@ -568,6 +568,98 @@ void main() {
   });
 
   /*
+    ── The change clock ──────────────────────────────────────────────────────
+
+    `anythingNewToBackUp` has the rule and a suite of its own. This is about the
+    FACT it is handed: whether the write paths actually record that something
+    happened. Forgetting one means the app telling somebody their backup is
+    current when it is not, which is the one lie it must never tell — so the
+    cases below are deliberately the easy ones to forget. Not a save: a bin, an
+    undo, an empty-bin, a room.
+
+    A first version of this stamped from a `tableUpdates` listener instead, on
+    the reasoning that one watcher cannot be forgotten. It hung the widget
+    suite — a database write issued from a stream callback runs at a moment
+    nobody chose and nobody awaits. Explicit and awaited is the trade.
+  */
+  group('noticing that something changed', () {
+    /*
+      Drift stores a DateTime as whole seconds, so an instant taken a moment
+      before the write can read as LATER than the write's own truncated stamp.
+      A second of slack, and the assertions stay about ordering rather than
+      about clock resolution.
+    */
+    DateTime mark() => DateTime.now().subtract(const Duration(seconds: 1));
+
+    Future<void> expectStampedSince(DateTime at) async {
+      final stamped = await repo.lastChangeAt();
+      expect(stamped, isNotNull);
+      expect(stamped!.isAfter(at), isTrue);
+    }
+
+    /*
+      Nothing is asserted about a brand new database on purpose. Whether the
+      seed rows count as a change is not worth pinning: a fresh install has
+      never backed up, and `anythingNewToBackUp` answers "yes" from that alone,
+      whichever way the clock reads.
+    */
+    test('saving an item is a change', () async {
+      final at = mark();
+      await repo.createItem(draft('Kettle'));
+      await expectStampedSince(at);
+    });
+
+    test('and so is binning one', () async {
+      final id = await repo.createItem(draft('Kettle'));
+      final at = mark();
+      await repo.softDeleteItem(id);
+      await expectStampedSince(at);
+    });
+
+    test('and bringing it back', () async {
+      final id = await repo.createItem(draft('Kettle'));
+      await repo.softDeleteItem(id);
+      final at = mark();
+      await repo.restoreItem(id);
+      await expectStampedSince(at);
+    });
+
+    test('and emptying the bin', () async {
+      final id = await repo.createItem(draft('Kettle'));
+      await repo.softDeleteItem(id);
+      final at = mark();
+      await repo.emptyBin();
+      await expectStampedSince(at);
+    });
+
+    test('and a room, which owns no records at all', () async {
+      final at = mark();
+      await repo.createRoom('Garage');
+      await expectStampedSince(at);
+    });
+
+    /*
+      The reason this is not a field on `Settings`. A backup carries settings,
+      so a field on that object is a field a restored file can write — and the
+      change clock of the phone a file came from says nothing true about this
+      one's records.
+
+      It is also why a preference is not a change: settings do travel in a
+      backup, so changing the currency technically dates the file, and
+      reminding somebody to re-export their whole collection over it is exactly
+      the noise this was built to remove.
+    */
+    test('writing settings is not a change to anything stashed', () async {
+      await repo.createItem(draft('Kettle'));
+      final before = await repo.lastChangeAt();
+
+      await repo.saveSettings((await repo.settings()).copyWith(currency: 'GBP'));
+
+      expect(await repo.lastChangeAt(), before);
+    });
+  });
+
+  /*
     ── Documents and subscriptions in the bin ────────────────────────────────
 
     THE GAP THIS CLOSES, AND IT WAS ONE I MADE. Delete went onto documents and

@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import java.io.File
 
 /*
@@ -30,6 +29,19 @@ import java.io.File
    words are about 250 pixels across at 3x, which is a fifth of a megabyte
    through Binder against a budget of about one. The ring, for comparison, is
    2 MB unscaled.
+
+   ── And it is bounded anyway, which is not the same statement ───────────────
+
+   That paragraph is a measurement, and it was being used as a guarantee. The
+   size it describes comes from a font size in lib/ui/widget_face.dart, which
+   knows nothing about Binder and has no reason to ask — so "small enough" is
+   true until somebody makes the masthead bigger, and nothing here would say
+   so. Play's own check said as much: "especially if image resolution
+   increases in future updates".
+
+   `MAX_WIDTH` costs nothing today. At 250 pixels the sample size works out to
+   1 and the picture is decoded exactly as it always was. It is there for the
+   version of this app where that is no longer true.
 */
 object Wordmark {
 
@@ -60,6 +72,16 @@ object Wordmark {
             ?: return null
 
         if (!File(path).exists()) return null
-        return BitmapFactory.decodeFile(path)
+        return Bitmaps.atMost(path, MAX_WIDTH)
     }
+
+    /**
+     * The widest masthead worth sending to a launcher.
+     *
+     * Generous rather than tight, because this is a ceiling and not a target:
+     * the words are drawn at whatever size looks right and this only has to
+     * stop them being absurd. A widget is a few hundred pixels across on any
+     * phone, so nothing under this is ever sampled down.
+     */
+    const val MAX_WIDTH = 720
 }

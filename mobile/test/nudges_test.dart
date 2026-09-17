@@ -228,6 +228,127 @@ void main() {
     });
   });
 
+  /*
+    ── Whether there is anything to back up, as opposed to how long it has been ─
+
+    The reminder used to be a calendar and nothing else, so a stash somebody
+    had finished got a monthly instruction to write a file identical to the one
+    they already had. Every test here is about the difference between an OLD
+    backup and a STALE one.
+  */
+  group('nothing new to back up', () {
+    test('a change after the backup is something to say', () {
+      expect(
+        anythingNewToBackUp(
+            lastBackupAt: daysAgo(40), changedAt: daysAgo(2)),
+        isTrue,
+      );
+    });
+
+    test('a change before it is not', () {
+      expect(
+        anythingNewToBackUp(
+            lastBackupAt: daysAgo(40), changedAt: daysAgo(80)),
+        isFalse,
+      );
+    });
+
+    /*
+      Both are stored to the second, so a change and a backup in the same
+      second are indistinguishable — and one of them really did happen after
+      the other. The second goes to the side of reminding.
+    */
+    test('the same moment counts as new', () {
+      final at = daysAgo(3);
+      expect(anythingNewToBackUp(lastBackupAt: at, changedAt: at), isTrue);
+    });
+
+    /*
+      The loudest yes there is. There is no file anywhere, so the age of the
+      newest record is beside the point.
+    */
+    test('never having backed up is always something to say', () {
+      expect(
+        anythingNewToBackUp(lastBackupAt: null, changedAt: daysAgo(900)),
+        isTrue,
+      );
+    });
+
+    /*
+      An install that predates the column, or a stash untouched since the
+      upgrade. Not knowing is a reason to go on asking — silence has to be
+      earned by a fact, not by the absence of one.
+    */
+    test('not knowing when it changed keeps the reminder', () {
+      expect(
+        anythingNewToBackUp(lastBackupAt: daysAgo(200), changedAt: null),
+        isTrue,
+      );
+    });
+
+    test('an old backup of an untouched stash nudges nobody', () {
+      expect(
+        backupNudge(
+          lastBackupAt: daysAgo(200),
+          changedAt: daysAgo(300),
+          everyDays: 30,
+          itemCount: 5,
+          now: now,
+        ),
+        isNull,
+      );
+    });
+
+    test('and the line stays green, and says why', () {
+      final s = backupStatus(
+        lastBackupAt: daysAgo(200),
+        changedAt: daysAgo(300),
+        everyDays: 30,
+        itemCount: 5,
+        now: now,
+      );
+      expect(s!.tone, BackupTone.ok);
+      expect(s.label, 'Backed up 200 days ago · up to date');
+    });
+
+    test('one save later, the same stash is overdue again', () {
+      final s = backupStatus(
+        lastBackupAt: daysAgo(200),
+        changedAt: daysAgo(1),
+        everyDays: 30,
+        itemCount: 5,
+        now: now,
+      );
+      expect(s!.tone, BackupTone.due);
+      expect(s.label, 'Backed up 200 days ago');
+
+      expect(
+        backupNudge(
+          lastBackupAt: daysAgo(200),
+          changedAt: daysAgo(1),
+          everyDays: 30,
+          itemCount: 5,
+          now: now,
+        ),
+        isNotNull,
+      );
+    });
+
+    /*
+      Nothing changed and nothing backed up is still the never state, and still
+      the loudest one. The rule above must not be able to talk this line quiet.
+    */
+    test('an untouched stash with no backup is still never backed up', () {
+      final s = backupStatus(
+        changedAt: daysAgo(300),
+        everyDays: 30,
+        itemCount: 5,
+        now: now,
+      );
+      expect(s!.tone, BackupTone.never);
+    });
+  });
+
   group('the warranty nudge', () {
     test('nothing ending means nothing said', () {
       expect(warrantyNudge(endingSoon: 0, days: 30), isNull);

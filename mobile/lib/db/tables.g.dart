@@ -3890,6 +3890,12 @@ class $SettingsTableTable extends SettingsTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(30));
+  static const VerificationMeta _changedAtMeta =
+      const VerificationMeta('changedAt');
+  @override
+  late final GeneratedColumn<DateTime> changedAt = GeneratedColumn<DateTime>(
+      'changed_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _backupFolderMeta =
       const VerificationMeta('backupFolder');
   @override
@@ -4081,6 +4087,7 @@ class $SettingsTableTable extends SettingsTable
         currency,
         lastBackupAt,
         backupReminderDays,
+        changedAt,
         backupFolder,
         backupFolderLabel,
         lastAutoBackupAt,
@@ -4143,6 +4150,10 @@ class $SettingsTableTable extends SettingsTable
           _backupReminderDaysMeta,
           backupReminderDays.isAcceptableOrUnknown(
               data['backup_reminder_days']!, _backupReminderDaysMeta));
+    }
+    if (data.containsKey('changed_at')) {
+      context.handle(_changedAtMeta,
+          changedAt.isAcceptableOrUnknown(data['changed_at']!, _changedAtMeta));
     }
     if (data.containsKey('backup_folder')) {
       context.handle(
@@ -4306,6 +4317,8 @@ class $SettingsTableTable extends SettingsTable
           DriftSqlType.dateTime, data['${effectivePrefix}last_backup_at']),
       backupReminderDays: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}backup_reminder_days'])!,
+      changedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}changed_at']),
       backupFolder: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}backup_folder']),
       backupFolderLabel: attachedDatabase.typeMapping.read(
@@ -4380,6 +4393,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final String currency;
   final DateTime? lastBackupAt;
   final int backupReminderDays;
+  final DateTime? changedAt;
   final String? backupFolder;
   final String? backupFolderLabel;
   final DateTime? lastAutoBackupAt;
@@ -4425,6 +4439,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       required this.currency,
       this.lastBackupAt,
       required this.backupReminderDays,
+      this.changedAt,
       this.backupFolder,
       this.backupFolderLabel,
       this.lastAutoBackupAt,
@@ -4462,6 +4477,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       map['last_backup_at'] = Variable<DateTime>(lastBackupAt);
     }
     map['backup_reminder_days'] = Variable<int>(backupReminderDays);
+    if (!nullToAbsent || changedAt != null) {
+      map['changed_at'] = Variable<DateTime>(changedAt);
+    }
     if (!nullToAbsent || backupFolder != null) {
       map['backup_folder'] = Variable<String>(backupFolder);
     }
@@ -4543,6 +4561,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ? const Value.absent()
           : Value(lastBackupAt),
       backupReminderDays: Value(backupReminderDays),
+      changedAt: changedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(changedAt),
       backupFolder: backupFolder == null && nullToAbsent
           ? const Value.absent()
           : Value(backupFolder),
@@ -4621,6 +4642,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       currency: serializer.fromJson<String>(json['currency']),
       lastBackupAt: serializer.fromJson<DateTime?>(json['lastBackupAt']),
       backupReminderDays: serializer.fromJson<int>(json['backupReminderDays']),
+      changedAt: serializer.fromJson<DateTime?>(json['changedAt']),
       backupFolder: serializer.fromJson<String?>(json['backupFolder']),
       backupFolderLabel:
           serializer.fromJson<String?>(json['backupFolderLabel']),
@@ -4664,6 +4686,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'currency': serializer.toJson<String>(currency),
       'lastBackupAt': serializer.toJson<DateTime?>(lastBackupAt),
       'backupReminderDays': serializer.toJson<int>(backupReminderDays),
+      'changedAt': serializer.toJson<DateTime?>(changedAt),
       'backupFolder': serializer.toJson<String?>(backupFolder),
       'backupFolderLabel': serializer.toJson<String?>(backupFolderLabel),
       'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
@@ -4700,6 +4723,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           String? currency,
           Value<DateTime?> lastBackupAt = const Value.absent(),
           int? backupReminderDays,
+          Value<DateTime?> changedAt = const Value.absent(),
           Value<String?> backupFolder = const Value.absent(),
           Value<String?> backupFolderLabel = const Value.absent(),
           Value<DateTime?> lastAutoBackupAt = const Value.absent(),
@@ -4734,6 +4758,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         lastBackupAt:
             lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
         backupReminderDays: backupReminderDays ?? this.backupReminderDays,
+        changedAt: changedAt.present ? changedAt.value : this.changedAt,
         backupFolder:
             backupFolder.present ? backupFolder.value : this.backupFolder,
         backupFolderLabel: backupFolderLabel.present
@@ -4792,6 +4817,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       backupReminderDays: data.backupReminderDays.present
           ? data.backupReminderDays.value
           : this.backupReminderDays,
+      changedAt: data.changedAt.present ? data.changedAt.value : this.changedAt,
       backupFolder: data.backupFolder.present
           ? data.backupFolder.value
           : this.backupFolder,
@@ -4863,6 +4889,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('currency: $currency, ')
           ..write('lastBackupAt: $lastBackupAt, ')
           ..write('backupReminderDays: $backupReminderDays, ')
+          ..write('changedAt: $changedAt, ')
           ..write('backupFolder: $backupFolder, ')
           ..write('backupFolderLabel: $backupFolderLabel, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
@@ -4900,6 +4927,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         currency,
         lastBackupAt,
         backupReminderDays,
+        changedAt,
         backupFolder,
         backupFolderLabel,
         lastAutoBackupAt,
@@ -4936,6 +4964,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.currency == this.currency &&
           other.lastBackupAt == this.lastBackupAt &&
           other.backupReminderDays == this.backupReminderDays &&
+          other.changedAt == this.changedAt &&
           other.backupFolder == this.backupFolder &&
           other.backupFolderLabel == this.backupFolderLabel &&
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
@@ -4970,6 +4999,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String> currency;
   final Value<DateTime?> lastBackupAt;
   final Value<int> backupReminderDays;
+  final Value<DateTime?> changedAt;
   final Value<String?> backupFolder;
   final Value<String?> backupFolderLabel;
   final Value<DateTime?> lastAutoBackupAt;
@@ -5003,6 +5033,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.currency = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.backupReminderDays = const Value.absent(),
+    this.changedAt = const Value.absent(),
     this.backupFolder = const Value.absent(),
     this.backupFolderLabel = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
@@ -5037,6 +5068,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     this.currency = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.backupReminderDays = const Value.absent(),
+    this.changedAt = const Value.absent(),
     this.backupFolder = const Value.absent(),
     this.backupFolderLabel = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
@@ -5071,6 +5103,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? currency,
     Expression<DateTime>? lastBackupAt,
     Expression<int>? backupReminderDays,
+    Expression<DateTime>? changedAt,
     Expression<String>? backupFolder,
     Expression<String>? backupFolderLabel,
     Expression<DateTime>? lastAutoBackupAt,
@@ -5107,6 +5140,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       if (lastBackupAt != null) 'last_backup_at': lastBackupAt,
       if (backupReminderDays != null)
         'backup_reminder_days': backupReminderDays,
+      if (changedAt != null) 'changed_at': changedAt,
       if (backupFolder != null) 'backup_folder': backupFolder,
       if (backupFolderLabel != null) 'backup_folder_label': backupFolderLabel,
       if (lastAutoBackupAt != null) 'last_auto_backup_at': lastAutoBackupAt,
@@ -5145,6 +5179,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       Value<String>? currency,
       Value<DateTime?>? lastBackupAt,
       Value<int>? backupReminderDays,
+      Value<DateTime?>? changedAt,
       Value<String?>? backupFolder,
       Value<String?>? backupFolderLabel,
       Value<DateTime?>? lastAutoBackupAt,
@@ -5179,6 +5214,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
       currency: currency ?? this.currency,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
       backupReminderDays: backupReminderDays ?? this.backupReminderDays,
+      changedAt: changedAt ?? this.changedAt,
       backupFolder: backupFolder ?? this.backupFolder,
       backupFolderLabel: backupFolderLabel ?? this.backupFolderLabel,
       lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
@@ -5228,6 +5264,9 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
     }
     if (backupReminderDays.present) {
       map['backup_reminder_days'] = Variable<int>(backupReminderDays.value);
+    }
+    if (changedAt.present) {
+      map['changed_at'] = Variable<DateTime>(changedAt.value);
     }
     if (backupFolder.present) {
       map['backup_folder'] = Variable<String>(backupFolder.value);
@@ -5323,6 +5362,7 @@ class SettingsTableCompanion extends UpdateCompanion<SettingsRow> {
           ..write('currency: $currency, ')
           ..write('lastBackupAt: $lastBackupAt, ')
           ..write('backupReminderDays: $backupReminderDays, ')
+          ..write('changedAt: $changedAt, ')
           ..write('backupFolder: $backupFolder, ')
           ..write('backupFolderLabel: $backupFolderLabel, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
@@ -7165,6 +7205,7 @@ typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
   Value<String> currency,
   Value<DateTime?> lastBackupAt,
   Value<int> backupReminderDays,
+  Value<DateTime?> changedAt,
   Value<String?> backupFolder,
   Value<String?> backupFolderLabel,
   Value<DateTime?> lastAutoBackupAt,
@@ -7200,6 +7241,7 @@ typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
   Value<String> currency,
   Value<DateTime?> lastBackupAt,
   Value<int> backupReminderDays,
+  Value<DateTime?> changedAt,
   Value<String?> backupFolder,
   Value<String?> backupFolderLabel,
   Value<DateTime?> lastAutoBackupAt,
@@ -7254,6 +7296,9 @@ class $$SettingsTableTableFilterComposer
   ColumnFilters<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get changedAt => $composableBuilder(
+      column: $table.changedAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get backupFolder => $composableBuilder(
       column: $table.backupFolder, builder: (column) => ColumnFilters(column));
@@ -7366,6 +7411,9 @@ class $$SettingsTableTableOrderingComposer
   ColumnOrderings<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get changedAt => $composableBuilder(
+      column: $table.changedAt, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get backupFolder => $composableBuilder(
       column: $table.backupFolder,
@@ -7485,6 +7533,9 @@ class $$SettingsTableTableAnnotationComposer
   GeneratedColumn<int> get backupReminderDays => $composableBuilder(
       column: $table.backupReminderDays, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get changedAt =>
+      $composableBuilder(column: $table.changedAt, builder: (column) => column);
+
   GeneratedColumn<String> get backupFolder => $composableBuilder(
       column: $table.backupFolder, builder: (column) => column);
 
@@ -7596,6 +7647,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> currency = const Value.absent(),
             Value<DateTime?> lastBackupAt = const Value.absent(),
             Value<int> backupReminderDays = const Value.absent(),
+            Value<DateTime?> changedAt = const Value.absent(),
             Value<String?> backupFolder = const Value.absent(),
             Value<String?> backupFolderLabel = const Value.absent(),
             Value<DateTime?> lastAutoBackupAt = const Value.absent(),
@@ -7630,6 +7682,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             currency: currency,
             lastBackupAt: lastBackupAt,
             backupReminderDays: backupReminderDays,
+            changedAt: changedAt,
             backupFolder: backupFolder,
             backupFolderLabel: backupFolderLabel,
             lastAutoBackupAt: lastAutoBackupAt,
@@ -7664,6 +7717,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             Value<String> currency = const Value.absent(),
             Value<DateTime?> lastBackupAt = const Value.absent(),
             Value<int> backupReminderDays = const Value.absent(),
+            Value<DateTime?> changedAt = const Value.absent(),
             Value<String?> backupFolder = const Value.absent(),
             Value<String?> backupFolderLabel = const Value.absent(),
             Value<DateTime?> lastAutoBackupAt = const Value.absent(),
@@ -7698,6 +7752,7 @@ class $$SettingsTableTableTableManager extends RootTableManager<
             currency: currency,
             lastBackupAt: lastBackupAt,
             backupReminderDays: backupReminderDays,
+            changedAt: changedAt,
             backupFolder: backupFolder,
             backupFolderLabel: backupFolderLabel,
             lastAutoBackupAt: lastAutoBackupAt,

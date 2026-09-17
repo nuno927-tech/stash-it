@@ -42,6 +42,7 @@ import '../models/paper.dart';
 import '../models/subscription.dart';
 import '../models/types.dart';
 import 'dates.dart';
+import 'nudges.dart' show anythingNewToBackUp;
 import 'papers.dart';
 import 'timeline.dart' show dayMonth;
 import 'subscriptions.dart';
@@ -289,10 +290,28 @@ List<Wake> backupWakes({
   required int everyDays,
   required int itemCount,
   DateTime? lastBackupAt,
+  DateTime? changedAt,
   DateTime? now,
   int horizon = horizonDays,
 }) {
   if (everyDays <= 0 || itemCount == 0) return const [];
+
+  /*
+    ── Nothing new means nothing to say ────────────────────────────────────
+
+    The strongest place the change rule applies, because this one arrives
+    uninvited: a notification telling somebody to duplicate a file they
+    already have is the notification that gets the app's reminders switched
+    off entirely, and that takes the warranty dates with it.
+
+    Cancelling is safe here in a way it would not be in a server-scheduled
+    app. The whole schedule is rebuilt from scratch on launch and after every
+    save — see `syncReminders` — so the first change after this puts the
+    reminder straight back, already overdue if it had been.
+  */
+  if (!anythingNewToBackUp(lastBackupAt: lastBackupAt, changedAt: changedAt)) {
+    return const [];
+  }
 
   final today = startOfDay(now ?? DateTime.now());
   final until = addDays(today, horizon);
