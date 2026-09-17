@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Four cells by three, and it should keep roughly that shape.
+    Four cells by two, which is the shape the picture actually is.
 
     The face is the dashboard's card — wordmark, dial, Scout beside it, four
-    figures underneath — and that composition does not survive being dragged
-    into a square: fitCenter keeps the picture undistorted, so a square cell
-    would show the same card with a band of nothing above and below it.
+    figures underneath — drawn at 300 by 200, so three wide by two tall. It does
+    not survive being dragged into a square: fitCenter keeps the picture
+    undistorted, so a square cell shows the same card with a band of nothing
+    above and below it.
 
-    The resize range below is generous in width and tight in height, which is
-    the direction that degrades gracefully. Wider just means more margin.
+    ── That is not a warning any more, it is a bug report ─────────────────────
+
+    This said four by THREE, and the paragraph above described exactly what that
+    produced. The arithmetic is the whole of it: a home screen cell is taller
+    than it is wide — roughly 74dp by 100 on a Pixel — so four by three is about
+    296 by 300, which is a square. The picture is half as wide again as it is
+    tall. Every ring widget anybody placed came out letterboxed, and the comment
+    explaining why was sitting directly above the number causing it.
+
+    Four by two is about 296 by 200. The picture is 300 by 200.
+
+    minHeight follows, because it is the same statement for launchers too old to
+    read targetCell: Android's own rule is 70n − 30, so two rows is 110dp.
+
+    Height can still be dragged taller by anyone who wants it that way — the
+    bands come back, but then they are somebody's choice rather than the default
+    nobody asked for.
 
     No previewLayout: the layout is an empty ImageView until the app has run
     once, so a live preview would show the picker a blank rounded rectangle.
@@ -16,13 +32,13 @@
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="160dp"
+    android:minHeight="110dp"
     android:minResizeWidth="180dp"
-    android:minResizeHeight="130dp"
+    android:minResizeHeight="110dp"
     android:maxResizeWidth="400dp"
     android:maxResizeHeight="260dp"
     android:targetCellWidth="4"
-    android:targetCellHeight="3"
+    android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_ring"

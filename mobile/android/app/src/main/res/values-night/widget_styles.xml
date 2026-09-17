@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark. See values/widget_styles.xml for why this exists as its own file. -->
 <resources>
+    <!-- The two widths are repeated rather than inherited: this style has a
+         different parent, so there is nothing to inherit them from. -->
     <style name="WidgetSettingsTheme"
-        parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+        parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+        <item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:windowMinWidthMajor">70%</item>
+    </style>
 </resources>

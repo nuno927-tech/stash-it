@@ -71,6 +71,22 @@
         The light variant here and the dark one in values-night, because
         DeviceDefault does not follow the phone by itself.
     -->
+    <!--
+        ── And a dialog has to be told how wide, or it guesses from its text ──
+
+        It came up as a narrow strip. A dialog window sizes itself to its
+        contents, and `match_parent` on a child of a window that is still
+        deciding how wide to be resolves to whatever the widest child needs —
+        four checkboxes with short labels — so the layout collapsed to about
+        the width of the word "Subscriptions" and the whole screen with it.
+
+        These two are the platform's own answer: a floor expressed as a share
+        of the screen, applied before the contents are measured. 90% across the
+        short edge is what Android's own settings dialogs use.
+    -->
     <style name="WidgetSettingsTheme"
-        parent="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar" />
+        parent="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar">
+        <item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:windowMinWidthMajor">70%</item>
+    </style>
 </resources>

@@ -305,13 +305,67 @@ phone and the one place the app can charge somebody twice:
 - [ ] `storeUrl` verified to resolve — see section 5
 - [ ] `stash_it_unlock` created and Active in the Console — see section 6
 - [ ] A purchase made and restored on a second device — see section 6
-- [ ] Screenshots from a real device with real data
-- [ ] `flutter build appbundle --release` verified to open, restore and back up
-      on a phone that has never had a debug build installed
+- [x] Screenshots from a real device with real data — in `store/play/`. Made is
+      not uploaded: they only reach the listing through the Console.
+- [x] `flutter build appbundle --release` verified to open, restore and back up
+      — done on the development phone, which is not quite the test written here.
+      The version that has never had a debug build installed is covered by
+      installing from the closed test track, which is worth doing anyway because
+      it is the only way to exercise billing at all.
+- [x] A `.stashcard` round trip between two phones, including a document with a
+      scan shared with the scan switch off
+- [ ] `pubspec.lock` committed rather than gitignored — see the note at the
+      bottom of this file. Easier before the first release than after.
 
 That last one matters more than it sounds. A release build differs from a debug
 build in ways that only show up at runtime, and the two most likely to bite here
 are the SQLCipher native library and the notification receivers.
+
+---
+
+## 8. Deliberately left until after launch
+
+Not bugs. Each one is a decision to ship without something, recorded here so it
+is a decision rather than a thing that was forgotten.
+
+### The Coming up widget shows six and does not scroll
+
+Six rows, capped in three places that have to agree: `ROWS` and the row ids in
+`ComingUpWidget.kt`, the six copies of the row block in
+`layout/widget_coming_up.xml`, and `widgetMaxLines` in
+`lib/logic/widget_payload.dart`.
+
+It does not scroll because it is built from fixed views rather than a list.
+That much was the right call and should stay — a rendered picture can only get
+bigger, so dragging it taller would show three rows in larger type instead of
+more rows, which turns the most natural gesture on a home screen into a
+disappointment.
+
+Making it genuinely scroll means a collection widget: a `RemoteViewsService`
+and a `RemoteViewsFactory`, the rows served one at a time by the launcher
+rather than set by id.
+
+**The part to think about before writing any of it** is the payload, not the
+plumbing. Six rows is currently the entire privacy budget of this widget —
+`logic/widget_payload.dart` exists so that what crosses into the launcher's
+unencrypted storage is only what a widget draws. A scrolling list wants every
+upcoming date on the phone sitting in that file. Decide what the cap becomes
+and why, before deciding how the scrolling works.
+
+### The passphrase is confusing
+
+Reported by a tester. The likely replacement is a generated recovery key rather
+than a passphrase somebody invents — the crypto and the file format do not
+change, only the screen that obtains the string, and every backup already
+written keeps opening. See the notes in `logic/vault.dart` on why the
+unrecoverable part cannot be designed away without a server.
+
+### Flutter's deprecated edge-to-edge calls
+
+Play reports `Window.setStatusBarColor` and two others, from
+`io.flutter.plugin.platform.PlatformPlugin` — Flutter's own engine, not this
+app. The only fix is an SDK upgrade, and Flutter's open issues say the warning
+often survives one. Advisory, not blocking.
 
 ---
 

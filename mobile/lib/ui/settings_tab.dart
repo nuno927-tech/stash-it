@@ -61,7 +61,7 @@ import 'scout.dart';
 import 'scout_album.dart';
 import 'theme.dart';
 
-const appVersion = '1.35.3';
+const appVersion = '1.35.4';
 
 /*
   ── Asking Settings to go somewhere ─────────────────────────────────────────
@@ -1601,7 +1601,27 @@ class _SettingsTabState extends State<SettingsTab> {
               onTap: () async {
                 feedback(Cue.tap);
                 await showBin(context, widget.repo);
-                if (mounted) setState(() {});
+
+                /*
+                  ── `setState(() {})` was not enough, and looked like it was ──
+
+                  This rebuilt and nothing changed: the line read "18 things"
+                  before the bin was opened and "18 things" after everything in
+                  it had been erased.
+
+                  `_bin` is a FIELD holding a future that has already COMPLETED.
+                  Rebuilding hands the same finished future back to the same
+                  FutureBuilder, which reports the same answer it reported the
+                  first time — the query is never run again. A future is a
+                  result, not a question, and only making a new one asks again.
+
+                  `_refresh` makes new ones. It also catches the two other lines
+                  the bin can move and this call was silently missing: the free
+                  tier count, because restoring something takes a slot back, and
+                  the storage figure, because erasing an item erases its
+                  photographs.
+                */
+                _refresh();
               },
             ),
             _Rule(c),
